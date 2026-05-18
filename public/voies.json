@@ -1,0 +1,1689 @@
+{
+  "voies_de_profil": {
+    "combattants": [
+      {
+        "nom": "Voie du bastion",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Protéger un allié",
+            "limitee": false,
+            "description": "Le PJ accorde le Mod. de DEF de son bouclier à un compagnon de son choix qui se trouve juste à côté de lui (il conserve ce bonus pour lui-même aussi). Il peut changer de compagnon à chaque tour durant sa phase d'initiative. C'est une action gratuite. Capacité avancée : le PJ peut protéger deux compagnons en même temps, à condition que les deux soient juste à côté de lui."
+          },
+          "2": {
+            "nom": "Absorber un coup",
+            "limitee": true,
+            "description": "Lors de son tour, le PJ fait seulement une action d'attaque ou de déplacement. Par la suite, à tout moment avant son prochain tour, le PJ peut effectuer un test d'attaque au contact en opposition à un test réussi d'attaque au contact ou à distance d'un adversaire. En cas de réussite, l'attaque adverse est bloquée par le bouclier.",
+            "capacite_avancee": "le test pour bloquer l'attaque bénéficie d'un bonus de +2."
+          },
+          "3": {
+            "nom": "Coup de bouclier",
+            "limitee": false,
+            "description": "Le PJ peut effectuer à chaque tour une attaque au bouclier avec un d12 au lieu du d20 (action gratuite) qui inflige [1d4 + Mod. de FOR] DM."
+          },
+          "4": {
+            "nom": "Absorber un sort",
+            "limitee": true,
+            "description": "Lors de son tour, le PJ fait seulement une action d'attaque ou de déplacement. Par la suite, à tout moment avant son prochain tour, le PJ peut effectuer un test d'attaque magique (Mod. d'INT) en opposition à un test d'attaque magique qui le visait. En cas de réussite, le sort est absorbé par le bouclier et n'a aucun effet sur le PJ."
+          },
+          "5": {
+            "nom": "Armure lourde",
+            "limitee": false,
+            "description": "Le PJ peut porter une armure de plaques. Celle- ci lui confère une DEF de +7 et le protège des attaques critiques (il subit sur un critique des DM normaux au lieu des DM doublés)."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la bravoure",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Robustesse",
+            "limitee": false,
+            "description": "En prenant cette capacité, le PJ gagne 3 PV supplémentaires au rang 1, puis 3 PV de plus au rang 3 atteint dans cette voie et, enfin, 3 PV au rang 5.",
+            "capacite_avancee": "le bonus de PV passe à 4."
+          },
+          "2": {
+            "nom": "Armure naturelle",
+            "limitee": false,
+            "description": "Le PJ a endurci son corps. Il bénéficie d'un bonus de +2 à la DEF.",
+            "capacite_avancee": "le bonus de DEF augmente de +1."
+          },
+          "3": {
+            "nom": "Prouesse",
+            "limitee": false,
+            "description": "Le PJ réussit souvent des exploits physiques hors norme. Une fois par tour, vous pouvez sacrifier 1d4 PV pour obtenir +5 sur un test de Caracs (voir définition en marge) de FOR ou de DEX. Vous pouvez annoncer l'utilisation de cette capacité après avoir pris connaissance du résultat du test de caractéristique."
+          },
+          "4": {
+            "nom": "Dernier rempart",
+            "limitee": true,
+            "description": "Le PJ effectue uniquement une attaque au contact durant ce tour. En contrepartie, il bénéficie d'une attaque supplémentaire contre tout ennemi qui se déplace pour venir à son contact. Un adversaire blessé par cette attaque voit son déplacement stoppé."
+          },
+          "5": {
+            "nom": "Constitution héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente son score de CON de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de CON lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie du combat à deux armes",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Combat à deux armes",
+            "limitee": true,
+            "description": "Le PJ effectue une attaque de chaque main. Il utilise 1d20 pour le test d'attaque de sa main directrice et un d12 pour l'attaque portée avec son autre bras. Il doit manier une arme légère dans sa main faible (1d6 de DM maxi).",
+            "capacite_avancee": "s'il utilise deux armes légères (1d6 de DM au maximum), le PJ gagne un bonus de +1 en attaque."
+          },
+          "2": {
+            "nom": "Parade croisée",
+            "limitee": true,
+            "description": "Au cours d'un tour complet, le PJ obtient un bonus en DEF de +2. Il ne réalise qu'une attaque à ce tour. Si le résultat du dé d'attaque est pair, la main principale porte le coup ; si le résultat est impair, c'est la main secondaire.",
+            "capacite_avancee": "le bonus de DEF passe à +4."
+          },
+          "3": {
+            "nom": "Symétrie",
+            "limitee": false,
+            "description": "Le PJ n'est plus obligé de manier une arme légère dans sa main secondaire. S'il le souhaite, il peut utiliser une arme aussi lourde que dans sa main principale (d8). S'il utilise deux armes légères (1d6 de DM au maximum), il gagne un bonus de +1 en attaque."
+          },
+          "4": {
+            "nom": "Double peine",
+            "limitee": false,
+            "description": "Si les deux armes du PJ atteignent la cible lors d'un même tour, le personnage obtient un effet de combo qui ajoute +1d6 DM à l'une des deux attaques selon son choix."
+          },
+          "5": {
+            "nom": "Combat à deux armes parfait",
+            "limitee": false,
+            "description": "Le combat à deux armes (et en conséquence la parade croisée) ne nécessite plus qu'une action d'attaque au lieu d'une action limitée pour être utilisé."
+          }
+        }
+      },
+      {
+        "nom": "Voie du combat monté",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Fidèle monture",
+            "limitee": false,
+            "description": "Le PJ possède un puissant destrier (un cheval de guerre ou un cochon de combat). À dos de monture, il peut ajouter un déplacement de 10 m avant ou après une action normale (par exemple faire 10 m et une action limitée). La monture n'attaque que si elle est elle-même attaquée au contact par une créature. Fidèle monture : FOR +4, DEX +0, CON +4, INT -2, SAG +0, CHA +0, Init. 10, DEF 13, PV 15, ruade +5, DM 1d6+4",
+            "capacite_avancee": "au lieu de réaliser un dépla- cement supplémentaire, le PJ peut commander à sa monture d'attaquer sa cible."
+          },
+          "2": {
+            "nom": "Cavalier émérite",
+            "limitee": false,
+            "description": "Lorsqu'il est en selle, le PJ gagne un bonus de +2 en attaque au contact et partage sa DEF avec celle de sa monture – on garde le meilleur score des deux. Monter ou descendre de monture est désormais une action gratuite. Capacité avancée : en selle, le PJ gagne égale- ment un bonus de +2 aux DM."
+          },
+          "3": {
+            "nom": "Massacrer la piétaille",
+            "limitee": false,
+            "description": "Lorsqu'il est en selle, le PJ ajoute +1d6 aux DM contre la piétaille. S'il y a au moins quatre créatures aux statistiques semblables impliquées dans le combat, elles sont assimilées à de la piétaille (même si leur nombre est par la suite réduit à moins de quatre au cours du combat). Les grandes créatures et les cavaliers ne sont jamais considérés comme de la piétaille."
+          },
+          "4": {
+            "nom": "Charge",
+            "limitee": true,
+            "description": "À monture, le PJ peut effectuer un déplacement de 40 m en ligne droite, et une attaque de contact placée au moment son choix. Il doit parcourir au moins 10 m avant d'attaquer, mais peut réaliser le reste du déplacement à sa guise. Le joueur lance deux d20 à son test d'attaque et garde le meilleur résultat, tout en ajoutant +1d6 aux DM. Une créature située sur la trajectoire de la charge doit réussir un test de FOR difficulté 18 ou être contrainte de céder le passage en subissant 1d6 DM. Si elle réussit ce test, la charge est bloquée et le tour du combattant se termine."
+          },
+          "5": {
+            "nom": "Monture fantastique",
+            "limitee": false,
+            "description": "Le PJ obtient une monture volante (aspic, dragon, guivre, griffon ou wampür). FOR +4, DEX +2, CON +4, INT -2, SAG +1, CHA +0, Init. 15, DEF 16, PV [5 × niveau], attaque +8, DM 1d6+4. Lorsqu'il est en selle, le PJ peut faire attaquer sa monture une fois par tour (action gratuite), lors du même tour que lui, avec un score d'attaque égal à son niveau +3. En vol, la monture couvre une distance de 30 m par action de mouvement."
+          }
+        }
+      },
+      {
+        "nom": "Voie du commandement",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Action concertée",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ peut échanger son initiative avec un autre PJ volontaire. S'il cède son initiative à un PJ plus lent, il gagne un bonus de +1 sur ses tests d'attaque à ce tour. Ce bonus passe à +2 au rang 4 de la voie.",
+            "capacite_avancee": "le bonus aux tests d'attaque est augmenté de +1."
+          },
+          "2": {
+            "nom": "À couvert",
+            "limitee": true,
+            "description": "Jusqu'à son prochain tour, le PJ divise par deux les DM dus aux attaques à distance et de zone qu'il reçoit, et peut se déplacer de 20 mètres. Un compagnon du PJ peut profiter de cette aptitude s'il a son accord et reste à son contact. Capacité avancée : jusqu'à [Mod. de CHA] compagnons (minimum 1) du PJ peuvent profiter de cette aptitude s'ils ont son accord et restent à moins de 10 mètres de lui."
+          },
+          "3": {
+            "nom": "Exemplaire",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ permet à un allié qui combat le même adversaire que lui de relancer le d20 d'un test d'attaque s'il s'agissait d'un d'échec."
+          },
+          "4": {
+            "nom": "Ordre de bataille",
+            "limitee": false,
+            "description": "Le PJ donne des ordres tactiques pertinents au cœur de la bataille. Une fois par tour, il octroie une action supplémentaire gratuite à un allié en vue (une action de mouvement ou une action d'attaque, mais pas une action limitée)."
+          },
+          "5": {
+            "nom": "Charge fantastique",
+            "limitee": true,
+            "description": "Une fois par combat, à l'initiative du PJ, lui-même et tous ses alliés en vue bénéficient immédiatement d'un déplacement d'un maxi- mum de 20 m en ligne droite, suivi d'une action d'attaque avec un bonus de +3 au test de réussite et +1d6 aux dégâts. Résolvez d'abord tous les déplacements en com- mençant par le PJ, puis par ordre d'initiative. Ensuite, effectuez toutes les attaques dans le même ordre."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la férocité",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Cri de guerre",
+            "limitee": false,
+            "description": "Une fois par combat, pour une action d'attaque, le PJ pousse un hurlement qui effraie ses adversaires. Tout ennemi dont la FOR ou les PV maximaux sont inférieurs à ceux du PJ subit un malus de -2 à ses tests d'attaque au contact contre le PJ pour le reste du combat.",
+            "capacite_avancee": "la capacité ne nécessite plus qu'une action de mouvement."
+          },
+          "2": {
+            "nom": "Charge",
+            "limitee": true,
+            "description": "Le PJ se déplace en ligne droite d'au moins 5 mètres (20 mètres au maximum) et effectue une attaque au contact avec un bonus de +2 en attaque et +1d6 aux DM. Capacité avancée : le PJ gagne un bonus supplémentaire de +1 en attaque et aux DM."
+          },
+          "3": {
+            "nom": "Rage du berserk",
+            "limitee": true,
+            "description": "Le PJ entre dans une rage de berserk pour le reste du combat, ce qui le rend particulièrement dangereux. Il obtient un bonus de +2 en attaque et +1d6 aux DM à toutes ses attaques au contact, mais perd 4 en DEF et ne peut fuir ou attaquer à distance. S'il veut stopper la rage avant d'avoir éliminé tous ses ennemis, le PJ doit réussir un test de SAG difficulté 13 (un seul essai par tour)."
+          },
+          "4": {
+            "nom": "Même pas mal",
+            "limitee": false,
+            "description": "Lorsqu'il subit un coup critique, cela a pour effet de décupler la rage du PJ. Il peut im- médiatement entrer en rage (action gratuite) et gagne un bonus de +1d6 aux DM de ses attaques au contact pour les trois prochains tours. Le joueur note les DM supplémentaires de l'attaque critique à part : le PJ ne perdra ces PV qu'à la fin de la rage."
+          },
+          "5": {
+            "nom": "Attaque tourbillon",
+            "limitee": true,
+            "description": "Une fois par combat, le PJ tourne sur lui-même en assénant des attaques à toutes les cibles au contact. Il inflige automatiquement des DM correspondant à l'arme utilisée (+ tous les bonus habituels) à toutes les cibles dans un rayon de 5 m autour de lui."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la guerre",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Posture de combat",
+            "limitee": false,
+            "description": "Au début de son tour, le PJ peut choisir d'ap- pliquer jusqu'à -1 par rang atteint dans cette voie en attaque, en DEF ou aux DM et obtenir l'équivalent en bonus au choix en attaque, en DEF ou aux DM jusqu'à son prochain tour.",
+            "capacite_avancee": "le PJ peut accorder le bonus à l'initiative de son prochain tour."
+          },
+          "2": {
+            "nom": "Désarmer",
+            "limitee": true,
+            "description": "Le PJ réalise une attaque au contact et sa victime doit faire un test d'attaque opposé. Si le PJ ob- tient le plus haut score, l'arme de son adversaire tombe au sol (une action de mouvement doit être employée pour la ramasser). Si le PJ réussit son test avec au moins 10 points de plus que son adversaire, il empêche celui-ci de récupérer son arme (en posant le pied dessus, en l'envoyant hors de portée, etc.). Cette capacité est évidemment sans effet sur les armes naturelles (griffes, crocs, épine dorsale, etc.). Les adversaires qui utilisent des armes à deux mains sont plus difficiles à désarmer, infligeant un malus de -5 au test.",
+            "capacite_avancee": "la capacité peut être utilisé pour une action d'attaque au lieu d'une action limitée."
+          },
+          "3": {
+            "nom": "Double attaque",
+            "limitee": true,
+            "description": "Le PJ peut tenter deux attaques au contact durant ce tour avec un malus de -2 à chacune."
+          },
+          "4": {
+            "nom": "Attaque circulaire",
+            "limitee": true,
+            "description": "Le PJ peut tenter une attaque au contact contre chaque adversaire engagé au contact avec lui."
+          },
+          "5": {
+            "nom": "Attaque puissante",
+            "limitee": false,
+            "description": "Le PJ peut choisir d'utiliser 1d12 en attaque au contact au lieu du d20 habituel (il ajoute normalement son score d'attaque). Si une telle attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Double attaque ou Attaque circulaire par exemple."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la maîtrise des armes",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Arme de prédilection",
+            "limitee": false,
+            "description": "Le PJ choisit une arme de prédilection (par exemple une épée longue ou une hache à une main, un arc court, etc.), et gagne +1 en attaque lorsqu'il l'utilise.",
+            "capacite_avancee": "le combattant peut choisir une seconde arme qui devient alors une arme familière. Il gagne un bonus de +1 en attaque lorsqu'il l'utilise. Le bonus de la capacité Spé- cialisation ne s'applique pas à l'arme familière."
+          },
+          "2": {
+            "nom": "Science du critique",
+            "limitee": false,
+            "description": "Le PJ inflige des critiques sur un résultat de 19 ou 20 (18 à 20 lorsqu'il emploie une rapière). Capacité avancée : le PJ obtient un bonus de +1d6 aux DM lorsqu'il inflige un coup critique."
+          },
+          "3": {
+            "nom": "Spécialisation",
+            "limitee": false,
+            "description": "Lorsque le PJ emploie son arme de prédilection, il gagne un bonus de +2 aux DM."
+          },
+          "4": {
+            "nom": "Attaque parfaite",
+            "limitee": true,
+            "description": "Lancez deux d20 en attaque au contact et gardez le meilleur résultat ; ajoutez +1d6 aux DM."
+          },
+          "5": {
+            "nom": "Riposte",
+            "limitee": false,
+            "description": "En plus de ses actions normales, une fois par tour, lorsqu'un adversaire rate une attaque de contact contre le PJ, ce dernier obtient une attaque supplémentaire contre cet adversaire."
+          }
+        }
+      },
+      {
+        "nom": "Voie du pugilat",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Poings de fer",
+            "limitee": false,
+            "description": "Lorsqu'il combat à mains nues, le PJ peut (s'il le souhaite) utiliser son score d'attaque à distance au lieu de celui d'attaque au contact. Au rang 1 de cette voie, il inflige [1d6 + Mod. de FOR] DM létaux. Ces DM passent à 1d8 au rang 3 et à 1d10 au rang 5. Capacité avancée : la valeur du dé des DM est augmentée d'une catégorie, jusqu'au d12 au rang 5."
+          },
+          "2": {
+            "nom": "Peau de pierre",
+            "limitee": false,
+            "description": "Le PJ est particulièrement endurci, il reçoit un bonus de DEF égal à son Mod. de CON. Capacité avancée : le bonus de DEF passe à [Mod. de CON +1]."
+          },
+          "3": {
+            "nom": "Peau d'acier",
+            "limitee": false,
+            "description": "Le PJ ne sent plus la douleur et ignore les égratignures, il réduit tous les DM subis de 2 points. Il subit toujours au moins 1 point de DM de chaque attaque reçue."
+          },
+          "4": {
+            "nom": "Déluge de coups",
+            "limitee": true,
+            "description": "Lors de son tour, le PJ peut effectuer deux attaques à mains nues sur des cibles de son choix ou deux attaques avec une arme. Alternative- ment, il peut choisir de porter trois attaques en utilisant un d12 en attaque pour chacune d'elles (au lieu d'un d20)."
+          },
+          "5": {
+            "nom": "Force héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente son score de FOR de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de FOR lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la puissance",
+        "famille": "combattants",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Argument de taille",
+            "limitee": false,
+            "description": "Le PJ ajoute son Mod. de FOR à son score de PV maximal ainsi qu'à ses tests de CHA et à ceux de ses alliés au contact pour les tests de négociation, de persuasion ou d'intimidation. Allez savoir pourquoi, sa simple présence donne de la force aux arguments de ses alliés…",
+            "capacite_avancee": "lorsque le rang 4 est atteint dans cette voie, le PJ ajoute une nouvelle fois son Mod. de FOR à son score de PV maximal."
+          },
+          "2": {
+            "nom": "Tour de force",
+            "limitee": false,
+            "description": "Le PJ peut temporairement décupler ses res- sources physiques pour faire usage d'une force prodigieuse. Il peut ainsi soulever une charge incroyable, briser une épée, tordre des barreaux ou défoncer une porte d'un seul coup de poing. Il obtient un bonus de +10 à son test de FOR, mais cela lui coûte 1d4 PV. Capacité avancée : une fois par combat, le PJ peut asséner un coup d'une violence incroyable. Il gagne un bonus de 2d6 DM mais cela lui coûte 2d4 PV."
+          },
+          "3": {
+            "nom": "Attaque brutale",
+            "limitee": true,
+            "description": "Le PJ réalise une attaque au contact avec une pénalité de -2 en attaque et +1d6 au DM. Au rang 5 atteint dans cette voie, il peut choisir de subir une pénalité de -5 pour obtenir +2d6 aux DM."
+          },
+          "4": {
+            "nom": "Briseur d'os",
+            "limitee": false,
+            "description": "Les coups critiques du PJ sont terribles et provoquent des handicaps durables. Le PJ obtient un critique sur 19 ou 20 au résultat du d20 en attaque au contact. Lorsqu'il obtient un critique, en plus des DM doublés, il inflige une pénalité de -2 à tous les tests d'attaque, de FOR et de DEX de sa victime. Cette pénalité affecte la cible jusqu'à ce qu'elle soit complètement guérie."
+          },
+          "5": {
+            "nom": "Vitalité débordante",
+            "limitee": false,
+            "description": "Le PJ guérit à une vitesse presque surnaturelle. Tant qu'il lui reste au moins 1 PV, il récupère 1d6 PV par heure, de nuit comme de jour. Les voies de la famille des aventuriers"
+          }
+        }
+      }
+    ],
+    "aventuriers": [
+      {
+        "nom": "Voie de l'acrobatie",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Acrobate",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +5 à tous ses tests de DEX visant à réaliser des acrobaties, conserver son équilibre, faire des sauts ou de l'escalade.",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Grâce féline",
+            "limitee": false,
+            "description": "Le PJ ajoute son Mod. de CHA en DEF et en initiative (en plus du Mod. habituel de DEX). Capacité avancée : le PJ ajoute son Mod. de CHA à tous les tests de discrétion et d'esquive."
+          },
+          "3": {
+            "nom": "Lanceur de couteau",
+            "limitee": false,
+            "description": "Une fois par tour, en plus de ses autres actions, le PJ peut lancer un couteau ou une dague sur une cible à distance (portée maximale : 10 m) en réussissant un test d'attaque à distance. Cette attaque est une action gratuite. Elle occasionne [1d4 + Mod. de DEX] de DM."
+          },
+          "4": {
+            "nom": "Esquive acrobatique",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ peut réaliser une esquive en réussissant un test d'attaque à distance contre une difficulté égale au score obtenu par son adversaire lors de son attaque. En cas de réussite, le PJ ne subit aucun DM. Si cette attaque était un critique, il subit tout de même des DM normaux (et annule donc l'effet critique « dégâts doublés »)."
+          },
+          "5": {
+            "nom": "Dextérité héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente son score de DEX de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de DEX lui est de- mandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'arbalètrie",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Joli coup !",
+            "limitee": false,
+            "description": "Le PJ ignore les pénalités normalement appli- quées lorsque la cible est à couvert (générale- ment -2 à -5).",
+            "capacite_avancee": "le PJ ajoute +1 aux DM de l'arme tant qu'il l'utilise à une portée optimale, soit qui n'outrepasse pas la portée maximale de l'arme."
+          },
+          "2": {
+            "nom": "Cadence de tir",
+            "limitee": false,
+            "description": "Recharger une arbalète lourde devient une action de mouvement. Dans le cas d'une arbalète de poing ou d'une arbalète légère, l'action devient gratuite. À partir du rang 5 atteint dans cette voie, le PJ peut recharger deux armes en une seule action.",
+            "capacite_avancee": "si son arme est prête (chargée et tenue en main), le PJ peut tirer à son rang d'initiative +5."
+          },
+          "3": {
+            "nom": "Tir double",
+            "limitee": true,
+            "description": "Le PJ est capable de tirer avec une arbalète de poing dans chaque main sans pénalité. Si le PJ décharge simultanément ses deux armes sur la même cible, il fait un seul test à +2 en attaque (mais il lance séparément les DM). Le joueur peut choisir de ne pas réaliser les deux tirs simultanément, afin, par exemple, de pouvoir tirer sur une autre cible s'il tue la première. Dans ce cas, il n'obtient pas de bonus en attaque."
+          },
+          "4": {
+            "nom": "As de la gâchette",
+            "limitee": false,
+            "description": "Lorsqu'il atteint une DEF de 25 ou plus à son attaque à distance avec une arbalète, le PJ ajoute +1d6 aux DM de son attaque."
+          },
+          "5": {
+            "nom": "Tir mortel",
+            "limitee": false,
+            "description": "Pour une attaque à distance, le PJ peut choisir d'utiliser un d12 pour son attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque). Si l'attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Tir double et As de la gâchette."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'archerie",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Sens affûtés",
+            "limitee": false,
+            "description": "Le PJ gagne un bonus de +5 à tous ses tests de SAG sollicitant la perception (vue, ouïe, vigilance, etc.). De plus, il ajoute son Mod. de SAG aux dégâts qu'il inflige avec un arc. Capacité avancée : le PJ ajoute son bonus de SAG à l'initiative."
+          },
+          "2": {
+            "nom": "Tir aveugle",
+            "limitee": true,
+            "description": "Le PJ peut attaquer à distance un ennemi qu'il ne voit pas (par exemple invisible ou dissimulé dans le noir total), mais dont il connaît l'existence et la position approximative, comme s'il le voyait, donc sans le malus causé par le fait qu'il ne le voit pas. Capacité avancée : l'utilisation de la capacité nécessite une action d'attaque au lieu d'une action limitée."
+          },
+          "3": {
+            "nom": "Tir rapide",
+            "limitee": true,
+            "description": "Le PJ peut porter deux attaques à distance pendant ce tour."
+          },
+          "4": {
+            "nom": "Flèche de mort",
+            "limitee": true,
+            "description": "Le PJ lance deux d20 pour son attaque et conserve le meilleur résultat. Les dégâts de la flèche sont doublés."
+          },
+          "5": {
+            "nom": "Dans le mille",
+            "limitee": false,
+            "description": "Pour une attaque à distance, le PJ peut choisir d'utiliser 1d12 en attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque à distance). Si l'attaque est réussie, il ajoute 2d6 aux DM. Cette capacité peut par exemple être utilisée avec Tir Rapide ou Flèche de mort (le bonus de 2d6 aux DM n'est pas doublé)."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'assassinat",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Discrétion",
+            "limitee": false,
+            "description": "Quand il essaie de passer inaperçu, le PJ bénéficie d'un bonus de +5 à son test de DEX.",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Attaque sournoise",
+            "limitee": true,
+            "description": "Quand il attaque un adversaire dans le dos* ou par surprise, le PJ inflige 1d6 de DM supplémentaires par rang atteint dans cette voie (notez que les dés d'attaque sournoise ne sont pas multipliés en cas de critique). lorsque le PJ attaque la même créature qu'un allié, on considère qu'il peut attaquer celle-ci de dos à deux conditions :1. le PJ et l'allié peuvent se placer de part et d'autre de la cible ;2. la cible n'a pas attaqué le PJ lors de son dernier tour (dans le cas contraire, on considère qu'elle lui fait face) . Capacité avancée : le PJ peut infliger une Attaque sournoise une fois par combat à un adversaire ayant une initiative inférieure à la sienne à l'aide d'une arme de jet ou jet de dague."
+          },
+          "3": {
+            "nom": "Frappe chirurgicale",
+            "limitee": false,
+            "description": "Par sa science de l'escrime (et de la fourberie), le PJ augmente de manière permanente ses chances de porter des coups critiques. Il retranche désormais son Mod. d'INT au score nécessaire pour obtenir un critique en attaque au contact. Par exemple, Alonzo (INT 14/+2) obtient à présent un critique sur 17 ou plus au d20 lorsqu'il emploie la rapière (19 - Mod. d'INT)."
+          },
+          "4": {
+            "nom": "Surprise",
+            "limitee": false,
+            "description": "Le PJ n'est jamais surpris. Il peut réaliser une Attaque sournoise en utilisant une action d'attaque plutôt qu'une action limitée contre un adversaire surpris."
+          },
+          "5": {
+            "nom": "Botte secrète",
+            "limitee": false,
+            "description": "Lorsque le PJ obtient un critique sur une attaque au contact, l'attaque devient automatiquement une Attaque sournoise. Les effets de la capacité d'Attaque sournoise s'appliquent en plus des effets normaux du critique."
+          }
+        }
+      },
+      {
+        "nom": "Voie du bohème",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Rumeurs et légendes",
+            "limitee": false,
+            "description": "À force de voyager, le PJ a appris toutes sortes de choses. Il obtient un bonus de +5 aux tests d'INT pour se « souvenir » d'une information historique, politique, géographique ou occulte qui pourrait lui être utile. Ce bonus peut être appliqué aux tests d'identification des objets légendaires.",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Argumenter",
+            "limitee": false,
+            "description": "Le PJ peut mettre sa logique et sa malice au service de sa force de persuasion. Il obtient un bonus de +5 aux tests de CHA visant à convaincre.",
+            "capacite_avancee": "le PJ peut également appli- quer ce bonus pour tromper, mentir ou séduire (ne se cumule pas avec la capacité Charmant de la voie du charme – cf. ci-après)."
+          },
+          "3": {
+            "nom": "Débrouillard",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +5 à tous ses tests de survie en nature et aux tests de profession et d'artisanat (forge, charpentier, etc.)."
+          },
+          "4": {
+            "nom": "Déguisement",
+            "limitee": false,
+            "description": "Avec beaucoup d'ingéniosité, un jeu d'acteur hors pair et en disposant des accessoires adé- quats, le PJ parvient à prendre l'apparence de n'importe quelle créature de taille à peu près équivalente (avec une marge d'environ 50 cm). S'il subit un examen minutieux, l'aventurier doit réussir un test opposé de CHA contre SAG pour ne pas être découvert. Il a besoin de vingt minutes pour se préparer et le déguisement peut servir pendant deux heures avant que le maquillage ne commence à s'altérer."
+          },
+          "5": {
+            "nom": "Touche-à-tout",
+            "limitee": false,
+            "description": "Le PJ peut choisir n'importe quelle capacité de rang 1 à 3 de son choix au sein d'une autre voie de combattant ou d'aventurier. Cette capacité permet de faire évoluer une capacité en capacité avancée. En revanche, comme précisé p. 119, seules les capacités de rang 1 ou 2 peuvent être avancées, impossible donc pour une capacité de rang 3 d'être prise \"deux fois\"."
+          }
+        }
+      },
+      {
+        "nom": "Voie du charme",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Charmant",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +5 pour tous ses tests de CHA visant à séduire, baratiner ou mentir.",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Provocation",
+            "limitee": true,
+            "description": "Le PJ maîtrise l'art de se rendre désagréable, voire insupportable. Par un test opposé de CHA contre l'INT de la victime, il peut forcer celle-ci à l'attaquer pendant ce tour. Le PJ peut immédiatement riposter par une attaque gratuite.",
+            "capacite_avancee": "si la cible de la provocation rate le PJ, il peut doubler les DM de son attaque gratuite."
+          },
+          "3": {
+            "nom": "Attaque flamboyante",
+            "limitee": true,
+            "description": "Le style de combat du PJ est flamboyant et surprenant : avec cette capacité, il effectue une attaque de contact avec un bonus d'attaque et de DM égal à son Mod. de CHA (en plus du Mod. de FOR ou de DEX)."
+          },
+          "4": {
+            "nom": "Suggestion",
+            "limitee": true,
+            "description": "Une fois par jour, le PJ peut suggérer une action à une créature en réussissant un test opposé de CHA contre la SAG de sa cible. En cas de réussite la créature fera tout son possible pour satisfaire sa demande pendant 24 heures. Elle évitera les actions suicidaires (ce qui lui donne- rait immédiatement un test d'INT difficulté 10 pour échapper au sort). Si l'action suggérée est trop incongrue, la cible bénéficie d'un bonus de +5 à son test pour résister."
+          },
+          "5": {
+            "nom": "Charisme héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente sa valeur de CHA de +2. Il peut de plus lancer deux d20 à chaque fois qu'un test de CHA lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la chasse",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Proche de la nature",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +5 aux tests de survie, de discrétion ou d'observation en milieu naturel.",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Nature nourricière",
+            "limitee": false,
+            "description": "Si le PJ passe une heure en forêt, il trouve de quoi nourrir deux personnes (pour une journée) pour chaque rang atteint dans cette voie. En passant 1d6 heures et en réussissant un test de SAG difficulté 10, le PJ trouve des plantes médicinales qui lui permettent de soigner 1d6 PV par rang atteint dans cette voie. Ces plantes doivent être utilisées immédiatement. Ces soins peuvent toutefois être répartis sur plusieurs patients : le joueur décide combien de d6 il alloue à chaque patient .",
+            "capacite_avancee": "le PJ peut choisir un autre environnement naturel (plaine, montagne, marais ou désert) et appliquer les effets de la capacité. Dans ce milieu, il doit passer deux heures à chercher des vivres et les herbes récoltées ne soignent que 1d4 PV par rang atteint dans cette voie."
+          },
+          "3": {
+            "nom": "Attaque éclair",
+            "limitee": true,
+            "description": "Le PJ peut effectuer une attaque au contact très percutante. Il ajoute son Mod. de DEX en attaque et aux DM pour cette offensive."
+          },
+          "4": {
+            "nom": "Ennemis jurés",
+            "limitee": false,
+            "description": "Après avoir tué une créature, le PJ peut décider que tous ceux de sa race sont devenus des ennemis jurés. Contre ces créatures, il bénéficie désormais d'un bonus égal à son Mod. de SAG pour ses attaques et il inflige +1d6 de DM. Au niveau 8, Il peut choisir un second ennemi juré. Le PJ peut changer d'ennemi juré une fois au cours de chaque niveau."
+          },
+          "5": {
+            "nom": "Perception héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente sa valeur de SAG de +2 et il peut désormais lancer deux d20 à chaque fois qu'un test de SAG lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie du compagnon animal",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Odorat",
+            "limitee": false,
+            "description": "Le loup du PJ détecte les odeurs des animaux et des créatures là où ils sont passés. Le PJ obtient un bonus de +5 aux tests de SAG pour pister et suivre des traces. Capacité avancée : le loup peut aider le PJ à débusquer les faux-semblants et les illusions. Il ajoute son bonus aux tests pour ne pas être trompé par ces subterfuges."
+          },
+          "2": {
+            "nom": "Surveillance",
+            "limitee": false,
+            "description": "Le loup est constamment sur ses gardes. Le PJ a donc un temps d'avance quand des ennemis essaient de l'attaquer par surprise, il obtient un bonus de +5 pour les tests de surprise (SAG) ainsi qu'en initiative. Lorsqu'il n'est pas surpris, il peut faire une attaque simple à distance avant que ne débute le premier tour de combat. Capacité avancée : le PJ ne peut plus être surpris."
+          },
+          "3": {
+            "nom": "Combat",
+            "limitee": false,
+            "description": "Le loup du PJ peut désormais se battre comme un véritable personnage. Il attaque en même temps que le PJ. Loup : Init. 13, DEF 14, PV [niveau x 4], attaque au contact = [niveau du PJ], DM 1d6+1, FOR +1, DEX +1, CON* +1, INT -3, SAG* +2, CHA -2."
+          },
+          "4": {
+            "nom": "Empathie animale",
+            "limitee": false,
+            "description": "Le PJ peut parler aux animaux. De plus, lorsqu'il dépense un PR pour récupérer des PV, son loup regagne également un nombre de PV égal à [1d8 + Mod. CON du loup + niveau du PJ]."
+          },
+          "5": {
+            "nom": "Animal fabuleux",
+            "limitee": false,
+            "description": "Le loup du PJ devient un spécimen particuliè- rement puissant. Mâle alpha : Init. 13, DEF 16, PV [niveau du PJ x 4], attaque au contact = [niveau du PJ + 2], DM 1d6+3, FOR +3, DEX +1, CON* +3, INT -3, SAG* +2, CHA -2"
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'escrime",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Attaque en finesse",
+            "limitee": false,
+            "description": "Le PJ peut utiliser son score d'attaque à distance pour porter une attaque au contact lorsqu'il utilise une arme de duel ou une dague.",
+            "capacite_avancee": "le PJ peut appliquer le bonus de DEF d'une main gauche (cf. « Équipement » page 156) contre les attaques à distance."
+          },
+          "2": {
+            "nom": "Intelligence du combat",
+            "limitee": false,
+            "description": "Le PJ ajoute son Mod. d'INT en initiative et en DEF en plus de son Mod. de DEX. Capacité avancée : s'il le souhaite, le PJ peut remplacer le Mod. de FOR aux DM par son Mod. d'INT."
+          },
+          "3": {
+            "nom": "Feinte",
+            "limitee": true,
+            "description": "Le PJ effectue une attaque fictive pour déséquili- brer son adversaire et réaliser ensuite une attaque mortelle. Faites un test d'attaque normal lors de ce tour mais n'infligez aucun DM. Au tour suivant, si vous attaquez le même adversaire, vous profiterez d'un bonus de +5 en attaque et, si votre feinte était réussie, de +2d6 aux DM. Au rang 5 atteint dans cette voie, le bonus d'attaque de la feinte passe à +10."
+          },
+          "4": {
+            "nom": "Ambidextrie",
+            "limitee": false,
+            "description": "Le PJ peut à présent utiliser une arme dans chaque main sans pénalité s'il utilise des armes de duel ou des dagues. Avec sa main faible, il peut effectuer une attaque au contact gratuite supplémentaire à chaque tour. Cette seconde attaque n'empêche pas l'utilisation d'une capacité limitée, mais elle ne peut pas en être l'origine."
+          },
+          "5": {
+            "nom": "Botte mortelle",
+            "limitee": false,
+            "description": "Lors d'une attaque au contact, s'il obtient un score total d'attaque supérieur ou égal à la DEF de son adversaire +10 points, le PJ obtient un bonus de +2d6 aux DM de son attaque."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la fourberie",
+        "famille": "aventuriers",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Doigts agiles",
+            "limitee": false,
+            "description": "Le PJ reçoit un bonus de +5 pour tous ses tests de DEX liés à la précision : crocheter une serrure, désamorcer un piège, faire les poches de quelqu'un…",
+            "capacite_avancee": "le bonus passe à +10."
+          },
+          "2": {
+            "nom": "Détecter les pièges",
+            "limitee": false,
+            "description": "En réussissant un test d'INT difficulté 10, le PJ peut détecter (et ensuite contourner sans danger) les pièges (avant qu'ils ne se déclenchent bien entendu). Les pièges magiques exigent un test d'INT de difficulté 15.",
+            "capacite_avancee": "la détection des pièges non magiques est réussie de façon automatique."
+          },
+          "3": {
+            "nom": "Croc-en-jambe",
+            "limitee": false,
+            "description": "Lorsqu'il obtient un score de 17 à 20 sur son d20 en attaque au contact, le PJ fait chuter son adversaire en plus de lui infliger des DM normaux. Un score de 19 ou 20 est nécessaire pour une créature quadrupède."
+          },
+          "4": {
+            "nom": "Attaque paralysante",
+            "limitee": true,
+            "description": "Une fois par combat, le PJ peut, en réussissant une attaque de contact, paralyser un adversaire de douleur. Ce dernier n'encaisse pas de DM, mais ne peut plus attaquer ni se déplacer pendant 1d4 tours."
+          },
+          "5": {
+            "nom": "Attaque en traître",
+            "limitee": false,
+            "description": "Une fois par tour, lorsqu'un allié réussit à blesser une créature au contact du PJ, celui-ci peut lui porter une attaque normale gratuite en profitant de l'ouverture. Les voies de la famille des mystiques"
+          }
+        }
+      }
+    ],
+    "mystiques": [
+      {
+        "nom": "Voie de l'alchimie",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Fortifiant",
+            "limitee": false,
+            "description": "Un breuvage étrange qui guérit [1d4 + rang] PV et permet de gagner un bonus de +3 aux [rang + 1] prochains tests effectués (dans une limite de temps de 12 heures). Boire un fortifiant nécessite une action de mouvement.",
+            "capacite_avancee": "le PJ dispose de deux forti- fiants en plus des élixirs qu'il peut normalement préparer chaque jour."
+          },
+          "2": {
+            "nom": "Feu grégeois",
+            "limitee": false,
+            "description": "Le PJ lance la fiole à une distance maximum de 10 m grâce à une action d'attaque (réussite automatique). Le contenu explose dans un rayon de 3 m en infligeant 1d6 DM par rang atteint dans cette voie. Un test de DEX difficulté [10 + Mod. d'INT] réussi permet aux victimes de diviser les DM par deux.",
+            "capacite_avancee": "les flammes du feu grégeois persistent pendant un tour, infligeant 1 DM de feu par rang atteint dans cette voie à toute cible commençant son tour ou traversant la zone. La réussite d'un test de DEX difficulté [10 + Mod. d'INT] permet d'annuler les DM."
+          },
+          "3": {
+            "nom": "Huile instable",
+            "limitee": false,
+            "description": "Une fois à l'air libre, l'huile prend feu sponta- nément et brûle intensément. Il est possible, au prix d'une action limitée, de l'appliquer sur une arme pour bénéficier d'un bonus de +1d6 DM de feu pendant [5 + Mod d'INT] minutes. L'huile peut également être appliquée sur des carreaux d'arbalète ou des pointes de flèche, à raison d'une action d'attaque par lot de projectiles, une dose permettant d'enflammer environ cinq projectiles."
+          },
+          "4": {
+            "nom": "Élixir de guérison",
+            "limitee": false,
+            "description": "Le PJ peut préparer un élixir qui soigne [3d6 + Mod. d'INT] PV, un empoisonnement ou une hémorragie."
+          },
+          "5": {
+            "nom": "Élixirs de Protection",
+            "limitee": false,
+            "description": "Le PJ peut préparer une potion de Peau d'écorce (rang 1 de la voie des forêts), d'Image décalée (rang 1 de la voie des illusions) ou de Protection contre les éléments (rang 3 de la voie de la magie élémentaliste). Les effets de ces potions ne sont pas cumulables."
+          }
+        }
+      },
+      {
+        "nom": "Voie des arts druidiques",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Langage des animaux",
+            "limitee": false,
+            "description": "Le PJ peut communiquer avec les animaux qui, en général, se comportent avec lui de manière amicale. Il gagne un bonus de +5 à tous les tests destinés à influencer un animal. La communication reste primitive et limitée à l'intelligence de l'animal et à son point de vue (prédateur, proie, etc.).",
+            "capacite_avancee": "en réussissant un test d'INT difficulté 20 (le bonus de la capacité s'applique à ce test), le PJ peut réussir à entretenir une conversation beaucoup plus poussée avec l'ani- mal, lui prêtant des raisonnements humanoïdes."
+          },
+          "2": {
+            "nom": "Nuée d'insectes*",
+            "limitee": false,
+            "description": "En réussissant un test d'attaque magique (portée 20 m), le PJ libère sur sa cible une nuée d'insectes volants qui la piquent, aveuglent et la suivent pendant [5 + Mod. de SAG] tours. La victime subit 1 point de DM par tour et un malus de -2 à toutes ses actions. Les DM de zone détruisent la nuée.",
+            "capacite_avancee": "la victime subit 2 DM par tour et un malus de -3 à toutes ses actions."
+          },
+          "3": {
+            "nom": "Le guetteur",
+            "limitee": false,
+            "description": "Le PJ reçoit un oiseau de proie comme com- pagnon animal. Il possède un lien télépathique avec lui et peut percevoir par ses sens avec un bonus de +5 aux tests fondés sur la perception. Oiseau de proie : Init. 15, DEF 15, PV [niveau du PJ x 3]. Attaque de contact = [attaque magique du PJ], DM 1d4."
+          },
+          "4": {
+            "nom": "Masque du prédateur*",
+            "limitee": false,
+            "description": "Lorsqu'il est sous l'effet de ce sort, le PJ prend les traits d'un fauve ou d'un loup. Il gagne son Mod. d'INT en initiative, en attaque et aux DM et peut voir dans la nuit (comme un Elfe) pendant [5 + Mod. de SAG] tours, il gagne son Mod d'INT en initiative, en attaque et aux DM et peut voir dans la nuit (comme un Elfe)."
+          },
+          "5": {
+            "nom": "Sagesse héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente son score de SAG de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de SAG lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la divination",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Sixième sens",
+            "limitee": false,
+            "description": "Le PJ sait toujours légèrement en avance ce qui va arriver. Il gagne un bonus de +2 en initiative et en DEF, ainsi qu'un bonus de +5 à tous les tests pour éviter d'être surpris.",
+            "capacite_avancee": "le bonus en initiative et en DEF passe à +3. Le bonus pour éviter d'être surpris passe à +10."
+          },
+          "2": {
+            "nom": "Détection de l'invisible*",
+            "limitee": false,
+            "description": "Pendant [5 + Mod. de SAG] tours, le PJ détecte les créatures invisibles ou cachées à moins de 30 mètres et perçoit si un sort de Clairvoyance affecte l'endroit. Aveuglé ou dans le noir, ce sort lui permet de voir normalement. Capacité avancée : le PJ peut lancer ce sort en action de mouvement au lieu d'une action d'attaque mais ne peut user de concentration dans ces conditions."
+          },
+          "3": {
+            "nom": "Clairvoyance*",
+            "limitee": false,
+            "description": "Le PJ peut voir et entendre à distance ce qui se passe dans un lieu qu'il connaît, tant qu'il reste concentré (action limitée à chaque tour). Les créatures présentes ont droit à un test de SAG difficulté [12 + Mod. d'INT] : en cas de réussite, elles se sentent observées."
+          },
+          "4": {
+            "nom": "Prescience*",
+            "limitee": false,
+            "description": "Une fois par combat, à la fin d'un tour, le PJ peut décider que tout ce qui s'est passé durant ce tour n'était que la vision d'un futur possible. On rejoue alors le tour depuis le début : les autres PJ, créatures et PNJ ne peuvent pas changer leurs actions, contrairement au PJ qui bénéficie d'un bonus de +10 en initiative et en DEF."
+          },
+          "5": {
+            "nom": "Hyperconscience",
+            "limitee": false,
+            "description": "Le PJ augmente ses valeurs de SAG et d'INT de +2. Il peut désormais lancer deux d20 à chaque fois qu'un test de SAG ou d'INT lui est demandé et garder le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'envoûtement",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Injonction*",
+            "limitee": false,
+            "description": "Le PJ donne à une cible un ordre simple (mais pas dangereux pour elle) que cette dernière doit pouvoir comprendre. Il doit réussir un test d'attaque magique opposé contre la cible (si la créature n'a pas d'attaque magique, on utilise alors son attaque au contact en appliquant un malus de -3) à une portée de 20 mètres. En cas d'échec, la cible exécutera l'ordre pendant son prochain tour. Capacité avancée : le PJ bénéficie d'un bonus de +2 à son test d'attaque magique."
+          },
+          "2": {
+            "nom": "Sommeil*",
+            "limitee": false,
+            "description": "[1d6 + Mod. d'INT] cibles vivantes dans une zone de 10 m de diamètre (portée : 20 m) et dont le score actuel de PV ne dépasse pas le score d'attaque magique du PJ* sombrent dans l'inconscience pendant [5 + Mod. de SAG] minutes. Il est possible de les réveiller en les giflant (action d'attaque). * Les créatures dont les PV sont compris entre le score d'attaque magique du PJ et le double de celui-ci peuvent faire un test de SAG difficulté [10 + Mod. d'INT] pour résister au sort. Les créatures avec des PV supérieurs ne sont pas affectées.",
+            "capacite_avancee": "la difficulté du test de SAG pour résister au sort passe à [12 + Mod. INT]."
+          },
+          "3": {
+            "nom": "Confusion*",
+            "limitee": false,
+            "description": "En réussissant un test d'attaque magique opposée (portée : 20 m), le PJ désoriente sa cible pendant [3 + Mod. de SAG] tours. Chaque tour, lancez 1d6 : de 1 à 3 la victime n'agit pas ; de 4 à 6 elle attaque la créature la plus proche d'elle. À chaque fin de tour, elle fait un test de SAG difficulté [10 + Mod. d'INT] pour mettre fin au sort."
+          },
+          "4": {
+            "nom": "Amitié*",
+            "limitee": false,
+            "description": "Si le PJ réussit un test d'attaque magique (portée : 10 m) contre le score maximal de PV d'une cible humanoïde, celle-ci se comporte comme un ami de longue date tant qu'elle n'est pas attaquée. Elle peut résister au sort avec un test de SAG difficulté [12 + Mod. d'INT], renouvelable une fois par jour."
+          },
+          "5": {
+            "nom": "Domination*",
+            "limitee": false,
+            "description": "En réussissant un test d'attaque magique (portée : 20 m) en opposition contre un test d'attaque magique de la cible (si la créature n'a pas d'attaque magique, on utilise alors son attaque au contact en appliquant un malus de -3), le PJ prend contrôle de son esprit pen- dant [1d4 + Mod. de SAG] minutes. Son propre corps devient inactif. La victime peut résister au sort avec un test de SAG difficulté [10 + Mod. d'INT] à chaque fois qu'elle subit des DM. Si la créature meurt pendant la domination, le PJ réintègre son corps et subit 1d6 DM."
+          }
+        }
+      },
+      {
+        "nom": "Voie des forêts",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Peau d'écorce*",
+            "limitee": false,
+            "description": "La peau du PJ prend la consistance de l'écorce. Il gagne +2 en DEF pendant [5 + Mod. de SAG] tours. Ce bonus passe à +4 au rang 4 de cette voie. Capacité avancée : le PJ applique le bonus de DEF à tous les tests de CON pour résister aux poisons."
+          },
+          "2": {
+            "nom": "Prison végétale*",
+            "limitee": false,
+            "description": "Le PJ peut commander à la végétation de pousser et bloquer ses ennemis (mais pas ses alliés) dans une zone de 10 m de diamètre (portée : 20 m) pendant [5 + Mod. de SAG] tours. Entravées, les cibles subissent un malus de -2 en attaque et en DEF et ne peuvent pas se déplacer. Chaque tour, une créature peut se libérer avec un test de FOR difficulté [10 + Mod. d'INT].",
+            "capacite_avancee": "les cibles entravées subissent un malus de -3 en attaque et en DEF."
+          },
+          "3": {
+            "nom": "Baies magiques*",
+            "limitee": false,
+            "description": "Le PJ doit se trouver devant un buisson ou un arbre vivant. Son incantation fait pousser [1d6 + Mod. d'INT] fruits qu'il peut cueillir. Chaque fruit offre l'équivalent d'un repas et rend [1d10 + niveau du PJ] PV à celui qui le consomme. Les effets de ces fruits ne fonctionnent qu'une fois par jour et par personnage."
+          },
+          "4": {
+            "nom": "Animation d'un arbre*",
+            "limitee": false,
+            "description": "Une fois par combat, le PJ peut animer un arbre en le touchant. Il combat pendant [niveau du PJ] tours. Arbre animé : Init. 7, DEF 13, PV [rang x 10], attaque de contact = [niveau du PJ], DM 1d6+3, déplacement 10 m par action de mouvement. Réduction de DM de 10 sauf contre les armes tranchantes et le feu."
+          },
+          "5": {
+            "nom": "Régénération*",
+            "limitee": false,
+            "description": "La cible touchée par le PJ guérit 3 PV par tour pendant [niveau du PJ + Mod. de SAG] tours. Ce sort ne peut pas affecter une créature plus d'une fois par jour."
+          }
+        }
+      },
+      {
+        "nom": "Voie des illusions",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Image décalée*",
+            "limitee": false,
+            "description": "Pendant [5 + Mod. de SAG] tours, lorsqu'une attaque le touche, le PJ lance 1d6 : sur 5-6, il ne subit pas les DM. Les DM des effets de zone s'appliquent normalement.",
+            "capacite_avancee": "le PJ peut appliquer les effets de son sort aux DM et effets de zone."
+          },
+          "2": {
+            "nom": "Mirage*",
+            "limitee": false,
+            "description": "Le PJ crée une illusion visuelle et sonore immobile d'une durée de [5 + Mod. de SAG] minutes (ou tours si l'illusion est animée). Le volume maximal de l'illusion est de 10 m de côté par rang atteint dans cette voie (portée : 500 m). Divisez ces paramètres par 10 si l'illusion est animée. Interagir avec l'illusion la fait disparaître.",
+            "capacite_avancee": "la durée du sort passe à [30 + Mod de SAG] minutes."
+          },
+          "3": {
+            "nom": "Imitation*",
+            "limitee": false,
+            "description": "Le PJ peut prendre l'apparence d'une créature de taille proche (+ ou – 50 cm) qu'il voit au moment de l'incantation. Durée [5 + Mod. de SAG] minutes. Toucher le PJ (par une attaque ou non) met fin au sort."
+          },
+          "4": {
+            "nom": "Dédoublement*",
+            "limitee": false,
+            "description": "Sur une attaque magique réussie (portée : 20 m), le PJ crée un double translucide de la cible pendant [5 + Mod. de SAG] tours. Le double est sous le contrôle du PJ. Il possède les mêmes caractéristiques que l'original mais seulement la moitié de ses PV, et tous les DM qu'il inflige sont divisés par deux. Il disparaît si ses PV tombent à 0. Une créature ne peut être dédoublée qu'une fois par combat."
+          },
+          "5": {
+            "nom": "Tueur fantasmagorique*",
+            "limitee": false,
+            "description": "Ce sort invoque les pires terreurs d'une créature vivante et lui fait croire à sa propre mort. Le PJ doit réussir un test d'attaque magique (portée : 20 m) en opposition à un test d'attaque magique de la cible (si la créature n'a pas d'attaque magique, on utilise alors son attaque au contact en appliquant un malus de -3). La victime fait un test de SAG difficulté [10 + Mod. d'INT] pour résister. En cas d'échec, elle tombe à 0 PV. En cas de succès, elle perd l'équilibre et tombe par terre. Une créature ne peut être la cible de ce sort qu'une fois par jour, et le PJ ne peut pas affecter un personnage ou une créature de niveau supérieur au sien."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la magie élémentaliste",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Brumes*",
+            "limitee": false,
+            "description": "Le PJ créé un brouillard très dense jusqu'à une portée de 20 m sur une zone de 20 m de diamètre. Dans cette zone la visibilité est très réduite et équivalente à de la pénombre. Il n'est pas possible de voir par-delà le brouillard qui persiste pendant [5 + Mod. SAG] tours.",
+            "capacite_avancee": "en doublant le coût en PM, le PJ peut doubler la zone du sort ou la durée du sort – tout en appliquant les effets d'une concentration s'il le souhaite."
+          },
+          "2": {
+            "nom": "Sous tension*",
+            "limitee": false,
+            "description": "Le PJ se charge d'énergie électrique pour [5 + Mod. de SAG] tours. Toute créature qui le blesse au contact ou le touche reçoit une décharge infligeant 1d6 DM. Il peut également délivrer une décharge électrique (attaque magique, portée : 10 m) infligeant [1d6 + Mod. d'INT] DM. Au rang 4 de cette voie, les DM passent à 2d6.",
+            "capacite_avancee": "en doublant le coût en PM, le PJ peut lancer le sort immédiatement au mo- ment où il est attaqué. Il ne doit pas être surpris pour cela et ne peut user de concentration."
+          },
+          "3": {
+            "nom": "Armure de terre*",
+            "limitee": false,
+            "description": "Pendant [5 + Mod. de SAG] tours, le PJ retranche à tous les DM de feu, de froid, d'électricité ou d'acide subis un montant égal à deux fois son rang atteint dans cette voie."
+          },
+          "4": {
+            "nom": "Boule de feu*",
+            "limitee": false,
+            "description": "Le PJ choisit une cible située à moins de 30 mètres. Il fait un test d'attaque magique et le compare à la DEF de tous les personnages (y compris le PJ et ses compagnons) se trouvant dans un rayon de 6 mètres autour de la cible. Chaque victime pour laquelle le test est un succès encaisse [4d6 + Mod. d'INT] de DM. En cas d'échec, la cible ne subit que la moitié des DM."
+          },
+          "5": {
+            "nom": "Intelligence héroïque",
+            "limitee": false,
+            "description": "Le PJ augmente sa valeur d'INT de +2. Il peut désormais lancer deux d20 à chaque fois qu'un test d'INT lui est demandé et conserver le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la magie runique",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Forgeron*",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +5 aux tests d'or- fèvrerie ou de forge. Au prix d'une action de mouvement, il peut enflammer son arme pour une durée de [5 + Mod. de SAG] tours et gagne alors un bonus aux DM de +1 par rang atteint dans cette voie avec cette arme (DM de feu). Capacité avancée : le bonus aux tests passe à +10 et enflammer son arme ne nécessite plus qu'une action gratuite au lieu d'une action de mouvement."
+          },
+          "2": {
+            "nom": "Rune d'énergie*",
+            "limitee": false,
+            "description": "En réalisant un rituel de cinq minutes, le PJ enchante un bijou pour 24 h. Celui-ci permet de relancer un d20 une fois par combat sur un test d'attaque, de FOR, DEX ou CON. Un seul bijou de ce type peut être porté.",
+            "capacite_avancee": "chaque jour, la première rune d'énergie créée par le PJ ne lui coûte aucun PM."
+          },
+          "3": {
+            "nom": "Rune de puissance*",
+            "limitee": false,
+            "description": "En réalisant un rituel de cinq minutes, le PJ enchante une arme pour 24 h. Celle-ci permet d'infliger des DM maximaux, donc sans avoir à jeter le dé, une fois par combat."
+          },
+          "4": {
+            "nom": "Rune de garde*",
+            "limitee": false,
+            "description": "Le PJ inscrit une rune lumineuse dans les airs (visible pour la durée du sort) et piège une zone allant de 2 à 10 m de diamètre. Toute créature (de taille au moins très petite) qui entre dans la zone déclenche un effet choisi parmi trois au moment où le sort est lancé. • Alarme : un puissant gong retentit. • Feu : [3d6+Mod. d'INT] DM de feu. • Peur : test de SAG difficulté [15+Mod. d'INT] ou fuir pendant 2d6 tours. À chaque fois qu'une créature entre à nouveau dans la zone, elle subit les effets. Le sort a une durée de 1d6 minutes mais peut être prolongé jusqu'à 12 heures par un rituel de 10 minutes. Les créatures présentes dans la zone pendant le rituel sont immunisées aux effets. De plus, si ce sort est lancé alors qu'une autre rune est encore active quelque part, l'ancienne prend fin immédiatement."
+          },
+          "5": {
+            "nom": "Endurer",
+            "limitee": false,
+            "description": "Le PJ est habitué aux travaux et à la chaleur de la forge. Il réduit tous les DM de feu subis de 5 points et augmente sa valeur de CON de +2. Il peut désormais lancer deux d20 à chaque fois qu'un test de CON lui est demandé en gardant le meilleur résultat."
+          }
+        }
+      },
+      {
+        "nom": "Voie du mysticisme",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Bénédiction*",
+            "limitee": false,
+            "description": "Le PJ entonne un chant pour encourager ses compagnons en vue. Ceux-ci (ainsi que le PJ) bénéficient d'un bonus de +1 à tous leurs tests de Carac. et d'attaque pendant [3 + Mod. de SAG] tours. Le bonus passe à +2 au rang 5 atteint dans cette voie. Capacité avancée : le bonus aux tests est augmenté de 1."
+          },
+          "2": {
+            "nom": "Protection contre le mal*",
+            "limitee": false,
+            "description": "Le PJ peut lancer ce sort sur lui ou sur tout allié (portée : au contact) pour la durée d'un combat. La cible obtient alors un bonus de +2 en DEF et pour tous les tests de résistance contre les attaques des morts-vivants, des démons, des élémentaires et des créatures conjurées (appelées d'un autre plan par magie).",
+            "capacite_avancee": "le bonus de DEF passe à +4."
+          },
+          "3": {
+            "nom": "Délivrance*",
+            "limitee": false,
+            "description": "En touchant sa cible, le PJ annule les pénalités infligées par les sorts, les malédictions, la pétrification et les capacités spéciales d'autres personnages ou de créatures (douleur, mutila- tion, poisons, etc.)."
+          },
+          "4": {
+            "nom": "Sanctuaire*",
+            "limitee": false,
+            "description": "Quand le PJ lance ce sort, tous les adversaires qui veulent l'attaquer doivent d'abord réussir un test de SAG difficulté 15. S'ils échouent, ils ne peuvent pas l'attaquer. Les effets de ce sort durent [5 + Mod de SAG] tours, mais s'il tente la moindre attaque, le sort prend fin immédiatement."
+          },
+          "5": {
+            "nom": "Rituel de puissance",
+            "limitee": false,
+            "description": "Sur une attaque magique, le PJ peut utiliser un d12 en attaque au lieu du d20 habituel. Si l'attaque est réussie, il ajoute 2d6 aux DM. Cette capacité s'utilise uniquement avec les sorts nécessitant un test d'attaque et infligeant des DM. Si les DM sont répartis sur plusieurs tours, seuls les DM initiaux sont modifiés."
+          }
+        }
+      },
+      {
+        "nom": "Voie des sombres savoirs",
+        "famille": "mystiques",
+        "categorie": "profil",
+        "capacites": {
+          "1": {
+            "nom": "Saignements*",
+            "limitee": false,
+            "description": "Le PJ doit réussir un test d'attaque magique (portée : 10 m). Du sang s'écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit 1d6 DM par tour pendant [rang atteint dans la voie] tours. Ce sort ignore la RD d'une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades). Les DM passent à 1d8 au rang 4 atteint dans cette voie. Capacité avancée : la durée du sort devient [rang atteint dans la voie + Mod. SAG] tours."
+          },
+          "2": {
+            "nom": "Malédiction*",
+            "limitee": false,
+            "description": "Le PJ effectue un test d'attaque magique contre une cible située à moins de 20 mètres. En cas de succès, la victime réalise tous ses tests avec deux d20 et garde le résultat le plus faible. Le sort prend fin dès qu'elle aura raté trois tests (il n'y a aucune limite de temps pour effectuer ces tests). Si la cible possède une capacité lui permettant de lancer deux dés et de garder le meilleur, elle ne lance plus qu'un seul dé. Une seule cible à la fois peut être affectée par une malédiction.",
+            "capacite_avancee": "le PJ peut affecter un total de [Mod INT] cibles (minimum 1). Le sort doit être lancé pour chaque cible."
+          },
+          "3": {
+            "nom": "Pacte sanglant*",
+            "limitee": false,
+            "description": "Par une action gratuite, le PJ sacrifie 1d4 PV et gagne immédiatement +3 sur un jet de d20 de son choix ou en DEF contre une attaque. À partir du rang 5 atteint dans cette voie, il peut sacrifier 2d4 PV pour faire passer ce bonus à +5."
+          },
+          "4": {
+            "nom": "Hémorragie*",
+            "limitee": false,
+            "description": "Si le PJ réussit un test d'attaque magique (portée : 10 m), la victime saigne à la moindre blessure. tous les DM des attaques sanglantes infligées à la cible (arme blanche, griffe, sai- gnement, etc.) augmentent de 1d6 pendant [5 + Mod. de SAG] tours. Ce sort ignore la RD d'une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades)."
+          },
+          "5": {
+            "nom": "Invocation d'un démon*",
+            "limitee": false,
+            "description": "Une fois par combat, en sacrifiant 1d6 PV, le PJ invoque un démon qui entre alors à son service pour [5 + Mod. de SAG] tours. Le démon est une grande silhouette noire d'environ 2,30 m, aux contours brumeux et indéterminés et aux yeux larges et écarlates. Le démon divise par deux tous les DM non magiques qu'il subit, les sorts et les armes magiques lui infligent des DM normaux. Il est capable de voler à une vitesse équivalente à un déplacement normal. Lorsque le PJ atteint le niveau 10, le démon devient capable d'attaquer deux fois par tour au prix d'une action limitée. Démon : FOR +5*, DEX +2, CON +4*, INT +2, SAG +2, CHA +0, Init. 16, DEF 17, PV [niveau du PJ x 5], attaque au contact = [niveau du PJ], DM 1d8+5 Les voies de prestige de la famille des combattants"
+          }
+        }
+      }
+    ]
+  },
+  "voies_de_prestige": {
+    "combattants": [
+      {
+        "nom": "Voie des armes lourdes",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Allonge",
+            "limitee": false,
+            "description": "Le PJ obtient un bonus de +1 en attaque et +5 en Init. lorsqu'il utilise une arme à deux mains."
+          },
+          "2": {
+            "nom": "Frappe massive",
+            "limitee": true,
+            "description": "Pour une action limitée, le PJ réalise une attaque contre une cible. Elle subit 1d6 DM en plus des DM classiques de l'attaque et doit réussir un test opposé de FOR sous peine d'être renversée."
+          },
+          "3": {
+            "nom": "Tenir à distance",
+            "limitee": true,
+            "description": "Lors de ce tour, le PJ réalise une action d'attaque et il utilise son allonge pour maintenir ses adversaires à distance. Il gagne un bonus de +5 en DEF contre les attaques de contact."
+          },
+          "4": {
+            "nom": "Attaque à outrance",
+            "limitee": false,
+            "description": "Le PJ peut choisir une pénalité en -2 DEF pour gagner un bonus de +1d6 aux DM ou un bonus de -5 en DEF pour gagner un bonus de +2d6 aux DM. Ce bonus n'est pas multiplié en cas de critique."
+          },
+          "5": {
+            "nom": "Critique destructeur",
+            "limitee": false,
+            "description": "Lorsqu'il obtient un critique avec une arme à deux mains, le PJ obtient +2d6 aux DM en plus des effets du critique."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la danse de guerre",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Pirouette",
+            "limitee": false,
+            "description": "Les pas de danse rendent le PJ insaisissable, qui gagne +2 en DEF. De plus, il gagne un bonus de +5 à tous les tests de danse et d'acrobatie."
+          },
+          "2": {
+            "nom": "Vent des lames",
+            "limitee": false,
+            "description": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de guerre ou une arme d'hast."
+          },
+          "3": {
+            "nom": "Attaque en mouvement",
+            "limitee": false,
+            "description": "À chaque fois qu'il réalise une action limitée, le PJ peut en plus se déplacer de 10 mètres avant ou après."
+          },
+          "4": {
+            "nom": "Danse de lames",
+            "limitee": true,
+            "description": "Au prix d'une action limitée, le PJ entre en transe pour le reste du combat. Pendant la Danse des lames, il gagne +2 en attaque et en DEF et peut réaliser une attaque gratuite supplémentaire en utilisant un d12 au lieu du d20 à chaque tour. Le personnage peut mettre fin à la transe quand il le veut mais ne peut recommencer avant le prochain combat. Toutefois, s'il reçoit les DM d'une attaque critique, la transe est stoppée net."
+          },
+          "5": {
+            "nom": "Volte-face",
+            "limitee": false,
+            "description": "Lors de chaque tour où le PJ attaque une cible différente du tour précédent, il obtient un bonus de +2 en attaque et de +1d6 aux DM."
+          }
+        }
+      },
+      {
+        "nom": "Voie du dogme de pierre",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Indéracinable",
+            "limitee": false,
+            "description": "Le PJ ne peut plus être renversé ou projeté contre son gré et semble peser plusieurs tonnes ! De plus, il gagne +1 en DEF et ce bonus passe à +2 au rang 3 de la voie."
+          },
+          "2": {
+            "nom": "Sens de la pierre",
+            "limitee": false,
+            "description": "Le PJ sent la présence de toutes les créatures en contact avec la pierre (le sol ou les murs) dans un rayon de 20 mètres. Il peut définir précisément leur position, que ce soit dans le noir ou s'il s'agit d'adversaires invisibles. Il ne peut plus être approché par surprise par un adversaire en contact avec le sol."
+          },
+          "3": {
+            "nom": "Frappe de la pierre",
+            "limitee": false,
+            "description": "Le PJ donne à ses coups le poids et l'impact du roc. Lorsqu'il obtient un résultat de 1 sur le dé de DM d'une attaque de contact, ce résultat est remplacé par le score maximum possible du dé utilisé (par exemple 6 pour un d6)."
+          },
+          "4": {
+            "nom": "Attaque pétrifiante",
+            "limitee": true,
+            "description": "Sur un test réussi d'attaque au contact à mains nues, le PJ pétrifie sa cible. Elle doit réussir un test de CON difficulté [10 + rang dans la voie] ou être incapable d'agir pendant 1d6 minutes. Tant qu'elle est pétrifiée son corps devient extrêmement dur et elle retranche 5 points à tous les DM subis. Si la victime perd plus de 5 PV pendant qu'elle est pétrifiée, l'effet prend fin. Une créature ne peut être la cible de cette capacité qu'une seule fois par combat."
+          },
+          "5": {
+            "nom": "Corps de pierre",
+            "limitee": true,
+            "description": "Le PJ donne à son corps la texture de la pierre pendant [1d6 + Mod. de SAG] tours. Dans cet état, il retranche 5 points à tous les DM subis par des armes. Les créatures qui l'attaquent avec des armes naturelles subissent 1 point DM par attaque et celles qui utilisent des armes manufacturées voient leur arme se briser s'ils obtiennent un résultat de 1 au dé de DM. Les armes traditionnelles ne risquent pas de se briser."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'ordre ailé",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Ordre de chevalerie",
+            "limitee": false,
+            "description": "Le PJ rejoint un prestigieux ordre ou groupe de chevalerie avec le grade d'apprenti. Il reçoit une monture volante, des insignes ainsi qu'une arme à une main sertie des symboles de son ordre. Il fait l'acquisition du rang 5 de la voie du combat monté. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, il devient un membre gradé de son ordre et obtient un bonus de +5 pour tous les tests de persuasion et d'intimidation. Ce bonus passe à +10 s'il chevauche sa monture volante."
+          },
+          "2": {
+            "nom": "Arme élémentaire",
+            "limitee": true,
+            "description": "En fonction de son ordre et de la nature de sa monture, le PJ peut nimber son arme d'une aura pour [5 + Mod. de SAG] tours. Elle inflige dès lors +1d6 DM élémentaires."
+          },
+          "3": {
+            "nom": "Résistance élémentaire",
+            "limitee": false,
+            "description": "Le lien qui unit le PJ et sa monture est plus fort. Il retranche 5 points à tous les DM de son élément subis (donc RD (feu) pour les dragons, (foudre) pour les griffons, etc.). Cette réduction passe à 10 au rang 5 atteint dans cette voie. Nombre de monture :"
+          },
+          "4": {
+            "nom": "Monture puissante",
+            "limitee": false,
+            "description": "La monture du PJ atteint sa pleine maturité et augmente ses capacités offensives : FOR +7, DEX +2, CON +7, INT -2, SAG +1, CHA +0, Init. 15, DEF 18, PV 20 + [5 x niveau], attaque +12, DM 2d6+7."
+          },
+          "5": {
+            "nom": "Souffle élémentaire",
+            "limitee": false,
+            "description": "La monture du PJ est désormais capable d'utili- ser un souffle élémentaire au prix de son action d'attaque. Si elle réussit un test d'attaque, elle inflige 4d6 DM élémentaires à sa cible, ainsi que 2d6 DM élémentaires à toutes les cibles à moins de 3 mètres de sa cible initiale. En cas d'échec, l'ensemble des cibles subit seulement 1d6 DM. Ce souffle a une portée de 40 m. La nature de l'élément dépend de la monture (feu pour les dragons, glace pour les guivres, etc.)."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la purification",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Sentir la corruption",
+            "limitee": true,
+            "description": "Le PJ se concentre sur une créature à une portée maximale de 30 mètres. Il détecte si celle-ci possède des pouvoirs paranormaux (voie de mystique ou pouvoirs magiques) s'il réussit un test de SAG difficulté 15. Les créatures humanoïdes ont droit à un test opposé d'INT pour résister à cette divination. Un seul essai par créature est possible."
+          },
+          "2": {
+            "nom": "Combattre la corruption",
+            "limitee": false,
+            "description": "Le PJ gagne un bonus de +1 en attaque et aux DM contre les morts-vivants, les démons et les animaux corrompus (ceux qui possèdent des pouvoirs paranormaux). Ce bonus passe à +2 au rang 4 de la voie."
+          },
+          "3": {
+            "nom": "Chasseur de sorcières",
+            "limitee": false,
+            "description": "Le PJ gagne +2 en DEF contre toutes les attaques magiques et +2 aux DM contre les mystiques."
+          },
+          "4": {
+            "nom": "Frappe préventive",
+            "limitee": false,
+            "description": "En plus d'infliger des DM normaux, cette attaque oblige la cible à faire un test d'INT difficulté 15. En cas d'échec, elle ne peut utiliser aucun pouvoir magique ou extraordinaire lors de son prochain tour."
+          },
+          "5": {
+            "nom": "Résister à la corruption",
+            "limitee": false,
+            "description": "Une fois par combat, le PJ résiste totalement à un sort ou un effet magique de son choix. De plus, il est immunisé aux effets de cor- ruption : drain, affaiblissement, pourriture, empoisonnement ou maladie provoqués par les morts-vivants, les démons ou les animaux maléfiques ou corrompus."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la rage ancestrale",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Fureur au combat",
+            "limitee": false,
+            "description": "Le PJ gagne un bonus de +5 à tous les tests d'intimidation et gagne le rang 1 de la voie de la férocité. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, il peut ajouter ce bonus à sa FOR lors de l'estimation des ennemis affectés par le cri tandis que l'action nécessaire à son utilisation est réduite d'une catégorie. Ainsi, le Cri de guerre ne nécessite plus qu'une action de mouvement tandis que le Cri de guerre avancé se lance en action gratuite."
+          },
+          "2": {
+            "nom": "Furie du Berserker",
+            "limitee": true,
+            "description": "Le PJ gagne le rang 3 de la voie de la férocité. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, elle se transforme en Furie de Berserker, qui lui donne +3 en attaque et +2d6 aux DM pour une pénalité en DEF de -6. La difficulté du test de SAG pour sortir prématurément de cet état passe à 16."
+          },
+          "3": {
+            "nom": "Étreinte mortelle",
+            "limitee": false,
+            "description": "Une fois par combat, le personnage peut se saisir d'un adversaire d'une taille inférieure ou égale à la sienne et l'écraser entre ses bras puissants. Sur un test d'attaque au contact réussi, le PJ inflige [2d6 + Mod. de FOR] DM à sa cible (+ son éventuel bonus de rage) et l'immobilise entre ses bras, causant pour son adversaire une pénalité de -5 en DEF. À son tour, la victime peut tenter de se libérer avec un test de FOR en opposition ; en cas d'échec, elle ne peut faire aucune action. À chacun des tours suivants, tant que l'étreinte est maintenue, le PJ inflige à nouveau des DM sans avoir à réaliser son test d'attaque."
+          },
+          "4": {
+            "nom": "Rage froide",
+            "limitee": false,
+            "description": "Le PJ est capable de garder toute sa lucidité alors qu'il entre en rage ou en furie. Il ne subit aucune pénalité de DEF et peut utiliser les armes de jet. Il ne peut toutefois pas utiliser d'autre arme à distance (arc ou arbalète) ni tenter de négocier dans cet état."
+          },
+          "5": {
+            "nom": "Assaut final",
+            "limitee": false,
+            "description": "Lorsqu'il est sous les effets de la rage ou de la furie depuis au moins trois tours, le joueur peut choisir de doubler les DM* d'une attaque, ce qui met immédiatement fin à la rage. Le personnage ne peut pas à nouveau entrer en rage lors du combat. * Doubler tous les DM (bonus de rage inclus). Le joueur doit annoncer l'utilisation de la capacité avant de lancer les dés de DM, mais après avoir pris connaissance du résultat du test d'attaque."
+          }
+        }
+      },
+      {
+        "nom": "Voie du sang draconique",
+        "famille": "combattants",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Ascendance draconique",
+            "limitee": false,
+            "description": "Grâce au sang de dragon qui coule dans ses veines, le PJ obtient une réduction de 5 points des DM de feu. Cette résistance passe à 10 au rang 4 de la voie."
+          },
+          "2": {
+            "nom": "Férocité",
+            "limitee": true,
+            "description": "Le PJ voit ses muscles se développer de façon spectaculaire pendant [1d6 + Mod. de SAG] tours tandis que d'énormes griffes poussent subitement au bout de ses doigts. Son score de FOR passe à 18 (ou bénéficie d'un bonus de +2 s'il est déjà égal ou supérieur à cette valeur) et il obtient une attaque de contact de griffes infligeant [1d6 + Mod. FOR] DM."
+          },
+          "3": {
+            "nom": "Souffle du dragon",
+            "limitee": false,
+            "description": "Une fois par combat, par une action d'attaque, le PJ peut produire un souffle létal de feu. Ce souffle couvre une zone conique d'une portée de 5 mètres et d'une largeur de 5 mètres à son extrémité infligeant 2d6 DM par rang atteint dans cette voie. Les victimes dans le cône d'effet peuvent diviser les DM infligés par deux à condition de réussir un test de DEX difficulté [10 + rang]."
+          },
+          "4": {
+            "nom": "Armure naturelle",
+            "limitee": false,
+            "description": "Le corps du PJ se renforce et se couvre d'écailles lorsqu'il reçoit des blessures graves. Lorsque le personnage passe sous la moitié de ses PV, il gagne une réduction des DM de 5 points face à tous les types de dégâts."
+          },
+          "5": {
+            "nom": "Ailes de dragon",
+            "limitee": true,
+            "description": "Une fois par jour, le PJ peut déployer des ailes de dragon pendant [1d6 + Mod. de SAG] minutes. Ces ailes lui permettent de se déplacer en vol à une vitesse de 30 mètres par action de mouvement. Faire du surplace est une action gratuite. Chaque nouvelle utilisation de cette capacité impose la consommation préalable de 1 PR. Les voies de prestige de la famille des aventuriers"
+          }
+        }
+      }
+    ],
+    "aventuriers": [
+      {
+        "nom": "Voie de l'archerie arcanique",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Flèche magique",
+            "limitee": false,
+            "description": "Le PJ enchante ses flèches. S'il obtient un résultat de 1 sur son dé de DM, il relance le dé et garde le second résultat. Les DM de ses flèches sont considérés comme magiques."
+          },
+          "2": {
+            "nom": "Flèche tueuse",
+            "limitee": false,
+            "description": "Le PJ fabrique et enchante une flèche parti- culière pour un ennemi unique qu'il nomme. Il lui faut une journée complète pour créer la flèche et il ne peut en posséder plus d'une à un moment donné (ni pour la même cible, ni pour une autre). Lorsqu'il utilise sa flèche contre l'ennemi pour lequel elle a été créée, il obtient un bonus de +3 à l'attaque et de +1d6 aux DM par rang atteint dans la voie. Si la flèche a été créée depuis plus d'un an, ces bonus sont doublés."
+          },
+          "3": {
+            "nom": "Flèche animiste",
+            "limitee": false,
+            "description": "Le PJ peut utiliser des flèches capables d'animer la végétation. Une fois par combat, pour une action d'attaque, il peut lancer à distance jusqu'à la portée de son arc le sort Prison végétale (voie des forêts, rang 2) dans sa version avancée sans consommer de PM."
+          },
+          "4": {
+            "nom": "Flèche vivante",
+            "limitee": false,
+            "description": "L'aventurier enchante ses flèches pour leur donner vie au contact du sang. Plantées dans un corps, elles s'y enfoncent et prennent racine. Sur un résultat de 15 à 20 au test d'attaque (ou de 10 à 12 sur un d12), la flèche inflige +2d6 DM supplémentaires et se transforme en arbuste à la mort de la victime."
+          },
+          "5": {
+            "nom": "Flèche intangible",
+            "limitee": true,
+            "description": "Le PJ enchante sa flèche pour lui permettre de passer au travers des obstacles physiques. Le joueur réalise un test d'attaque normal mais remplace la DEF par le score de DEX de la cible pour fixer sa Difficulté. De surcroît, il ignore toutes les pénalités de couverture. S'il sait précisément où se situe sa cible, il peut même tirer au travers d'un mur ou une porte."
+          }
+        }
+      },
+      {
+        "nom": "Voie de l'audace",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "L'amour du risque",
+            "limitee": false,
+            "description": "Lorsqu'il réalise une action dans un lieu dan- gereux (par exemple au bord d'un précipice ou d'un lac de lave), Le PJ gagne un bonus de +3 à tous ses tests au d20 (attaque, Carac., etc.). Ce bonus s'applique également aux tests réalisés pour résister à la peur."
+          },
+          "2": {
+            "nom": "Mouche du coche",
+            "limitee": false,
+            "description": "Le PJ peut choisir de sacrifier une action de mouvement à ce tour pour gagner +3 en DEF jusqu'à son prochain tour. S'il sacrifie deux actions de mouvement, il gagne +6 en DEF."
+          },
+          "3": {
+            "nom": "Ça passe ou ça casse",
+            "limitee": false,
+            "description": "Lorsque le résultat d'un test de caractéristique peut avoir une issue fatale pour le PJ (chute mortelle, réveil d'un dragon, etc.), le joueur lance un d20 supplémentaire et peut conserver le résultat qu'il préfère."
+          },
+          "4": {
+            "nom": "Poussée d'adrénaline",
+            "limitee": false,
+            "description": "En dépensant 1d4 PV, le PJ gagne une action de mouvement supplémentaire à son tour. En combinaison avec Mouche du coche, le PJ peut ainsi sacrifier trois actions de mouvement et obtenir un bonus de +10 en DEF !"
+          },
+          "5": {
+            "nom": "Attaque kamikaze",
+            "limitee": true,
+            "description": "Le PJ saute littéralement sur sa cible pour la rouer de coups au corps-à-corps. Plutôt qu'un test d'attaque, il réalise un test de DEX dont la difficulté est égale à la moitié de la DEF de la créature. En cas de réussite, il inflige des DM normaux et reçoit un bonus qui dépend de la taille de la créature : moyenne +1d6 DM, grande +2d6, très grande +3d6, gigantesque +4d6 et colossale +5d6. Il ne reçoit aucun bonus aux DM pour les petites créatures. À la suite de cette attaque, il perd 5 points en DEF pour une durée de 1 tour."
+          }
+        }
+      },
+      {
+        "nom": "Voie du duel",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Vives lames",
+            "limitee": false,
+            "description": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de duel ou une épée."
+          },
+          "2": {
+            "nom": "Défi",
+            "limitee": true,
+            "description": "Une fois par combat, le PJ peut défier une cible de son choix (portée : 30 mètres). Il obtient un bonus de +2 en attaque et en DEF pour le reste du combat contre cette cible."
+          },
+          "3": {
+            "nom": "Juste toi et moi",
+            "limitee": false,
+            "description": "Lors de chaque tour où il attaque la cible qu'il a défiée, le PJ obtient un bonus en DEF de +1 par rang atteint dans la voie contre toutes les attaques provenant d'autres adversaires."
+          },
+          "4": {
+            "nom": "Parade",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ peut tenter de parer une attaque au contact de l'adversaire qu'il a défié. Il devra réussir un test d'attaque au contact au moins égal à celui obtenu par son adversaire pour parer ou esquiver l'attaque choisie."
+          },
+          "5": {
+            "nom": "Duel mental",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ peut faire un test opposé d'INT contre un adversaire au contact. S'il l'emporte, il peut relancer un dé d'attaque ou de DM contre cet adversaire d'ici à la fin du tour."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la flibusterie",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Équilibriste",
+            "limitee": false,
+            "description": "Le PJ gagne un bonus de +5 sur tous les tests de DEX réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde). Il gagne un bonus de +5 sur les tous les tests relatifs à la natation et à la navigation."
+          },
+          "2": {
+            "nom": "Coup de crosse",
+            "limitee": false,
+            "description": "Une fois par tour, le PJ peut, au moment de son choix, accomplir une attaque gratuite avec la crosse d'une arbalète déchargée. Il utilise un d12 pour le test d'attaque et inflige [1d4 + Mod. de FOR] DM."
+          },
+          "3": {
+            "nom": "À l'abordage !",
+            "limitee": false,
+            "description": "Le PJ sait s'élancer vers ses ennemis et mettre du cœur dans sa première attaque au contact lors d'un combat. Lors de cette attaque initiale, il obtient un bonus de +5 en attaque et de +2d6 aux DM."
+          },
+          "4": {
+            "nom": "Sabre au poing",
+            "limitee": false,
+            "description": "Le PJ peut tirer avec une arbalète de poing d'une main et porter une attaque de contact sans pénalité avec une seconde arme (tenue dans son autre main)."
+          },
+          "5": {
+            "nom": "Pas de quartier",
+            "limitee": false,
+            "description": "Pour le PJ, il s'agit de vaincre ou mourir. Sa férocité est légendaire : il peut tenter une action d'attaque gratuite contre toute créature à son contact qui utilise une action de mouvement dans le but de s'éloigner de lui. Pour cette attaque, il obtient un bonus de +5 en attaque et de +1d6 aux DM."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la lycanthropie",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Forme hybride",
+            "limitee": true,
+            "description": "Au prix d'une action limitée, le PJ peut se transformer en forme hybride, mi-humanoïde, mi-loup ou mi-panthère pendant [5 x Mod. de SAG] tours. Sous cette forme, il ne peut plus utiliser d'armes, mais il peut encore utiliser son armure, qui s'adapte à sa taille. Il gagne le bonus de Carac. et les attaques suivants : Lycanthropie lupine Valeur de FOR +2 - griffes [attaque au contact], DM [2d6 + Mod. de FOR] et morsure [attaque au contact], DM [1d6 + Mod. de FOR]. Il lui faut seulement une action d'attaque pour utiliser ces deux modes d'attaque lors du même tour. Lycanthropie féline Valeur de DEX +2 - griffes [attaque au contact ou à distance], DM [2d4 + Mod. de FOR ou de DEX] et morsure [attaque au contact], DM [1d4 + Mod. de FOR ou de DEX]. Il lui faut seulement une action d'attaque pour utiliser ces deux modes d'attaque lors du même tour."
+          },
+          "2": {
+            "nom": "Éventration",
+            "limitee": false,
+            "description": "Si le PJ réussit à toucher et à blesser avec ses deux attaques, il éventre sa cible et bénéficie d'un bonus de +2d6 DM sur sa seconde attaque."
+          },
+          "3": {
+            "nom": "Forme animale",
+            "limitee": true,
+            "description": "Le PJ peut prendre la forme d'un loup ou d'une panthère pendant une durée maximale d'1 heure par niveau du personnage et par jour. Le per- sonnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que son score d'attaque au contact habituel. Loup : Init. 17, DEF 15, DM 1d6+3. FOR +3, DEX +1. Bonus de +5 aux tests fondés sur la perception. Panthère : Init. 23, DEF 16, DM 1d6+2. FOR +2, DEX +4*. Sous cette forme, il peut utiliser la capacité Attaque bondissante (L) : le PJ parcourt jusqu'à 30 m et bénéficie d'un bonus de +5 au test d'attaque et de +2d6 aux DM contre sa cible. Il doit se déplacer d'au minimum 5 m en ligne droite pour porter cette attaque et ne peut la réaliser qu'une seule fois par adversaire. Passer de la forme animale à la forme hybride ne demande qu'une action de mouvement."
+          },
+          "4": {
+            "nom": "Odeur du sang",
+            "limitee": false,
+            "description": "Le PJ gagne un bonus de +1 en attaque et aux DM pour chaque tranche de 10 PV perdus pendant le combat contre la cible qui lui a infligé ces DM (maximum +5). Ces bonus restent jusqu'à la fin du combat. Ces bonus sont annulés si la cible meurt."
+          },
+          "5": {
+            "nom": "Fourrure d'acier",
+            "limitee": false,
+            "description": "Les poils de la fourrure du lycanthrope se durcissent tandis que ses os se solidifient pour devenir aussi solides que de l'acier. Le PJ gagne un bonus de +3 en DEF et une RD de 3 tant qu'il est transformé en lycanthrope (forme animale ou hybride)."
+          }
+        }
+      },
+      {
+        "nom": "Voie des poisons",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Connaissance du poison",
+            "limitee": false,
+            "description": "Le PJ peut effectuer un test d'INT difficulté 10 pour reconnaître, identifier ou détecter un poison. Il n'a plus besoin de test d'INT pour réussir à appliquer un poison sur une arme."
+          },
+          "2": {
+            "nom": "Poison rapide",
+            "limitee": false,
+            "description": "Le PJ sait fabriquer du poison « rapide » en petite quantité. Avant chaque combat, ses armes (trois au maximum) sont enduites de ce poison. La première attaque réussie provoque 2d6 DM supplémentaires. Si la victime réussit un test de CON difficulté [10 + rang dans la voie], elle ne subit que la moitié des DM de poison. Les DM du poison rapide passent à 3d6 au rang 4 de la voie."
+          },
+          "3": {
+            "nom": "Poison affaiblissant",
+            "limitee": false,
+            "description": "Le PJ peut remplacer le poison rapide par un poison affaiblissant : les effets ne sont alors appliqués que lors de la première attaque réussie avec cette arme. Si elle ne réussit pas un test de CON difficulté 15, la victime est affaiblie pour le reste du combat (voir « États préjudiciables »)."
+          },
+          "4": {
+            "nom": "Résistance au poison",
+            "limitee": false,
+            "description": "À force de manipuler les poisons, le PJ a déve- loppé des immunités. Lorsqu'il est empoisonné, faites un test de CON difficulté 10. En cas de succès, il ne subit aucun effet ; s'il rate, seulement la moitié."
+          },
+          "5": {
+            "nom": "Poisons virulents",
+            "limitee": false,
+            "description": "Le PJ sait fabriquer en petites quantités les poisons « lent » et « violent » et peut en utiliser [1 + Mod. d'INT] doses par jour (cumul des deux sortes de poisons). La difficulté de résistance à ces poisons est de [12+Mod. d'INT] du PJ."
+          }
+        }
+      },
+      {
+        "nom": "Voie des rituels",
+        "famille": "aventuriers",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Animation des morts",
+            "limitee": false,
+            "description": "Pour accomplir ce rituel, il est nécessaire de disposer du cadavre d'un humanoïde décédé depuis moins de [rang de la voie x 4] jours – plus la décomposition du corps est avancée, moins l'entretien qui suivra sera intelligible. Pendant une heure, il est possible de discuter avec ce qu'il reste de l'âme du défunt et de lui poser toutes les questions que le PJ souhaite et auxquelles le mort acceptera de répondre d'une voix désincarnée et dépourvue d'émotion. Le mort énoncera les faits selon son propre point de vue et ses propres préjugés au moment de sa mort, ce qui peut parfois introduire un biais."
+          },
+          "2": {
+            "nom": "Communion de l'esprit",
+            "limitee": false,
+            "description": "En trempant l'effet personnel d'une cible (une mèche de cheveu suffit) dans un volume d'eau porté à ébullition et en exécutant le rituel, le PJ peut voir à travers les yeux de sa cible en observant la surface de l'eau, tant qu'elle est maintenue à température adéquate. Il peut également entendre les sons qui l'entourent, mais ces sons peuvent subir une certaine distorsion ou un écho."
+          },
+          "3": {
+            "nom": "L'eau des sens",
+            "limitee": false,
+            "description": "Le rituel enchante un récipient contenant de l'eau (l'équivalent d'un chaudron). Jusqu'à la prochaine lune, l'eau sera désormais enchantée. Le PJ peut emporter avec lui l'équivalent d'une gourde et pourra, une fois par jour et quelle que soit la distance, renouveler le rituel en versant le liquide dans un vase, tremper ses doigts dedans et communiquer mentalement avec toutes personnes restées autour de la source d'eau initial."
+          },
+          "4": {
+            "nom": "Sanctuaire",
+            "limitee": false,
+            "description": "Après l'accomplissement du rituel, aucun animal, créature magique matérielle ou im- matérielle ne peut pénétrer dans un cercle de 20 m de diamètre autour du PJ. De plus, aucun sort ne peut être lancé depuis ni atteindre cette zone. Pour que le rituel reste actif, le PJ doit rester immobile et concentré. Il est déconnecté du monde et ne perçoit pas ce qui l'entoure à moins d'être physiquement touché par quelque chose, ce qui rompt la transe."
+          },
+          "5": {
+            "nom": "Imitation",
+            "limitee": false,
+            "description": "Pour accomplir ce rituel, le PJ doit disposer d'un objet intime appartenant à une cible. Un bijou précieux ou une simple mèche de cheveux peuvent suffire. Le PJ prend alors l'apparence de sa cible pendant les six prochaines heures. Il garde cependant ses caractéristiques et son équipement, mais que ce soit son apparence physique, sa voix ou son odeur, rien ne permet de le distinguer de sa cible – pas même le recours à des sorts de divination. Les voies de prestige de la famille des mystiques"
+          }
+        }
+      }
+    ],
+    "mystiques": [
+      {
+        "nom": "Voie des arcanes",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Invisibilité*",
+            "limitee": false,
+            "description": "Le PJ se rend invisible pendant [1d6 + Mod. de SAG] minutes. Une fois invisible, personne ne peut plus détecter sa présence ou lui porter d'attaque. Si le PJ attaque ou lance un sort, il redevient visible."
+          },
+          "2": {
+            "nom": "Hâte*",
+            "limitee": false,
+            "description": "Pendant [1d6 + Mod. de SAG] tours, le PJ voit son métabolisme s'accélérer. À partir du tour suivant, il obtient une action supplémentaire par tour : soit une attaque normale, soit une action de mouvement. Il ne peut toujours accomplir qu'une seule action limitée par tour, à laquelle s'ajoute cette action supplémentaire."
+          },
+          "3": {
+            "nom": "Foudre*",
+            "limitee": false,
+            "description": "Le PJ produit un éclair sur une ligne de 10 mètres. Toutes les créatures sur la trajectoire sont soumises à un test d'attaque magique et subissent [5d6 + Mod. d'INT] DM en cas d'échec. Les victimes peuvent tenter un test de DEX difficulté [12 + Mod. d'INT] pour ne subir que la moitié des DM."
+          },
+          "4": {
+            "nom": "Téléportation*",
+            "limitee": false,
+            "description": "Le PJ disparaît et réapparaît à un autre endroit situé à moins de [INT x 10] mètres. Le lieu d'arrivée doit être soit en ligne de vue, soit parfaitement connu par le PJ. Alternativement, à l'issue d'un rituel d'une heure, le PJ peut se téléporter à une distance de [INT x 10] kilomètres. La destination doit être plane et dépeuplée pour éviter tout accident."
+          },
+          "5": {
+            "nom": "Désintégration*",
+            "limitee": false,
+            "description": "Le PJ projette un rayon mortel dont la portée est de 20 mètres et qui annule la cohésion de la matière, ne laissant derrière lui qu'un amas de poussière. Un test d'attaque magique réussi permet de toucher une créature et d'infliger [6d6 + Mod. d'INT] DM. Si le PJ vise un objet porté par une créature, le jet d'attaque subit un malus de -5. Les objets de tradition et légendaires sont insensibles à ce sort et les objets normaux réduits en poussière. Aucun objet de plus de 50 kg ne peut être affecté par ce sort : inutile de tenter de creuser un tunnel par ce biais. En revanche, vous pourrez ainsi désintégrer une porte (ou même une pierre dans un mur)."
+          }
+        }
+      },
+      {
+        "nom": "Voie des arts primitifs",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Gri-gri",
+            "limitee": true,
+            "description": "Le PJ utilise un petit fétiche (crâne d'oiseau, Mages petite pierre, statuette) sur lequel il fait couler un peu de son sang afin de lui conférer du pouvoir. Ce rituel se traduit par le sacrifice temporaire de 1 PV. Le fétiche permet ensuite personnage portant le gri-gri la relance de 1d20 au moment de son choix dans un laps de temps de 12 h. Le gri-gri perd son pouvoir au terme de ce délai. En rendant la perte du PV permanente (maximum de PV réduit de 1), le gri-gri permet de relancer 1d20 une fois par jour, tous les jours. S'il est détruit, le personnage récupère son PV. Le PJ peut créer ainsi un maximum de [rang atteint dans cette voie] gris-gris."
+          },
+          "2": {
+            "nom": "Ombre mortelle*",
+            "limitee": false,
+            "description": "Le PJ choisit une cible. L'ombre de celle-ci attaque son propriétaire pendant [3 + Mod. de SAG] tours (portée 20 m) en cas de réussite d'un test d'attaque magique. L'ombre poursuit sa cible partout où elle se réfugie. Ombre : 1 attaque par tour, att = att de la cible, DM = DM de la cible divisés par deux."
+          },
+          "3": {
+            "nom": "Magie du sang",
+            "limitee": false,
+            "description": "En sacrifiant 1d4 PV, le PJ obtient la possibilité de lancer un sort plus rapidement. Un sort nécessitant une action d'attaque se lance pour une action de mouvement par exemple tandis qu'un sort nécessitant une concentration se lance pour une action d'attaque au lieu d'une action limitée. Par cette méthode, si le PJ souhaite lancer deux sorts dans le même tour, il doit sacrifier 1d4 PV supplémentaire (donc un maximum 3d4 PV). Les sorts affectés par cette capacité sont limités au rang 3."
+          },
+          "4": {
+            "nom": "Vents des âmes*",
+            "limitee": false,
+            "description": "Le PJ invoque des esprits torturés qui hurlent et tourmentent un ennemi pendant un nombre de tours égal à son Mod. de SAG. Pendant la durée du sort, la cible peine à se concentrer et ne peut réaliser aucune action limitée à moins de réussir un test de SAG difficulté 15 à chaque tour. De plus, cette tempête nécrotique inflige automatiquement 1d6 DM à chaque tour."
+          },
+          "5": {
+            "nom": "Mauvais œil",
+            "limitee": false,
+            "description": "Tant que le PJ regarde sa cible avec le mauvais œil, celle-ci est accablée de malchance. En plus de ses actions normales, le personnage peut poser le mauvais œil sur la cible visible de son choix à chaque tour. La victime choisie subit une pénalité de -2 à tous les tests. Si elle obtient un résultat de 1 ou 2 au d20 alors qu'elle est sous l'effet du mauvais œil, le joueur peut décider, en accord avec le MJ, des conséquences extrême- ment désagréables que cet échec critique a pour la cible. S'il s'agit d'une créature ou d'un PNJ mineur, un tel résultat conduit généralement à sa mort d'une façon grotesque et/ou atroce."
+          }
+        }
+      },
+      {
+        "nom": "Voie des cristaux",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Premier cristal",
+            "limitee": false,
+            "description": "Le PJ apprend à créer un cristal de son choix. Il peut fabriquer chaque cristal en dépensant 200 pièces d'argent."
+          },
+          "2": {
+            "nom": "Deuxième cristal",
+            "limitee": false,
+            "description": "Le PJ apprend à créer un cristal de son choix. Il peut bénéficier des effets de deux cristaux simultanément, mais pas deux fois le même."
+          },
+          "3": {
+            "nom": "Troisième cristal",
+            "limitee": false,
+            "description": "Le PJ apprend à créer deux nouveaux cristaux de son choix. Il peut bénéficier au maximum des effets de trois cristaux simultanément, mais pas deux fois le même. Changer de cristal correspond à une action limitée."
+          },
+          "4": {
+            "nom": "Quatrième cristal",
+            "limitee": false,
+            "description": "Le PJ apprend à créer deux nouveaux cristaux de son choix. Il peut bénéficier au maximum des effets de quatre cristaux simultanément, mais pas deux fois le même."
+          },
+          "5": {
+            "nom": "Cinquième cristal",
+            "limitee": false,
+            "description": "Le PJ apprend à créer deux nouveaux cristaux de son choix. Il peut bénéficier au maximum des effets de cinq cristaux simultanément, dont un maximum de deux fois le même. Régénération (1 PV/ Blanc laiteux Fuseau heure)* Bleu in- Sphère Bonus de +2 en SAG candescent Bleu nuit Rhombe Bonus de +5 en Init. Bleu pâle Rhombe Bonus de +2 en FOR Permet de subsister Irisé Fuseau sans respirer Résistance au feu et au Noir fumé Prisme froid 10 points Résistance acide et Orange Fuseau électricité 10 points Rose et vert Sphère Bonus de +2 en CHA Bonus de +2 en DEF Rose laiteux Prisme (prémonition) Rose vif Rhombe Bonus de +2 en CON Rouge et Sphère Bonus de +2 en INT bleu Rouge sang Sphère Bonus de +2 en DEX Permet de subsister Translucide Fuseau sans boire ni manger Bonus de +1 en attaque Vert pâle Prisme (toutes) * Le cristal de régénération ne permet de guérir que des PV perdus alors qu'il était porté."
+          }
+        }
+      },
+      {
+        "nom": "Voie des éléments",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Terre",
+            "limitee": false,
+            "description": "Le PJ ne fait qu'un avec la terre. Il ne peut plus être renversé et détecte automatiquement tous les pièges creusés dans le sol (trappes, fosses). Il gagne un bonus de +5 à tous les tests pour détecter des pièges ou des passages secrets dissimulés dans les murs de pierre ou au sol."
+          },
+          "2": {
+            "nom": "Eau",
+            "limitee": false,
+            "description": "Le PJ peut marcher sur l'eau à sa guise (comme s'il s'agissait d'un sol stable). Il peut transférer cette capacité pour en faire profiter autrui au prix d'une action limitée en touchant sa cible. Il peut ainsi affecter un nombre maximum de cibles égal au rang atteint dans cette voie pour une durée de [1d6 + Mod. de SAG] minutes."
+          },
+          "3": {
+            "nom": "Air",
+            "limitee": false,
+            "description": "Le PJ peut respirer dans n'importe quel milieu hostile, sous l'eau comme dans un milieu empoisonné ou dénué d'air. Il peut transférer cette capacité à autrui au prix d'une action limitée en touchant sa cible. Il peut ainsi affecter un nombre maximum de cibles égal au rang atteint dans cette voie pour une durée de [1d6 + Mod. de SAG] minutes."
+          },
+          "4": {
+            "nom": "Feu",
+            "limitee": false,
+            "description": "Le PJ devient immunisé aux DM de feu et ne reçoit plus que la moitié des DM de froid."
+          },
+          "5": {
+            "nom": "Forme élémentaire",
+            "limitee": false,
+            "description": "* Le PJ peut transformer son corps une fois par jour pour chaque élément maîtrisé pendant [5 + Mod. de SAG] minutes. Chaque forme élémentaire lui permet de retrancher [rang atteint dans cette voie] points à tous les DM subis (RD) et lui octroie les capacités suivantes. - Feu : le personnage ajoute +2d6 DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes de contact subit 1d6 DM pour chaque attaque réussie. - Eau : le personnage guérit toutes ses blessures au rythme de 3 PV par tour et peut déformer son corps pour passer dans le moindre interstice. - Terre : le personnage obtient un bonus de +6 en FOR (+3 attaque, DM et tests de FOR) et en DEF. - Air : le personnage peut voler (à une vitesse de 30 mètres par action de mouvement) et tous les DM physiques qui lui sont infligés ou qu'il inflige sont divisés par deux (retranchez les points de RD ensuite)."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la glace",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Verglas*",
+            "limitee": false,
+            "description": "Un verglas glissant recouvre le sol sur une surface de 10 m de diamètre pour le reste du combat (le PJ peut décider à tout moment de mettre fin au sort). Dans cette zone, rester debout demande lors de son tour un test de DEX de difficulté 10, s'y déplacer ou combattre un test de difficulté 15. Un échec signifie que la créature est au sol. Se relever nécessite de réussir un nouveau test de DEX de difficulté 15 et prend un tour. Ramper en dehors de la zone demande un tour complet."
+          },
+          "2": {
+            "nom": "Cœur de glace",
+            "limitee": true,
+            "description": "Le PJ divise par deux tous les DM de froid et d'électricité subis pour le reste du combat (10 tours hors combat)."
+          },
+          "3": {
+            "nom": "Cône de froid*",
+            "limitee": false,
+            "description": "Le sort affecte toutes les créatures dans un cône approximatif d'une portée de 20 mètres et d'une largeur de 10 mètres à son extrémité. Les victimes subissent [2d6 + Mod d'INT] DM de froid et sont ralenties pour 1 tour si elles ratent un test de CON difficulté [10 + rang de la voie]. , elles subissent seulement la moitié des DM et ne sont pas ralenties. Les DM du sort passent à 4d6 au rang 5 atteint dans cette voie."
+          },
+          "4": {
+            "nom": "Présence glaciale*",
+            "limitee": false,
+            "description": "Le PJ transforme son corps en glace vivante. Il gagne +4 en DEF, est immunisé au froid et divise les DM de feu par deux. Les créatures qui le touchent ou l'attaquent avec des armes de contact subissent 1d6 DM. Lorsqu'il marche, il gèle le sol et peut se déplacer sur l'eau en la transformant en glace. Le sort a une durée de [1d6 + Mod. de SAG] minutes."
+          },
+          "5": {
+            "nom": "Tempête de cristal*",
+            "limitee": false,
+            "description": "Le PJ choisit une cible située à moins de 40 mètres. Il fait un test d'attaque magique et le compare à la DEF de tous les personnages (y compris le PJ et ses compagnons) se trouvant dans un rayon de 10 mètres autour de la cible. Chaque victime pour laquelle le test est un succès encaisse [5d6 + Mod. d'INT] de DM de froid et est ralentie pendant 1 tour à moins de réussir un test de CON difficulté 13. En cas de réussite, elles subissent seulement la moitié des DM et ne sont pas ralenties."
+          }
+        }
+      },
+      {
+        "nom": "Voie de la métamorphose",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Forme animale*",
+            "limitee": false,
+            "description": "Le PJ peut prendre la forme d'un animal de taille petite (aigle géant, singe, chien, etc.) ou moyenne (loup, serpent constricteur, crocodile, requin, etc.). Il conserve ses PV, ses valeurs d'INT, de SAG et de CHA mais acquiert les Carac. suivantes : Forme animale petite : FOR -2 DEX +4 * CON -2. DEF 15 Init. 19. Attaque +4 DM 1d4-2 Forme animale moyenne : FOR +1 DEX +1 CON +1. DEF 14 Init. 12. Attaque +2 DM 1d6+1 Il conserve son équipement, qui est transformé en fourrure, mais ce dernier n'influence pas les caractéristiques de la forme animale. Le PJ acquiert une ou plusieurs capacités natu- relles relatives à la forme revêtue : vol, odorat développé, respiration aquatique, protection contre le froid, etc. À moins d'avoir recours à une capacité spéciale telle que la Détection de la magie, rien ne permet de distinguer la forme animale d'un autre animal normal. Enfin, le PJ peut reprendre sa forme humanoïde lorsqu'il le désire pour une action limitée."
+          },
+          "2": {
+            "nom": "Transformation rapide",
+            "limitee": false,
+            "description": "Le PJ n'a besoin que d'une action de mouvement pour reprendre sa forme humanoïde. Après s'être transformé une première fois, il peut changer de forme par une action de mouvement – mais doit quand même payer le coût du sort en PM ."
+          },
+          "3": {
+            "nom": "Grande forme animale*",
+            "limitee": false,
+            "description": "Le PJ peut prendre la forme d'un animal de grande taille (ours, bison, tigre, griffon, shargren, etc.). Forme animale grande : FOR +8* DEX +0 CON +8. DEF 18 Init. 10. Attaque +10 DM 2d6+8 Sous cette forme, le PJ gagne un bonus de +5 à tous les tests pour impressionner ou intimider."
+          },
+          "4": {
+            "nom": "Transformation régénérative",
+            "limitee": false,
+            "description": "S'il utilise une action limitée pour reprendre sa forme humanoïde après avoir subi des blessures sous forme animale, le PJ récupère 3d6 PV. Ces PV ne peuvent pas dépasser les DM reçus sous forme animale."
+          },
+          "5": {
+            "nom": "Forme animale énorme*",
+            "limitee": false,
+            "description": "Le PJ peut prendre la forme d'un animal de taille énorme (éléphant, dragon d'Akrähyng, crocodile géant, etc.). Forme animale énorme : FOR +11* DEX +0 CON +11*. DEF 20 Init. 10. Attaque +15 DM 3d6+11 Sous cette forme, le PJ gagne une réduction des DM de 2 contre tous les types de DM."
+          }
+        }
+      },
+      {
+        "nom": "Voie des vermines",
+        "famille": "mystiques",
+        "categorie": "prestige",
+        "capacites": {
+          "1": {
+            "nom": "Nuées de criquets*",
+            "limitee": false,
+            "description": "Le PJ fait l'acquisition de la capacité Nuées d'insectes (rang 2 de la voie des arts druidiques). S'il possède déjà ce sort, ou venait à l'obtenir par la suite, les DM continus et le malus aux tests sont augmentés de 1."
+          },
+          "2": {
+            "nom": "Compagnon vermine",
+            "limitee": false,
+            "description": "Le PJ adopte un scorpion géant ou une araignée géante (au choix du joueur). Scorpion géant : taille moyenne. Init. 12, DEF 16, PV [4 x niveau du PJ], attaque au contact = [niveau du PJ + 3], DM 1d6+3 [poison 2d6 DM, test CON 13 = DM/2], FOR +3, DEX +1, CON +3, INT -3, SAG +3, CHA -3 Araignée géante : taille moyenne. Init. 16, DEF 15, PV [4 x niveau du PJ], attaque au contact = [niveau du PJ + 3], DM 1d6+1 [poison 3d6 DM, test CON 13 = DM/2], FOR +1, DEX +3, CON +2, INT -3, SAG +4, CHA -3"
+          },
+          "3": {
+            "nom": "Affinité au poison",
+            "limitee": false,
+            "description": "Après des années passées en compagnie d'êtres qui rampent et piquent, le PJ a développé une aptitude à maîtriser le poison de ces derniers. S'il utilise une arme tranchante ou perforante, comme une dague ou un épieu, il peut l'enduire de poison. En cas d'attaque de contact réussie, le PJ inflige 1d6 DM supplémentaires au début de chaque tour de la créature affectée. Après avoir subi les effets du poison, la victime peut faire un test de CON difficulté [10 + Mod d'INT du PJ] pour stopper les effets du poison. L'effet de poison n'est pas cumulable et la réussite d'un test de CON immunise au poison pour 24 h. En plus des effets décrits ci-dessus, le PJ gagne désormais un bonus de +5 à tous les tests de CON destinés à résister au poison."
+          },
+          "4": {
+            "nom": "Vermine supérieure",
+            "limitee": false,
+            "description": "Le compagnon vermine du PJ gagne l'une des capacités suivantes, qui dépend de sa nature. Étreinte (scorpion) : le scorpion peut désormais tenter d'attraper une créature entre ses pinces, si elle n'est pas d'une taille supérieure à la sienne. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion attrape son adversaire. Au début de son tour, la cible saisie doit faire un test de FOR en opposition avec le scorpion, en cas de succès, elle réussit à se libérer, sinon elle est étourdie (pas d'action et -5 en DEF) et le scorpion maintient l'étreinte. Lorsqu'il maintient une étreinte, le scorpion ne peut rien faire pendant son tour, mais il inflige automatiquement [1d6+3] DM à la créature prisonnière. Le scorpion peut lâcher son étreinte quand il le veut. Toile (araignée) : l'araignée gagne la capacité de lancer (portée : 10 mètres) une toile gluante et collante sur un ennemi. Si elle réussit une attaque à distance [niveau du PJ + 3], la cible est immobilisée (pas de déplacement, utilisez le d12 : voir « États préjudiciables ») pour 1d6 tours. Au début de son tour, la créature engluée doit faire un test de FOR difficulté 13 : en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée."
+          },
+          "5": {
+            "nom": "Maître vermine",
+            "limitee": false,
+            "description": "Le PJ obtient le titre de « Maître vermine ». Il peut désormais communiquer avec les vermines en tout genre et celles-ci le considèrent plutôt comme une créature amicale –sauf si elles sont sous l'emprise d'un autre mystique plus puissant ou sous contrôle magique. En plus de cette capacité de communication, le PJ peut désormais monter sur son compagnon animal. La créature obtient ses actions normales (déplacement et/ou attaque) et le PJ peut agir normalement depuis sa position (action limitée ou action d'attaque). c 6 hapItre A vant de partir en expédition, en voyage ou de répondre à une mission pour un commanditaire, un personnage doit porter une attention toute particulière à la préparation de son équipement, ce qui fera bien souvent la différence entre un succès flamboyant et un échec cuisant. L'inventaire peut être agrémenté d'objets dû- ment achetés auprès d'un respectable marchand, de pièces rares obtenues en remerciement d'un service rendu ou encore grâce au vol, ou pire : au pillage ! Pratiquement chaque cité-État, Royaume, empire ou communauté des Terres d'Arran possède ses propres devises. Fort heureusement pour les guildes commerçantes, il ne s'agit là que d'appellations distinctes relevant toutes d'un même système monétaire. La grande majorité des biens ou services sont monnayés en pièces d'argent (pa) et en pièces de cuivre (pc). Les sommes les plus élevées font intervenir des pièces d'or (po), une monnaie très rare et donc précieuse. La conversion est la suivante : 1 po = 10 pa = 100 pc. La liste d'équipement qui suit n'est pas exhaus- tive et le meneur de jeu doit décider ce qui est localement disponible et de ce qui ne l'est pas, ainsi que des tarifs à appliquer. On n'achète pas directement sur cette page, mais en jeu, en accord avec le MJ ! Armes de contact Bâton (1d4) [FOR] - 1 Bâton ferré 1d6 [FOR] 2 pa 1 Dague 1d4 [FOR] 3 pa Mains nues (1d4) [FOR] - Grande hache 2d4 [FOR] 10 pa de bûcheron * 1 Épée longue 1d8 [FOR] 6 pa Hache 1d8 [FOR] 6 pa à une main Marteau 1d6 [FOR] 4 pa de guerre Masse d'armes 1d6 [FOR] 4 pa Épée à deux 2d6 [FOR] 10 pa mains 1 Épée bâtarde 1d12 [FOR] 9 pa 1, 3 Marteau à deux 3d4 [FOR] 12 pa mains 1 Hache à deux 2d6 [FOR] 10 pa mains 1 Épieu 1d6 [FOR] 3 pa 3 Lance 1d8 [FOR] 6 pa 1, 3 Lance 2d6 [FOR] 12 pa de cavalerie 1, 3 Pique 1d8 [FOR] 5 pa 1, 3 Épée courte 1d6 [FOR] 5 pa Main gauche 1d4 [FOR] 5 pa 3 Rapière 1d6 [FOR] 6 pa 2 Les DM indiqués entre parenthèses sont de DM temporaires Armes à distance Fronde 1d4 - Dague 1d4 - Couteau 1d4 [DEX] de lancer 5 Hachette 1d6 [FOR] 5 Javelot 1d6 [FOR] 5 Lance 1d8 [FOR] 3 Arc 1d6 [FOR] composite 1, 4 Arc court 1d6 - 1 Arc long 1d8 - 1, 4 Arbalète 1d6 - de poing 6 Arbalète 2d4 - légère 1, 6 Arbalète 3d4 - lourde 1, 7 Arbalète à 2d4 - répétition * 1, 3 Arme tenue à deux mains. 1 Critique sur 19 ou 20. 2 Règles spéciales, voir ci-dessous. 3 Score minimum en FOR requis : 12 pour l'arc 4 long, 14 pour le composite. 20 m - Nécessite une action limitée pour ajouter le 5 5 m - Mod. de Carac. aux DM. Nécessite une action d'attaque pour être 6 rechargée. Nécessite une action limitée pour être 7 rechargée. 10 m 3 pa * Nécessite une capacité pour être maîtrisée. 5 m 2 pa 20 m 6 pa En combat, dégainer une arme requiert géné- ralement une action de mouvement. 10 m 3 pa Un personnage peut utiliser soit une arme à une main et un bouclier, soit une arme à deux mains, soit deux armes à une main. Il peut aussi utiliser une seule arme à une main : c'est souvent 50 m 15 pa le cas pour les profils ne maniant ni le bouclier, ni les armes à deux mains. Cela lui laisse une 30 m 4 pa main libre pour tenir un autre objet, comme 50 m 5 pa par exemple une torche ! Porter deux armes à une main ne permet pas pour autant d'attaquer avec les deux armes dans 10 m 8 pa le même tour : il faut une formation spéciale pour ce style de combat particulier (cf. voie du 30 m 10 pa combat à deux armes dans le « Compendium des voies »). Cependant, cette seconde arme peut 60 m 12 pa être utilisée pour se défendre (dans le cas d'une main gauche) ou bien pour porter une attaque à 60 m - distance, avec une arme de jet ou une arme de tir légère, sans avoir besoin de consommer d'action de mouvement pour changer son équipement. Nous vous conseillons de ne pas tenir compte des dépenses de munitions, c'est parfois fasti- dieux et il est souhaitable de ne pas pénaliser les profils qui combattent à distance. Dans certains cas exceptionnels, cela peut cependant faire partie des difficultés inhérentes à l'aventure (une exploration de plusieurs semaines en terre sauvage par exemple). Si cela est nécessaire, considérez que la norme est de 20 à 50 projectiles de réserve et cinq armes de jet. Les joueurs comprendront vite qu'ils ont tout intérêt à ce que leurs personnages chargent le plus grand nombre d'armes de tir possible avant un combat, afin de ne pas avoir à le faire pendant celui-ci. Il faudra rapidement poser une limite à cette tactique de jeu, sous peine de voir fleurir une liste d'armes sans fin. Un PJ pourra raisonnablement avoir trois armes chargées en même temps, généralement deux arbalètes de poing et une arme à deux mains (arbalète légère ou lourde). Davantage d'armes augmenteraient considérablement le risque de perdre la munition ou – pire – de voir l'arme s'activer toute seule. Cependant, cette préparation ne peut avoir lieu que quelques minutes avant utilisation des armes tout au plus, sinon le risque de tirer accidentellement est trop important ! Une heure après la préparation, le MJ peut lancer un dé pour chaque arme : sur un résultat pair, l'arme se déclenche acciden- tellement – au meneur de déterminer si elle blesse quelqu'un (son porteur éventuellement) en fonction de la façon dont l'arme est portée et de la scène en cours. Arbalète à répétition Une arme assez lourde équipée d'un magasin de cinq carreaux sur sa partie supérieure. Elle ne nécessite pas d'action de rechargement contrairement aux autres arbalètes. Après cinq tirs, il faut la recharger, ce qui nécessite une action limitée. Épée bâtarde L'épée bâtarde tient son nom de sa construction particulière : à mi-chemin entre une épée longue et une épée à deux mains. Même s'il ne s'agit pas de l'usage le plus répandu, il est possible de la manier à une seule main. Ses DM passent alors à 1d8. Épieu L'épieu est une lance courte (1,50 m environ) et massive, formidable pour la chasse. Elle offre un bonus de +2 en DEF contre les créatures seulement dotées d'armes naturelles et inflige 2d6 DM contre celles qui ne portent pas d'armure manufacturée. Lance La lance est une arme intermédiaire entre un épieu et une pique. Prévue pour un usage à deux mains, elle est suffisamment légère pour être maniée à une seule main, permettant le port d'un bouclier par exemple. Ses DM passent alors à 1d6. Enfin, il est possible de l'utiliser comme une arme de jet mortelle à courte portée, mais utilisée dans ces conditions, elle impose un malus au test d'attaque à distance de -3. Lance de cavalerie Conçue pour être utilisée uniquement à cheval, la lance de cavalerie mesure environ 3 m de long. Il faut prendre de l'élan pour l'utiliser à son plein potentiel. L'attaque doit donc avoir lieu après un déplacement pour obtenir les DM indiqués. Sinon, en combat au contact classique, le cavalier se voit infligé une pénalité de -3 en attaque et aux DM. Main gauche La main gauche ou dague de parade comporte une garde en panier très couvrante. Elle offre un bonus de +1 en DEF, mais seulement en combat au contact. Pique Une très longue lance de fantassin, destinée à recevoir les charges de cavalerie ou à attaquer depuis le second rang. La pique double ses DM contre une créature de grande taille qui vient de réaliser une charge ou une action de mouvement pour arriver au contact. Elle permet aussi d'attaquer en se tenant derrière un allié de taille normale, avec une pénalité de -5. Elle inflige également une pénalité de -5 en attaque dans toutes les autres conditions. Petit bouclier Tissu matelassé Armure de cuir Armure de cuir renforcé Grand bouclier Chemise de mailles Cotte de mailles Demi-plaque 1 Armure de plaques 1, 2 Encombrantes, ces armures annulent le bonus 1 de DEX à la DEF. Fabriquée sur mesure, nécessite la capacité 2 Armure lourde (voie du bastion) pour être portée. Les armures peuvent entraver les mouvements des personnages et gêner la réalisation de certaines actions. Cette contrainte se ressent notamment sur les scores d'attaque, l'initiative et les tests de DEX selon les règles suivantes : • le bonus de DEF des armures est à déduire du score d'attaque magique, à l'Init. et aux tests de DEX ; • la moitié du bonus de DEF des armures (arrondi à l'inférieur) est à déduire du Modif. d'attaque à distance. Briquet à silex Carquois de 20 flèches corde 15 m Couverture 1 2 pa Grappin 1 2 pa Lanterne à cristal 1 2 4 pa Matériel d'écriture 3 8 pa Cristal luminescent (6 h) Sac de chausse-trappe Torches (3) (1 heure) 1 2 4 pa Outils de crochetage 2 4 15 pa Rations (1 semaine) 5 20 pa Sac à dos 6 50 pa Une torche ou une lanterne éclaire dans un 1 7 200 pa rayon de 10 mètres. Sans ces outils, une pénalité de -10 est infligée 2 aux tests de DEX."
+          }
+        }
+      }
+    ]
+  }
+}

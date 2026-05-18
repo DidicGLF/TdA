@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --tdr-gold: #c9a84c;
+  --tdr-dark: #1a1510;
+  --tdr-parchment: #f5ecd7;
+  --tdr-red: #8b1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Masque les spinners sur les inputs numériques (faussent le calcul scrollWidth) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+body {
+  margin: 0;
+  background-color: var(--tdr-dark);
+  color: var(--tdr-parchment);
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ===== IMPRESSION ===== */
+.print-only {
+  display: none;
+}
+
+@page tdr-recto {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@page tdr-verso {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  html, body, #root {
+    background: white !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Le conteneur flex de l'app passe en block pour que les sauts de page fonctionnent */
+  .app-root {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page-recto,
+  .print-page-verso {
+    display: block;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .print-page-recto {
+    page: tdr-recto;
+  }
+
+  .print-page-verso {
+    page: tdr-verso;
+  }
+
+  .print-page-recto img,
+  .print-page-verso img {
+    width: 210mm;
+    height: 297mm;
+    display: block;
+  }
+
+}

@@ -1,0 +1,176 @@
+[
+  {
+    "label": "Elfe",
+    "cultures": [
+      {
+        "label": "Elfe bleu",
+        "voiePeuple": "Voie du peuple elfe",
+        "voieCulturelle": "Voie culturelle des Elfes bleus",
+        "modCaracs": {
+          "CHA": 2,
+          "FOR": -2
+        }
+      },
+      {
+        "label": "Elfe sylvain",
+        "voiePeuple": "Voie du peuple elfe",
+        "voieCulturelle": "Voie culturelle des Elfes sylvains",
+        "modCaracs": {
+          "DEX": 2,
+          "CON": -2
+        }
+      },
+      {
+        "label": "Elfe blanc",
+        "voiePeuple": "Voie du peuple elfe",
+        "voieCulturelle": "Voie culturelle des Elfes blancs",
+        "modCaracs": {
+          "SAG": 2,
+          "FOR": -2
+        }
+      },
+      {
+        "label": "Elfe noir",
+        "voiePeuple": "Voie du peuple elfe",
+        "voieCulturelle": "Voie culturelle des Elfes noirs",
+        "modCaracs": {
+          "INT": 2,
+          "CON": -2
+        }
+      }
+    ]
+  },
+  {
+    "label": "Semi-Elfe",
+    "cultures": [
+      {
+        "label": "Semi-Elfe",
+        "voiePeuple": "Voie du peuple Semi-Elfe",
+        "voieCulturelle": "Voie culturelle des Semi-Elfes",
+        "modCaracs": {}
+      }
+    ]
+  },
+  {
+    "label": "Sang-mêlé",
+    "cultures": [
+      {
+        "label": "Sang-mêlé",
+        "voiePeuple": "Voie de peuple (sang-mêlé)",
+        "voieCulturelle": "Voie culturelle (sang-mêlé)",
+        "modCaracs": {}
+      }
+    ]
+  },
+  {
+    "label": "Nain",
+    "cultures": [
+      {
+        "label": "Ordre de la Forge",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "Voie culturelle de l'ordre de la Forge",
+        "modCaracs": {
+          "CON": 2,
+          "DEX": -2
+        }
+      },
+      {
+        "label": "Ordre du Talion",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "Voie culturelle de l'ordre du Talion",
+        "modCaracs": {
+          "CON": 2,
+          "DEX": -2
+        }
+      },
+      {
+        "label": "Ordre du Temple",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "Voie culturelle de l'ordre du Temple",
+        "modCaracs": {
+          "CON": 2,
+          "DEX": -2
+        }
+      },
+      {
+        "label": "Ordre du Bouclier",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "Voie culturelle de l'ordre du Bouclier",
+        "modCaracs": {
+          "CON": 2,
+          "DEX": -2
+        }
+      },
+      {
+        "label": "Ordre des Errants",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "Voie culturelle de l'ordre des Errants",
+        "modCaracs": {
+          "CON": 2,
+          "DEX": -2
+        }
+      }
+    ]
+  },
+  {
+    "label": "Humain",
+    "cultures": [
+      {
+        "label": "Ruines nordiques",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des ruines nordiques",
+        "modCaracs": {}
+      },
+      {
+        "label": "Mitan",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle du Mitan",
+        "modCaracs": {}
+      },
+      {
+        "label": "Empires austraux",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des empires austraux",
+        "modCaracs": {}
+      },
+      {
+        "label": "Terres orientales",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des Terres orientales",
+        "modCaracs": {}
+      }
+    ]
+  },
+  {
+    "label": "Peaux vertes",
+    "cultures": [
+      {
+        "label": "Orc",
+        "voiePeuple": "Voie du peuple des Peaux vertes",
+        "voieCulturelle": "Voie culturelle des Orcs",
+        "modCaracs": {
+          "FOR": 2,
+          "CHA": -2
+        }
+      },
+      {
+        "label": "Gobelin",
+        "voiePeuple": "Voie du peuple des Peaux vertes",
+        "voieCulturelle": "Voie culturelle des Gobelins",
+        "modCaracs": {
+          "DEX": 2,
+          "FOR": -2
+        }
+      },
+      {
+        "label": "Ogre",
+        "voiePeuple": "Voie du peuple des Peaux vertes",
+        "voieCulturelle": "Voie culturelle des Ogres",
+        "modCaracs": {
+          "FOR": 4,
+          "INT": -2
+        }
+      }
+    ]
+  }
+]

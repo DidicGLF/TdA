@@ -1,0 +1,257 @@
+[
+  {
+    "nom": "Voie du bastion",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la bravoure",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du combat à deux armes",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du combat monté",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du commandement",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la férocité",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la guerre",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la maîtrise des armes",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du pugilat",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la puissance",
+    "famille": "combattants",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'acrobatie",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'arbalètrie",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'archerie",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'assassinat",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du bohème",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du charme",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la chasse",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du compagnon animal",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'escrime",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la fourberie",
+    "famille": "aventuriers",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'alchimie",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des arts druidiques",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la divination",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'envoûtement",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des forêts",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des illusions",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la magie élémentaliste",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la magie runique",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie du mysticisme",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des sombres savoirs",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des armes lourdes",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la danse de guerre",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie du dogme de pierre",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de l'ordre ailé",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la purification",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la rage ancestrale",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie du sang draconique",
+    "famille": "combattants",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de l'archerie arcanique",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de l'audace",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie du duel",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la flibusterie",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la lycanthropie",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des poisons",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des rituels",
+    "famille": "aventuriers",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des arcanes",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des arts primitifs",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des cristaux",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des éléments",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la glace",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la métamorphose",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des vermines",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  }
+]
