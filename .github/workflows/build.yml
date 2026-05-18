@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Generate icons from SVG
-        run: npx @tauri-apps/cli@^2 icon public/favicon.svg
+        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.svg
 
       - name: Build Tauri app
         run: npx @tauri-apps/cli@^2 build
