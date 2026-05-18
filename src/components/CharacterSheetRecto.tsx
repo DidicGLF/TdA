@@ -143,7 +143,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     document.addEventListener('mouseup', onUp)
   }
 
-  const togglePR = (nom: string, idx: number) => {
+  const togglePR = (_nom: string, idx: number) => {
     if (calibrate) return
     const next = [...character.prUtilises]
     next[idx] = !next[idx]
@@ -308,8 +308,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {/* === NOMS DES CAPACITÉS + ZONES HOVER === */}
       {VOIE_RANG_CHECKBOXES.map(({ id, voie, rang }) => {
         const nomVoie = (character[voie] as VoiePersonnage).nom
-        const nomCap = CAPACITES[nomVoie]?.[rang] ?? ''
-        const desc = DESCRIPTIONS[nomVoie]?.[rang]?.desc ?? ''
+        const nomCap = (CAPACITES as Record<string, string[]>)[nomVoie]?.[rang] ?? ''
+        const desc = (DESCRIPTIONS as Record<string, { nom: string; desc: string }[]>)[nomVoie]?.[rang]?.desc ?? ''
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
         return (
           <React.Fragment key={`${id}-cap`}>

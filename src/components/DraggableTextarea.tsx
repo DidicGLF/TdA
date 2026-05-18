@@ -11,7 +11,7 @@ interface Props {
   onChange: (val: string) => void
   calibrate: boolean
   label: string
-  containerRef: RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number, height?: number) => void
 }
 
