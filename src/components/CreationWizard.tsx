@@ -110,7 +110,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
   const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
   const modText = Object.entries(modCaracs)
-    .map(([k, v]) => `${k} ${v! >= 0 ? '+' : ''}${v}`)
+    .map(([k, v]) => `${k} ${(v as number) >= 0 ? '+' : ''}${v}`)
     .join(', ')
 
   return (
