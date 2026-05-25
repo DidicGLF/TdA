@@ -17,14 +17,9 @@ export async function loadDataFile(filename: string): Promise<string | null> {
 export async function saveDataFile(filename: string, content: string): Promise<void> {
   if (isTauri()) {
     await invoke<void>('save_data_file', { filename, content })
-    return
   }
-  // Dev (Vite) : écriture sur disque via le serveur de dev
-  fetch('/api/save-json', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ file: filename, data: JSON.parse(content) }),
-  }).catch(() => {})
+  // Dev mode : pas d'écriture sur disque — Vite surveille src/data/ et un
+  // writeFile déclencherait un HMR qui réinitialiserait l'état React.
 }
 
 export async function openDataDir(): Promise<void> {

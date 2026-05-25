@@ -21,6 +21,12 @@ div:hover > .portrait-tools { opacity: 1 !important; }
   box-sizing: border-box;
 }
 
+/* WebKitGTK (Tauri Linux) applique le thème GTK sur les inputs — on force nos styles */
+input:not([type=checkbox]):not([type=radio]), select, textarea {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* Masque les spinners sur les inputs numériques (faussent le calcul scrollWidth) */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {

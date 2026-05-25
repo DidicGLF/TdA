@@ -64,7 +64,11 @@
         "label": "Elfe des sables",
         "voiePeuple": "Voie du peuple elfe",
         "voieCulturelle": "",
-        "modCaracs": {}
+        "modCaracs": {},
+        "trait": {
+          "nom": "Endurant",
+          "desc": "Le maximum de PR de l'Ogre est de 6 – et non de 5 comme pour les autres races."
+        }
       }
     ]
   },
@@ -140,12 +144,6 @@
         "label": "Ordre du Malt",
         "voiePeuple": "Voie du peuple nain",
         "voieCulturelle": "",
-        "modCaracs": {}
-      },
-      {
-        "label": "Ordre de DIDIC",
-        "voiePeuple": "Voie de peuple des nains dee DIDIC",
-        "voieCulturelle": "Voie culturelle de DIDIC",
         "modCaracs": {}
       }
     ]

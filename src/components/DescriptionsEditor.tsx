@@ -60,12 +60,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   // Traits magiques
   const [selectedTrait, setSelectedTrait] = useState(0)
+  const [traitQuery, setTraitQuery] = useState('')
   const [traitsExported, setTraitsExported] = useState(false)
   const traitDescRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Peuples
   const [selectedPeuple, setSelectedPeuple] = useState(0)
   const [_selectedCulture, setSelectedCulture] = useState(0)
+  const [peupleQuery, setPeupleQuery] = useState('')
   const [peuplesExported, setPeuplesExported] = useState(false)
 
   // Zone en attente (imports individuels)
@@ -790,7 +792,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!import.meta.env.DEV && section === 'voies' && <>
+            {section === 'voies' && (
               <button onClick={exportJson} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -799,8 +801,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               }}>
                 {exported ? '✓ Exporté' : '↓ descriptions.json'}
               </button>
-            </>}
-            {!import.meta.env.DEV && section === 'traits' && (
+            )}
+            {section === 'traits' && (
               <button onClick={exportTraits} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -810,7 +812,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 {traitsExported ? '✓ Exporté' : '↓ traits-magiques.json'}
               </button>
             )}
-            {!import.meta.env.DEV && section === 'peuples' && (
+            {section === 'peuples' && (
               <button onClick={exportPeuples} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -854,16 +856,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     color: S.parchment, outline: 'none', boxSizing: 'border-box',
                   }}
                 />
-                <button onClick={addVoie} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
-                  color: S.gold, boxSizing: 'border-box',
-                }}>+ Nouvelle voie</button>
-                <button onClick={() => pendingFileRef.current?.click()} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'transparent',
-                  color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                }}>↑ Importer une voie</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={addVoie} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
+                    color: S.gold, boxSizing: 'border-box',
+                  }}>+ Nouvelle voie</button>
+                  <button onClick={() => pendingFileRef.current?.click()} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'transparent',
+                    color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
+                  }}>↑ Importer une voie</button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {filtered.map(voie => (
@@ -1343,26 +1347,37 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           </>) : section === 'traits' ? (<>
             {/* Colonne traits */}
             <div style={{
-              width: 280, flexShrink: 0,
+              width: 'max-content', minWidth: 280, flexShrink: 0,
               borderRight: `1px solid ${S.border}`,
               display: 'flex', flexDirection: 'column',
             }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <button onClick={addTrait} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
-                  color: S.gold, boxSizing: 'border-box',
-                }}>
-                  + Nouveau trait
-                </button>
-                <button onClick={() => pendingFileRef.current?.click()} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'transparent',
-                  color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                }}>↑ Importer un trait</button>
+                <input
+                  type="text"
+                  placeholder="Rechercher…"
+                  value={traitQuery}
+                  onChange={e => setTraitQuery(e.target.value)}
+                  style={{
+                    width: '100%', background: S.bg, border: `1px solid ${S.border}`,
+                    borderRadius: 4, padding: '5px 8px', fontSize: 17,
+                    color: S.parchment, outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={addTrait} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
+                    color: S.gold, boxSizing: 'border-box',
+                  }}>+ Nouveau trait</button>
+                  <button onClick={() => pendingFileRef.current?.click()} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'transparent',
+                    color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
+                  }}>↑ Importer un trait</button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {traits.map((t, i) => (
+                {traits.map((t, i) => ({ t, i })).filter(({ t }) => !traitQuery || t.nom.toLowerCase().includes(traitQuery.toLowerCase())).map(({ t, i }) => (
                   <div key={i} onClick={() => setSelectedTrait(i)} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedTrait === i ? S.gold : S.parchment,
@@ -1489,23 +1504,36 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             )}
           </>) : (<>
             {/* Colonne peuples */}
-            <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 'max-content', minWidth: 340, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <button onClick={addPeuple} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
-                  color: S.gold, boxSizing: 'border-box',
-                }}>+ Nouveau peuple</button>
-                <button onClick={() => pendingFileRef.current?.click()} style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'transparent',
-                  color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                }}>↑ Importer un peuple</button>
+                <input
+                  type="text"
+                  placeholder="Rechercher…"
+                  value={peupleQuery}
+                  onChange={e => setPeupleQuery(e.target.value)}
+                  style={{
+                    width: '100%', background: S.bg, border: `1px solid ${S.border}`,
+                    borderRadius: 4, padding: '5px 8px', fontSize: 17,
+                    color: S.parchment, outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={addPeuple} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
+                    color: S.gold, boxSizing: 'border-box',
+                  }}>+ Nouveau peuple</button>
+                  <button onClick={() => pendingFileRef.current?.click()} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'transparent',
+                    color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
+                  }}>↑ Importer un peuple</button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {peuples.map((p, i) => (
+                {peuples.map((p, i) => ({ p, i })).filter(({ p }) => !peupleQuery || p.label.toLowerCase().includes(peupleQuery.toLowerCase())).map(({ p, i }) => (
                   <div key={i} onClick={() => { setSelectedPeuple(i); setSelectedCulture(0) }} className="voie-list-item" style={{
-                    padding: '7px 12px', fontSize: 15, cursor: 'pointer',
+                    padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedPeuple === i ? S.gold : S.parchment,
                     background: selectedPeuple === i ? 'rgba(201,168,76,0.1)' : 'transparent',
                     borderLeft: selectedPeuple === i ? `3px solid ${S.gold}` : '3px solid transparent',
@@ -1667,7 +1695,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                       {/* Trait */}
                       <div>
-                        <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 4 }}>Trait racial</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5 }}>Trait racial</div>
+                          {culture.trait?.nom && (
+                            <button
+                              onClick={() => updateCulture(selectedPeuple, ci, { trait: { nom: '', desc: '' } })}
+                              title="Effacer le trait racial"
+                              style={{ background: 'none', border: 'none', color: '#c05050', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}
+                            >✕ Effacer</button>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <TraitNomCombobox
                             value={culture.trait?.nom ?? ''}
@@ -1856,20 +1893,6 @@ function VoieSelectCombobox({
           borderRadius: 4, maxHeight: 220, overflowY: 'auto',
           boxShadow: '0 4px 20px rgba(0,0,0,0.7)', marginTop: 2,
         }}>
-          {onCreateVoie && (
-            <div
-              onMouseDown={() => { setOpen(false); onCreateVoie() }}
-              style={{
-                padding: '6px 10px', fontSize: 13, cursor: 'pointer',
-                color: '#c9a84c', borderBottom: '1px solid rgba(201,168,76,0.2)',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,168,76,0.12)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ fontSize: 15 }}>+</span> Créer une nouvelle voie
-            </div>
-          )}
           {available.map(v => (
             <VoieSelectOption key={v} nom={v} dimmed={false} onSelect={() => { onChange(v); setQuery(v); setOpen(false) }} />
           ))}
@@ -1881,6 +1904,20 @@ function VoieSelectCombobox({
                 <VoieSelectOption key={v} nom={v} dimmed onSelect={() => { onChange(v); setQuery(v); setOpen(false) }} />
               ))}
             </>
+          )}
+          {onCreateVoie && (
+            <div
+              onMouseDown={() => { setOpen(false); onCreateVoie() }}
+              style={{
+                padding: '6px 10px', fontSize: 13, cursor: 'pointer',
+                color: '#c9a84c', borderTop: '1px solid rgba(201,168,76,0.2)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,168,76,0.12)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ fontSize: 15 }}>+</span> Créer une nouvelle voie
+            </div>
           )}
         </div>
       )}
