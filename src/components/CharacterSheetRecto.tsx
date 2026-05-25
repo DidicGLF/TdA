@@ -2,8 +2,46 @@ import React, { useRef, useState } from 'react'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import DraggableField from './DraggableField'
-import CAPACITES from '../data/capacites.json'
+import DraggableTextarea from './DraggableTextarea'
 import DESCRIPTIONS from '../data/descriptions.json'
+import ARMES_DATA from '../data/armes.json'
+import ARMURES_DATA from '../data/armures.json'
+import { parseDesc } from '../utils/parseDesc'
+import { findCulture, findTrait } from '../data/peuples'
+import { computeEffects, computeDiceEffects, sumStat } from '../utils/computeEffects'
+import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
+
+const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
+const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+const normalizeArmeName = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
+
+const findArmeCategorie = (nomArme: string): string | null => {
+  const key = stripExposants(nomArme).toLowerCase()
+  for (const groupe of ARMES_DATA.groupes) {
+    for (const cat of groupe.categories) {
+      if (cat.entrees.some(e => stripExposants(e.nom).toLowerCase() === key)) return cat.categorie
+    }
+  }
+  return null
+}
+
+const findArmeEntry = (nomArme: string) => {
+  const key = stripExposants(nomArme).toLowerCase()
+  for (const groupe of ARMES_DATA.groupes) {
+    for (const cat of groupe.categories) {
+      const entry = cat.entrees.find(e => stripExposants(e.nom).toLowerCase() === key)
+      if (entry) return entry
+    }
+  }
+  return null
+}
+
+const findArmureCategorie = (nomArmure: string): string | null => {
+  for (const cat of ARMURES_DATA.categories) {
+    if (cat.entrees.some(e => e.nom === nomArmure)) return cat.categorie
+  }
+  return null
+}
 
 interface Props {
   character: Character
@@ -109,14 +147,43 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const [voieRangPos, setVoieRangPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(VOIE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
   )
-  const [tooltip, setTooltip] = useState<{ nom: string; desc: string; x: number; y: number } | null>(null)
+  type TooltipLine = { label: string; value: string | number; neg?: boolean }
+  type TooltipData =
+    | { nom: string; desc: string; lines?: never; total?: never; x: number; y: number }
+    | { nom: string; lines: TooltipLine[]; total: string | number; desc?: never; x: number; y: number }
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const [hoveredRangInfo, setHoveredRangInfo] = useState<{ voie: VoieKey; rang: number; x: number; y: number } | null>(null)
 
   const toggleVoieRang = (voie: VoieKey, rang: number) => {
     if (calibrate) return
     const v = character[voie] as VoiePersonnage
+    if (!v.nom) return
+    const estCoché = v.rangs[rang]
+    if (!estCoché) {
+      if (rang > 0 && !v.rangs[rang - 1]) return
+      const { disponibles } = calcPointsCapacite(character)
+      if (disponibles < coutRangPourVoie(voie, rang)) return
+    }
     const newRangs = [...v.rangs]
     newRangs[rang] = !newRangs[rang]
-    onChange({ [voie]: { ...v, rangs: newRangs } })
+
+    const patch: Partial<Character> = { [voie]: { ...v, rangs: newRangs } }
+
+    if (estCoché && character.pvHistorique?.length) {
+      const oldConBonus = sumStat(effects['CON'] ?? [])
+      const oldConMod = getMod(character.caracteristiques.CON.valeur + oldConBonus)
+      const newEffects = computeEffects({ ...character, [voie]: { ...v, rangs: newRangs } } as Character)
+      const newConMod = getMod(character.caracteristiques.CON.valeur + sumStat(newEffects['CON'] ?? []))
+      if (newConMod !== oldConMod) {
+        patch.pvHistorique = character.pvHistorique.map(entry =>
+          entry.conMod === oldConMod
+            ? { ...entry, conMod: newConMod, total: entry.jet + newConMod }
+            : entry
+        )
+      }
+    }
+
+    onChange(patch)
   }
 
   const startVoieRangDrag = (id: string, e: React.MouseEvent) => {
@@ -190,65 +257,474 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const setVoieNom = (field: 'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3', nom: string) =>
     onChange({ [field]: { ...character[field], nom } })
 
-  // Appelé comme fonction (pas <F/>) pour éviter le remontage des DraggableField à chaque render
-  type FProps = Omit<React.ComponentProps<typeof DraggableField>, 'calibrate' | 'containerRef' | 'onMoved'>
-  const f = (p: FProps) => <DraggableField key={p.label} {...p} calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+// Appelé comme fonction (pas <F/>) pour éviter le remontage des DraggableField à chaque render
+  type FProps = Omit<React.ComponentProps<typeof DraggableField>, 'calibrate' | 'containerRef' | 'onMoved'> & {
+    formula?: { lines: TooltipLine[]; total: string | number }
+    tooltipDesc?: string
+  }
+  const showFormula = (nom: string, formula: { lines: TooltipLine[]; total: string | number }, e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setTooltip({ nom, lines: formula.lines, total: formula.total,
+      x: (e.clientX - rect.left) / rect.width * 100,
+      y: (e.clientY - rect.top)  / rect.height * 100 })
+  }
+  const moveTooltip = (e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setTooltip(prev => prev ? { ...prev,
+      x: (e.clientX - rect.left) / rect.width * 100,
+      y: (e.clientY - rect.top)  / rect.height * 100 } : null)
+  }
+  const f = ({ formula, tooltipDesc, title, ...p }: FProps) => (
+    <React.Fragment key={p.label}>
+      <DraggableField {...p} title={formula || tooltipDesc ? undefined : title} calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+      {formula && !calibrate && (
+        <div style={{ position: 'absolute', top: `${p.top}%`, left: `${p.left}%`,
+          width: `${p.width}%`, height: `${p.height ?? 2.2}%`,
+          transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
+          onMouseEnter={e => showFormula(p.label, formula, e)}
+          onMouseMove={moveTooltip}
+          onMouseLeave={() => setTooltip(null)}
+        />
+      )}
+      {tooltipDesc && !formula && !calibrate && (
+        <div style={{ position: 'absolute', top: `${p.top}%`, left: `${p.left}%`,
+          width: `${p.width}%`, height: `${p.height ?? 2.2}%`,
+          transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
+          onMouseEnter={e => {
+            const rect = containerRef.current?.getBoundingClientRect()
+            if (!rect) return
+            setTooltip({ nom: p.label, desc: tooltipDesc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+          }}
+          onMouseMove={moveTooltip}
+          onMouseLeave={() => setTooltip(null)}
+        />
+      )}
+    </React.Fragment>
+  )
+
+  const effects = computeEffects(character)
+  const diceEffects = computeDiceEffects(character)
+  const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
+
+  const rangTooltip: TooltipData | null = hoveredRangInfo ? (() => {
+    const { voie, rang, x, y } = hoveredRangInfo
+    const voieData = character[voie] as VoiePersonnage
+    const acquis = voieData.rangs[rang]
+    const cout = coutRangPourVoie(voie, rang)
+    const sequentialBlocked = !acquis && rang > 0 && !voieData.rangs[rang - 1]
+    const pointsBlocked = !acquis && !sequentialBlocked && ptsDisponibles < cout
+    if (sequentialBlocked)
+      return { nom: 'Ordre requis', desc: `Cochez d'abord le rang ${rang} de cette voie.`, x, y }
+    if (pointsBlocked)
+      return { nom: 'Points insuffisants', desc: `Il manque ${cout - ptsDisponibles} pt${cout - ptsDisponibles > 1 ? 's' : ''} de capacité pour ce rang.`, x, y }
+    if (ptsDisponibles > 0)
+      return { nom: 'Points de capacité', desc: `${ptsDisponibles} pt${ptsDisponibles > 1 ? 's' : ''} de capacité disponible${ptsDisponibles > 1 ? 's' : ''}.`, x, y }
+    if (ptsDisponibles < 0)
+      return { nom: 'Points de capacité', desc: `${Math.abs(ptsDisponibles)} pt${Math.abs(ptsDisponibles) > 1 ? 's' : ''} de capacité en trop.`, x, y }
+    return null
+  })() : null
+
+  const activeTooltip = rangTooltip ?? tooltip
+
+  const SUP: Record<number, string> = { 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵' }
+  const groupContribs = (contribs: { nom: string; rang: number; triggerRang: number; value: number; voie: string }[]) => {
+    const map = new Map<string, { nom: string; rang: number; maxTrigger: number; total: number }>()
+    for (const c of contribs) {
+      const key = `${c.voie}||${c.nom}||${c.rang}`
+      const entry = map.get(key)
+      if (entry) { entry.total += c.value; entry.maxTrigger = Math.max(entry.maxTrigger, c.triggerRang) }
+      else map.set(key, { nom: c.nom, rang: c.rang, maxTrigger: c.triggerRang, total: c.value })
+    }
+    return [...map.values()].map(g => ({
+      label: g.maxTrigger === g.rang ? `${g.nom} rang ${g.rang}` : `${g.nom} rang ${g.rang}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
+      value: `+${g.total}`,
+    }))
+  }
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <img src="/feuille-recto.png" alt="Feuille de personnage recto"
-        style={{ width: '100%', display: 'block' }} draggable={false} />
+      <img src={`${import.meta.env.BASE_URL}feuille-recto.png`} alt="Feuille de personnage recto"
+        className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       {/* === IDENTITÉ === */}
       {f({ label: "Nom joueur",  top: 10.1, left: 52.8, width: 18.3, height: 2.0, value: character.nomJoueur,     onChange: v => onChange({ nomJoueur: v }),                        active: activeStep === 0 })}
       {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: character.profil,        onChange: v => onChange({ profil: v }),                           active: activeStep === 3 })}
-      {f({ label: "Genre",       top: 10.1, left: 91.4, width: 4.7,  height: 2.0, value: character.genre,         onChange: v => onChange({ genre: v }),                            active: activeStep === 0 })}
-      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ?? '', onChange: v => onChange({ famille: v as any }),                   active: activeStep === 3 })}
-      {f({ label: "Âge",         top: 12.2, left: 91.3, width: 4.7,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
+      {f({ label: "Genre",       top: 10.1, left: 92.3, width: 6.7,  height: 2.0, value: character.genre,         onChange: v => onChange({ genre: v }),                            active: activeStep === 0 })}
+      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : '', onChange: v => onChange({ famille: v as any }),                   active: activeStep === 3 })}
+      {f({ label: "Âge",         top: 12.2, left: 92.1, width: 6.4,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
       {f({ label: "Nom perso",   top: 14.4, left: 51.9, width: 20.7, height: 2.0, value: character.nomPersonnage,  onChange: v => onChange({ nomPersonnage: v }),                   active: activeStep === 0 })}
       {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: character.peuple,        onChange: v => onChange({ peuple: v }),                           active: activeStep === 1 })}
-      {f({ label: "Taille",      top: 14.3, left: 91.4, width: 4.8,  height: 2.0, value: character.taille,        onChange: v => onChange({ taille: v }),                           active: activeStep === 0 })}
-      {f({ label: "Niveau",      top: 16.5, left: 41.8, width: 4.9,  height: 2.0, value: character.niveau,        onChange: v => onChange({ niveau: parseInt(v) || 1 }), type: "number", align: "center" })}
+      {f({ label: "Taille",      top: 14.3, left: 91.7, width: 5.7,  height: 2.0, value: character.taille,        onChange: v => onChange({ taille: v }),                           active: activeStep === 0 })}
+      {f({ label: "Niveau",      top: 16.5, left: 41.8, width: 4.9,  height: 2.0, value: character.niveau,        onChange: () => {}, align: "center" })}
       {f({ label: "Culture",     top: 16.5, left: 76.3, width: 16.6, height: 2.0, value: character.culture,       onChange: v => onChange({ culture: v }),                          active: activeStep === 1 })}
-      {f({ label: "Poids",       top: 16.5, left: 91.4, width: 4.8,  height: 2.0, value: character.poids,         onChange: v => onChange({ poids: v }),                            active: activeStep === 0 })}
+      {f({ label: "Poids",       top: 16.5, left: 91.6, width: 5.4,  height: 2.0, value: character.poids,         onChange: v => onChange({ poids: v }),                            active: activeStep === 0 })}
 
       {/* === CARACTÉRISTIQUES === */}
-      {CARAC_ROWS.map(({ key, top, wVal }) => (
-        <React.Fragment key={key}>
-          {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: character.caracteristiques[key].valeur, onChange: v => setCarac(key, v), type: "number", align: "center", active: activeStep === 2 })}
-          {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: character.caracteristiques[key].mod >= 0 ? `+${character.caracteristiques[key].mod}` : `${character.caracteristiques[key].mod}`, onChange: () => {}, align: "center" })}
-        </React.Fragment>
-      ))}
+      {(() => {
+        const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
+        return CARAC_ROWS.map(({ key, top, wVal }) => {
+          const baseVal = character.caracteristiques[key].valeur
+          const racialMod = (modCaracs[key as keyof typeof modCaracs] as number) ?? 0
+          const voieContribs = effects[key] ?? []
+          const voieBonus = sumStat(voieContribs)
+          const effectiveVal = baseVal + voieBonus
+          const effectiveMod = getMod(effectiveVal)
+          let caracFormula: { lines: TooltipLine[]; total: string | number } | undefined
+          if (racialMod !== 0 || voieBonus !== 0) {
+            const lines: TooltipLine[] = [{ label: 'Base', value: baseVal - racialMod }]
+            if (racialMod !== 0) lines.push({ label: character.peuple, value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
+            lines.push(...groupContribs(voieContribs))
+            caracFormula = { lines, total: effectiveVal }
+          }
+          return (
+            <React.Fragment key={key}>
+              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: v => setCarac(key, String((parseInt(v) || 0) - voieBonus)), type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
+              {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, align: "center" })}
+            </React.Fragment>
+          )
+        })
+      })()}
 
       {/* === COMBAT === */}
-      {f({ label: "Initiative",        top: 22.2, left: 50,   width: 5.1, height: 2.0, value: character.caracteristiques.DEX.valeur, onChange: () => {}, align: "center" })}
+      {(() => {
+        const effectiveStat = (key: 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA') => {
+          const bonus = sumStat(effects[key] ?? [])
+          if (bonus === 0) return character.caracteristiques[key]
+          const v = character.caracteristiques[key].valeur + bonus
+          return { valeur: v, mod: getMod(v) }
+        }
+        const FOR = effectiveStat('FOR')
+        const DEX = effectiveStat('DEX')
+        const CON = effectiveStat('CON')
+        const INT = effectiveStat('INT')
+        const SAG = effectiveStat('SAG')
+        const CHA = effectiveStat('CHA')
+        const niv = character.niveau
+        const fmt = (n: number) => n >= 0 ? `+${n}` : `${n}`
+        const famContact = character.famille === 'combattants' ? 2 : character.famille === 'aventuriers' ? 1 : 0
+        const famMagique = character.famille === 'mystiques' ? 2 : 0
+        const deVieFaces = character.famille === 'combattants' ? 10 : character.famille === 'aventuriers' ? 8 : 6
+        const pmBase = niv + SAG.mod
+        const pm = character.famille === 'mystiques' ? 2 * pmBase : pmBase
+        const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+        const armorDef   = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((sum, a) => sum + a.def, 0)
+        const shieldDef  = character.armuresEquipees.filter(a =>  isBouclier(a.nom) && a.equipe).reduce((sum, a) => sum + a.def, 0)
+        const enchantEnc        = character.enchantementEncombrement ?? 0
+        const totalEncombrement = Math.max(0, armorDef - enchantEnc)
+        const malusAtkDist      = Math.floor(armorDef / 2)
 
-      {/* Défense : Mod.DEX */}
-      {f({ label: "Déf mod DEX", top: 38.1, left: 56.1, width: 5.0, height: 2.0, value: character.caracteristiques.DEX.mod >= 0 ? `+${character.caracteristiques.DEX.mod}` : `${character.caracteristiques.DEX.mod}`, onChange: () => {}, align: "center" })}
+        const canUseFormation = (categorie: string) =>
+          character.formationsMartiales.some(f => normalizeFormation(f) === categorie.trim().toLowerCase())
 
-      {/* Atk contact : Mod.FOR | Niveau | Bonus famille | Total */}
-      {f({ label: "Atk contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: character.caracteristiques.FOR.mod >= 0 ? `+${character.caracteristiques.FOR.mod}` : `${character.caracteristiques.FOR.mod}`, onChange: () => {}, align: "center" })}
-      {f({ label: "Atk contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: character.niveau, onChange: () => {}, align: "center" })}
-      {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: (() => { const b = character.famille === 'combattants' ? 2 : character.famille === 'aventuriers' ? 1 : 0; return b >= 0 ? `+${b}` : `${b}` })(), onChange: () => {}, align: "center" })}
-      {f({ label: "Atk contact total",  top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: character.attaqueContact  >= 0 ? `+${character.attaqueContact}`  : `${character.attaqueContact}`,  onChange: () => {}, align: "center" })}
+        const MALUS_SANS_FORM = 3
+        const armureSansForm  = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe)
+          .some(a => { const cat = findArmureCategorie(a.nom); return cat !== null && !canUseFormation(cat) })
+        const bouclierSansForm = character.armuresEquipees.filter(a => isBouclier(a.nom) && a.equipe)
+          .some(a => { const cat = findArmureCategorie(a.nom); return cat !== null && !canUseFormation(cat) })
+        const malusEquip = (armureSansForm ? MALUS_SANS_FORM : 0) + (bouclierSansForm ? MALUS_SANS_FORM : 0)
 
-      {/* Atk distance : Mod.DEX | Niveau | Bonus famille | Total */}
-      {f({ label: "Atk dist mod",       top: 30.9, left: 50,   width: 5.1, height: 2.0, value: character.caracteristiques.DEX.mod >= 0 ? `+${character.caracteristiques.DEX.mod}` : `${character.caracteristiques.DEX.mod}`, onChange: () => {}, align: "center" })}
-      {f({ label: "Atk dist niv",       top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: character.niveau, onChange: () => {}, align: "center" })}
-      {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: (() => { const b = character.famille === 'combattants' ? 2 : character.famille === 'aventuriers' ? 1 : 0; return b >= 0 ? `+${b}` : `${b}` })(), onChange: () => {}, align: "center" })}
-      {f({ label: "Atk dist total",     top: 30.9, left: 68.3, width: 5.0, height: 2.0, value: character.attaqueDistance >= 0 ? `+${character.attaqueDistance}` : `${character.attaqueDistance}`, onChange: () => {}, align: "center" })}
+        const getArmeAttType = (nomArme: string) => {
+          const key = stripExposants(nomArme).toLowerCase()
+          const arme = character.armes.find(a => stripExposants(a.nom).toLowerCase() === key)
+          const mod = arme?.attaque?.toUpperCase()
+          return mod === 'DEX' ? 'DEX' : mod === 'INT' ? 'INT' : 'FOR'
+        }
+        const armeSansForm = (nomArme: string) => {
+          const cat = findArmeCategorie(nomArme)
+          return cat !== null && !canUseFormation(cat)
+        }
+        const malusArmesContact = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'FOR')
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'FOR')) ? MALUS_SANS_FORM : 0
+        const malusArmesDist    = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'DEX')
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'DEX')) ? MALUS_SANS_FORM : 0
+        const malusArmesMag     = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'INT')
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'INT')) ? MALUS_SANS_FORM : 0
 
-      {/* Atk magique : Mod.INT | Niveau | Bonus famille | Total */}
-      {f({ label: "Atk mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: character.caracteristiques.INT.mod >= 0 ? `+${character.caracteristiques.INT.mod}` : `${character.caracteristiques.INT.mod}`, onChange: () => {}, align: "center" })}
-      {f({ label: "Atk mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: character.niveau, onChange: () => {}, align: "center" })}
-      {f({ label: "Bonus fam. magique",  top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: (() => { const b = character.famille === 'mystiques' ? 2 : 0; return b >= 0 ? `+${b}` : `${b}` })(), onChange: () => {}, align: "center" })}
-      {f({ label: "Atk mag total",      top: 33.7, left: 68.3, width: 5.0, height: 2.0, value: character.attaqueMagique  >= 0 ? `+${character.attaqueMagique}`  : `${character.attaqueMagique}`,  onChange: () => {}, align: "center" })}
+        const initContribs = effects['INIT'] ?? []
+        const initBonus = sumStat(initContribs)
+        const initiativeTotal = DEX.valeur - totalEncombrement - malusEquip + initBonus
 
-      {/* === PV / PM / PC === */}
-      {f({ label: "PV total",  top: 38.1, left: 28.8, width: 5.1,  height: 2.0, value: character.pvTotal,    onChange: v => onChange({ pvTotal:    parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
-{f({ label: "PM",        top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm,         onChange: v => onChange({ pm:         parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
-      {f({ label: "PC",        top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc,         onChange: v => onChange({ pc:         parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
-      {f({ label: "Dé de vie", top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie,      onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4 })}
+        const attContactVoies  = sumStat(effects['ATT_CONTACT'] ?? [])
+        const attContactTotal  = character.attaqueContact  - malusEquip - malusArmesContact + attContactVoies
+        const attDistTotal     = character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist
+        const attMagTotal      = character.attaqueMagique  - armorDef - malusEquip - malusArmesMag
+
+        const dmArmeBonusContribs = (nomArme: string) => {
+          const key = normalizeArmeName(nomArme)
+          return (effects['DM_ARME'] ?? []).filter(c =>
+            !c.conditionArmes || c.conditionArmes.some(a => normalizeArmeName(a) === key)
+          )
+        }
+
+        const attTotalPourArme = (nomArme: string): number => {
+          const type = getArmeAttType(nomArme)
+          if (type === 'DEX') return attDistTotal
+          if (type === 'INT') return attMagTotal
+          return attContactTotal
+        }
+
+        const formulaArme = (nomArme: string) => {
+          const type = getArmeAttType(nomArme)
+          if (type === 'DEX') return { lines: [
+            { label: 'ATT distance', value: fmt(character.attaqueDistance) },
+            ...(malusAtkDist      > 0 ? [{ label: 'Encombrement ÷ 2',     value: `-${malusAtkDist}`,      neg: true }] : []),
+            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesDist    > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesDist}`,    neg: true }] : []),
+          ], total: fmt(attDistTotal) }
+          if (type === 'INT') return { lines: [
+            { label: 'ATT magique', value: fmt(character.attaqueMagique) },
+            ...(armorDef          > 0 ? [{ label: 'Encombrement',          value: `-${armorDef}`,          neg: true }] : []),
+            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesMag     > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesMag}`,     neg: true }] : []),
+          ], total: fmt(attMagTotal) }
+          return { lines: [
+            { label: 'ATT contact', value: fmt(character.attaqueContact) },
+            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesContact > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesContact}`, neg: true }] : []),
+          ], total: fmt(attContactTotal) }
+        }
+
+        return <>
+          {f({ label: "Initiative", top: 22.2, left: 50, width: 5.1, height: 2.0, value: DEX.valeur, onChange: () => {}, align: "center" })}
+          {f({ label: "Enc. init.", top: 22.2, left: 62.2, width: 5.0, height: 2.0,
+            value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0',
+            onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'DEF armure équipée', value: armorDef },
+              { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
+            ], total: totalEncombrement > 0 ? `-${totalEncombrement}` : '0' } })}
+          {f({ label: "Initiative totale", top: 22.2, left: 68.3, width: 5.0, height: 2.0,
+            value: String(initiativeTotal),
+            onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'Valeur DEX', value: DEX.valeur },
+              { label: 'Encombrement', value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0', neg: totalEncombrement > 0 },
+              ...(malusEquip > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`, neg: true }] : []),
+              ...groupContribs(initContribs),
+            ], total: initiativeTotal } })}
+
+          {/* Défense : Mod.DEX */}
+          {f({ label: "Déf mod DEX", top: 38.1, left: 56.1, width: 5.0, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, align: "center" })}
+
+          {/* Défense : armure */}
+          {f({ label: "Déf armure", top: 38.1, left: 66.2, width: 5.0, height: 2.0, value: armorDef > 0 ? `+${armorDef}` : '0', onChange: () => {}, align: "center" })}
+          {!calibrate && (
+            <div style={{ position: 'absolute', top: '38.1%', left: '66.2%', width: '5%', height: '2%',
+              transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
+              onMouseEnter={e => {
+                const rect = containerRef.current?.getBoundingClientRect()
+                if (!rect) return
+                const armures = character.armuresEquipees.filter(a => !isBouclier(a.nom))
+                const desc = armures.length > 0
+                  ? armures.map(a => `${a.nom} : +${a.def}`).join('\n')
+                  : 'Aucune armure équipée'
+                setTooltip({ nom: 'DEF Armure', desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+              }}
+              onMouseMove={e => {
+                const rect = containerRef.current?.getBoundingClientRect()
+                if (!rect) return
+                setTooltip(prev => prev ? { ...prev, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 } : null)
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          )}
+
+          {/* Défense : bouclier */}
+          {f({ label: "Déf bouclier", top: 38.1, left: 78.8, width: 5.0, height: 2.0, value: shieldDef > 0 ? `+${shieldDef}` : '0', onChange: () => {}, align: "center" })}
+          {!calibrate && (
+            <div style={{ position: 'absolute', top: '38.1%', left: '78.8%', width: '5%', height: '2%',
+              transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
+              onMouseEnter={e => {
+                const rect = containerRef.current?.getBoundingClientRect()
+                if (!rect) return
+                const boucliers = character.armuresEquipees.filter(a => isBouclier(a.nom))
+                const desc = boucliers.length > 0
+                  ? boucliers.map(a => `${a.nom} : +${a.def}`).join('\n')
+                  : 'Aucun bouclier équipé'
+                setTooltip({ nom: 'DEF Bouclier', desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+              }}
+              onMouseMove={e => {
+                const rect = containerRef.current?.getBoundingClientRect()
+                if (!rect) return
+                setTooltip(prev => prev ? { ...prev, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 } : null)
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          )}
+
+          {/* Défense : bonus */}
+          {f({ label: "Bonus DEF", top: 38.1, left: 87.2, width: 5.0, height: 2.0,
+            value: (character.bonusDefense ?? 0) >= 0 ? `+${character.bonusDefense ?? 0}` : `${character.bonusDefense ?? 0}`,
+            onChange: v => { const n = parseInt(v); onChange({ bonusDefense: isNaN(n) ? 0 : n }) },
+            align: "center", tooltipDesc: "Bonus de défense divers (armures magiques, sorts, etc.)" })}
+
+          {/* Défense : total */}
+          {(() => {
+            const defContribs = effects['DEF'] ?? []
+            const defFromVoies = sumStat(defContribs)
+            const defBase = 10 + DEX.mod + armorDef + shieldDef + (character.bonusDefense ?? 0)
+            const defLines = [
+              { label: 'Base', value: 10 },
+              { label: 'Mod. DEX', value: fmt(DEX.mod) },
+              { label: 'DEF armure', value: `+${armorDef}` },
+              { label: 'DEF bouclier', value: `+${shieldDef}` },
+              { label: 'Bonus DEF', value: fmt(character.bonusDefense ?? 0) },
+              ...groupContribs(defContribs),
+            ]
+            return f({ label: "DEF total", top: 38.1, left: 93.3, width: 5.0, height: 2.0,
+              value: String(defBase + defFromVoies),
+              onChange: () => {}, align: "center",
+              formula: { lines: defLines, total: defBase + defFromVoies } })
+          })()}
+
+          {/* Encombrement (section défense) */}
+          {f({ label: "Encombrement", top: 41.3, left: 77.3, width: 6.6, height: 2.0,
+            value: armorDef > 0 ? `${armorDef}` : '0',
+            onChange: () => {}, align: "center",
+            formula: { lines: character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).length > 0
+              ? character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).map(a => ({ label: a.nom, value: `+${a.def}` }))
+              : [{ label: 'Aucune armure équipée', value: '0' }],
+              total: armorDef } })}
+          {f({ label: "Enchantement", top: 41.2, left: 85.6, width: 8.1, height: 2.0,
+            value: String(enchantEnc),
+            onChange: v => { const n = parseInt(v); onChange({ enchantementEncombrement: isNaN(n) ? 0 : n }) },
+            align: "center", tooltipDesc: "Réduction d'encombrement par enchantement magique" })}
+          {f({ label: "Total encombrement", top: 41.1, left: 93.4, width: 5.0, height: 2.0,
+            value: String(totalEncombrement),
+            onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'DEF armure', value: armorDef },
+              { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
+            ], total: totalEncombrement } })}
+
+          {/* ATT contact */}
+          {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, align: "center" })}
+          {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT contact total",  top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'Niveau', value: niv },
+              { label: 'Mod. FOR', value: fmt(FOR.mod) },
+              { label: `Famille (${character.famille ?? '—'})`, value: fmt(famContact) },
+              ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
+              ...(malusArmesContact > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesContact}`, neg: true }] : []),
+              ...groupContribs(effects['ATT_CONTACT'] ?? []),
+            ], total: fmt(attContactTotal) } })}
+
+          {/* ATT distance */}
+          {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, align: "center" })}
+          {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT dist total",      top: 30.9, left: 68.3, width: 5.0, height: 2.0,
+            value: fmt(attDistTotal), onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'Niveau', value: niv },
+              { label: 'Mod. DEX', value: fmt(DEX.mod) },
+              { label: `Famille (${character.famille ?? '—'})`, value: fmt(famContact) },
+              { label: 'Encombrement ÷ 2', value: malusAtkDist > 0 ? `-${malusAtkDist}` : '0', neg: malusAtkDist > 0 },
+              ...(malusEquip     > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,     neg: true }] : []),
+              ...(malusArmesDist > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesDist}`, neg: true }] : []),
+            ], total: fmt(attDistTotal) } })}
+
+          {/* ATT magique */}
+          {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {},  align: "center" })}
+          {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT mag total",      top: 33.7, left: 68.3, width: 5.0, height: 2.0,
+            value: fmt(attMagTotal), onChange: () => {}, align: "center",
+            formula: { lines: [
+              { label: 'Niveau', value: niv },
+              { label: 'Mod. INT', value: fmt(INT.mod) },
+              { label: 'Mystiques', value: fmt(famMagique) },
+              { label: 'Encombrement', value: armorDef > 0 ? `-${armorDef}` : '0', neg: armorDef > 0 },
+              ...(malusEquip    > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,    neg: true }] : []),
+              ...(malusArmesMag > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesMag}`, neg: true }] : []),
+            ], total: fmt(attMagTotal) } })}
+
+          {/* Armes */}
+          {f({ label: "Arme 1",    top: 22.1, left: 85.7, width: 20.0, height: 2.0, value: character.arme1,   onChange: v => onChange({ arme1: v }) })}
+          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, align: "center",
+            formula: character.arme1 ? formulaArme(character.arme1) : undefined })}
+          {(calibrate || character.arme1) && (() => {
+            const e1 = character.arme1 ? findArmeEntry(character.arme1) : null
+            const modVal1 = e1?.mod === 'FOR' ? FOR.mod : e1?.mod === 'DEX' ? DEX.mod : null
+            const bonusContribs1 = character.arme1 ? dmArmeBonusContribs(character.arme1) : []
+            const bonus1 = sumStat(bonusContribs1)
+            const dm1base = e1 ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}` : character.dmArme1
+            const dm1 = bonus1 !== 0 ? `${dm1base} ${fmt(bonus1)}` : dm1base
+            const formula1 = e1 ? { lines: [
+              { label: 'Dés', value: e1.dm },
+              ...(modVal1 !== null ? [{ label: `Mod. ${e1.mod}`, value: fmt(modVal1) }] : []),
+              ...groupContribs(bonusContribs1),
+            ], total: dm1 } : undefined
+            return f({ label: "DM Arme 1", top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, align: "center", formula: formula1 })
+          })()}
+          {!calibrate && !character.arme1 && diceEffects['DM_MAINS_NUES'] && (() => {
+            const { diceStr } = diceEffects['DM_MAINS_NUES']
+            const forMod = getMod(FOR.valeur)
+            const dm = `${diceStr} ${forMod >= 0 ? '+' : ''}${forMod}`
+            return f({ label: "DM mains nues", top: 24.3, left: 91.4, width: 9.0, height: 2.0,
+              value: dm, onChange: () => {}, align: "center",
+              formula: { lines: [{ label: 'Dés', value: diceStr }, { label: 'Mod. FOR', value: fmt(forMod) }], total: dm } })
+          })()}
+          {f({ label: "Arme 2",    top: 29.3, left: 85.8, width: 19.9, height: 2.0, value: character.arme2,   onChange: v => onChange({ arme2: v }) })}
+          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, align: "center",
+            formula: character.arme2 ? formulaArme(character.arme2) : undefined })}
+          {(calibrate || character.arme2) && (() => {
+            const e2 = character.arme2 ? findArmeEntry(character.arme2) : null
+            const modVal2 = e2?.mod === 'FOR' ? FOR.mod : e2?.mod === 'DEX' ? DEX.mod : null
+            const bonusContribs2 = character.arme2 ? dmArmeBonusContribs(character.arme2) : []
+            const bonus2 = sumStat(bonusContribs2)
+            const dm2base = e2 ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}` : character.dmArme2
+            const dm2 = bonus2 !== 0 ? `${dm2base} ${fmt(bonus2)}` : dm2base
+            const formula2 = e2 ? { lines: [
+              { label: 'Dés', value: e2.dm },
+              ...(modVal2 !== null ? [{ label: `Mod. ${e2.mod}`, value: fmt(modVal2) }] : []),
+              ...groupContribs(bonusContribs2),
+            ], total: dm2 } : undefined
+            return f({ label: "DM Arme 2", top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, align: "center", formula: formula2 })
+          })()}
+
+          {/* PV / PM / PC */}
+          {(() => {
+            const pvContribs = effects['PV'] ?? []
+            const pvFromVoies = sumStat(pvContribs)
+            const pvLines: { label: string; value: string | number }[] = []
+            let pvBase: number
+            if (character.niveau1Base) {
+              pvLines.push({ label: `Niv.1 — ${character.deVie} + CON (${fmt(character.caracteristiques.CON.mod)})`, value: `+${character.niveau1Base.pvTotal}` })
+              pvBase = character.niveau1Base.pvTotal
+            } else {
+              pvLines.push({ label: `Dé de vie (${character.deVie})`, value: deVieFaces })
+              pvLines.push({ label: 'Mod. CON', value: fmt(CON.mod) })
+              pvBase = deVieFaces + CON.mod
+            }
+            if (character.pvHistorique) {
+              for (const e of character.pvHistorique) {
+                const detail = e.conMod !== 0 ? ` (${e.jet} ${e.conMod >= 0 ? '+' : '−'} ${Math.abs(e.conMod)} CON)` : ` (${e.jet})`
+                pvLines.push({ label: `Niv.${e.niveauDe}${detail}`, value: `+${e.total}` })
+                pvBase += e.total
+              }
+            }
+            pvLines.push(...groupContribs(pvContribs))
+            const pvTotal = pvBase + pvFromVoies
+            return f({ label: "PV total", top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, align: "center", active: activeStep === 4,
+              formula: { lines: pvLines, total: pvTotal } })
+          })()}
+          {f({ label: "PM", top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
+            formula: character.famille === 'mystiques'
+              ? { lines: [{ label: 'Niveau', value: niv }, { label: 'Mod. SAG', value: fmt(SAG.mod) }, { label: '× 2 (Mystiques)', value: '' }], total: pm }
+              : { lines: [{ label: 'Niveau', value: niv }, { label: 'Mod. SAG', value: fmt(SAG.mod) }], total: pm } })}
+          {f({ label: "PC", top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
+            formula: character.famille === 'aventuriers'
+              ? { lines: [{ label: 'Mod. CHA', value: fmt(CHA.mod) }, { label: 'Base', value: '+2' }, { label: 'Aventuriers', value: '+2' }], total: CHA.mod + 4 }
+              : { lines: [{ label: 'Mod. CHA', value: fmt(CHA.mod) }, { label: 'Base', value: '+2' }], total: CHA.mod + 2 } })}
+          {f({ label: "Dé de vie", top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie, onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4,
+            formula: { lines: [{ label: 'Combattants', value: 'd10' }, { label: 'Aventuriers', value: 'd8' }, { label: 'Mystiques', value: 'd6' }], total: character.deVie } })}
+        </>
+      })()}
 
       {/* === POINTS DE RÉCUPÉRATION === */}
       {PR_CHECKBOXES.map(({ nom }, idx) => {
@@ -268,8 +744,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             >
               {character.prUtilises[idx] && (
                 <svg viewBox="0 0 14 11" style={{ width: '100%', height: '100%' }} overflow="visible">
-                  <polyline points="1,5.5 5,9.5 13,1" fill="none" stroke="#c9a84c"
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="2" y1="1" x2="12" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="1" x2="2" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               )}
             </div>
@@ -304,11 +780,40 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
       {/* Trait de peuple */}
       {f({ label: "Trait peuple", top: 61.1, left: 25.7, width: 16.5, height: 2.0, value: character.traitPeuple, onChange: v => onChange({ traitPeuple: v }), active: activeStep === 1 })}
+      <DraggableTextarea
+        top={65.2} left={19.3} width={29.3} height={5.6}
+        value={character.traitPeupleDesc}
+        onChange={v => onChange({ traitPeupleDesc: v })}
+        calibrate={calibrate} label="Trait peuple desc"
+        containerRef={containerRef} onMoved={cb}
+        lineHeightPct={1.3} paddingTopPct={0.15}
+        autoShrink
+      />
+      {(() => {
+        const trait = findTrait(character.peuple, character.culture)
+        if (!trait) return null
+        return (
+          <div style={{ position: 'absolute', top: '61.1%', left: '25.7%', width: '16.5%', height: '2%',
+            transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
+            onMouseEnter={e => {
+              const rect = containerRef.current?.getBoundingClientRect()
+              if (!rect) return
+              setTooltip({ nom: trait.nom, desc: trait.desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+            }}
+            onMouseMove={e => {
+              const rect = containerRef.current?.getBoundingClientRect()
+              if (!rect) return
+              setTooltip(prev => prev ? { ...prev, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 } : null)
+            }}
+            onMouseLeave={() => setTooltip(null)}
+          />
+        )
+      })()}
 
       {/* === NOMS DES CAPACITÉS + ZONES HOVER === */}
       {VOIE_RANG_CHECKBOXES.map(({ id, voie, rang }) => {
         const nomVoie = (character[voie] as VoiePersonnage).nom
-        const nomCap = (CAPACITES as Record<string, string[]>)[nomVoie]?.[rang] ?? ''
+        const nomCap = (DESCRIPTIONS as Record<string, { nom: string; desc: string }[]>)[nomVoie]?.[rang]?.nom || ''
         const desc = (DESCRIPTIONS as Record<string, { nom: string; desc: string }[]>)[nomVoie]?.[rang]?.desc ?? ''
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
         return (
@@ -340,44 +845,94 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       })}
 
       {/* === TOOLTIP DESCRIPTION === */}
-      {tooltip && (
+      {activeTooltip && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(tooltip.x, 70)}%`,
-          top: `${tooltip.y + 1.5}%`,
+          ...(activeTooltip.x > 65
+            ? { right: `${100 - activeTooltip.x}%` }
+            : { left: `${activeTooltip.x + 1}%` }),
+          ...(activeTooltip.y > 72
+            ? { bottom: `${100 - activeTooltip.y + 1.5}%` }
+            : { top: `${activeTooltip.y + 1.5}%` }),
           maxWidth: '28%',
           background: 'rgba(20,15,8,0.97)',
           color: '#e8dfc0',
           border: '1px solid #c9a84c',
           borderRadius: 4,
-          padding: '6px 8px',
-          fontSize: '0.62em',
-          lineHeight: 1.4,
+          padding: '8px 10px',
+          fontSize: '1em',
+          lineHeight: 1.5,
           zIndex: 100,
           pointerEvents: 'none',
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
-          <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 3, fontSize: '0.95em' }}>{tooltip.nom}</div>
-          <div>{tooltip.desc}</div>
+          <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
+          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character)}</div>}
+          {activeTooltip.lines && (
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <tbody>
+                {activeTooltip.lines.map((line, i) => {
+                  const isNeg = line.neg
+                  const val = String(line.value)
+                  const isPos = !isNeg && (val.startsWith('+') || (Number(val) > 0))
+                  const color = isNeg ? '#c97a4c' : isPos ? '#7fb87f' : 'rgba(232,223,192,0.75)'
+                  return (
+                    <tr key={i}>
+                      <td style={{ paddingRight: 14, paddingBottom: 3, color: 'rgba(232,223,192,0.6)', fontSize: '0.95em' }}>{line.label}</td>
+                      <td style={{ textAlign: 'right', paddingBottom: 3, color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{val}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ borderTop: '1px solid rgba(201,168,76,0.35)' }}>
+                  <td style={{ paddingTop: 4, color: '#c9a84c', fontWeight: 700 }}>Total</td>
+                  <td style={{ paddingTop: 4, textAlign: 'right', color: '#c9a84c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{String(activeTooltip.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
         </div>
       )}
 
       {/* === RANGS DES VOIES === */}
       {VOIE_RANG_CHECKBOXES.map(({ id, voie, rang }) => {
         const { top, left } = voieRangPos[id]
-        const acquis = (character[voie] as VoiePersonnage).rangs[rang]
+        const voieData = character[voie] as VoiePersonnage
+        const acquis = voieData.rangs[rang]
+        const disabled = !voieData.nom
+        const cout = coutRangPourVoie(voie, rang)
+        const sequentialBlocked = !acquis && rang > 0 && !voieData.rangs[rang - 1]
+        const pointsBlocked = !acquis && !sequentialBlocked && ptsDisponibles < cout
+        const blocked = sequentialBlocked || pointsBlocked
+        const showRangTooltip = !calibrate && !disabled && (blocked || ptsDisponibles !== 0)
         return (
           <div key={id}>
-            <div onClick={() => toggleVoieRang(voie, rang)} style={{
+            <div
+              onClick={() => toggleVoieRang(voie, rang)}
+              {...(showRangTooltip && {
+                onMouseEnter: e => {
+                  const rect = containerRef.current?.getBoundingClientRect()
+                  if (!rect) return
+                  setHoveredRangInfo({ voie, rang, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                },
+                onMouseMove: e => {
+                  const rect = containerRef.current?.getBoundingClientRect()
+                  if (!rect) return
+                  setHoveredRangInfo(prev => prev ? { ...prev, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 } : null)
+                },
+                onMouseLeave: () => setHoveredRangInfo(null),
+              })}
+              style={{
               position: 'absolute', top: `${top}%`, left: `${left}%`,
               width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
-              cursor: calibrate ? 'default' : 'pointer',
+              cursor: calibrate || disabled ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {acquis && (
                 <svg viewBox="0 0 14 11" style={{ width: '100%', height: '100%' }} overflow="visible">
-                  <polyline points="1,5.5 5,9.5 13,1" fill="none" stroke="#c9a84c"
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="2" y1="1" x2="12" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="1" x2="2" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               )}
             </div>
@@ -399,8 +954,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       })}
 
       {/* === VOIES === */}
-      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: character.voiePeuple.nom,     onChange: v => setVoieNom('voiePeuple', v),     active: activeStep === 1 })}
-      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: character.voieCulturelle.nom, onChange: v => setVoieNom('voieCulturelle', v), active: activeStep === 1 })}
+      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: character.peuple,   onChange: () => {}, active: activeStep === 1 })}
+      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: character.culture, onChange: () => {}, active: activeStep === 1 })}
       {f({ label: "Voie 1", top: 70.2, left: 22.2, width: 23.3, height: 2.0, value: character.voie1.nom, onChange: v => setVoieNom('voie1', v), active: activeStep === 3 })}
       {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: character.voie2.nom, onChange: v => setVoieNom('voie2', v), active: activeStep === 3 })}
       {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: character.voie3.nom, onChange: v => setVoieNom('voie3', v), active: activeStep === 3 })}

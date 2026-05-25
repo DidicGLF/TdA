@@ -17,11 +17,25 @@ export interface VoiePersonnage {
   rangs: boolean[] // index 0 = rang 1, ..., index 4 = rang 5
 }
 
+export interface TraitMagique {
+  nom: string
+  desc: string
+}
+
 export interface Arme {
   nom: string
   attaque: string
   special: string
   dm: string
+  prix?: string
+  portee?: string
+}
+
+export interface ArmureEquipee {
+  nom: string
+  def: number
+  prix: string
+  equipe?: boolean
 }
 
 export interface Character {
@@ -46,6 +60,7 @@ export interface Character {
   // Scores dérivés (calculés)
   initiative: number
   defense: number
+  bonusDefense: number
   pvTotal: number
   pvRestants: number
   pr: number
@@ -55,12 +70,18 @@ export interface Character {
   deVie: string
   encombrement: number
   malusEncombrement: number
+  enchantementEncombrement: number
 
   // Attaques
   attaqueContact: number
   attaqueDistance: number
   attaqueMagique: number
+  arme1: string
+  arme2: string
+  dmArme1: string
+  dmArme2: string
   armes: Arme[]
+  armuresEquipees: ArmureEquipee[]
 
   // Voies
   voiePeuple: VoiePersonnage
@@ -73,7 +94,8 @@ export interface Character {
 
   // Traits & talents
   traitPeuple: string
-  talentMagique: string
+  traitPeupleDesc: string
+  talentMagique: TraitMagique
   formationsMartiales: string[]
   capacitesSupplementaires: string
 
@@ -81,6 +103,23 @@ export interface Character {
   description: string
   inventaire: string
   tresorerie: string
+  portrait: string
+  portraitScale: number
+  portraitTx: number
+  portraitTy: number
+  portraitFit: 'cover' | 'contain'
+
+  // Snapshot du niveau 1 (capturé lors du premier level-up)
+  niveau1Base?: {
+    pvTotal: number
+    pm: number
+    attaqueContact: number
+    attaqueDistance: number
+    attaqueMagique: number
+  }
+
+  // Historique des gains de PV par passage de niveau
+  pvHistorique?: { niveauDe: number; niveauA: number; jet: number; conMod: number; total: number }[]
 }
 
 export const defaultCharacter = (): Character => ({
@@ -108,6 +147,7 @@ export const defaultCharacter = (): Character => ({
 
   initiative: 0,
   defense: 10,
+  bonusDefense: 0,
   pvTotal: 0,
   pvRestants: 0,
   pr: 0,
@@ -117,11 +157,17 @@ export const defaultCharacter = (): Character => ({
   deVie: 'd8',
   encombrement: 0,
   malusEncombrement: 0,
+  enchantementEncombrement: 0,
 
   attaqueContact: 0,
   attaqueDistance: 0,
   attaqueMagique: 0,
+  arme1: '',
+  arme2: '',
+  dmArme1: '',
+  dmArme2: '',
   armes: [],
+  armuresEquipees: [],
 
   voiePeuple: { nom: '', rangs: [false, false, false, false, false] },
   voieCulturelle: { nom: '', rangs: [false, false, false, false, false] },
@@ -132,24 +178,21 @@ export const defaultCharacter = (): Character => ({
   voieSangMele: { nom: '', rangs: [false, false, false, false, false] },
 
   traitPeuple: '',
-  talentMagique: '',
+  traitPeupleDesc: '',
+  talentMagique: { nom: '', desc: '' },
   formationsMartiales: ['Armes de paysan (gratuit)'],
   capacitesSupplementaires: '',
 
   description: '',
-  inventaire: '',
-  tresorerie: '',
+  inventaire: 'une couverture, une torche, un briquet en silex, une outre, une gamelle',
+  tresorerie: '5 pièces d\'or',
+  portrait: '',
+  portraitScale: 1,
+  portraitTx: 0,
+  portraitTy: 0,
+  portraitFit: 'cover',
 })
 
 export function getMod(valeur: number): number {
-  if (valeur <= 3) return -4
-  if (valeur <= 5) return -3
-  if (valeur <= 7) return -2
-  if (valeur <= 9) return -1
-  if (valeur <= 11) return 0
-  if (valeur <= 13) return 1
-  if (valeur <= 15) return 2
-  if (valeur <= 17) return 3
-  if (valeur <= 19) return 4
-  return 5
+  return Math.max(-4, Math.floor((valeur - 10) / 2))
 }

@@ -13,11 +13,14 @@ interface Props {
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number, height?: number) => void
+  lineHeightPct?: number
+  paddingTopPct?: number
+  autoShrink?: boolean
 }
 
 export default function DraggableTextarea({
   top, left, width: initWidth, height: initHeight, value, onChange,
-  calibrate, label, containerRef, onMoved,
+  calibrate, label, containerRef, onMoved, lineHeightPct, paddingTopPct, autoShrink,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
@@ -100,6 +103,8 @@ export default function DraggableTextarea({
       <SheetTextarea
         top={pos.top} left={pos.left} width={width} height={height}
         value={value} onChange={onChange} calibrate={calibrate}
+        containerRef={containerRef} lineHeightPct={lineHeightPct} paddingTopPct={paddingTopPct}
+        autoShrink={autoShrink}
       />
       {calibrate && (
         <div

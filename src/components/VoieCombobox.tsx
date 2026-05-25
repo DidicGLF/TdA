@@ -45,18 +45,22 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
       <input
         type="text"
         value={query}
-        placeholder={placeholder}
-        onFocus={() => setOpen(true)}
+        placeholder={open && !query && value ? value : placeholder}
+        onFocus={() => {
+          setQuery('')
+          setOpen(true)
+        }}
         onChange={e => {
           setQuery(e.target.value)
-          onChange(e.target.value)
           setOpen(true)
         }}
         onBlur={() => {
-          // slight delay so click on option fires first
-          setTimeout(() => setOpen(false), 150)
+          setTimeout(() => {
+            setOpen(false)
+            setQuery(value)
+          }, 150)
         }}
-        className="w-full border rounded px-3 py-1.5 text-sm"
+        className="w-full border rounded px-3 py-1.5 text-base"
         style={{
           background: 'rgba(15,12,8,0.92)',
           borderColor: open ? 'rgba(201,168,76,0.8)' : 'rgba(201,168,76,0.35)',
@@ -84,7 +88,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
             <>
               <div style={{
                 padding: '4px 10px',
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
                 color: 'rgba(201,168,76,0.5)',
@@ -101,7 +105,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
             <>
               <div style={{
                 padding: '4px 10px',
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
                 color: 'rgba(201,168,76,0.5)',
@@ -125,13 +129,13 @@ function OptionRow({ entry, chosen, onSelect }: { entry: VoieEntry; chosen: bool
   const [hovered, setHovered] = useState(false)
   return (
     <div
-      onMouseDown={() => onSelect(entry.nom)}
+      onMouseDown={() => { if (!chosen) onSelect(entry.nom) }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '6px 12px',
-        fontSize: 13,
-        cursor: 'pointer',
+        fontSize: 15,
+        cursor: chosen ? 'default' : 'pointer',
         color: chosen ? 'rgba(245,236,215,0.4)' : 'var(--tdr-parchment)',
         background: hovered ? 'rgba(201,168,76,0.12)' : 'transparent',
         display: 'flex',
@@ -142,7 +146,7 @@ function OptionRow({ entry, chosen, onSelect }: { entry: VoieEntry; chosen: bool
     >
       <span>{entry.nom}</span>
       {chosen && (
-        <span style={{ fontSize: 10, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>déjà choisie</span>
+        <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>déjà choisie</span>
       )}
     </div>
   )

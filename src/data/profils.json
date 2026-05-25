@@ -1,0 +1,391 @@
+[
+  {
+    "famille": "Combattants",
+    "profils": [
+      {
+        "nom": "Archer/archère",
+        "peuplePrivilégie": "Gobelin",
+        "voies": ["archerie", "bravoure", "maîtrise des armes"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre", "Armes de trait"],
+        "description": "Combattante spécialisée dans l'usage de l'arc, l'archère est capable de dispenser la mort à distance et d'achever les adversaires qui auraient le malheur de la provoquer au corps-à-corps. Les escouades d'archères gobelines sont réputées pour leur efficacité et les ravages qu'elles peuvent causer."
+      },
+      {
+        "nom": "Barbare",
+        "peuplePrivilégie": "Humain des ruines nordiques",
+        "voies": ["bravoure", "férocité", "puissance"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre", "Armes de guerre lourdes"],
+        "description": "Le barbare est un guerrier qui affronte la mort avec courage, mu par une soif inaltérable de gloire et de renommée. Jugé rustre par les populations plus civilisées, il impressionne par son stoïcisme et sa robustesse."
+      },
+      {
+        "nom": "Castagneur/castagneuse",
+        "peuplePrivilégie": "Humain des Terres orientales",
+        "voies": ["bravoure", "fourberie", "pugilat"],
+        "formationsMartiales": ["Armures légères", "Armes de jet", "Armes de tir"],
+        "description": "Pour la castagneuse, la force de ses poings est capable de venir à bout de tous les problèmes et de toutes les situations. En cas d'échec, c'est qu'elle n'a pas frappé assez fort. Le plus important est d'être toujours debout à la fin."
+      },
+      {
+        "nom": "Exécuteur/exécutrice",
+        "peuplePrivilégie": "Elfe noir",
+        "voies": ["combat à deux armes", "guerre", "maîtrise des armes"],
+        "formationsMartiales": ["Armures lourdes", "Armes de duel", "Armes de guerre"],
+        "description": "L'exécuteur maîtrise les lames avec brio, que ce soit les dagues, les épées ou les rapières. Bien que moins représenté que les assassins au sein des Elfes noirs en raison de son manque de discrétion, il n'en reste pas moins extrêmement dangereux et d'une grande aide face aux menaces les plus brutales."
+      },
+      {
+        "nom": "Forgeron/forgeronne",
+        "peuplePrivilégie": "Nain de l'ordre de la Forge",
+        "voies": ["guerre", "magie runique", "puissance"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de guerre lourdes"],
+        "description": "Plus qu'un art, le travail du métal est un véritable mode de vie pour la forgeronne. Ne se sentant jamais mieux que dans la chaleur étouffante de sa forge ou dans les arènes à éprouver le fruit de son œuvre, elle est respectée partout où la guerre se fait par les armes."
+      },
+      {
+        "nom": "Garde des sceaux",
+        "peuplePrivilégie": "Nain de l'ordre du Temple",
+        "voies": ["arbalètrie", "combat à deux armes", "guerre"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre", "Armes de tir"],
+        "description": "Le garde des sceaux est le bras armé du peuple, celui que l'on envoie contrer les menaces ésotériques lorsque la force est le seul remède."
+      },
+      {
+        "nom": "Garde du corps/gardienne du corps",
+        "peuplePrivilégie": "Nain de l'ordre du Talion",
+        "voies": ["bastion", "maîtrise des armes", "puissance"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de tir"],
+        "description": "Les gardes du corps existent dans la majorité des communautés plus ou moins civilisées des Terres d'Arran sans pour autant toujours recevoir ce titre. C'est ainsi que l'on entend parler de bras droit, femme de confiance, premier bouclier, etc. Dans tous les cas, il s'agit d'individus rares et précieux auxquels les puissants du monde confient leur vie."
+      },
+      {
+        "nom": "Guerrier tribal/guerrière tribale",
+        "peuplePrivilégie": "Orc",
+        "voies": ["bastion", "férocité", "guerre"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre", "Armes de guerre lourdes"],
+        "description": "Le guerrier tribal est un combattant primitif, proche de ses instincts. Véritable force de la nature que rien ne peut arrêter, il suit généralement un code propre à celui de son clan ou de sa tribu, que ce soit le respect de lois ancestrales ou un culte voué à un dieu païen."
+      },
+      {
+        "nom": "Mercenaire",
+        "peuplePrivilégie": "Semi-Elfe",
+        "voies": ["archerie", "combat à deux armes", "maîtrise des armes"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre", "Armes de trait"],
+        "description": "La mercenaire est une combattante qui loue ses talents martiaux contre quelques pièces d'or. Polyvalente, elle a développé de nombreux styles de combat pour s'adapter au mieux au danger."
+      },
+      {
+        "nom": "Milicien/milicienne",
+        "peuplePrivilégie": "Humain des cités du Mitan",
+        "voies": ["arbalètrie", "commandement", "maîtrise des armes"],
+        "formationsMartiales": ["Armures lourdes", "Armes de tir", "Armes de guerre"],
+        "description": "Combattant d'élite capable de défendre les positions retranchées des plus hauts remparts ou de semer la mort depuis les ponts des navires."
+      },
+      {
+        "nom": "Monteur/monteuse de cochon",
+        "peuplePrivilégie": "Nain de l'ordre des Errants",
+        "voies": ["bravoure", "combat monté", "guerre"],
+        "formationsMartiales": ["Armures légères", "Armes d'hast", "Armes de jet"],
+        "description": "Parcourant les plaines à dos de cochon de combat, la monteuse est une farouche combattante capable de prouesses admirables à en faire rougir d'humilité les cavaliers les plus prestigieux."
+      },
+      {
+        "nom": "Noble",
+        "peuplePrivilégie": "Elfe blanc",
+        "voies": ["combat monté", "commandement", "guerre"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre lourdes", "Armes d'hast"],
+        "description": "Le noble est un aristocrate, membre de la caste dirigeante de son peuple, aussi prompt à commander depuis la cours d'un château que sur le champ de bataille."
+      },
+      {
+        "nom": "Porte-bouclier",
+        "peuplePrivilégie": "Nain de l'ordre du Bouclier",
+        "voies": ["bastion", "bravoure", "commandement"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de guerre lourdes"],
+        "description": "Le porte-bouclier est un titre qui désigne traditionnellement les guerriers nains chargés de défendre les frontières des cités-forteresses. Lourdement armés, ils gardent la ligne de front et ne reculent devant rien."
+      },
+      {
+        "nom": "Protecteur/protectrice",
+        "peuplePrivilégie": "Elfe bleu",
+        "voies": ["acrobatie", "combat à deux armes", "guerre"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de trait"],
+        "description": "La protectrice est une combattante chargée de protéger les cités elfiques. Première ligne de défense contre les menaces, agent de la loi, protecteur de la veuve et de l'orphelin, elle se doit d'être exemplaire en toutes circonstances."
+      },
+      {
+        "nom": "Rôdeur/rôdeuse",
+        "peuplePrivilégie": "Elfe sylvain",
+        "voies": ["chasse", "combat à deux armes", "maîtrise des armes"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de jet"],
+        "description": "La rôdeuse est une combattante calme et méthodique, proche de la nature et capable de bénéficier de ses bienfaits. Elle traque également tout ennemi ou proie ayant mérité son courroux."
+      },
+      {
+        "nom": "Sanguinaire",
+        "peuplePrivilégie": "Ogre",
+        "voies": ["férocité", "guerre", "puissance"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre lourdes", "Armes de jet"],
+        "description": "Le sanguinaire n'est que violence, rage et puissance à l'état brut. Souvent présent au sein des cultures primitives, il peut également incarner un mode de vie volontaire et assumé par les combattants ayant décidé de mobiliser leurs instincts comme des armes plutôt qu'un fardeau."
+      },
+      {
+        "nom": "Soldat/soldate",
+        "peuplePrivilégie": "Humain des empires austraux",
+        "voies": ["bastion", "guerre", "maîtrise des armes"],
+        "formationsMartiales": ["Armures lourdes", "Armes de guerre", "Armes de guerre lourdes"],
+        "description": "Toujours l'arme au poing, la soldate est une combattante qui a fait de la guerre son gagne-pain. Que ce soit pour défendre une ville, un pays ou un idéal, c'est sur le champ de bataille qu'elle se sent dans son élément."
+      }
+    ]
+  },
+  {
+    "famille": "Aventuriers",
+    "profils": [
+      {
+        "nom": "Apothicaire",
+        "peuplePrivilégie": "Nain de l'ordre de la Forge",
+        "voies": ["alchimie", "arbalètrie", "bravoure"],
+        "formationsMartiales": ["Armures légères", "Armes de tir"],
+        "description": "Également appelé guérisseur, médecin ou charlatan au sein des divers peuples d'Arran, l'apothicaire utilise la science ou les traditions pour produire médicaments et décoctions en vue de guérir les maux du corps. Il a également développé des notions de combat pour se défendre des mauvais payeurs."
+      },
+      {
+        "nom": "Assassin/assassine",
+        "peuplePrivilégie": "Elfe noir",
+        "voies": ["assassinat", "escrime", "fourberie"],
+        "formationsMartiales": ["Armures légères", "Armes de duel"],
+        "description": "La pénombre est la compagne funèbre de l'assassine. Elle n'accepte de la quitter qu'une fraction de seconde, le temps de porter un coup fatal à sa cible avant de disparaître de nouveau. Experte dans l'art du crochetage, rares sont les portes capables de l'empêcher d'arriver à ses fins."
+      },
+      {
+        "nom": "Chasseur/chasseuse",
+        "peuplePrivilégie": "Orc",
+        "voies": ["archerie", "chasse", "guerre"],
+        "formationsMartiales": ["Armures légères", "Armes de trait"],
+        "description": "Le chasseur est un élément vital à la plupart des communautés tribales et rurales des Terres d'Arran. Chargé de traquer le gibier pour nourrir les siens, il n'est pas rare qu'il se retrouve à protéger la communauté face à des périls plus grands. On jauge sa valeur à la taille ou la dangerosité de ses proies."
+      },
+      {
+        "nom": "Courtisan/courtisane",
+        "peuplePrivilégie": "Humain des cités du Mitan",
+        "voies": ["bohème", "charme", "escrime"],
+        "formationsMartiales": ["Armures légères", "Armes de duel"],
+        "description": "Experte dans l'art du langage, de la diplomatie et des faux-semblants, la courtisane évolue dans les hautes sphères des cités les plus civilisées des Terres d'Arran. Ses sourires sont aussi mortels que la pointe de sa rapière."
+      },
+      {
+        "nom": "Éclaireur/éclaireuse",
+        "peuplePrivilégie": "Nain de l'ordre du Bouclier",
+        "voies": ["archerie", "chasse", "combat monté"],
+        "formationsMartiales": ["Armures légères", "Armes de trait"],
+        "description": "Bien qu'opérant en général au sein d'une armée ou d'un groupe de mercenaires, l'éclaireur accomplit ses missions en solitaire : chargé de la tâche périlleuse consistant à anticiper les dangers et à dresser l'état des lieux des forces en présence, la responsabilité d'une victoire éclatante ou d'une défaite implacable repose souvent sur ses épaules."
+      },
+      {
+        "nom": "Escroc",
+        "peuplePrivilégie": "Humain des Terres orientales",
+        "voies": ["assassinat", "charme", "escrime"],
+        "formationsMartiales": ["Armures légères", "Armes de duel"],
+        "description": "Évoluant dans les bas-fonds des cités, l'escroc utilise son bagout et son charme pour se sortir des guêpiers dans lesquels elle finit inlassablement par replonger, toujours à l'affût de l'affaire du siècle qui lui permettra de s'extraire enfin un jour de sa condition."
+      },
+      {
+        "nom": "Explorateur/exploratrice",
+        "peuplePrivilégie": "Humain des empires austraux",
+        "voies": ["bohème", "compagnon animal", "fourberie"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre"],
+        "description": "Parcourant le monde pour étudier les mystères des Terres d'Arran ou établir de nouvelles cartographies, l'explorateur est un aventurier itinérant débrouillard et astucieux, capable de se sortir de bien des situations."
+      },
+      {
+        "nom": "Forestier/forestière",
+        "peuplePrivilégie": "Elfe sylvain",
+        "voies": ["archerie", "arts druidiques", "compagnon animal"],
+        "formationsMartiales": ["Armures légères", "Armes de trait"],
+        "description": "Parcourant les forêts et les paysages naturels des Terres d'Arran comme si elle en connaissait les moindres sentiers, la forestière vit en harmonie avec le monde sauvage. Protectrice de la nature, elle ne se sent dans son élément qu'avec le ciel pour seul toit."
+      },
+      {
+        "nom": "Ingénieur/ingénieure",
+        "peuplePrivilégie": "Nain de l'ordre du Temple",
+        "voies": ["arbalètrie", "maîtrise des armes", "magie runique"],
+        "formationsMartiales": ["Armures légères", "Armes de tir"],
+        "description": "L'ingénieur utilise ses connaissances pour faire chaque jour de nouvelles découvertes scientifiques, améliorer la vie de ses congénères ou réaliser l'impossible. Les esprits chagrins clament qu'ils aiment jouer avec des forces qui le dépassent, ce qui n'est pas forcément inexact..."
+      },
+      {
+        "nom": "Marchand/marchande",
+        "peuplePrivilégie": "Nain de l'ordre du Talion",
+        "voies": ["bohème", "charme", "fourberie"],
+        "formationsMartiales": ["Armures légères", "Armes de tir"],
+        "description": "L'art du commerce est ancestral mais n'a jamais été aussi influent et déterminant qu'aujourd'hui. Des guerres éclatent pour ouvrir des routes commerciales tandis que les royaumes ont besoin de fonds pour entretenir leurs armées. La cheville ouvrière essentielle de toute l'économie est la marchande."
+      },
+      {
+        "nom": "Marin",
+        "peuplePrivilégie": "Elfe bleu",
+        "voies": ["acrobatie", "archerie", "pugilat"],
+        "formationsMartiales": ["Armures légères", "Armes de trait"],
+        "description": "Ayant fait de la mer son foyer et des embruns son parfum, le marin passe l'essentiel de sa vie sur les flots. Il ne reste jamais bien longtemps sur la terre ferme et retourne rapidement vers les océans, que ce soit à bord d'un navire marchand, d'un bateau de pêche ou d'un bâtiment militaire."
+      },
+      {
+        "nom": "Pirate",
+        "peuplePrivilégie": "Humain des ruines nordiques",
+        "voies": ["acrobatie", "arbalètrie", "férocité"],
+        "formationsMartiales": ["Armes de guerre", "Armes de tir"],
+        "description": "Voguant sur les océans à la recherche d'aventures, de terres sauvages à explorer, de ruines oubliées ou de navires marchands à piller, le pirate est un combattant qui n'aspire qu'à la liberté. Il s'affranchit des contraintes et vit chaque jour comme si c'était le dernier."
+      },
+      {
+        "nom": "Pisteur/pisteuse",
+        "peuplePrivilégie": "Elfe blanc",
+        "voies": ["bohème", "chasse", "maîtrise des armes"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre"],
+        "description": "Les pisteuses sont des combattantes choisies par les Elfes blancs pour parcourir le monde, recueillir des reliques et sauvegarder les héritages menacés de disparition des Terres d'Arran. À la fois voyageuses, exploratrices et guerrières, elles jouissent d'un statut prestigieux au sein de leur communauté."
+      },
+      {
+        "nom": "Porte-étendard",
+        "peuplePrivilégie": "Ogre",
+        "voies": ["arts druidiques", "chasse", "commandement"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre"],
+        "description": "La porte-étendard (ou porte-bannière) est un soutien singulier au milieu du champ de bataille. Haranguant les troupes, elle gonfle les cœurs et peut inverser le cours d'un combat. Au sein des tribus ogres, la porte-étendard est même initiée à certains rites mystiques pour inciter les forces naturelles à servir sa cause."
+      },
+      {
+        "nom": "Trappeur/trappeuse",
+        "peuplePrivilégie": "Nain de l'ordre des Errants",
+        "voies": ["chasse", "compagnon animal", "fourberie"],
+        "formationsMartiales": ["Armures légères", "Armes de guerre"],
+        "description": "Le trappeur est un chasseur spécialisé dans la pose et le désamorçage des pièges. Utile à toutes les communautés rurales, il n'est pas rare que les milices ou groupes de mercenaires fassent appel à ses talents pour renforcer les défenses d'un site à protéger ou s'assurer qu'aucun mécanisme mortel ne provoque des pertes inutiles."
+      },
+      {
+        "nom": "Voleur/voleuse",
+        "peuplePrivilégie": "Gobelin",
+        "voies": ["acrobatie", "escrime", "fourberie"],
+        "formationsMartiales": ["Armures légères", "Armes de duel"],
+        "description": "La voleuse se faufile dans les ombres ou dans les foules pour s'approprier les biens d'autrui, que ce soit pour son propre compte ou celui d'une tierce personne. Elle est particulièrement à l'aise dans les cités cosmopolites où elle évolue comme un poisson dans l'eau."
+      },
+      {
+        "nom": "Voyageur/voyageuse",
+        "peuplePrivilégie": "Semi-Elfe",
+        "voies": ["archerie", "bohème", "escrime"],
+        "formationsMartiales": ["Armes de trait", "Armes de duel"],
+        "description": "Le voyageur arpente les Terres d'Arran, se nourrissant des rencontres et de la richesse ethnique du monde. S'il est capable d'embrasser des causes qui lui tiennent à cœur pendant un temps, il finira par reprendre la route une fois son devoir accompli, l'appel du voyage restant le plus fort."
+      }
+    ]
+  },
+  {
+    "famille": "Mystiques",
+    "profils": [
+      {
+        "nom": "Alchimiste",
+        "peuplePrivilégie": "Nain de l'ordre de la Forge",
+        "voies": ["alchimie", "magie runique", "sombres savoirs"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Lumières dansantes",
+        "description": "L'alchimiste — sous ses airs de savante folle ou d'hérétique — ne cherche qu'une seule chose : repousser les limites du possible et dompter les règles de la matière et de la vie. Pour le meilleur ou pour le pire."
+      },
+      {
+        "nom": "Ancien/ancienne",
+        "peuplePrivilégie": "Ogre",
+        "voies": ["forêts", "magie élémentaliste", "sombres savoirs"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Détection de la magie",
+        "description": "« Ancien » ne désigne pas forcément une personne expérimentée ou âgée. C'est un titre transmis par un mystique à son apprenti en même temps que l'enseignement de traditions arcaniques séculaires. Si les anciens sont respectés pour la puissance de leurs pouvoirs, ils doivent également faire leurs preuves pour justifier leur statut au sein de leur tribu."
+      },
+      {
+        "nom": "Aumônier/aumônière",
+        "peuplePrivilégie": "Nain de l'ordre du Bouclier",
+        "voies": ["commandement", "magie élémentaliste", "sombres savoirs"],
+        "formationsMartiales": ["Armes de guerre lourdes"],
+        "talentMagique": "Inspiration",
+        "description": "L'aumônière est une mystique ayant fait le choix surprenant de combattre sur le champ de bataille. Soutenant ses alliés avec de complexes incantations, elle est également capable de foudroyer ses ennemis à l'aide des éléments. Les loges les plus obscures et inavouables ont recours à la magie du sang."
+      },
+      {
+        "nom": "Chaman",
+        "peuplePrivilégie": "Gobelin",
+        "voies": ["alchimie", "forêts", "pugilat"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Flamme",
+        "description": "La chaman utilise les forces occultes de la nature pour endurcir son corps et affronter les ennemis de son peuple sans craindre la mort. Suivant les préceptes d'une entité totémique, elle est aussi sage que féroce."
+      },
+      {
+        "nom": "Conseiller/conseillère",
+        "peuplePrivilégie": "Semi-Elfe",
+        "voies": ["bohème", "divination", "envoûtement"],
+        "formationsMartiales": ["Armes de jet"],
+        "talentMagique": "Inspiration",
+        "description": "Le conseiller est naturellement ouvert aux autres cultures et utilise ses connaissances et sa soif de rencontres pour lier les peuples et les individus. Diplomate, ambassadeur ou émissaire, ses discours sont capables d'éteindre des incendies ou de déclencher des guerres."
+      },
+      {
+        "nom": "Druide/druidesse",
+        "peuplePrivilégie": "Elfe sylvain",
+        "voies": ["arts druidiques", "compagnon animal", "forêts"],
+        "formationsMartiales": ["Armes de trait"],
+        "talentMagique": "Flamme",
+        "description": "La druidesse est une sage des forêts. Respectueuse de la nature, elle apporte conseil et soutien aux peuples pour maintenir l'équilibre de la vie, quitte à déchaîner une magie impétueuse sur quiconque viendrait à le menacer."
+      },
+      {
+        "nom": "Élémentaliste",
+        "peuplePrivilégie": "Elfe blanc",
+        "voies": ["escrime", "magie élémentaliste", "magie runique"],
+        "formationsMartiales": ["Armes de duel"],
+        "talentMagique": "Détection de la magie",
+        "description": "L'élémentaliste est un mystique raffiné, généralement un Elfe blanc, capable d'allier la puissance des magies élémentaires avec celle de l'acier raffiné des lames de duellistes."
+      },
+      {
+        "nom": "Ensorceleur/ensorceleuse",
+        "peuplePrivilégie": "Humain des Terres orientales",
+        "voies": ["charme", "envoûtement", "illusions"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Inspiration",
+        "description": "L'ensorceleuse mobilise son charme ainsi que des rituels magiques pour envoûter les gens et altérer leurs émotions, désamorcer des conflits ou rallier des individus à sa cause contre leur volonté. Elle dissimule souvent ses dons, par crainte du rejet qu'ils provoquent. Cela dit, on la retrouve fréquemment dans le premier cercle des puissants de ce monde."
+      },
+      {
+        "nom": "Ermite",
+        "peuplePrivilégie": "Humain des ruines nordiques",
+        "voies": ["divination", "illusions", "pugilat"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Lumières dansantes",
+        "description": "L'ermite est un étrange individu vivant seul et isolé du monde, souvent pour des motifs spirituels. Lorsque les événements l'exigent, il peut arriver qu'il quitte sa retraite pour rejoindre la civilisation et partager ses dons."
+      },
+      {
+        "nom": "Espion/espionne",
+        "peuplePrivilégie": "Nain de l'ordre du Talion",
+        "voies": ["alchimie", "fourberie", "illusions"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Projectile de force",
+        "description": "L'espionne vit de la revente d'informations sensibles. Au cœur des cours des plus grandes cités, dans des environnements plus mortels que le plus violent des champs de bataille, elle ne doit sa survie qu'à la finesse de son esprit et aux poids de ses contacts."
+      },
+      {
+        "nom": "Fauconnier/fauconnière",
+        "peuplePrivilégie": "Humain des cités du Mitan",
+        "voies": ["archerie", "arts druidiques", "mysticisme"],
+        "formationsMartiales": ["Armes de trait"],
+        "talentMagique": "Projectile de force",
+        "description": "Le fauconnier est un individu — généralement issu de la haute société des cités-États du Tarascon — ayant suivi un enseignement occulte pour tisser un lien particulier avec un oiseau de proie. Archer d'exception, il peut servir dans les milices ou armées locales à des postes d'officier ou simplement jouir de l'opulence des soirées mondaines auxquelles il est régulièrement convié."
+      },
+      {
+        "nom": "Mage",
+        "peuplePrivilégie": "Humain des empires austraux",
+        "voies": ["envoûtement", "illusions", "magie élémentaliste"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Détection de la magie",
+        "description": "La Mage voue sa vie à l'apprentissage et la maîtrise des forces surnaturelles qui régissent ce monde. Prise dans une lutte de chaque instant pour ne pas sombrer et laisser sa soif de puissance la consumer, elle inspire crainte et respect partout sur les Terres d'Arran."
+      },
+      {
+        "nom": "Nécromancien/nécromancienne",
+        "peuplePrivilégie": "Orc",
+        "voies": ["bravoure", "divination", "sombres savoirs"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Détection de la magie",
+        "description": "Rares sont les arts mystiques aussi répudiés que ceux en rapport avec la mort. C'est pourtant vers cette discipline que s'est tourné le nécromancien, pour des raisons qui n'appartiennent qu'à lui, le condamnant à une vie solitaire de paria."
+      },
+      {
+        "nom": "Ombre-lame",
+        "peuplePrivilégie": "Elfe noir",
+        "voies": ["assassinat", "envoûtement", "sombres savoirs"],
+        "formationsMartiales": ["Armes de duel"],
+        "talentMagique": "Détection de la magie",
+        "description": "L'ombre-lame serait une assassine qui utiliserait la magie pour parvenir à ses fins. Personne n'a la preuve que cette caste existe vraiment et le fait qu'on dit que seuls les Elfes noirs suivent cette voie ne fait qu'épaissir les rumeurs à ce sujet."
+      },
+      {
+        "nom": "Pèlerin/pèlerine",
+        "peuplePrivilégie": "Nain de l'ordre des Errants",
+        "voies": ["combat monté", "illusions", "mysticisme"],
+        "formationsMartiales": ["Armes de tir"],
+        "talentMagique": "Lumières dansantes",
+        "description": "Le pèlerin erre sur les routes des Terres d'Arran en quête de spiritualité. Il est particulièrement commun dans l'empire nain où il voyage entre les campagnes et fermes des Errants pour apporter aide et réconfort."
+      },
+      {
+        "nom": "Prêtre/prêtresse",
+        "peuplePrivilégie": "Nain de l'ordre du Temple",
+        "voies": ["commandement", "divination", "mysticisme"],
+        "formationsMartiales": ["Armes de tir"],
+        "talentMagique": "Inspiration",
+        "description": "Œuvrant pour un culte, la prêtresse soulage les maux des communautés et rend la justice. Son statut social varie en fonction des civilisations mais elle est toujours respectée et écoutée."
+      },
+      {
+        "nom": "Prophète/prophétesse",
+        "peuplePrivilégie": "Elfe bleu",
+        "voies": ["divination", "envoûtement", "mysticisme"],
+        "formationsMartiales": ["Armures légères"],
+        "talentMagique": "Détection de la magie",
+        "description": "Guide mystérieux, le prophète lit l'avenir dans le fil de l'eau, le chant de la terre ou la course des nuages. La plupart du temps, il utilise ses enseignements pour comprendre les événements mais, en de très rares exceptions, il peut rompre ses vœux pour tenter de changer l'avenir."
+      }
+    ]
+  }
+]

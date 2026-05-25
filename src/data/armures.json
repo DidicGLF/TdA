@@ -1,0 +1,60 @@
+{
+  "notes": "¹ Encombrantes, ces armures annulent le bonus de DEX à la DEF.\n² Fabriquée sur mesure, nécessite la capacité Armure lourde (voie du bastion) pour être portée.",
+  "categories": [
+    {
+      "categorie": "Armures légères",
+      "entrees": [
+        {
+          "nom": "Petit bouclier",
+          "def": 1,
+          "prix": "2 pa"
+        },
+        {
+          "nom": "Tissu matelassé",
+          "def": 1,
+          "prix": "2 pa"
+        },
+        {
+          "nom": "Armure de cuir",
+          "def": 2,
+          "prix": "4 pa"
+        },
+        {
+          "nom": "Armure de cuir renforcé",
+          "def": 3,
+          "prix": "8 pa"
+        }
+      ]
+    },
+    {
+      "categorie": "Armures lourdes",
+      "entrees": [
+        {
+          "nom": "Grand bouclier",
+          "def": 2,
+          "prix": "4 pa"
+        },
+        {
+          "nom": "Chemise de mailles",
+          "def": 4,
+          "prix": "15 pa"
+        },
+        {
+          "nom": "Cotte de mailles",
+          "def": 5,
+          "prix": "20 pa"
+        },
+        {
+          "nom": "Demi-plaque¹",
+          "def": 6,
+          "prix": "50 pa"
+        },
+        {
+          "nom": "Armure de plaques¹²",
+          "def": 7,
+          "prix": "200 pa"
+        }
+      ]
+    }
+  ]
+}

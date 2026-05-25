@@ -2,11 +2,19 @@
 
 @import "tailwindcss";
 
+/* Portrait hover hint */
+div:hover > .portrait-hover-hint { opacity: 1 !important; }
+div:hover > .portrait-tools { opacity: 1 !important; }
+
+/* Voie list delete button */
+.voie-list-item:hover .voie-delete-btn { opacity: 1 !important; }
+
 :root {
   --tdr-gold: #c9a84c;
   --tdr-dark: #1a1510;
   --tdr-parchment: #f5ecd7;
   --tdr-red: #8b1a1a;
+  --tdr-stat: #7ec8f0;
 }
 
 * {
@@ -89,11 +97,21 @@ body {
     page: tdr-verso;
   }
 
-  .print-page-recto img,
-  .print-page-verso img {
+  .sheet-bg {
     width: 210mm;
     height: 297mm;
     display: block;
   }
+
+  .tdr-field {
+    font-size: 12pt !important;
+    overflow: visible !important;
+  }
+
+  textarea.tdr-field {
+    overflow: hidden !important;
+  }
+
+
 
 }

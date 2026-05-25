@@ -9,6 +9,10 @@
         "modCaracs": {
           "CHA": 2,
           "FOR": -2
+        },
+        "trait": {
+          "nom": "Lumière des étoiles",
+          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -16,8 +20,12 @@
         "voiePeuple": "Voie du peuple elfe",
         "voieCulturelle": "Voie culturelle des Elfes sylvains",
         "modCaracs": {
-          "DEX": 2,
-          "CON": -2
+          "CHA": 2,
+          "FOR": -2
+        },
+        "trait": {
+          "nom": "Lumière des étoiles",
+          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -25,39 +33,37 @@
         "voiePeuple": "Voie du peuple elfe",
         "voieCulturelle": "Voie culturelle des Elfes blancs",
         "modCaracs": {
-          "SAG": 2,
+          "CHA": 2,
           "FOR": -2
+        },
+        "trait": {
+          "nom": "Lumière des étoiles",
+          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
+      },
+      {
+        "label": "Semi-Elfe",
+        "voiePeuple": "Voie du peuple Semi-Elfe",
+        "voieCulturelle": "Voie culturelle des Semi-Elfes",
+        "modCaracs": {}
       },
       {
         "label": "Elfe noir",
         "voiePeuple": "Voie du peuple elfe",
         "voieCulturelle": "Voie culturelle des Elfes noirs",
         "modCaracs": {
-          "INT": 2,
-          "CON": -2
+          "CHA": 2,
+          "FOR": -2
+        },
+        "trait": {
+          "nom": "Lumière des étoiles",
+          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
-      }
-    ]
-  },
-  {
-    "label": "Semi-Elfe",
-    "cultures": [
+      },
       {
-        "label": "Semi-Elfe",
-        "voiePeuple": "Voie du peuple Semi-Elfe",
-        "voieCulturelle": "Voie culturelle des Semi-Elfes",
-        "modCaracs": {}
-      }
-    ]
-  },
-  {
-    "label": "Sang-mêlé",
-    "cultures": [
-      {
-        "label": "Sang-mêlé",
-        "voiePeuple": "Voie de peuple (sang-mêlé)",
-        "voieCulturelle": "Voie culturelle (sang-mêlé)",
+        "label": "Elfe des sables",
+        "voiePeuple": "Voie du peuple elfe",
+        "voieCulturelle": "",
         "modCaracs": {}
       }
     ]
@@ -72,6 +78,10 @@
         "modCaracs": {
           "CON": 2,
           "DEX": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -81,6 +91,10 @@
         "modCaracs": {
           "CON": 2,
           "DEX": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -90,6 +104,10 @@
         "modCaracs": {
           "CON": 2,
           "DEX": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -99,6 +117,10 @@
         "modCaracs": {
           "CON": 2,
           "DEX": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -108,7 +130,23 @@
         "modCaracs": {
           "CON": 2,
           "DEX": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
+      },
+      {
+        "label": "Ordre du Malt",
+        "voiePeuple": "Voie du peuple nain",
+        "voieCulturelle": "",
+        "modCaracs": {}
+      },
+      {
+        "label": "Ordre de DIDIC",
+        "voiePeuple": "Voie de peuple des nains dee DIDIC",
+        "voieCulturelle": "Voie culturelle de DIDIC",
+        "modCaracs": {}
       }
     ]
   },
@@ -142,7 +180,7 @@
     ]
   },
   {
-    "label": "Peaux vertes",
+    "label": "Peau verte",
     "cultures": [
       {
         "label": "Orc",
@@ -150,7 +188,13 @@
         "voieCulturelle": "Voie culturelle des Orcs",
         "modCaracs": {
           "FOR": 2,
+          "CON": 2,
+          "INT": -2,
           "CHA": -2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener l'Orc à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -159,7 +203,13 @@
         "voieCulturelle": "Voie culturelle des Gobelins",
         "modCaracs": {
           "DEX": 2,
-          "FOR": -2
+          "INT": 2,
+          "FOR": -2,
+          "CON": -2
+        },
+        "trait": {
+          "nom": "Vision dans le noir",
+          "desc": "Dans le noir total, le Gobelin voit comme dans la pénombre à 30 m."
         }
       },
       {
@@ -167,9 +217,27 @@
         "voiePeuple": "Voie du peuple des Peaux vertes",
         "voieCulturelle": "Voie culturelle des Ogres",
         "modCaracs": {
-          "FOR": 4,
-          "INT": -2
+          "CON": 4,
+          "FOR": 2,
+          "DEX": -4,
+          "INT": -2,
+          "CHA": -2
+        },
+        "trait": {
+          "nom": "Endurant",
+          "desc": "Le maximum de PR de l'Ogre est de 6 – et non de 5 comme pour les autres races."
         }
+      }
+    ]
+  },
+  {
+    "label": "Sang-mêlé",
+    "cultures": [
+      {
+        "label": "Sang-mêlé",
+        "voiePeuple": "Voie de peuple (sang-mêlé)",
+        "voieCulturelle": "Voie culturelle (sang-mêlé)",
+        "modCaracs": {}
       }
     ]
   }

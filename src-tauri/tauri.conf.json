@@ -1,5 +1,5 @@
 {
-  "productName": "TdR",
+  "productName": "TdA",
   "version": "0.1.0",
   "identifier": "com.tdr.app",
   "build": {
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "TdR",
+        "title": "TdA",
         "width": 1440,
         "height": 900,
         "resizable": true

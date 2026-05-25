@@ -1,0 +1,277 @@
+{
+  "notes": "¹ Arme tenue à deux mains.\n² Critique sur 19 ou 20.\n³ Règles spéciales, voir ci-dessous.\n⁴ Score minimum en FOR requis : 12 pour l'arc long, 14 pour le composite.\n⁵ Nécessite une action limitée pour ajouter le Mod. de Carac. aux DM.\n⁶ Nécessite une action d'attaque pour être rechargée.\n⁷ Nécessite une action limitée pour être rechargée.\n* Nécessite une capacité pour être maîtrisée.",
+  "groupes": [
+    {
+      "groupe": "Armes au contact",
+      "categories": [
+        {
+          "categorie": "Armes de paysan",
+          "entrees": [
+            {
+              "nom": "Bâton¹",
+              "dm": "(1d4)",
+              "mod": "FOR",
+              "prix": "-"
+            },
+            {
+              "nom": "Bâton ferré¹",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "2 pa"
+            },
+            {
+              "nom": "Dague",
+              "dm": "1d4",
+              "mod": "FOR",
+              "prix": "3 pa"
+            },
+            {
+              "nom": "Mains nues",
+              "dm": "(1d4)",
+              "mod": "FOR",
+              "prix": "-"
+            },
+            {
+              "nom": "Grande hache de bûcheron *¹",
+              "dm": "2d4",
+              "mod": "FOR",
+              "prix": "10 pa"
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "categorie": "Armes de guerre",
+          "entrees": [
+            {
+              "nom": "Épée longue",
+              "dm": "1d8",
+              "mod": "FOR",
+              "prix": "6 pa"
+            },
+            {
+              "nom": "Hache à une main",
+              "dm": "1d8",
+              "mod": "FOR",
+              "prix": "6 pa"
+            },
+            {
+              "nom": "Marteau de guerre",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "4 pa"
+            },
+            {
+              "nom": "Masse d'armes",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "4 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes de guerre lourdes",
+          "entrees": [
+            {
+              "nom": "Épée à deux mains¹",
+              "dm": "2d6",
+              "mod": "FOR",
+              "prix": "10 pa"
+            },
+            {
+              "nom": "Épée bâtarde¹³",
+              "dm": "1d12",
+              "mod": "FOR",
+              "prix": "9 pa"
+            },
+            {
+              "nom": "Marteau à deux mains¹",
+              "dm": "3d4",
+              "mod": "FOR",
+              "prix": "12 pa"
+            },
+            {
+              "nom": "Hache à deux mains¹",
+              "dm": "2d6",
+              "mod": "FOR",
+              "prix": "10 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes d'hast",
+          "entrees": [
+            {
+              "nom": "Épieu³",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "3 pa"
+            },
+            {
+              "nom": "Lance¹³",
+              "dm": "1d8",
+              "mod": "FOR",
+              "prix": "6 pa"
+            },
+            {
+              "nom": "Lance de cavalerie¹³",
+              "dm": "2d6",
+              "mod": "FOR",
+              "prix": "12 pa"
+            },
+            {
+              "nom": "Pique¹³",
+              "dm": "1d8",
+              "mod": "FOR",
+              "prix": "5 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes de duel",
+          "entrees": [
+            {
+              "nom": "Épée courte",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "5 pa"
+            },
+            {
+              "nom": "Main gauche³",
+              "dm": "1d4",
+              "mod": "FOR",
+              "prix": "5 pa"
+            },
+            {
+              "nom": "Rapière²",
+              "dm": "1d6",
+              "mod": "FOR",
+              "prix": "6 pa"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupe": "Armes à distance",
+      "categories": [
+        {
+          "categorie": "Armes de paysan ",
+          "entrees": [
+            {
+              "nom": "Fronde",
+              "dm": "1d4",
+              "mod": "-",
+              "portee": "20 m",
+              "prix": "-"
+            },
+            {
+              "nom": "Dague",
+              "dm": "1d4",
+              "mod": "-",
+              "portee": "5 m",
+              "prix": "-"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes de jet",
+          "entrees": [
+            {
+              "nom": "Couteau de lancer⁵",
+              "dm": "1d4",
+              "mod": "DEX",
+              "portee": "10 m",
+              "prix": "3 pa"
+            },
+            {
+              "nom": "Hachette⁵",
+              "dm": "1d6",
+              "mod": "FOR",
+              "portee": "5 m",
+              "prix": "2 pa"
+            },
+            {
+              "nom": "Javelot⁵",
+              "dm": "1d6",
+              "mod": "FOR",
+              "portee": "20 m",
+              "prix": "10 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes d'hast",
+          "entrees": [
+            {
+              "nom": "Lance³",
+              "dm": "1d8",
+              "mod": "FOR",
+              "portee": "10 m",
+              "prix": "3 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes de trait",
+          "entrees": [
+            {
+              "nom": "Arc composite¹⁴",
+              "dm": "1d6",
+              "mod": "FOR",
+              "portee": "50 m",
+              "prix": "15 pa"
+            },
+            {
+              "nom": "Arc court¹",
+              "dm": "1d6",
+              "mod": "-",
+              "portee": "30 m",
+              "prix": "4 pa"
+            },
+            {
+              "nom": "Arc long¹⁴",
+              "dm": "1d8",
+              "mod": "-",
+              "portee": "50 m",
+              "prix": "5 pa"
+            }
+          ]
+        },
+        {
+          "categorie": "Armes de tir",
+          "entrees": [
+            {
+              "nom": "Arbalète de poing⁶",
+              "dm": "1d6",
+              "mod": "-",
+              "portee": "10 m",
+              "prix": "8 pa"
+            },
+            {
+              "nom": "Arbalète légère¹⁶",
+              "dm": "2d4",
+              "mod": "-",
+              "portee": "30 m",
+              "prix": "10 pa"
+            },
+            {
+              "nom": "Arbalète lourde¹⁷",
+              "dm": "3d4",
+              "mod": "-",
+              "portee": "60 m",
+              "prix": "12 pa"
+            },
+            {
+              "nom": "Arbalète à répétition*¹³",
+              "dm": "2d4",
+              "mod": "-",
+              "portee": "60 m",
+              "prix": "-"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

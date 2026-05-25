@@ -1,16 +1,50 @@
 import React from 'react'
-import type { Character, Caracteristique } from '../types/character'
+import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
-import { PEUPLES as PEUPLES_DATA, findCulture } from '../data/peuples'
-import { getVoiesForFamille } from '../data/voies'
+import { PEUPLES as PEUPLES_DATA, findCulture, findTrait } from '../data/peuples'
+import { VOIES } from '../data/voies'
+import PROFILS_RAW from '../data/profils.json'
+import { useGameData } from '../context/GameDataContext'
+
+const VOIES_PRESTIGE = VOIES.filter(v => v.categorie === 'prestige')
+
+type ProfilEntry = { nom: string; peuplePrivilégie: string; voies: string[]; formationsMartiales: string[]; talentMagique?: string; description: string; famille: string }
+const PROFILS_FLAT: ProfilEntry[] = (PROFILS_RAW as { famille: string; profils: Omit<ProfilEntry, 'famille'>[] }[]).flatMap(g => g.profils.map(p => ({ ...p, famille: g.famille })))
+const PROFILS_GROUPED = PROFILS_RAW as { famille: string; profils: Omit<ProfilEntry, 'famille'>[] }[]
+
+const VOIE_PREFIX_RE = /^voie (du |de la |de l['']|des |de )/i
+const findVoieByShort = (shortNom: string) => {
+  const normalized = shortNom.toLowerCase()
+  return VOIES.find(v => v.categorie === 'profil' && v.nom.toLowerCase().replace(VOIE_PREFIX_RE, '') === normalized) ?? null
+}
 import VoieCombobox from './VoieCombobox'
+import EquipementModal from './EquipementModal'
+import DESCRIPTIONS_DATA from '../data/descriptions.json'
+import TRAITS_MAGIQUES_DATA from '../data/traits-magiques.json'
+import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/levelUp'
+import type { VoieKey } from '../utils/levelUp'
+import { parseDesc } from '../utils/parseDesc'
+
+type TraitEntry = { nom: string; desc: string }
+const TRAITS_MAGIQUES = TRAITS_MAGIQUES_DATA as TraitEntry[]
+
+type Capacite = { nom: string; desc: string }
+const DESCRIPTIONS = DESCRIPTIONS_DATA as Record<string, Capacite[]>
+const DESCRIPTIONS_LOWER = Object.fromEntries(
+  Object.entries(DESCRIPTIONS).map(([k, v]) => [k.toLowerCase(), v])
+)
+const getDesc = (nom: string) => DESCRIPTIONS[nom] ?? DESCRIPTIONS_LOWER[nom.toLowerCase()]
 
 interface Props {
   step: number
+  maxStep: number
   character: Character
   onChange: (patch: Partial<Character>) => void
   onNext: () => void
   onPrev: () => void
+  onGoTo: (step: number) => void
+  onSave?: () => void
+  onPrint?: () => void
 }
 
 const STEPS = [
@@ -19,6 +53,7 @@ const STEPS = [
   'Caractéristiques',
   'Profil & Voies',
   'Scores dérivés',
+  'Spécialisation',
   'Équipement',
   'Finalisation',
 ]
@@ -40,18 +75,128 @@ const CARACS: { key: Caracteristique; label: string; desc: string }[] = [
   { key: 'CHA', label: 'Charisme', desc: 'Persuasion et présence. Points de chance.' },
 ]
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+const BTN_RANG: React.CSSProperties = {
+  padding: '2px 8px', borderRadius: 4, fontSize: 14, lineHeight: 1,
+  fontFamily: 'inherit', cursor: 'pointer', transition: 'background 0.15s',
+}
+
+function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
+  voie: VoiePersonnage
+  voieKey: VoieKey
+  disponibles: number
+  onChange: (newRangs: boolean[]) => void
+}) {
+  const firstNext = prochainRang(voie)
+  const maxed = firstNext === null
+  const costNext = firstNext !== null ? coutRangPourVoie(voieKey, firstNext) : 0
+  const canAdd = !maxed && costNext <= disponibles
+  const canRemove = firstNext !== null && firstNext > 0
+
+  const add = () => {
+    if (!canAdd || firstNext === null) return
+    const r = [...voie.rangs]; r[firstNext] = true; onChange(r)
+  }
+  const remove = () => {
+    if (!canRemove || firstNext === null) return
+    const r = [...voie.rangs]; r[firstNext - 1] = false; onChange(r)
+  }
+
+  const acquired = voie.rangs.filter(Boolean).length
+
   return (
-    <div className="flex gap-1 mb-4">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="h-1 flex-1 rounded-full transition-all"
-          style={{
-            background: i <= current ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
-          }}
-        />
-      ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {voie.rangs.map((acquis, i) => (
+          <div key={i} style={{
+            width: 12, height: 12, borderRadius: 3,
+            background: acquis ? 'var(--tdr-gold)' : 'rgba(255,255,255,0.06)',
+            border: acquis
+              ? '1px solid rgba(201,168,76,0.8)'
+              : i === firstNext
+                ? '1px solid rgba(201,168,76,0.35)'
+                : '1px solid rgba(255,255,255,0.1)',
+            transition: 'background 0.15s',
+          }} />
+        ))}
+      </div>
+      <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', flex: 1 }}>
+        {maxed
+          ? 'Tous les rangs acquis'
+          : acquired === 0
+            ? `Rang 1 · ${costNext} pt${costNext > 1 ? 's' : ''}`
+            : `Rang ${acquired} acquis · suivant : ${costNext} pt${costNext > 1 ? 's' : ''}`}
+      </span>
+      <button
+        onClick={remove} disabled={!canRemove}
+        style={{
+          ...BTN_RANG,
+          border: `1px solid ${canRemove ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.12)'}`,
+          background: canRemove ? 'rgba(201,168,76,0.1)' : 'transparent',
+          color: canRemove ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
+        }}
+      >−</button>
+      <button
+        onClick={add} disabled={!canAdd}
+        style={{
+          ...BTN_RANG,
+          border: `1px solid ${canAdd ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.12)'}`,
+          background: canAdd ? 'rgba(201,168,76,0.12)' : 'transparent',
+          color: canAdd ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
+        }}
+      >+</button>
+    </div>
+  )
+}
+
+function StepIndicator({ current, maxStep, total, stepOk, onGoTo }: {
+  current: number; maxStep: number; total: number; stepOk: boolean[]; onGoTo: (i: number) => void
+}) {
+  const [hovered, setHovered] = React.useState<number | null>(null)
+  return (
+    <div className="flex gap-1 mb-4" style={{ position: 'relative' }}>
+      {Array.from({ length: total }).map((_, i) => {
+        const filled = i <= maxStep
+        const ok     = stepOk[i] ?? true
+        const isCurrent = i === current
+        return (
+          <div
+            key={i}
+            onClick={() => onGoTo(i)}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            className="h-1 flex-1 rounded-full transition-all"
+            style={{
+              background: filled
+                ? ok ? 'var(--tdr-gold)' : 'rgba(200,80,60,0.85)'
+                : 'rgba(201,168,76,0.2)',
+              cursor: 'pointer',
+              opacity: isCurrent ? 1 : filled ? 0.75 : 0.4,
+              transform: isCurrent ? 'scaleY(2)' : 'scaleY(1)',
+              transformOrigin: 'center',
+            }}
+          />
+        )
+      })}
+      {hovered !== null && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: `${(hovered + 0.5) / total * 100}%`,
+          transform: 'translateX(-50%)',
+          marginTop: 6,
+          background: 'rgba(20,15,8,0.97)',
+          color: '#e8dfc0',
+          border: '1px solid #c9a84c',
+          borderRadius: 4,
+          padding: '3px 10px',
+          fontSize: '0.85em',
+          whiteSpace: 'nowrap',
+          zIndex: 100,
+          pointerEvents: 'none',
+        }}>
+          {STEPS[hovered]}
+        </div>
+      )}
     </div>
   )
 }
@@ -59,7 +204,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   return (
     <div className="space-y-3">
-      <p className="text-sm opacity-70 italic">Commençons par les informations de base sur votre personnage.</p>
+      <p className="text-base opacity-70 italic">Commençons par les informations de base sur votre personnage.</p>
       {[
         { label: 'Nom du joueur', field: 'nomJoueur' },
         { label: 'Nom du personnage', field: 'nomPersonnage' },
@@ -69,11 +214,11 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
         { label: 'Poids', field: 'poids' },
       ].map(({ label, field }) => (
         <div key={field}>
-          <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
             {label}
           </label>
           <input
-            className="w-full border rounded px-3 py-1.5 text-sm"
+            className="w-full border rounded px-3 py-1.5 text-base"
             style={INPUT_STYLE}
             value={(character as any)[field]}
             onChange={e => onChange({ [field]: e.target.value })}
@@ -91,20 +236,26 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const onPeupleChange = (peupleLabel: string) => {
     const peuple = PEUPLES_DATA.find(p => p.label === peupleLabel)
     const firstCulture = peuple?.cultures[0]
+    const trait = firstCulture ? findTrait(peupleLabel, firstCulture.label) : null
     onChange({
       peuple: peupleLabel,
       culture: firstCulture?.label ?? '',
       voiePeuple: { ...character.voiePeuple, nom: firstCulture?.voiePeuple ?? '' },
       voieCulturelle: { ...character.voieCulturelle, nom: firstCulture?.voieCulturelle ?? '' },
+      traitPeuple: trait?.nom ?? '',
+      traitPeupleDesc: trait?.desc ?? '',
     })
   }
 
   const onCultureChange = (cultureLabel: string) => {
     const culture = findCulture(character.peuple, cultureLabel)
+    const trait = findTrait(character.peuple, cultureLabel)
     onChange({
       culture: cultureLabel,
       voiePeuple: { ...character.voiePeuple, nom: culture?.voiePeuple ?? character.voiePeuple.nom },
       voieCulturelle: { ...character.voieCulturelle, nom: culture?.voieCulturelle ?? character.voieCulturelle.nom },
+      traitPeuple: trait?.nom ?? '',
+      traitPeupleDesc: trait?.desc ?? '',
     })
   }
 
@@ -115,16 +266,16 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm opacity-70 italic">
+      <p className="text-base opacity-70 italic">
         Le peuple détermine vos modificateurs de caractéristiques, votre voie de peuple et votre voie culturelle.
       </p>
 
       <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Peuple
         </label>
         <select
-          className="w-full border rounded px-3 py-1.5 text-sm"
+          className="w-full border rounded px-3 py-1.5 text-base"
           style={INPUT_STYLE}
           value={character.peuple}
           onChange={e => onPeupleChange(e.target.value)}
@@ -136,11 +287,11 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
       {cultures.length > 1 && (
         <div>
-          <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
             Culture
           </label>
           <select
-            className="w-full border rounded px-3 py-1.5 text-sm"
+            className="w-full border rounded px-3 py-1.5 text-base"
             style={INPUT_STYLE}
             value={character.culture}
             onChange={e => onCultureChange(e.target.value)}
@@ -152,70 +303,88 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       )}
 
       {modText && (
-        <p className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(201,168,76,0.1)', color: 'var(--tdr-gold)' }}>
+        <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(201,168,76,0.1)', color: 'var(--tdr-gold)' }}>
           Modificateurs : {modText}
         </p>
       )}
 
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Voie de peuple
-        </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
-          style={INPUT_STYLE}
-          value={character.voiePeuple.nom}
-          onChange={e => onChange({ voiePeuple: { ...character.voiePeuple, nom: e.target.value } })}
-        />
-      </div>
+      {character.peuple && (
+        <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
+          Vos voies de peuple et culturelle seront disponibles à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Profil &amp; Voies</strong>.
+        </p>
+      )}
 
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Voie culturelle
-        </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
-          style={INPUT_STYLE}
-          value={character.voieCulturelle.nom}
-          onChange={e => onChange({ voieCulturelle: { ...character.voieCulturelle, nom: e.target.value } })}
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Trait de peuple
-        </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
-          style={INPUT_STYLE}
-          value={character.traitPeuple}
-          onChange={e => onChange({ traitPeuple: e.target.value })}
-        />
-      </div>
+      {(() => {
+        const trait = findTrait(character.peuple, character.culture)
+        return (
+          <div>
+            <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+              Trait de peuple
+            </label>
+            {trait ? (
+              <div style={{ padding: '10px 14px', borderRadius: 6, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)' }}>
+                <div style={{ fontWeight: 600, color: 'var(--tdr-gold)', marginBottom: 5 }}>{trait.nom}</div>
+                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.6, fontStyle: 'italic' }}>{trait.desc}</div>
+              </div>
+            ) : (
+              <input
+                className="w-full border rounded px-3 py-1.5 text-base"
+                style={INPUT_STYLE}
+                placeholder="Aucun"
+                value={character.traitPeuple}
+                onChange={e => onChange({ traitPeuple: e.target.value })}
+              />
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
 
 function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
+
   const [method, setMethod] = React.useState<'distribution' | 'aleatoire'>('distribution')
-  const [pool, setPool] = React.useState<number[]>(DISTRIBUTION)
-  const [assigned, setAssigned] = React.useState<Record<Caracteristique, number | null>>({
-    FOR: null, DEX: null, CON: null, INT: null, SAG: null, CHA: null,
+  // Les caracs sont "non assignées" si toutes sont encore à la valeur par défaut (10)
+  const isUnassigned = CARACS.every(({ key }) => character.caracteristiques[key].valeur === 10)
+
+  const [assigned, setAssigned] = React.useState<Record<Caracteristique, number | null>>(() => {
+    if (isUnassigned) return { FOR: null, DEX: null, CON: null, INT: null, SAG: null, CHA: null }
+    const result: Record<Caracteristique, number | null> = { FOR: null, DEX: null, CON: null, INT: null, SAG: null, CHA: null }
+    for (const { key } of CARACS) {
+      const racialMod = ((modCaracs as Record<string, number>)[key]) ?? 0
+      result[key] = character.caracteristiques[key].valeur - racialMod
+    }
+    return result
+  })
+  const [pool, setPool] = React.useState<number[]>(() => {
+    if (isUnassigned) return [...DISTRIBUTION]
+    const remaining = [...DISTRIBUTION]
+    for (const { key } of CARACS) {
+      const racialMod = ((modCaracs as Record<string, number>)[key]) ?? 0
+      const base = character.caracteristiques[key].valeur - racialMod
+      const idx = remaining.indexOf(base)
+      if (idx >= 0) remaining.splice(idx, 1)
+    }
+    return remaining
   })
 
   const assign = (carac: Caracteristique, val: number) => {
     const prev = assigned[carac]
     const newAssigned = { ...assigned, [carac]: val }
-    const newPool = pool.filter(v => v !== val)
+    const idx = pool.indexOf(val)
+    const newPool = pool.filter((_, i) => i !== idx)
     if (prev !== null) newPool.push(prev)
     newPool.sort((a, b) => a - b)
     setAssigned(newAssigned)
     setPool(newPool)
-    const mod = getMod(val)
+    const racialMod = ((modCaracs as Record<string, number>)[carac]) ?? 0
+    const finalVal = val + racialMod
     onChange({
       caracteristiques: {
         ...character.caracteristiques,
-        [carac]: { valeur: val, mod },
+        [carac]: { valeur: finalVal, mod: getMod(finalVal) },
       },
     })
   }
@@ -237,7 +406,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <button
             key={m}
             onClick={() => { setMethod(m); if (m === 'distribution') setPool(DISTRIBUTION) }}
-            className="flex-1 py-1 rounded text-xs border transition-all"
+            className="flex-1 py-1 rounded text-base border transition-all"
             style={{
               background: method === m ? 'var(--tdr-gold)' : 'transparent',
               color: method === m ? 'var(--tdr-dark)' : 'var(--tdr-parchment)',
@@ -253,7 +422,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       {method === 'aleatoire' && (
         <button
           onClick={rollDice}
-          className="w-full py-1.5 rounded text-sm border"
+          className="w-full py-1.5 rounded text-base border"
           style={{ borderColor: 'rgba(201,168,76,0.5)', color: 'var(--tdr-parchment)' }}
         >
           Lancer les dés (4d6, garder 3)
@@ -262,109 +431,675 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
       <div className="flex flex-wrap gap-1 min-h-8">
         {pool.map((v, i) => (
-          <span key={i} className="px-2 py-0.5 rounded text-sm font-bold"
+          <span key={i} className="px-2 py-0.5 rounded text-base font-bold"
             style={{ background: 'rgba(201,168,76,0.2)', color: 'var(--tdr-gold)' }}>
             {v}
           </span>
         ))}
-        {pool.length === 0 && <span className="text-xs opacity-50 italic">Tous les scores sont assignés</span>}
+        {pool.length === 0 && <span className="text-base opacity-50 italic">Tous les scores sont assignés</span>}
       </div>
 
+      {Object.keys(modCaracs).length > 0 && (
+        <div style={{ padding: '6px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', fontSize: 13 }}>
+          <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 6 }}>Modificateurs raciaux —</span>
+          <span style={{ color: 'var(--tdr-gold)', fontWeight: 600, marginRight: 8 }}>
+            {(() => {
+              const peupleData = PEUPLES_DATA.find(p => p.label === character.peuple)
+              const modStrings = peupleData?.cultures.map(c => JSON.stringify(c.modCaracs ?? {})) ?? []
+              const cultureVarie = new Set(modStrings).size > 1
+              return character.peuple + (cultureVarie && character.culture ? ` · ${character.culture}` : '') + ' :'
+            })()}
+          </span>
+          {Object.entries(modCaracs).map(([k, v]) => (
+            <span key={k} style={{ marginRight: 8, fontWeight: 700, color: (v as number) > 0 ? 'rgba(120,210,120,0.9)' : 'rgba(220,100,80,0.9)' }}>
+              {k} {(v as number) > 0 ? '+' : ''}{v as number}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
-        {CARACS.map(({ key, desc }) => (
-          <div key={key} className="flex items-center gap-2">
-            <div className="w-10 text-center font-bold text-sm" style={{ color: 'var(--tdr-gold)' }}>{key}</div>
-            <select
-              className="flex-1 border rounded px-2 py-1 text-sm"
-              style={INPUT_STYLE}
-              value={assigned[key] ?? ''}
-              onChange={e => assign(key, parseInt(e.target.value))}
-            >
-              <option value="">--</option>
-              {assigned[key] !== null && <option value={assigned[key]!}>{assigned[key]}</option>}
-              {pool.map((v, i) => <option key={i} value={v}>{v}</option>)}
-            </select>
-            <div className="w-10 text-center text-sm" style={{ color: 'var(--tdr-gold)' }}>
-              {assigned[key] !== null
-                ? (getMod(assigned[key]!) >= 0 ? `+${getMod(assigned[key]!)}` : getMod(assigned[key]!))
-                : '—'}
+        {CARACS.map(({ key, desc }) => {
+          const base = assigned[key]
+          const racialMod = ((modCaracs as Record<string, number>)[key]) ?? 0
+          const finalVal = base !== null ? base + racialMod : null
+          const finalMod = finalVal !== null ? getMod(finalVal) : null
+          return (
+            <div key={key} className="flex items-center gap-2">
+              <div className="w-10 text-center font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{key}</div>
+              <select
+                className="flex-1 border rounded px-2 py-1 text-base"
+                style={{ ...INPUT_STYLE, cursor: 'pointer' }}
+                value={base ?? ''}
+                onChange={e => {
+                  const raw = e.target.value
+                  if (!raw) {
+                    const prev = assigned[key]
+                    if (prev !== null) {
+                      setPool(p => [...p, prev].sort((a, b) => a - b))
+                      setAssigned(a => ({ ...a, [key]: null }))
+                      const racialMod = ((modCaracs as Record<string, number>)[key]) ?? 0
+                      onChange({ caracteristiques: { ...character.caracteristiques, [key]: { valeur: 10 + racialMod, mod: getMod(10 + racialMod) } } })
+                    }
+                  } else {
+                    assign(key, parseInt(raw))
+                  }
+                }}
+              >
+                <option value="">--</option>
+                {base !== null && <option value={base}>{base}</option>}
+                {pool.map((v, i) => <option key={i} value={v}>{v}</option>)}
+              </select>
+              <span style={{
+                fontSize: 12, fontWeight: 700, minWidth: 28, textAlign: 'center',
+                color: racialMod > 0 ? 'rgba(120,210,120,0.9)' : 'rgba(220,100,80,0.9)',
+                visibility: racialMod !== 0 ? 'visible' : 'hidden',
+              }}>
+                {racialMod > 0 ? '+' : ''}{racialMod}
+              </span>
+              <div style={{ minWidth: 26, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--tdr-parchment)', visibility: racialMod !== 0 && finalVal !== null ? 'visible' : 'hidden' }}>
+                {finalVal ?? ''}
+              </div>
+              <div className="w-10 text-center text-base" style={{ color: 'var(--tdr-gold)' }}>
+                {finalMod !== null ? (finalMod >= 0 ? `+${finalMod}` : finalMod) : '—'}
+              </div>
+              <div className="text-base opacity-50 hidden xl:block" style={{ width: '8rem' }}>{desc.split('.')[0]}</div>
             </div>
-            <div className="text-xs opacity-50 hidden xl:block" style={{ width: '8rem' }}>{desc.split('.')[0]}</div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function Step3({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const FAMILLES = [
-    { key: 'combattants', label: 'Combattants', bonus: 'd10 PV · 3 formations · Contact+2 · Distance+2' },
-    { key: 'aventuriers', label: 'Aventuriers', bonus: 'd8 PV · 2 formations · Contact+1 · Distance+1 · PC+2' },
-    { key: 'mystiques', label: 'Mystiques', bonus: 'd6 PV · 1 formation · Magique+2 · PM×2 · Talent magique' },
-  ] as const
+function renderDesc(text: string, character?: Character): React.ReactNode {
+  return parseDesc(text, character)
+}
 
-  const setVoie = (field: 'voie1' | 'voie2' | 'voie3', nom: string) =>
-    onChange({ [field]: { ...character[field], nom } })
+function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () => void; character?: Character }) {
+  const capacites = getDesc(nom) ?? []
 
-  const voieOptions = getVoiesForFamille(character.famille ?? null)
-  const chosenVoies = [character.voie1.nom, character.voie2.nom, character.voie3.nom].filter(Boolean)
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm opacity-70 italic">Le profil définit 3 voies de profil et la famille du personnage.</p>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 16px',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        background: 'rgba(18,14,9,0.98)',
+        border: '1px solid rgba(201,168,76,0.45)',
+        borderRadius: 8,
+        maxWidth: 560,
+        width: '100%',
+        maxHeight: '85vh',
+        overflowY: 'auto',
+        boxShadow: '0 12px 64px rgba(0,0,0,0.9)',
+      }}>
+        {/* En-tête */}
+        <div style={{
+          padding: '16px 20px 12px',
+          borderBottom: '1px solid rgba(201,168,76,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <h2 style={{
+            margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '0.04em',
+            color: 'var(--tdr-gold)',
+          }}>{nom}</h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'rgba(245,236,215,0.5)', fontSize: 20, lineHeight: 1, padding: '0 2px',
+            }}
+            aria-label="Fermer"
+          >×</button>
+        </div>
 
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Profil
-        </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
-          style={INPUT_STYLE}
-          value={character.profil}
-          onChange={e => onChange({ profil: e.target.value })}
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--tdr-gold)' }}>
-          Famille
-        </label>
-        <div className="space-y-2">
-          {FAMILLES.map(f => (
-            <button
-              key={f.key}
-              onClick={() => onChange({
-                famille: f.key,
-                deVie: f.key === 'combattants' ? 'd10' : f.key === 'aventuriers' ? 'd8' : 'd6',
-              })}
-              className="w-full text-left p-2 rounded border transition-all"
-              style={{
-                background: character.famille === f.key ? 'rgba(201,168,76,0.15)' : 'transparent',
-                borderColor: character.famille === f.key ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
-              }}
-            >
-              <div className="font-bold text-sm" style={{ color: 'var(--tdr-gold)' }}>{f.label}</div>
-              <div className="text-xs opacity-60">{f.bonus}</div>
-            </button>
+        {/* Capacités */}
+        <div style={{ padding: '12px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {capacites.map((cap, i) => (
+            <div key={i} style={{
+              borderLeft: '2px solid rgba(201,168,76,0.4)',
+              paddingLeft: 12,
+            }}>
+              <div style={{
+                fontSize: 17, fontWeight: 600, letterSpacing: '0.06em',
+                color: 'rgba(201,168,76,0.7)', marginBottom: 5,
+                textTransform: 'uppercase',
+              }}>
+                Rang {i + 1} · {cap.nom}
+              </div>
+              <div style={{
+                fontSize: 18, lineHeight: 1.6,
+                color: 'rgba(245,236,215,0.85)',
+              }}>
+                {renderDesc(cap.desc, character)}
+              </div>
+            </div>
           ))}
         </div>
       </div>
+    </div>
+  )
+}
 
-      {(['voie1', 'voie2', 'voie3'] as const).map((v, i) => (
-        <div key={v}>
-          <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-            Voie {i + 1}
-          </label>
-          <VoieCombobox
-            value={character[v].nom}
-            onChange={nom => setVoie(v, nom)}
-            options={voieOptions}
-            alreadyChosen={chosenVoies.filter(n => n !== character[v].nom)}
-            placeholder="Rechercher une voie…"
+function TraitCombobox({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState(value)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => { setQuery(value) }, [value])
+
+  React.useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const filtered = TRAITS_MAGIQUES.filter(t => t.nom.toLowerCase().includes(query.toLowerCase()))
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+      <input
+        type="text"
+        value={query}
+        placeholder={open && !query && value ? value : 'Rechercher un trait magique…'}
+        onFocus={() => { setQuery(''); setOpen(true) }}
+        onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onBlur={() => setTimeout(() => { setOpen(false); setQuery(value) }, 150)}
+        className="w-full border rounded px-3 py-1.5 text-base"
+        style={{
+          background: 'rgba(15,12,8,0.92)',
+          borderColor: open ? 'rgba(201,168,76,0.8)' : 'rgba(201,168,76,0.35)',
+          color: 'var(--tdr-parchment)', outline: 'none',
+        }}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          background: 'rgba(18,14,9,0.98)', border: '1px solid rgba(201,168,76,0.4)',
+          borderRadius: 4, maxHeight: 200, overflowY: 'auto',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.7)', marginTop: 2,
+        }}>
+          {filtered.map(t => (
+            <TraitOption key={t.nom} entry={t} onSelect={nom => { onChange(nom); setQuery(nom); setOpen(false) }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TraitOption({ entry, onSelect }: { entry: TraitEntry; onSelect: (nom: string) => void }) {
+  const [hovered, setHovered] = React.useState(false)
+  return (
+    <div
+      onMouseDown={() => onSelect(entry.nom)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: '6px 12px', fontSize: 15, cursor: 'pointer',
+        color: 'var(--tdr-parchment)',
+        background: hovered ? 'rgba(201,168,76,0.12)' : 'transparent',
+      }}
+    >{entry.nom}</div>
+  )
+}
+
+function TraitMagiqueModal({ nom, desc, onChange, onClose }: {
+  nom: string; desc: string
+  onChange: (nom: string, desc: string) => void
+  onClose: () => void
+}) {
+  const [localNom, setLocalNom] = React.useState(nom)
+  const [localDesc, setLocalDesc] = React.useState(desc)
+
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { onChange(localNom, localDesc); onClose() } }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [localNom, localDesc, onChange, onClose])
+
+  const handleClose = () => { onChange(localNom, localDesc); onClose() }
+
+  const fieldStyle: React.CSSProperties = {
+    width: '100%', background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4,
+    color: 'var(--tdr-parchment)', fontSize: 16, lineHeight: 1.6,
+    padding: '8px 12px', outline: 'none',
+    fontFamily: "'Crimson Text', Georgia, serif",
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 16px',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) handleClose() }}
+    >
+      <div style={{
+        background: 'rgba(18,14,9,0.98)', border: '1px solid rgba(201,168,76,0.45)',
+        borderRadius: 8, maxWidth: 520, width: '100%',
+        boxShadow: '0 12px 64px rgba(0,0,0,0.9)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{
+          padding: '16px 20px 12px',
+          borderBottom: '1px solid rgba(201,168,76,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <input
+            value={localNom}
+            onChange={e => setLocalNom(e.target.value)}
+            style={{ ...fieldStyle, fontWeight: 700, fontSize: 17, flex: 1, lineHeight: 1.2 }}
+          />
+          <button
+            onClick={handleClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(245,236,215,0.5)', fontSize: 20, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+            aria-label="Fermer"
+          >×</button>
+        </div>
+        <div style={{ padding: '16px 20px 20px' }}>
+          <textarea
+            value={localDesc}
+            onChange={e => setLocalDesc(e.target.value)}
+            rows={6}
+            style={{ ...fieldStyle, resize: 'vertical' }}
           />
         </div>
-      ))}
+      </div>
+    </div>
+  )
+}
+
+function deriveFamille(v1: string, v2: string, v3: string): 'combattants' | 'aventuriers' | 'mystiques' | null {
+  const noms = [v1, v2, v3].filter(Boolean)
+  const counts = { combattants: 0, aventuriers: 0, mystiques: 0 }
+  for (const nom of noms) {
+    const voie = VOIES.find(v => v.nom === nom && v.categorie === 'profil')
+    if (voie?.famille) counts[voie.famille as keyof typeof counts]++
+  }
+  if (counts.combattants >= 2) return 'combattants'
+  if (counts.mystiques >= 2) return 'mystiques'
+  if (counts.aventuriers >= 2) return 'aventuriers'
+  if (noms.length === 3) return 'aventuriers'
+  return null
+}
+
+const FAMILLE_INFO = {
+  combattants: { label: 'Combattants', bonus: 'd10 PV · 3 formations · Contact+2 · Distance+2' },
+  aventuriers:  { label: 'Aventuriers',  bonus: 'd8 PV · 2 formations · Contact+1 · Distance+1 · PC+2' },
+  mystiques:    { label: 'Mystiques',    bonus: 'd6 PV · 1 formation · Magique+2 · PM×2 · Talent magique' },
+}
+
+function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'character' | 'onChange'> & { modeVoies: 'libre' | 'profil'; setModeVoies: (m: 'libre' | 'profil') => void }) {
+  const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
+  const { disponibles } = calcPointsCapacite(character)
+  const { data: dynamicDescriptions } = useGameData()
+
+  const allProfilVoies = (() => {
+    const staticVoies = VOIES.filter(v => v.categorie === 'profil')
+    const staticNoms = new Set(VOIES.map(v => v.nom))
+    const peupleVoieNoms = new Set<string>()
+    for (const p of PEUPLES_DATA) {
+      for (const c of p.cultures) {
+        if (c.voiePeuple) peupleVoieNoms.add(c.voiePeuple)
+        if (c.voieCulturelle) peupleVoieNoms.add(c.voieCulturelle)
+      }
+    }
+    const customVoies = Object.keys(dynamicDescriptions)
+      .filter(nom => !staticNoms.has(nom) && !peupleVoieNoms.has(nom))
+      .map(nom => ({ nom, categorie: 'profil', famille: '' })) as typeof staticVoies
+    return customVoies.length ? [...staticVoies, ...customVoies] : staticVoies
+  })()
+
+  const profilActuel = PROFILS_FLAT.find(p => p.nom === character.profil) ?? null
+
+  const applyPeupleRecommandé = (peuplePrivilégie: string) => {
+    const rec = peuplePrivilégie.toLowerCase()
+    for (const peuple of PEUPLES_DATA) {
+      for (const culture of peuple.cultures) {
+        if (rec.includes(culture.label.toLowerCase())) {
+          const trait = findTrait(peuple.label, culture.label)
+          onChange({
+            peuple: peuple.label,
+            culture: culture.label,
+            voiePeuple: { ...character.voiePeuple, nom: culture.voiePeuple },
+            voieCulturelle: { ...character.voieCulturelle, nom: culture.voieCulturelle },
+            traitPeuple: trait?.nom ?? '',
+            traitPeupleDesc: trait?.desc ?? '',
+          })
+          return
+        }
+      }
+    }
+  }
+
+  const applyProfil = (profilNom: string) => {
+    const profil = PROFILS_FLAT.find(p => p.nom === profilNom)
+    if (!profil) return
+    const v1 = findVoieByShort(profil.voies[0])
+    const v2 = findVoieByShort(profil.voies[1])
+    const v3 = findVoieByShort(profil.voies[2])
+    const familleMap: Record<string, 'combattants' | 'aventuriers' | 'mystiques'> = {
+      'Combattants': 'combattants', 'Aventuriers': 'aventuriers', 'Mystiques': 'mystiques',
+    }
+    const famille = familleMap[profil.famille]
+    const vide: VoiePersonnage = { nom: '', rangs: [false, false, false, false, false] }
+    onChange({
+      profil: profil.nom,
+      voie1: { ...vide, nom: v1?.nom ?? '' },
+      voie2: { ...vide, nom: v2?.nom ?? '' },
+      voie3: { ...vide, nom: v3?.nom ?? '' },
+      famille,
+      deVie: famille === 'combattants' ? 'd10' : famille === 'aventuriers' ? 'd8' : 'd6',
+      formationsMartiales: ['Armes de paysan (gratuit)', ...profil.formationsMartiales],
+    })
+  }
+
+  const setVoie = (field: 'voie1' | 'voie2' | 'voie3', nom: string) => {
+    const v1 = field === 'voie1' ? nom : character.voie1.nom
+    const v2 = field === 'voie2' ? nom : character.voie2.nom
+    const v3 = field === 'voie3' ? nom : character.voie3.nom
+    const famille = deriveFamille(v1, v2, v3)
+    const patch: Partial<Character> = { [field]: { ...character[field], nom } }
+    if (famille) {
+      patch.famille = famille
+      patch.deVie = famille === 'combattants' ? 'd10' : famille === 'aventuriers' ? 'd8' : 'd6'
+    }
+    onChange(patch)
+  }
+
+  const clearVoie = (field: 'voie1' | 'voie2' | 'voie3') => {
+    const v1 = field === 'voie1' ? '' : character.voie1.nom
+    const v2 = field === 'voie2' ? '' : character.voie2.nom
+    const v3 = field === 'voie3' ? '' : character.voie3.nom
+    const famille = deriveFamille(v1, v2, v3)
+    const patch: Partial<Character> = { [field]: { nom: '', rangs: [false, false, false, false, false] } }
+    if (famille) {
+      patch.famille = famille
+      patch.deVie = famille === 'combattants' ? 'd10' : famille === 'aventuriers' ? 'd8' : 'd6'
+    }
+    onChange(patch)
+  }
+
+  const familleDérivée = deriveFamille(character.voie1.nom, character.voie2.nom, character.voie3.nom)
+
+  // Compteur de points — affiché en ligne près des voies
+  const ptsBadge = (
+    <span style={{
+      marginLeft: 'auto',
+      fontSize: 12, fontWeight: 700,
+      padding: '2px 10px', borderRadius: 4,
+      background: disponibles === 0 ? 'rgba(120,210,120,0.12)' : 'rgba(201,168,76,0.12)',
+      border: `1px solid ${disponibles === 0 ? 'rgba(120,210,120,0.35)' : 'rgba(201,168,76,0.35)'}`,
+      color: disponibles === 0 ? 'rgba(120,210,120,0.9)' : 'var(--tdr-gold)',
+    }}>
+      {disponibles === 0 ? '✓ Points distribués' : `${disponibles} pt${disponibles > 1 ? 's' : ''} restant${disponibles > 1 ? 's' : ''}`}
+    </span>
+  )
+
+  return (
+    <div className="space-y-3">
+      <p className="text-base opacity-70 italic">
+        {modeVoies === 'libre' ? 'Choisissez 3 voies de profil — la famille est déterminée par votre sélection.' : 'Choisissez un profil — ses voies et formations martiales sont fixées automatiquement.'}
+      </p>
+
+      {/* ── Profil ── */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          {modeVoies === 'profil' && (
+            <label className="text-base uppercase tracking-widest" style={{ color: 'var(--tdr-gold)' }}>
+              Profil
+            </label>
+          )}
+          <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
+            {(['libre', 'profil'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setModeVoies(mode)}
+                style={{
+                  padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                  fontFamily: 'inherit', border: '1px solid',
+                  borderColor: modeVoies === mode ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)',
+                  background: modeVoies === mode ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  color: modeVoies === mode ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.5)',
+                }}
+              >
+                {mode === 'libre' ? 'Voies libres' : 'Par profil'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {modeVoies === 'profil' && (
+          <>
+            <select
+              className="w-full border rounded px-3 py-1.5 text-base"
+              style={{ ...INPUT_STYLE, cursor: 'pointer' }}
+              value={character.profil}
+              onChange={e => applyProfil(e.target.value)}
+            >
+              <option value="">— Choisir un profil —</option>
+              {PROFILS_GROUPED.map(group => (
+                <optgroup key={group.famille} label={group.famille}>
+                  {group.profils.map(p => (
+                    <option key={p.nom} value={p.nom}>{p.nom}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {profilActuel && (() => {
+              const rec = profilActuel.peuplePrivilégie
+              const match = character.culture && rec.toLowerCase().includes(character.culture.toLowerCase())
+              return (
+                <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(201,168,76,0.65)', fontStyle: 'italic' }}>
+                  Peuple recommandé :{' '}
+                  <button
+                    onClick={() => !match && applyPeupleRecommandé(rec)}
+                    disabled={!!match}
+                    title={match ? 'Peuple déjà correspondant' : `Appliquer : ${rec}`}
+                    style={{
+                      fontFamily: 'inherit', fontSize: 13, fontStyle: 'italic', fontWeight: 700,
+                      background: 'none', border: 'none', padding: 0,
+                      cursor: match ? 'default' : 'pointer',
+                      color: match ? 'rgba(120,210,120,0.9)' : 'rgba(230,140,60,0.95)',
+                      textDecoration: match ? 'none' : 'underline dotted',
+                    }}
+                  >
+                    {match ? '✓ ' : '⚠ '}{rec}
+                  </button>
+                  {profilActuel.talentMagique && (
+                    <> · Talent magique suggéré : <strong style={{ color: 'rgba(201,168,76,0.85)' }}>{profilActuel.talentMagique}</strong></>
+                  )}
+                </div>
+              )
+            })()}
+          </>
+        )}
+      </div>
+
+      {/* ── Compteur de points ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+        <span className="text-base uppercase tracking-widest" style={{ color: 'rgba(201,168,76,0.6)', fontSize: 11 }}>
+          Rangs de voie
+        </span>
+        {ptsBadge}
+      </div>
+
+      {/* ── Voies de peuple & culturelle ── */}
+      <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.04)' }}>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
+          Voies issues du peuple &amp; de la culture
+        </div>
+        {(['voiePeuple', 'voieCulturelle'] as const).map(field => {
+          const label = field === 'voiePeuple' ? 'Voie de peuple' : 'Voie culturelle'
+          const nom = character[field].nom
+          const hasDesc = !!nom && !!getDesc(nom)
+          return (
+            <div key={field} style={{ marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--tdr-gold)', marginBottom: 4 }}>
+                {label}
+              </label>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <input
+                  className="flex-1 border rounded px-3 py-1.5 text-base"
+                  style={{ ...INPUT_STYLE, opacity: 0.75 }}
+                  value={nom}
+                  readOnly
+                  title="Déterminé par le peuple et la culture (étape 2)"
+                />
+                <button
+                  onClick={() => hasDesc && setPreviewVoie(nom)}
+                  disabled={!hasDesc}
+                  title={hasDesc ? `Voir la voie : ${nom}` : 'Sélectionnez un peuple/culture'}
+                  style={{
+                    padding: '6px 10px', borderRadius: 4,
+                    border: '1px solid rgba(201,168,76,0.4)',
+                    background: hasDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
+                    color: hasDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+                    cursor: hasDesc ? 'pointer' : 'default',
+                    fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  }}
+                >▤</button>
+              </div>
+              {nom && (
+                <VoieRangBar
+                  voie={character[field]}
+                  voieKey={field}
+                  disponibles={disponibles}
+                  onChange={rangs => onChange({ [field]: { ...character[field], rangs } })}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Voies de profil ── */}
+      <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.04)' }}>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
+          Voies de profil
+        </div>
+      {(['voie1', 'voie2', 'voie3'] as const).map((v, i) => {
+        const nomVoie = character[v].nom
+        const hasDesc = !!nomVoie && !!getDesc(nomVoie)
+        const autresVoies = (['voie1', 'voie2', 'voie3'] as const)
+          .filter(k => k !== v)
+          .map(k => character[k].nom)
+          .filter(Boolean)
+        return (
+          <div key={v}>
+            <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+              Voie {i + 1}
+            </label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              {modeVoies === 'profil' ? (
+                <input
+                  className="flex-1 border rounded px-3 py-1.5 text-base"
+                  style={{ ...INPUT_STYLE, opacity: 0.75 }}
+                  value={nomVoie}
+                  readOnly
+                  title="Fixée par le profil"
+                />
+              ) : (
+                <div style={{ flex: 1 }}>
+                  <VoieCombobox
+                    value={nomVoie}
+                    onChange={nom => setVoie(v, nom)}
+                    options={allProfilVoies}
+                    alreadyChosen={autresVoies}
+                    placeholder="Rechercher une voie…"
+                  />
+                </div>
+              )}
+              {modeVoies === 'libre' && (
+                <button
+                  onClick={() => nomVoie && clearVoie(v)}
+                  disabled={!nomVoie}
+                  title="Effacer la voie"
+                  style={{
+                    padding: '6px 10px', borderRadius: 4,
+                    border: '1px solid rgba(180,60,60,0.35)',
+                    background: nomVoie ? 'rgba(180,60,60,0.1)' : 'transparent',
+                    color: nomVoie ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+                    cursor: nomVoie ? 'pointer' : 'default',
+                    fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  }}
+                >×</button>
+              )}
+              <button
+                onClick={() => hasDesc && setPreviewVoie(nomVoie)}
+                disabled={!hasDesc}
+                title={hasDesc ? `Voir la voie : ${nomVoie}` : 'Sélectionnez une voie'}
+                style={{
+                  padding: '6px 10px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.4)',
+                  background: hasDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
+                  color: hasDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+                  cursor: hasDesc ? 'pointer' : 'default',
+                  fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  transition: 'background 0.15s',
+                }}
+              >▤</button>
+            </div>
+            {nomVoie && (
+              <VoieRangBar
+                voie={character[v]}
+                voieKey={v}
+                disponibles={disponibles}
+                onChange={rangs => onChange({ [v]: { ...character[v], rangs } })}
+              />
+            )}
+          </div>
+        )
+      })}
+      </div>
+
+      {/* ── Famille (dérivée des voies) ── */}
+      <div>
+        <label className="block text-base uppercase tracking-widest mb-2" style={{ color: 'var(--tdr-gold)' }}>
+          Famille
+        </label>
+        <div className="space-y-2">
+          {(Object.entries(FAMILLE_INFO) as [keyof typeof FAMILLE_INFO, typeof FAMILLE_INFO[keyof typeof FAMILLE_INFO]][]).map(([key, f]) => (
+            <div
+              key={key}
+              className="w-full text-left p-2 rounded border"
+              style={{
+                background: familleDérivée === key ? 'rgba(201,168,76,0.15)' : 'transparent',
+                borderColor: familleDérivée === key ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
+                opacity: familleDérivée && familleDérivée !== key ? 0.45 : 1,
+              }}
+            >
+              <div className="font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{f.label}</div>
+              <div className="text-base opacity-60">{f.bonus}</div>
+            </div>
+          ))}
+        </div>
+        {!familleDérivée && (
+          <div className="text-base opacity-50 italic mt-2">
+            Choisissez au moins 2 voies d'une même famille pour déterminer votre famille.
+          </div>
+        )}
+      </div>
+
+      {previewVoie && <CarteVoieModal nom={previewVoie} onClose={() => setPreviewVoie(null)} character={character} />}
     </div>
   )
 }
@@ -373,14 +1108,15 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { FOR, DEX, CON, INT, SAG, CHA } = character.caracteristiques
   const famille = character.famille
 
+  const niv = character.niveau
   const deVie = famille === 'combattants' ? 10 : famille === 'aventuriers' ? 8 : 6
   const pvTotal = deVie + CON.mod
-  const pm = (SAG.mod + INT.mod) * 2
-  const pc = Math.max(1, CHA.mod)
+  const pmBase = niv + SAG.mod
+  const pm = famille === 'mystiques' ? 2 * pmBase : pmBase
+  const pc = CHA.mod + 2 + (famille === 'aventuriers' ? 2 : 0)
   const pr = character.peuple.toLowerCase().includes('ogre') ? 6 : 5
   const defense = 10 + DEX.mod
   const initiative = DEX.valeur
-  const niv = character.niveau
   const attaqueContact  = niv + FOR.mod + (famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0)
   const attaqueDistance = niv + DEX.mod + (famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0)
   const attaqueMagique  = niv + INT.mod + (famille === 'mystiques'   ? 2 : 0)
@@ -389,46 +1125,129 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     onChange({ pvTotal, pvRestants: pvTotal, pm: Math.max(0, pm), pc, pr, prUtilises: Array(pr).fill(true), defense, initiative, attaqueContact, attaqueDistance, attaqueMagique })
   }, [famille, character.peuple, character.niveau, FOR.mod, DEX.mod, CON.mod, INT.mod, SAG.mod, CHA.mod])
 
-  const row = (label: string, value: string | number, formula: string) => (
-    <div className="flex items-baseline justify-between py-1 border-b" style={{ borderColor: 'rgba(201,168,76,0.1)' }}>
-      <span className="text-sm" style={{ color: 'var(--tdr-gold)' }}>{label}</span>
-      <span className="font-bold text-lg">{value}</span>
-      <span className="text-xs opacity-40 font-mono">{formula}</span>
-    </div>
+  const cellStyle: React.CSSProperties = {
+    borderBottom: '1px solid rgba(201,168,76,0.1)',
+    padding: '4px 0',
+    alignSelf: 'baseline',
+  }
+
+  const row = (label: string, value: string | number, formula: React.ReactNode) => (
+    <React.Fragment key={label}>
+      <span className="text-base" style={{ ...cellStyle, color: 'var(--tdr-gold)' }}>{label}</span>
+      <span className="font-bold text-lg" style={{ ...cellStyle, textAlign: 'center' }}>{value}</span>
+      <span className="text-base font-mono" style={{ ...cellStyle, textAlign: 'right', color: 'rgba(245,236,215,0.4)' }}>{formula}</span>
+    </React.Fragment>
   )
 
+  const V = (v: string | number) => (
+    <span style={{ color: '#c9a84c', fontWeight: 700, opacity: 1 }}>{v}</span>
+  )
+  const fmt = (n: number) => n >= 0 ? `+${n}` : `${n}`
+
+  const bonusContact = famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0
+  const bonusMagique = famille === 'mystiques' ? 2 : 0
+  const deVieFamille = famille === 'combattants' ? 'd10' : famille === 'aventuriers' ? 'd8' : 'd6'
+
   return (
-    <div className="space-y-1">
-      <p className="text-sm opacity-70 italic mb-3">Scores calculés automatiquement d'après vos choix.</p>
-      {row('Points de vie', pvTotal, `${deVie} + Mod.CON(${CON.mod})`)}
-      {row('Points de récupération', pr, character.peuple.toLowerCase().includes('ogre') ? 'Ogre : 6' : '5 (fixe)')}
-      {row('Points de magie', Math.max(0, pm), `(Mod.SAG + Mod.INT) × 2`)}
-      {row('Points de chance', pc, `Mod.CHA`)}
-      {row('Défense', defense, `10 + Mod.DEX`)}
-      {row('Initiative', initiative, `Valeur DEX`)}
-      {row('Attaque contact', attaqueContact >= 0 ? `+${attaqueContact}` : attaqueContact, `Niv + Mod.FOR + bonus famille`)}
-      {row('Attaque distance', attaqueDistance >= 0 ? `+${attaqueDistance}` : attaqueDistance, `Niv + Mod.DEX + bonus famille`)}
-      {row('Attaque magique', attaqueMagique >= 0 ? `+${attaqueMagique}` : attaqueMagique, `Niv + Mod.INT + bonus famille`)}
-      {row('Dé de vie', `1${famille === 'combattants' ? 'd10' : famille === 'aventuriers' ? 'd8' : 'd6'}`, `selon famille`)}
+    <div>
+      <p className="text-base opacity-70 italic mb-3">Scores calculés automatiquement d'après vos choix.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 3rem 1.6fr', columnGap: 12 }}>
+        {row('Points de vie', pvTotal, <>{deVieFamille} ({V(deVie)}) + Mod.CON ({V(fmt(CON.mod))})</>)}
+        {row('Points de récupération', pr, character.peuple.toLowerCase().includes('ogre') ? <>Ogre ({V(6)})</> : <>Fixe ({V(5)})</>)}
+        {row('Points de magie', Math.max(0, pm), famille === 'mystiques'
+          ? <>(Niv ({V(niv)}) + Mod.SAG ({V(fmt(SAG.mod))})) × 2</>
+          : <>Niv ({V(niv)}) + Mod.SAG ({V(fmt(SAG.mod))})</>)}
+        {row('Points de chance', pc, famille === 'aventuriers'
+          ? <>Mod.CHA ({V(fmt(CHA.mod))}) + Base ({V('+2')}) + Aventuriers ({V('+2')})</>
+          : <>Mod.CHA ({V(fmt(CHA.mod))}) + Base ({V('+2')})</>)}
+        {row('Défense', defense, <>Base ({V(10)}) + Mod.DEX ({V(fmt(DEX.mod))})</>)}
+        {row('Initiative', initiative, <>Valeur DEX ({V(DEX.valeur)})</>)}
+        {row('Attaque contact', attaqueContact >= 0 ? `+${attaqueContact}` : attaqueContact,
+          <>Niv ({V(niv)}) + Mod.FOR ({V(fmt(FOR.mod))}) + Famille ({V(fmt(bonusContact))})</>)}
+        {row('Attaque distance', attaqueDistance >= 0 ? `+${attaqueDistance}` : attaqueDistance,
+          <>Niv ({V(niv)}) + Mod.DEX ({V(fmt(DEX.mod))}) + Famille ({V(fmt(bonusContact))})</>)}
+        {row('Attaque magique', attaqueMagique >= 0 ? `+${attaqueMagique}` : attaqueMagique,
+          <>Niv ({V(niv)}) + Mod.INT ({V(fmt(INT.mod))}) + Famille ({V(fmt(bonusMagique))})</>)}
+        {row('Dé de vie', `1${deVieFamille}`, <>Famille ({V(deVieFamille)})</>)}
+      </div>
     </div>
   )
 }
 
 function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
+  const [showTraitModal, setShowTraitModal] = React.useState(false)
+
+  const nomPrestige = character.voiePrestige.nom
+  const hasDesc = !!nomPrestige && !!getDesc(nomPrestige)
+
   const FORMATIONS = [
     'Armes de paysan (gratuit)', 'Armes de guerre', 'Armes de guerre lourdes',
     'Armes de duel', 'Armes d\'hast', 'Armes de trait', 'Armes de tir',
     'Armes de jet', 'Armures légères', 'Armures lourdes',
   ]
+  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const countFormations = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
+
   const toggle = (f: string) => {
-    const next = character.formationsMartiales.includes(f)
+    if (f === 'Armes de paysan (gratuit)') return
+    const isChecked = character.formationsMartiales.includes(f)
+    if (!isChecked && countFormations >= maxFormations) return
+    const next = isChecked
       ? character.formationsMartiales.filter(x => x !== f)
       : [...character.formationsMartiales, f]
     onChange({ formationsMartiales: next })
   }
   return (
     <div className="space-y-3">
-      <p className="text-sm opacity-70 italic">
+      {/* Voie de prestige */}
+      <div>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          Voie de prestige
+        </label>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <VoieCombobox
+              value={nomPrestige}
+              onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
+              options={VOIES_PRESTIGE}
+              placeholder="Rechercher une voie de prestige…"
+            />
+          </div>
+          <button
+            onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
+            disabled={!nomPrestige}
+            title="Effacer la voie"
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(180,60,60,0.35)',
+              background: nomPrestige ? 'rgba(180,60,60,0.1)' : 'transparent',
+              color: nomPrestige ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+              cursor: nomPrestige ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >×</button>
+          <button
+            onClick={() => hasDesc && setPreviewVoie(nomPrestige)}
+            disabled={!hasDesc}
+            title={hasDesc ? `Voir la voie : ${nomPrestige}` : 'Sélectionnez une voie'}
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(201,168,76,0.4)',
+              background: hasDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
+              color: hasDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+              cursor: hasDesc ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >
+            ▤
+          </button>
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: 'rgba(201,168,76,0.15)', margin: '4px 0' }} />
+
+      <p className="text-base opacity-70 italic">
         Nombre de formations selon la famille :{' '}
         <strong style={{ color: 'var(--tdr-gold)' }}>
           {character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1}
@@ -436,83 +1255,487 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
         {' '}(+ armes de paysan gratuit)
       </p>
       <div className="space-y-1.5">
-        {FORMATIONS.map(f => (
-          <label key={f} className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={character.formationsMartiales.includes(f)}
-              onChange={() => toggle(f)}
-              className="accent-yellow-500"
-            />
-            <span className="text-sm">{f}</span>
-          </label>
-        ))}
+        {FORMATIONS.map(f => {
+          const isPaysan = f === 'Armes de paysan (gratuit)'
+          const isChecked = isPaysan || character.formationsMartiales.includes(f)
+          const isDisabled = isPaysan || (!isChecked && countFormations >= maxFormations)
+          return (
+            <label key={f} className="flex items-center gap-2" style={{ cursor: isDisabled ? 'default' : 'pointer', opacity: isDisabled && !isPaysan ? 0.45 : 1 }}>
+              <input
+                type="checkbox"
+                checked={isChecked}
+                disabled={isDisabled}
+                onChange={() => toggle(f)}
+                className="accent-yellow-500"
+              />
+              <span className="text-base">{f}</span>
+            </label>
+          )
+        })}
       </div>
-      <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+      <div style={{ opacity: character.famille === 'mystiques' ? 1 : 0.35, pointerEvents: character.famille === 'mystiques' ? 'auto' : 'none' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Talent magique (mystiques)
         </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
-          style={INPUT_STYLE}
-          value={character.talentMagique}
-          onChange={e => onChange({ talentMagique: e.target.value })}
-        />
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <TraitCombobox
+            value={character.talentMagique.nom}
+            onChange={nom => {
+              const data = TRAITS_MAGIQUES.find(t => t.nom === nom)
+              onChange({ talentMagique: { nom, desc: data?.desc ?? character.talentMagique.desc } })
+            }}
+          />
+          <button
+            onClick={() => character.talentMagique.nom && onChange({ talentMagique: { nom: '', desc: '' } })}
+            disabled={!character.talentMagique.nom}
+            title="Effacer le trait"
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(180,60,60,0.35)',
+              background: character.talentMagique.nom ? 'rgba(180,60,60,0.1)' : 'transparent',
+              color: character.talentMagique.nom ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+              cursor: character.talentMagique.nom ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >×</button>
+          <button
+            onClick={() => character.talentMagique.nom && setShowTraitModal(true)}
+            disabled={!character.talentMagique.nom}
+            title={character.talentMagique.nom ? `Voir : ${character.talentMagique.nom}` : 'Sélectionnez un trait'}
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(201,168,76,0.4)',
+              background: character.talentMagique.nom ? 'rgba(201,168,76,0.1)' : 'transparent',
+              color: character.talentMagique.nom ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+              cursor: character.talentMagique.nom ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >▤</button>
+        </div>
       </div>
+
+      {previewVoie && <CarteVoieModal nom={previewVoie} onClose={() => setPreviewVoie(null)} character={character} />}
+      {showTraitModal && (
+        <TraitMagiqueModal
+          nom={character.talentMagique.nom}
+          desc={character.talentMagique.desc}
+          onChange={(nom, desc) => onChange({ talentMagique: { nom, desc } })}
+          onClose={() => setShowTraitModal(false)}
+        />
+      )}
     </div>
   )
 }
 
+type EqTooltip = { lines: string[]; x: number; y: number }
+
 function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const [showEquipement, setShowEquipement] = React.useState(false)
+  const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
+  const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
+  const totalArmes = character.armes.length + character.armuresEquipees.length
+
+  const showTip = (lines: string[], e: React.MouseEvent) => {
+    setEqTip({ lines, x: e.clientX + 14, y: e.clientY + 14 })
+  }
+  const moveTip = (e: React.MouseEvent) => {
+    if (eqTip) setEqTip(t => t ? { ...t, x: e.clientX + 14, y: e.clientY + 14 } : null)
+  }
+
+  const is2H = (nom: string) => { const n = nom.toLowerCase(); return n.includes('deux mains') || n.includes('arc') }
+
+  const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
+    e.dataTransfer.setData('cat', cat)
+    e.dataTransfer.setData('nom', nom)
+  }
+  const handleSlotDrop = (e: React.DragEvent, slot: 'mainD' | 'mainG' | 'corps') => {
+    e.preventDefault()
+    const cat = e.dataTransfer.getData('cat')
+    const nom = e.dataTransfer.getData('nom')
+    if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      if (is2H(nom)) {
+        onChange({ arme1: nom, arme2: '' })
+      } else if (slot === 'mainD') {
+        onChange({ arme1: nom })
+      } else {
+        if (character.arme1 && is2H(character.arme1)) { setDragOver(null); return }
+        onChange({ arme2: nom })
+      }
+    } else if (slot === 'corps' && cat === 'armure') {
+      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
+    }
+    setDragOver(null)
+  }
+  const clearSlot = (slot: 'mainD' | 'mainG' | 'corps', nom?: string) => {
+    if (slot === 'mainD') onChange({ arme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '' } : {}) })
+    else if (slot === 'mainG') onChange({ arme2: '' })
+    else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
+  }
+
   return (
     <div className="space-y-3">
-      <p className="text-sm opacity-70 italic">Dernières touches avant de jouer !</p>
+      <p className="text-base opacity-70 italic">Dernières touches avant de jouer !</p>
+
+      {/* Équipement */}
       <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          Armes &amp; Armures
+        </label>
+        <button
+          onClick={() => setShowEquipement(true)}
+          style={{
+            width: '100%', padding: '7px 14px', borderRadius: 4, fontSize: 14,
+            border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.07)',
+            color: 'var(--tdr-gold)', cursor: 'pointer', textAlign: 'left',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}
+        >
+          <span>Choisir armes &amp; armures…</span>
+          {totalArmes > 0 && (
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              {totalArmes} élément{totalArmes > 1 ? 's' : ''} choisi{totalArmes > 1 ? 's' : ''}
+            </span>
+          )}
+        </button>
+        {(character.armes.length > 0 || character.armuresEquipees.length > 0) && (
+          <div style={{ marginTop: 8 }}>
+            {/* Slots */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              {(['mainG', 'corps', 'mainD'] as const).map(slot => {
+                const LABELS = { mainG: 'Main gauche', corps: 'Corps', mainD: 'Main droite' }
+                const mainGBlocked = slot === 'mainG' && !!character.arme1 && is2H(character.arme1)
+                const isOver = dragOver === slot && !mainGBlocked
+                type SlotItem = { nom: string; sub?: string; ghost?: boolean }
+                let items: SlotItem[] = []
+                if (slot === 'mainD' && character.arme1) {
+                  const a = character.armes.find(x => x.nom === character.arme1)
+                  const two = is2H(character.arme1)
+                  items = [{ nom: character.arme1, sub: a ? `DM ${a.dm}${two ? ' — 2 mains' : ''}` : undefined }]
+                } else if (slot === 'mainG') {
+                  if (mainGBlocked) {
+                    items = [{ nom: character.arme1, sub: '2 mains', ghost: true }]
+                  } else if (character.arme2) {
+                    const a = character.armes.find(x => x.nom === character.arme2)
+                    items = [{ nom: character.arme2, sub: a ? `DM ${a.dm}` : undefined }]
+                  }
+                } else if (slot === 'corps') {
+                  items = character.armuresEquipees.filter(a => a.equipe).map(a => ({ nom: a.nom, sub: `DEF +${a.def}` }))
+                }
+                return (
+                  <div key={slot}
+                    onDragOver={e => { e.preventDefault(); if (!mainGBlocked) setDragOver(slot) }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={e => handleSlotDrop(e, slot)}
+                    style={{
+                      flex: slot === 'corps' ? 2 : 1, minHeight: 72,
+                      border: `1px dashed ${isOver ? '#c9a84c' : 'rgba(201,168,76,0.25)'}`,
+                      borderRadius: 6,
+                      background: isOver ? 'rgba(201,168,76,0.1)' : 'rgba(201,168,76,0.04)',
+                      padding: '6px 8px', transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                  >
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.45, marginBottom: 5 }}>
+                      {LABELS[slot]}
+                    </div>
+                    {items.length === 0 ? (
+                      <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>Glisser ici…</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {items.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, opacity: item.ghost ? 0.35 : 1 }}>
+                            <div>
+                              <div style={{ fontSize: 12, color: 'var(--tdr-parchment)', fontStyle: item.ghost ? 'italic' : 'normal' }}>{item.nom}</div>
+                              {item.sub && <div style={{ fontSize: 10, opacity: 0.5 }}>{item.sub}</div>}
+                            </div>
+                            {!item.ghost && (
+                              <button onClick={() => clearSlot(slot, item.nom)}
+                                style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.45)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+                              >×</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {/* Items draggables */}
+            {character.armes.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>Armes</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  {character.armes.map((a, i) => (
+                    <span key={i}
+                      draggable
+                      onDragStart={e => handleDragStart(e, 'arme', a.nom)}
+                      onMouseEnter={e => showTip([a.nom, `DM : ${a.dm}`, ...(a.attaque ? [`Mod : ${a.attaque}`] : []), ...(a.portee ? [`Portée : ${a.portee}`] : []), ...(a.special ? [a.special] : [])], e)}
+                      onMouseMove={moveTip}
+                      onMouseLeave={() => setEqTip(null)}
+                      style={{
+                        padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'grab',
+                        background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)',
+                        color: 'var(--tdr-parchment)', userSelect: 'none',
+                        opacity: (a.nom === character.arme1 || a.nom === character.arme2) ? 0.4 : 1,
+                      }}>{a.nom}</span>
+                  ))}
+                </div>
+              </>
+            )}
+            {character.armuresEquipees.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>Armures</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {character.armuresEquipees.map((a, i) => (
+                    <span key={i}
+                      draggable
+                      onDragStart={e => handleDragStart(e, 'armure', a.nom)}
+                      onMouseEnter={e => showTip([a.nom, `DEF : +${a.def}`, ...(a.prix ? [`Prix : ${a.prix}`] : [])], e)}
+                      onMouseMove={moveTip}
+                      onMouseLeave={() => setEqTip(null)}
+                      style={{
+                        padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'grab',
+                        background: 'rgba(100,160,255,0.1)', border: '1px solid rgba(100,160,255,0.25)',
+                        color: 'var(--tdr-parchment)', userSelect: 'none',
+                        opacity: a.equipe ? 0.4 : 1,
+                      }}>{a.nom}</span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {eqTip && (
+          <div style={{
+            position: 'fixed', zIndex: 9999, pointerEvents: 'none',
+            left: eqTip.x, top: eqTip.y,
+            background: 'rgba(12,9,5,0.97)', border: '1px solid rgba(201,168,76,0.35)',
+            borderRadius: 5, padding: '7px 12px', minWidth: 120,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+          }}>
+            {eqTip.lines.map((line, i) => (
+              <div key={i} style={{
+                fontSize: i === 0 ? 13 : 12,
+                fontWeight: i === 0 ? 700 : 400,
+                color: i === 0 ? 'var(--tdr-gold)' : 'var(--tdr-parchment)',
+                opacity: i === 0 ? 1 : 0.85,
+                marginTop: i > 0 ? 3 : 0,
+              }}>{line}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showEquipement && (
+        <EquipementModal character={character} onChange={onChange} onClose={() => setShowEquipement(false)} />
+      )}
+      <div>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Description du personnage
         </label>
         <textarea
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="w-full border rounded px-3 py-2 text-base"
           style={{ ...INPUT_STYLE, minHeight: '6rem' }}
           value={character.description}
           onChange={e => onChange({ description: e.target.value })}
         />
       </div>
       <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Inventaire de départ
         </label>
         <textarea
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="w-full border rounded px-3 py-2 text-base"
           style={{ ...INPUT_STYLE, minHeight: '4rem' }}
           value={character.inventaire}
           onChange={e => onChange({ inventaire: e.target.value })}
         />
+        <p className="text-base italic mt-1" style={{ color: 'rgba(245,236,215,0.5)', fontSize: '0.9em' }}>
+          N'hésitez pas à personnaliser son inventaire avec des objets intimes sans valeur marchande, telle qu'une lettre, un coquillage imprégné de souvenirs, la plume du premier rapace qu'il a chassé, etc.
+        </p>
       </div>
       <div>
-        <label className="block text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Trésorerie
         </label>
         <input
-          className="w-full border rounded px-3 py-1.5 text-sm"
+          className="w-full border rounded px-3 py-1.5 text-base"
           style={INPUT_STYLE}
           value={character.tresorerie}
           onChange={e => onChange({ tresorerie: e.target.value })}
         />
       </div>
+
     </div>
   )
 }
 
-export default function CreationWizard({ step, character, onChange, onNext, onPrev }: Props) {
+function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void }) {
+  const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
+  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const nbFormationsChoisies = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
+  const totalArmes = character.armes.length + character.armuresEquipees.length
+
+  type CheckItem = { label: string; ok: boolean; niveau: 'requis' | 'conseille' }
+  const checks: CheckItem[] = [
+    { label: 'Nom du joueur',                   ok: !!character.nomJoueur.trim(),          niveau: 'requis' },
+    { label: 'Nom du personnage',                ok: !!character.nomPersonnage.trim(),       niveau: 'requis' },
+    { label: 'Peuple renseigné',                 ok: !!character.peuple,                     niveau: 'requis' },
+    { label: 'Culture renseignée',               ok: !!character.culture,                    niveau: 'requis' },
+    { label: 'Profil renseigné',                 ok: modeVoies === 'libre' || !!character.profil, niveau: 'requis' },
+    { label: 'Famille déterminée',               ok: !!character.famille,                    niveau: 'requis' },
+    { label: 'Voie 1 choisie',                   ok: !!character.voie1.nom,                  niveau: 'requis' },
+    { label: 'Voie 2 choisie',                   ok: !!character.voie2.nom,                  niveau: 'requis' },
+    { label: 'Voie 3 choisie',                   ok: !!character.voie3.nom,                  niveau: 'requis' },
+    { label: `Points de capacité dépensés (${ptsDisponibles} restant${ptsDisponibles > 1 ? 's' : ''})`,
+                                                  ok: ptsDisponibles === 0,                   niveau: 'requis' },
+    { label: 'Points de vie calculés',           ok: character.pvTotal > 0,                  niveau: 'requis' },
+    { label: `Formations martiales (${nbFormationsChoisies}/${maxFormations})`,
+                                                  ok: nbFormationsChoisies >= maxFormations,  niveau: 'requis' },
+    { label: 'Armes ou armures choisies',        ok: totalArmes > 0,                         niveau: 'conseille' },
+    { label: 'Talent magique (Mystiques)',
+      ok: character.famille !== 'mystiques' || !!character.talentMagique.nom,                 niveau: 'conseille' },
+    { label: 'Portrait',                         ok: !!character.portrait,                   niveau: 'conseille' },
+  ]
+  const manquants  = checks.filter(c => !c.ok && c.niveau === 'requis')
+  const conseilles = checks.filter(c => !c.ok && c.niveau === 'conseille')
+  const toutOk     = manquants.length === 0 && conseilles.length === 0
+
+  return (
+    <div className="space-y-4">
+      {toutOk ? (
+        <div style={{
+          borderRadius: 10, padding: '24px 20px',
+          background: 'rgba(120,200,120,0.07)',
+          border: '1px solid rgba(120,200,120,0.35)',
+          display: 'flex', flexDirection: 'column', gap: 20,
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 28, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'rgba(120,200,120,0.95)', marginBottom: 8 }}>
+              Bonne aventure !
+            </div>
+            <p style={{ fontSize: 14, color: 'rgba(120,200,120,0.7)', margin: 0, fontStyle: 'italic' }}>
+              Tous les éléments sont renseignés. Votre personnage est prêt à jouer.
+            </p>
+          </div>
+
+          {/* Sauvegarde */}
+          <div style={{
+            background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)',
+            borderRadius: 7, padding: '14px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>Sauvegarder le personnage</div>
+              <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+                Enregistrez votre personnage dans la bibliothèque pour le retrouver lors de vos prochaines sessions.
+              </div>
+            </div>
+            {onSave && (
+              <button onClick={onSave} style={{
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.15)',
+                color: 'var(--tdr-gold)', fontWeight: 600, whiteSpace: 'nowrap',
+              }}>
+                + Sauvegarder
+              </button>
+            )}
+          </div>
+
+          {/* Impression */}
+          <div style={{
+            background: 'rgba(120,180,255,0.04)', border: '1px solid rgba(120,180,255,0.2)',
+            borderRadius: 7, padding: '14px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>Imprimer la fiche</div>
+              <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+                Imprimez la fiche recto-verso pour jouer avec une feuille physique à portée de main.
+              </div>
+            </div>
+            {onPrint && (
+              <button onClick={onPrint} style={{
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                border: '1px solid rgba(120,180,255,0.35)', background: 'rgba(120,180,255,0.08)',
+                color: 'rgba(140,190,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap',
+              }}>
+                Imprimer
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          border: `1px solid ${manquants.length > 0 ? 'rgba(200,100,80,0.4)' : 'rgba(201,168,76,0.35)'}`,
+          borderRadius: 8, padding: '12px 16px',
+          background: manquants.length > 0 ? 'rgba(200,80,60,0.04)' : 'rgba(201,168,76,0.04)',
+        }}>
+          <div style={{
+            fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 10,
+            color: manquants.length > 0 ? '#c97a4c' : 'var(--tdr-gold)',
+          }}>
+            {`Récapitulatif — ${manquants.length + conseilles.length} élément${manquants.length + conseilles.length > 1 ? 's' : ''} à compléter`}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {[...manquants, ...conseilles].map((c, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <span style={{
+                  flexShrink: 0, width: 18, height: 18, borderRadius: 3,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700,
+                  background: c.niveau === 'requis' ? 'rgba(200,80,60,0.2)' : 'rgba(201,168,76,0.12)',
+                  color: c.niveau === 'requis' ? '#c97a4c' : 'rgba(201,168,76,0.8)',
+                  border: `1px solid ${c.niveau === 'requis' ? 'rgba(200,80,60,0.35)' : 'rgba(201,168,76,0.25)'}`,
+                }}>
+                  {c.niveau === 'requis' ? '✕' : '!'}
+                </span>
+                <span style={{ color: c.niveau === 'requis' ? 'rgba(245,236,215,0.85)' : 'rgba(245,236,215,0.55)' }}>
+                  {c.label}
+                </span>
+                {c.niveau === 'conseille' && (
+                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>conseillé</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint }: Props) {
+  const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('libre')
+  const ptsDisp = calcPointsCapacite(character).disponibles
+  const maxForms = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const nbForms  = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
+  const personnageComplet = !!(
+    character.nomJoueur.trim() && character.nomPersonnage.trim() &&
+    character.peuple && character.culture && (modeVoies === 'libre' || character.profil) && character.famille &&
+    character.voie1.nom && character.voie2.nom && character.voie3.nom &&
+    ptsDisp === 0 && character.pvTotal > 0 && nbForms >= maxForms
+  )
+  const stepOk: boolean[] = [
+    !!(character.nomJoueur.trim() && character.nomPersonnage.trim()),
+    !!(character.peuple && character.culture),
+    Object.values(character.caracteristiques).some(c => c.valeur !== 10),
+    !!((modeVoies === 'libre' || character.profil) && character.famille && character.voie1.nom && character.voie2.nom && character.voie3.nom && ptsDisp === 0),
+    character.pvTotal > 0,
+    true,
+    true,
+    personnageComplet,
+  ]
+
   const stepComponents = [
     <Step0 character={character} onChange={onChange} />,
     <Step1 character={character} onChange={onChange} />,
     <Step2 character={character} onChange={onChange} />,
-    <Step3 character={character} onChange={onChange} />,
+    <Step3 character={character} onChange={onChange} modeVoies={modeVoies} setModeVoies={setModeVoies} />,
     <Step4 character={character} onChange={onChange} />,
     <Step5 character={character} onChange={onChange} />,
     <Step6 character={character} onChange={onChange} />,
+    <Step7 character={character} modeVoies={modeVoies} onSave={onSave} onPrint={onPrint} />,
   ]
 
   return (
@@ -520,10 +1743,10 @@ export default function CreationWizard({ step, character, onChange, onNext, onPr
       {/* Header */}
       <div className="px-4 pt-4 pb-2 border-b" style={{ borderColor: 'rgba(201,168,76,0.2)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs uppercase tracking-widest opacity-50">Étape {step + 1}/{STEPS.length}</span>
+          <span className="text-base uppercase tracking-widest opacity-50">Étape {step + 1}/{STEPS.length}</span>
         </div>
-        <StepIndicator current={step} total={STEPS.length} />
-        <h2 className="text-xl font-bold" style={{ color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>
+        <StepIndicator current={step} maxStep={maxStep} total={STEPS.length} stepOk={stepOk} onGoTo={onGoTo} />
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>
           {STEPS[step]}
         </h2>
       </div>
@@ -538,19 +1761,36 @@ export default function CreationWizard({ step, character, onChange, onNext, onPr
         <button
           onClick={onPrev}
           disabled={step === 0}
-          className="flex-1 py-2 rounded border text-sm transition-all disabled:opacity-30"
+          className="flex-1 py-2 rounded border text-base transition-all disabled:opacity-30"
           style={{ borderColor: 'rgba(201,168,76,0.4)', color: 'var(--tdr-parchment)' }}
         >
           ← Précédent
         </button>
-        <button
-          onClick={onNext}
-          disabled={step === STEPS.length - 1}
-          className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-30"
-          style={{ background: 'var(--tdr-gold)', color: 'var(--tdr-dark)' }}
-        >
-          {step === STEPS.length - 2 ? 'Terminer ✓' : 'Suivant →'}
-        </button>
+        {step < STEPS.length - 1 && (
+          <button
+            onClick={onNext}
+            className="flex-1 py-2 rounded text-base font-bold transition-all"
+            style={{ background: 'var(--tdr-gold)', color: 'var(--tdr-dark)' }}
+          >
+            Suivant →
+          </button>
+        )}
+        {step === STEPS.length - 1 && (
+          <button
+            onClick={onNext}
+            disabled={!personnageComplet}
+            className="flex-1 py-2 rounded text-base font-bold transition-all"
+            style={{
+              background: personnageComplet ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.15)',
+              color: personnageComplet ? 'var(--tdr-dark)' : 'rgba(201,168,76,0.35)',
+              cursor: personnageComplet ? 'pointer' : 'not-allowed',
+              border: personnageComplet ? 'none' : '1px solid rgba(201,168,76,0.25)',
+            }}
+            title={!personnageComplet ? 'Complétez les éléments requis avant de terminer' : ''}
+          >
+            Terminer ✓
+          </button>
+        )}
       </div>
     </div>
   )

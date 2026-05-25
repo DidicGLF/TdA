@@ -1,0 +1,26 @@
+[
+  {
+    "nom": "Détection de la magie",
+    "desc": "Pour une action d'attaque, le mystique se concentre et détecte la présence de toute inscription, aura ou objet magique situé(e) dans la pièce où il se trouve (ou dans les 15 mètres autour de lui)."
+  },
+  {
+    "nom": "Flamme",
+    "desc": "Pour une action gratuite et tant qu'il le souhaite, le mystique fait apparaître dans la paume de sa main une petite flamme, à peine assez intense pour éclairer une zone dans un rayon de 5 mètres. Il peut l'utiliser pour mettre le feu à des matières inflammables ou porter une attaque de contact — pour une action d'attaque — à un adversaire en utilisant son score d'attaque magique et lui infligeant 1d6 DM."
+  },
+  {
+    "nom": "Inspiration",
+    "desc": "Au prix d'une action d'attaque, le mystique désigne un allié à moins de 10 mètres et lui octroie un bonus de +1 à tous ses tests pendant [2 + Mod. SAG] tours. Il peut lancer une inspiration à chaque tour mais ne peut maintenir plus de [1 + Mod. INT] inspirations à la fois (minimum 1)."
+  },
+  {
+    "nom": "Lumières dansantes",
+    "desc": "Au prix d'une action de mouvement, le mystique fait apparaître trois petites sphères de lumière de la couleur de son choix lévitant autour de son corps. Elles éclairent une zone dans un rayon de 20 mètres et persistent aussi longtemps que le mystique le souhaite. Le moindre DM subi rompt la concentration et les fait disparaître."
+  },
+  {
+    "nom": "Projectile de force",
+    "desc": "Pour une action d'attaque, le mystique choisit une cible visible à moins de 50 mètres et projette une onde de choc qui la touche automatiquement, lui infligeant 1d4 DM. Le projectile de force est presque invisible et n'émet aucun son lorsqu'il file dans l'air."
+  },
+  {
+    "nom": "Trait droit",
+    "desc": "N'ai jamais tordu"
+  }
+]

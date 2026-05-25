@@ -27,3 +27,11 @@ dist-ssr
 src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/
+
+# Cartes de voies (images volumineuses, à transmettre séparément)
+public/cartes-voies/
+
+# Fichiers personnels / outils dev local
+.claude/
+Reprendre avec CLaude.txt
+resumés-voies.md

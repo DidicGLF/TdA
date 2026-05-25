@@ -16,11 +16,12 @@ interface Props {
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number) => void
+  title?: string
 }
 
 export default function DraggableField({
   top, left, width: initWidth, height, value, onChange, type, align, active,
-  calibrate, label, containerRef, onMoved,
+  calibrate, label, containerRef, onMoved, title,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
@@ -81,7 +82,7 @@ export default function DraggableField({
       <SheetField
         top={pos.top} left={pos.left} width={width} height={height}
         value={value} onChange={onChange} type={type} align={align} active={active}
-        calibrate={calibrate}
+        calibrate={calibrate} title={title}
       />
       {calibrate && (
         <div

@@ -1,63 +1,108 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Character } from '../types/character'
 
-const STORAGE_KEY = 'tdr_personnages'
-
-interface SavedEntry {
+export interface SavedEntry {
   id: string
   nom: string
   date: string
+  maxStep?: number
   character: Character
-}
-
-function load(): SavedEntry[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') }
-  catch { return [] }
-}
-
-function store(entries: SavedEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
 }
 
 interface Props {
   character: Character
-  onLoad: (c: Character) => void
+  maxStep: number
+  library: SavedEntry[]
+  onLibraryChange: (entries: SavedEntry[]) => void
+  onLoad: (c: Character, maxStep: number) => void
   onNew: () => void
   onClose: () => void
 }
 
-export default function SaveLoadPanel({ character, onLoad, onNew, onClose }: Props) {
-  const [entries, setEntries] = useState<SavedEntry[]>(load)
+export default function SaveLoadPanel({ character, maxStep, library, onLibraryChange, onLoad, onNew, onClose }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
 
   const nomPerso = character.nomPersonnage?.trim() || character.nomJoueur?.trim() || 'Personnage sans nom'
-
-  const save = () => {
-    const existing = entries.find(e => e.nom === nomPerso)
-    const entry: SavedEntry = {
-      id: existing?.id ?? crypto.randomUUID(),
-      nom: nomPerso,
-      date: new Date().toISOString(),
-      character,
-    }
-    const next = existing
-      ? entries.map(e => e.id === entry.id ? entry : e)
-      : [...entries, entry]
-    store(next)
-    setEntries(next)
-  }
-
-  const remove = (id: string) => {
-    const next = entries.filter(e => e.id !== id)
-    store(next)
-    setEntries(next)
-    setConfirm(null)
-  }
 
   const fmt = (iso: string) => {
     const d = new Date(iso)
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
       + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const addToLibrary = () => {
+    const existing = library.find(e => e.nom === nomPerso)
+    const entry: SavedEntry = {
+      id: existing?.id ?? crypto.randomUUID(),
+      nom: nomPerso,
+      date: new Date().toISOString(),
+      maxStep,
+      character,
+    }
+    onLibraryChange(existing
+      ? library.map(e => e.id === entry.id ? entry : e)
+      : [...library, entry]
+    )
+  }
+
+  const remove = (id: string) => {
+    onLibraryChange(library.filter(e => e.id !== id))
+    setConfirm(null)
+  }
+
+  const downloadJson = (filename: string, payload: unknown) => {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportLibrary = () => downloadJson('personnages-tdr.json', library)
+
+  const exportCharacter = (entry: SavedEntry) => {
+    const safe = entry.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-')
+    downloadJson(`${safe}.json`, entry)
+  }
+
+  const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target?.result as string)
+        if (Array.isArray(data)) {
+          onLibraryChange(data)
+        } else if (data.character !== undefined && data.nom !== undefined) {
+          // Format SavedEntry exporté individuellement
+          const entry: SavedEntry = {
+            id: data.id ?? crypto.randomUUID(),
+            nom: data.nom,
+            date: data.date ?? new Date().toISOString(),
+            maxStep: data.maxStep,
+            character: data.character,
+          }
+          onLibraryChange([...library, entry])
+        } else if (data.nomPersonnage !== undefined || data.nomJoueur !== undefined) {
+          // Ancien format (personnage nu sans enveloppe SavedEntry)
+          const entry: SavedEntry = {
+            id: crypto.randomUUID(),
+            nom: data.nomPersonnage?.trim() || data.nomJoueur?.trim() || 'Importé',
+            date: new Date().toISOString(),
+            character: data,
+          }
+          onLibraryChange([...library, entry])
+        } else {
+          alert('Fichier non reconnu.')
+        }
+      } catch {
+        alert('Fichier invalide.')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
   }
 
   const btn: React.CSSProperties = {
@@ -79,8 +124,7 @@ export default function SaveLoadPanel({ character, onLoad, onNew, onClose }: Pro
       <div style={{
         background: 'rgba(20,15,8,0.99)',
         border: '1px solid rgba(201,168,76,0.35)',
-        borderRadius: 8,
-        padding: '24px 28px',
+        borderRadius: 8, padding: '24px 28px',
         minWidth: 360, maxWidth: 480, width: '90vw',
         boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
         display: 'flex', flexDirection: 'column', gap: 16,
@@ -94,7 +138,7 @@ export default function SaveLoadPanel({ character, onLoad, onNew, onClose }: Pro
           <button onClick={onClose} style={{ ...btn, border: 'none', opacity: 0.5 }}>✕</button>
         </div>
 
-        {/* Sauvegarder le personnage courant */}
+        {/* Personnage courant */}
         <div style={{
           background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)',
           borderRadius: 6, padding: '12px 14px',
@@ -106,24 +150,23 @@ export default function SaveLoadPanel({ character, onLoad, onNew, onClose }: Pro
               {character.peuple || '—'} · Niv. {character.niveau}
             </div>
           </div>
-          <button onClick={save} style={{ ...btn, background: 'rgba(201,168,76,0.15)', whiteSpace: 'nowrap' }}>
-            Sauvegarder
+          <button onClick={addToLibrary} style={{ ...btn, background: 'rgba(201,168,76,0.15)', whiteSpace: 'nowrap' }}>
+            + Sauvegarder
           </button>
         </div>
 
         {/* Liste */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
-          {entries.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+          {library.length === 0 ? (
             <div style={{ color: 'rgba(245,236,215,0.35)', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-              Aucune fiche sauvegardée
+              Aucun personnage — importez un fichier ou sauvegardez le personnage courant
             </div>
-          ) : entries.map(e => (
+          ) : library.map(e => (
             <div key={e.id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '8px 10px', borderRadius: 5,
               border: '1px solid rgba(201,168,76,0.15)',
-              background: 'rgba(255,255,255,0.02)',
-              gap: 8,
+              background: 'rgba(255,255,255,0.02)', gap: 8,
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -134,26 +177,40 @@ export default function SaveLoadPanel({ character, onLoad, onNew, onClose }: Pro
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => { onLoad(e.character); onClose() }} style={btn}>Charger</button>
+                <button onClick={() => exportCharacter(e)} style={btn} title="Exporter ce personnage">↓</button>
+                <button onClick={() => { onLoad(e.character, e.maxStep ?? 0); onClose() }} style={btn}>Charger</button>
                 {confirm === e.id ? (
                   <>
                     <button onClick={() => remove(e.id)} style={btnDanger}>Confirmer</button>
                     <button onClick={() => setConfirm(null)} style={{ ...btn, opacity: 0.5 }}>✕</button>
                   </>
                 ) : (
-                  <button onClick={() => setConfirm(e.id)} style={btnDanger}>Supprimer</button>
+                  <button onClick={() => setConfirm(e.id)} style={btnDanger}>Suppr.</button>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Nouveau personnage */}
+        {/* Import / Export */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ ...btn, flex: 1, textAlign: 'center' }}>
+            ↑ Importer
+          </button>
+          <button onClick={exportLibrary} disabled={library.length === 0}
+            style={{ ...btn, flex: 1, textAlign: 'center', opacity: library.length === 0 ? 0.35 : 1 }}>
+            ↓ Exporter
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importLibrary} />
+        </div>
+
+        {/* Nouveau */}
         <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: 12 }}>
           <button onClick={() => { onNew(); onClose() }} style={{ ...btn, width: '100%', textAlign: 'center', opacity: 0.7 }}>
             + Nouveau personnage
           </button>
         </div>
+
       </div>
     </div>
   )
