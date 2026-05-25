@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import type { Character } from '../types/character'
-import ARMES_DATA from '../data/armes.json'
-import ARMURES_DATA from '../data/armures.json'
+import { useGameData } from '../context/GameDataContext'
 
 type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string }
 type EntreeArmure = { nom: string; def: number; prix: string }
@@ -66,10 +65,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)
 
-  const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(ARMES_DATA.groupes)))
-  const [armures,      setArmures]      = useState<CatArmure[]>  (() => JSON.parse(JSON.stringify(ARMURES_DATA.categories)))
-  const [armesNotes,   setArmesNotes]   = useState<string>(() => ARMES_DATA.notes ?? '')
-  const [armuresNotes, setArmuresNotes] = useState<string>(() => ARMURES_DATA.notes ?? '')
+  const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
+  const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
+  const [armures,      setArmures]      = useState<CatArmure[]>  (() => JSON.parse(JSON.stringify(armuresCtx.categories)))
+  const [armesNotes,   setArmesNotes]   = useState<string>(() => armesCtx.notes ?? '')
+  const [armuresNotes, setArmuresNotes] = useState<string>(() => armuresCtx.notes ?? '')
 
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
   const dragSrc     = useRef<DragSrc | null>(null)
@@ -312,8 +312,13 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const bouclierPorte  = boucliersSeuls.find(a => a.equipe)?.nom ?? null
 
   const handleExport = () => {
-    if (section === 'armes') exportJson({ notes: armesNotes, groupes }, 'armes.json')
-    else exportJson({ notes: armuresNotes, categories: armures }, 'armures.json')
+    if (section === 'armes') {
+      saveArmes({ notes: armesNotes, groupes } as typeof armesCtx)
+      exportJson({ notes: armesNotes, groupes }, 'armes.json')
+    } else {
+      saveArmures({ notes: armuresNotes, categories: armures } as typeof armuresCtx)
+      exportJson({ notes: armuresNotes, categories: armures }, 'armures.json')
+    }
     setExported(true)
   }
 

@@ -1,5 +1,5 @@
 import type { Character } from '../types/character'
-import DESCRIPTIONS_RAW from '../data/descriptions.json'
+import type { DescMap } from '../types/gameData'
 
 type Condition =
   | { type: 'hasBouclier' }
@@ -41,8 +41,6 @@ type DescEntry = {
   effects?: DescEffect[]
 }
 
-const DESCRIPTIONS = DESCRIPTIONS_RAW as Record<string, DescEntry[]>
-
 const VOIE_KEYS: Array<keyof Pick<Character,
   'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3' | 'voiePrestige' | 'voieSangMele'
 >> = ['voiePeuple', 'voieCulturelle', 'voie1', 'voie2', 'voie3', 'voiePrestige', 'voieSangMele']
@@ -81,14 +79,14 @@ export type DiceContribution = {
   voie: string
 }
 
-export function computeEffects(character: Character): EffectsResult {
+export function computeEffects(character: Character, descriptions: DescMap): EffectsResult {
   const result: EffectsResult = {}
 
   for (const key of VOIE_KEYS) {
     const voie = character[key]
     if (!voie.nom) continue
 
-    const rangsData = DESCRIPTIONS[voie.nom]
+    const rangsData = descriptions[voie.nom]
     if (!rangsData) continue
 
     for (let i = 0; i < 5; i++) {
@@ -134,14 +132,14 @@ export function computeEffects(character: Character): EffectsResult {
   return result
 }
 
-export function computeDiceEffects(character: Character): Record<string, DiceContribution> {
+export function computeDiceEffects(character: Character, descriptions: DescMap): Record<string, DiceContribution> {
   const result: Record<string, DiceContribution> = {}
 
   for (const key of VOIE_KEYS) {
     const voie = character[key]
     if (!voie.nom) continue
 
-    const rangsData = DESCRIPTIONS[voie.nom]
+    const rangsData = descriptions[voie.nom]
     if (!rangsData) continue
 
     for (let i = 0; i < 5; i++) {

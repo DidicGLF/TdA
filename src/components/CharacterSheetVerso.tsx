@@ -4,9 +4,7 @@ import { parseDesc } from '../utils/parseDesc'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
-import DESCRIPTIONS_DATA from '../data/descriptions.json'
-
-const DESCRIPTIONS = DESCRIPTIONS_DATA as Record<string, { nom: string; desc: string }[]>
+import { useGameData } from '../context/GameDataContext'
 
 interface Props {
   character: Character
@@ -45,6 +43,7 @@ const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
 export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, onFieldMoved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
+  const { data } = useGameData()
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, { top: f.top, left: f.left }]))
   )
@@ -279,8 +278,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {/* === VOIE PRESTIGE : NOMS DES CAPACITÉS === */}
       {VOIE_PRESTIGE_RANG_NOM_POS.map(({ id, top, left, width }, idx) => {
         const nomVoie = character.voiePrestige.nom
-        const nomCap = DESCRIPTIONS[nomVoie]?.[idx]?.nom || ''
-        const desc = DESCRIPTIONS[nomVoie]?.[idx]?.desc ?? ''
+        const nomCap = data[nomVoie]?.[idx]?.nom || ''
+        const desc = data[nomVoie]?.[idx]?.desc ?? ''
         return (
           <React.Fragment key={`${id}-cap`}>
             <DraggableField

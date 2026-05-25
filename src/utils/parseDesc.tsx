@@ -2,6 +2,7 @@ import React from 'react'
 import type { Character, Caracteristique } from '../types/character'
 import { getMod } from '../types/character'
 import { computeEffects, computeDiceEffects, sumStat } from './computeEffects'
+import type { DescMap } from '../types/gameData'
 
 type Segment = { text: string; bold?: boolean; italic?: boolean; gold?: boolean }
 
@@ -84,9 +85,9 @@ function evalArithmetic(expr: string): number | null {
   return parts.reduce((sum, p) => sum + parseInt(p), 0)
 }
 
-function resolveBracket(inner: string, character: Character): { node: React.ReactNode; total?: number } {
-  const effects = computeEffects(character)
-  const diceEffects = computeDiceEffects(character)
+function resolveBracket(inner: string, character: Character, descriptions: DescMap): { node: React.ReactNode; total?: number } {
+  const effects = computeEffects(character, descriptions)
+  const diceEffects = computeDiceEffects(character, descriptions)
   const effectiveMod = (stat: Caracteristique) => {
     const bonus = sumStat(effects[stat] ?? [])
     return getMod(character.caracteristiques[stat].valeur + bonus)
@@ -151,7 +152,7 @@ function resolveBracket(inner: string, character: Character): { node: React.Reac
   return { node, total: computedTotal ?? undefined }
 }
 
-function parseInline(text: string, character?: Character): React.ReactNode {
+function parseInline(text: string, character?: Character, descriptions?: DescMap): React.ReactNode {
   const bracketRe = /\[([^\]]+)\]/g
   const parts: Array<{ type: 'text'; content: string } | { type: 'bracket'; inner: string }> = []
   let lastIdx = 0
@@ -171,7 +172,7 @@ function parseInline(text: string, character?: Character): React.ReactNode {
           return <React.Fragment key={i}>{renderSegments(tokenize(part.content))}</React.Fragment>
         }
         if (character) {
-          const { node, total } = resolveBracket(part.inner, character)
+          const { node, total } = resolveBracket(part.inner, character, descriptions ?? {})
           return (
             <span key={i} title={`[${part.inner}]`} style={{ cursor: 'help' }}>
               [{node}]{total !== undefined && (
@@ -229,7 +230,7 @@ function renderTable(lines: string[]): React.ReactNode {
   )
 }
 
-export function parseDesc(text: string, character?: Character): React.ReactNode {
+export function parseDesc(text: string, character?: Character, descriptions?: DescMap): React.ReactNode {
   if (!text) return null
   _key = 0
 
@@ -267,7 +268,7 @@ export function parseDesc(text: string, character?: Character): React.ReactNode 
             {block.lines.map((line, li) => (
               <React.Fragment key={li}>
                 {li > 0 && <br />}
-                {parseInline(line, character)}
+                {parseInline(line, character, descriptions)}
               </React.Fragment>
             ))}
             {content === '' && null}

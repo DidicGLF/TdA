@@ -1,39 +1,26 @@
 import React from 'react'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
-import { PEUPLES as PEUPLES_DATA, findCulture, findTrait } from '../data/peuples'
-import { VOIES } from '../data/voies'
+import { findCulture, findTrait } from '../data/peuples'
 import PROFILS_RAW from '../data/profils.json'
 import { useGameData } from '../context/GameDataContext'
-
-const VOIES_PRESTIGE = VOIES.filter(v => v.categorie === 'prestige')
 
 type ProfilEntry = { nom: string; peuplePrivilégie: string; voies: string[]; formationsMartiales: string[]; talentMagique?: string; description: string; famille: string }
 const PROFILS_FLAT: ProfilEntry[] = (PROFILS_RAW as { famille: string; profils: Omit<ProfilEntry, 'famille'>[] }[]).flatMap(g => g.profils.map(p => ({ ...p, famille: g.famille })))
 const PROFILS_GROUPED = PROFILS_RAW as { famille: string; profils: Omit<ProfilEntry, 'famille'>[] }[]
 
 const VOIE_PREFIX_RE = /^voie (du |de la |de l['']|des |de )/i
-const findVoieByShort = (shortNom: string) => {
+const findVoieByShort = (voies: { nom: string; famille: string; categorie: string }[], shortNom: string) => {
   const normalized = shortNom.toLowerCase()
-  return VOIES.find(v => v.categorie === 'profil' && v.nom.toLowerCase().replace(VOIE_PREFIX_RE, '') === normalized) ?? null
+  return voies.find(v => v.categorie === 'profil' && v.nom.toLowerCase().replace(VOIE_PREFIX_RE, '') === normalized) ?? null
 }
 import VoieCombobox from './VoieCombobox'
 import EquipementModal from './EquipementModal'
-import DESCRIPTIONS_DATA from '../data/descriptions.json'
-import TRAITS_MAGIQUES_DATA from '../data/traits-magiques.json'
 import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/levelUp'
 import type { VoieKey } from '../utils/levelUp'
 import { parseDesc } from '../utils/parseDesc'
 
 type TraitEntry = { nom: string; desc: string }
-const TRAITS_MAGIQUES = TRAITS_MAGIQUES_DATA as TraitEntry[]
-
-type Capacite = { nom: string; desc: string }
-const DESCRIPTIONS = DESCRIPTIONS_DATA as Record<string, Capacite[]>
-const DESCRIPTIONS_LOWER = Object.fromEntries(
-  Object.entries(DESCRIPTIONS).map(([k, v]) => [k.toLowerCase(), v])
-)
-const getDesc = (nom: string) => DESCRIPTIONS[nom] ?? DESCRIPTIONS_LOWER[nom.toLowerCase()]
 
 interface Props {
   step: number
@@ -230,13 +217,14 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const selectedPeuple = PEUPLES_DATA.find(p => p.label === character.peuple) ?? null
+  const { peuples } = useGameData()
+  const selectedPeuple = peuples.find(p => p.label === character.peuple) ?? null
   const cultures = selectedPeuple?.cultures ?? []
 
   const onPeupleChange = (peupleLabel: string) => {
-    const peuple = PEUPLES_DATA.find(p => p.label === peupleLabel)
+    const peuple = peuples.find(p => p.label === peupleLabel)
     const firstCulture = peuple?.cultures[0]
-    const trait = firstCulture ? findTrait(peupleLabel, firstCulture.label) : null
+    const trait = firstCulture ? findTrait(peuples, peupleLabel, firstCulture.label) : null
     onChange({
       peuple: peupleLabel,
       culture: firstCulture?.label ?? '',
@@ -248,8 +236,8 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   }
 
   const onCultureChange = (cultureLabel: string) => {
-    const culture = findCulture(character.peuple, cultureLabel)
-    const trait = findTrait(character.peuple, cultureLabel)
+    const culture = findCulture(peuples, character.peuple, cultureLabel)
+    const trait = findTrait(peuples, character.peuple, cultureLabel)
     onChange({
       culture: cultureLabel,
       voiePeuple: { ...character.voiePeuple, nom: culture?.voiePeuple ?? character.voiePeuple.nom },
@@ -259,7 +247,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     })
   }
 
-  const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
+  const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
   const modText = Object.entries(modCaracs)
     .map(([k, v]) => `${k} ${(v as number) >= 0 ? '+' : ''}${v}`)
     .join(', ')
@@ -281,7 +269,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           onChange={e => onPeupleChange(e.target.value)}
         >
           <option value="">-- Choisir --</option>
-          {PEUPLES_DATA.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+          {peuples.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
         </select>
       </div>
 
@@ -315,7 +303,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       )}
 
       {(() => {
-        const trait = findTrait(character.peuple, character.culture)
+        const trait = findTrait(peuples, character.peuple, character.culture)
         return (
           <div>
             <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
@@ -343,7 +331,8 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
+  const { peuples } = useGameData()
+  const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
 
   const [method, setMethod] = React.useState<'distribution' | 'aleatoire'>('distribution')
   // Les caracs sont "non assignées" si toutes sont encore à la valeur par défaut (10)
@@ -444,7 +433,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 6 }}>Modificateurs raciaux —</span>
           <span style={{ color: 'var(--tdr-gold)', fontWeight: 600, marginRight: 8 }}>
             {(() => {
-              const peupleData = PEUPLES_DATA.find(p => p.label === character.peuple)
+              const peupleData = peuples.find(p => p.label === character.peuple)
               const modStrings = peupleData?.cultures.map(c => JSON.stringify(c.modCaracs ?? {})) ?? []
               const cultureVarie = new Set(modStrings).size > 1
               return character.peuple + (cultureVarie && character.culture ? ` · ${character.culture}` : '') + ' :'
@@ -517,7 +506,8 @@ function renderDesc(text: string, character?: Character): React.ReactNode {
 }
 
 function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () => void; character?: Character }) {
-  const capacites = getDesc(nom) ?? []
+  const { data } = useGameData()
+  const capacites = data[nom] ?? data[nom.toLowerCase()] ?? []
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -594,6 +584,7 @@ function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () 
 }
 
 function TraitCombobox({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const { traits } = useGameData()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState(value)
   const ref = React.useRef<HTMLDivElement>(null)
@@ -609,7 +600,7 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const filtered = TRAITS_MAGIQUES.filter(t => t.nom.toLowerCase().includes(query.toLowerCase()))
+  const filtered = traits.filter(t => t.nom.toLowerCase().includes(query.toLowerCase()))
 
   return (
     <div ref={ref} style={{ position: 'relative', flex: 1 }}>
@@ -728,11 +719,11 @@ function TraitMagiqueModal({ nom, desc, onChange, onClose }: {
   )
 }
 
-function deriveFamille(v1: string, v2: string, v3: string): 'combattants' | 'aventuriers' | 'mystiques' | null {
+function deriveFamille(voies: { nom: string; famille: string; categorie: string }[], v1: string, v2: string, v3: string): 'combattants' | 'aventuriers' | 'mystiques' | null {
   const noms = [v1, v2, v3].filter(Boolean)
   const counts = { combattants: 0, aventuriers: 0, mystiques: 0 }
   for (const nom of noms) {
-    const voie = VOIES.find(v => v.nom === nom && v.categorie === 'profil')
+    const voie = voies.find(v => v.nom === nom && v.categorie === 'profil')
     if (voie?.famille) counts[voie.famille as keyof typeof counts]++
   }
   if (counts.combattants >= 2) return 'combattants'
@@ -751,32 +742,33 @@ const FAMILLE_INFO = {
 function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'character' | 'onChange'> & { modeVoies: 'libre' | 'profil'; setModeVoies: (m: 'libre' | 'profil') => void }) {
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const { disponibles } = calcPointsCapacite(character)
-  const { data: dynamicDescriptions } = useGameData()
+  const { data: dynamicDescriptions, peuples, voies } = useGameData()
 
   const allProfilVoies = (() => {
-    const staticVoies = VOIES.filter(v => v.categorie === 'profil')
-    const staticNoms = new Set(VOIES.map(v => v.nom))
+    const profilVoies = voies.filter(v => v.categorie === 'profil')
+    const voieNoms = new Set(voies.map(v => v.nom))
     const peupleVoieNoms = new Set<string>()
-    for (const p of PEUPLES_DATA) {
+    for (const p of peuples) {
       for (const c of p.cultures) {
         if (c.voiePeuple) peupleVoieNoms.add(c.voiePeuple)
         if (c.voieCulturelle) peupleVoieNoms.add(c.voieCulturelle)
       }
     }
-    const customVoies = Object.keys(dynamicDescriptions)
-      .filter(nom => !staticNoms.has(nom) && !peupleVoieNoms.has(nom))
-      .map(nom => ({ nom, categorie: 'profil', famille: '' })) as typeof staticVoies
-    return customVoies.length ? [...staticVoies, ...customVoies] : staticVoies
+    // Fallback : voies présentes dans descriptions mais pas encore dans voies.json
+    const fallbackVoies = Object.keys(dynamicDescriptions)
+      .filter(nom => !voieNoms.has(nom) && !peupleVoieNoms.has(nom))
+      .map(nom => ({ nom, categorie: 'profil', famille: '' }))
+    return fallbackVoies.length ? [...profilVoies, ...fallbackVoies] : profilVoies
   })()
 
   const profilActuel = PROFILS_FLAT.find(p => p.nom === character.profil) ?? null
 
   const applyPeupleRecommandé = (peuplePrivilégie: string) => {
     const rec = peuplePrivilégie.toLowerCase()
-    for (const peuple of PEUPLES_DATA) {
+    for (const peuple of peuples) {
       for (const culture of peuple.cultures) {
         if (rec.includes(culture.label.toLowerCase())) {
-          const trait = findTrait(peuple.label, culture.label)
+          const trait = findTrait(peuples, peuple.label, culture.label)
           onChange({
             peuple: peuple.label,
             culture: culture.label,
@@ -794,9 +786,9 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const applyProfil = (profilNom: string) => {
     const profil = PROFILS_FLAT.find(p => p.nom === profilNom)
     if (!profil) return
-    const v1 = findVoieByShort(profil.voies[0])
-    const v2 = findVoieByShort(profil.voies[1])
-    const v3 = findVoieByShort(profil.voies[2])
+    const v1 = findVoieByShort(voies, profil.voies[0])
+    const v2 = findVoieByShort(voies, profil.voies[1])
+    const v3 = findVoieByShort(voies, profil.voies[2])
     const familleMap: Record<string, 'combattants' | 'aventuriers' | 'mystiques'> = {
       'Combattants': 'combattants', 'Aventuriers': 'aventuriers', 'Mystiques': 'mystiques',
     }
@@ -817,7 +809,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
     const v1 = field === 'voie1' ? nom : character.voie1.nom
     const v2 = field === 'voie2' ? nom : character.voie2.nom
     const v3 = field === 'voie3' ? nom : character.voie3.nom
-    const famille = deriveFamille(v1, v2, v3)
+    const famille = deriveFamille(voies, v1, v2, v3)
     const patch: Partial<Character> = { [field]: { ...character[field], nom } }
     if (famille) {
       patch.famille = famille
@@ -830,7 +822,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
     const v1 = field === 'voie1' ? '' : character.voie1.nom
     const v2 = field === 'voie2' ? '' : character.voie2.nom
     const v3 = field === 'voie3' ? '' : character.voie3.nom
-    const famille = deriveFamille(v1, v2, v3)
+    const famille = deriveFamille(voies, v1, v2, v3)
     const patch: Partial<Character> = { [field]: { nom: '', rangs: [false, false, false, false, false] } }
     if (famille) {
       patch.famille = famille
@@ -839,7 +831,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
     onChange(patch)
   }
 
-  const familleDérivée = deriveFamille(character.voie1.nom, character.voie2.nom, character.voie3.nom)
+  const familleDérivée = deriveFamille(voies, character.voie1.nom, character.voie2.nom, character.voie3.nom)
 
   // Compteur de points — affiché en ligne près des voies
   const ptsBadge = (
@@ -950,7 +942,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         {(['voiePeuple', 'voieCulturelle'] as const).map(field => {
           const label = field === 'voiePeuple' ? 'Voie de peuple' : 'Voie culturelle'
           const nom = character[field].nom
-          const hasDesc = !!nom && !!getDesc(nom)
+          const hasDesc = !!nom && !!dynamicDescriptions[nom]
           return (
             <div key={field} style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--tdr-gold)', marginBottom: 4 }}>
@@ -998,7 +990,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         </div>
       {(['voie1', 'voie2', 'voie3'] as const).map((v, i) => {
         const nomVoie = character[v].nom
-        const hasDesc = !!nomVoie && !!getDesc(nomVoie)
+        const hasDesc = !!nomVoie && !!dynamicDescriptions[nomVoie]
         const autresVoies = (['voie1', 'voie2', 'voie3'] as const)
           .filter(k => k !== v)
           .map(k => character[k].nom)
@@ -1175,11 +1167,13 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { data, traits, voies } = useGameData()
+  const voiesPrestige = voies.filter(v => v.categorie === 'prestige')
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const [showTraitModal, setShowTraitModal] = React.useState(false)
 
   const nomPrestige = character.voiePrestige.nom
-  const hasDesc = !!nomPrestige && !!getDesc(nomPrestige)
+  const hasDesc = !!nomPrestige && !!data[nomPrestige]
 
   const FORMATIONS = [
     'Armes de paysan (gratuit)', 'Armes de guerre', 'Armes de guerre lourdes',
@@ -1210,7 +1204,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             <VoieCombobox
               value={nomPrestige}
               onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
-              options={VOIES_PRESTIGE}
+              options={voiesPrestige}
               placeholder="Rechercher une voie de prestige…"
             />
           </div>
@@ -1281,8 +1275,8 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <TraitCombobox
             value={character.talentMagique.nom}
             onChange={nom => {
-              const data = TRAITS_MAGIQUES.find(t => t.nom === nom)
-              onChange({ talentMagique: { nom, desc: data?.desc ?? character.talentMagique.desc } })
+              const traitEntry = traits.find(t => t.nom === nom)
+              onChange({ talentMagique: { nom, desc: traitEntry?.desc ?? character.talentMagique.desc } })
             }}
           />
           <button

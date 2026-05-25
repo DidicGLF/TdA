@@ -2,13 +2,10 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
-import ARMES_RAW from '../data/armes.json'
+import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import { useGameData } from '../context/GameDataContext'
 
-const ARMES_LIST: string[] = (ARMES_RAW as { groupes: { categories: { entrees: { nom: string }[] }[] }[] })
-  .groupes.flatMap(g => g.categories.flatMap(c => c.entrees.map(e => e.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim())))
-  .filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a.localeCompare(b, 'fr'))
-
+const VOIES_BUNDLE_NOMS = new Set(VOIES_BUNDLE.map(v => v.nom))
 const VOIES_INIT = Object.keys(DESCRIPTIONS_RAW as Record<string, unknown[]>).sort((a, b) => a.localeCompare(b, 'fr'))
 
 const STATS = ['PV', 'DEF', 'INIT', 'PR', 'PM', 'PC', 'ATT_CONTACT', 'ATT_DISTANCE', 'ATT_MAGIQUE', 'DM_ARME', 'DM_MAINS_NUES', 'FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
@@ -46,7 +43,12 @@ type PendingItem =
   | { id: string; type: 'peuple'; data: PeupleEntry; expanded: boolean }
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
-  const { data, setData, traits, setTraits, peuples, setPeuples, openDataDir } = useGameData()
+  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, openDataDir } = useGameData()
+
+  const armesList = useMemo(() =>
+    armes.groupes.flatMap(g => g.categories.flatMap(c => c.entrees.map(e => e.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim())))
+      .filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a.localeCompare(b, 'fr'))
+  , [armes])
 
   const [section, setSection] = useState<'voies' | 'traits' | 'peuples'>('voies')
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
@@ -54,6 +56,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   // Voies
   const [selected, setSelected] = useState(VOIES_INIT[0])
+  const [editingName, setEditingName] = useState(VOIES_INIT[0])
+  useEffect(() => { setEditingName(selected) }, [selected])
   const [query, setQuery] = useState('')
   const [exported, setExported] = useState(false)
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
@@ -282,12 +286,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     let n = 1
     while (data[nom]) { nom = `Nouvelle voie ${++n}` }
     setData(prev => ({ ...prev, [nom]: emptyRangs() }))
+    setVoies(prev => [...prev, { nom, famille: '', categorie: 'profil' }])
     setSelected(nom)
     setExported(false)
   }
 
   const removeVoie = (nom: string) => {
     setData(prev => { const { [nom]: _, ...rest } = prev; return rest })
+    setVoies(prev => prev.filter(v => v.nom !== nom))
     setSelected(voiesList.find(v => v !== nom) ?? '')
     setExported(false)
   }
@@ -298,8 +304,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       const { [oldNom]: voieData, ...rest } = prev
       return { ...rest, [newNom]: voieData ?? emptyRangs() }
     })
+    setVoies(prev => prev.map(v => v.nom === oldNom ? { ...v, nom: newNom } : v))
     setSelected(newNom)
     setExported(false)
+  }
+
+  const setVoieFamille = (nom: string, famille: string) => {
+    setVoies(prev => prev.map(v => v.nom === nom ? { ...v, famille } : v))
   }
 
   // Fonctions peuples
@@ -944,16 +955,58 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <input
                 type="text"
-                value={selected}
-                onChange={e => renameVoie(selected, e.target.value)}
+                value={editingName}
+                onChange={e => setEditingName(e.target.value)}
+                onBlur={e => {
+                  if (editingName.trim() && editingName !== selected) renameVoie(selected, editingName)
+                  else setEditingName(selected)
+                  e.target.style.borderColor = S.border
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() }
+                  if (e.key === 'Escape') { setEditingName(selected); (e.target as HTMLInputElement).blur() }
+                }}
                 style={{
                   fontSize: 17, fontFamily: "'Cinzel', serif", color: S.gold,
                   background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
                   padding: '4px 10px', outline: 'none', width: '100%', boxSizing: 'border-box',
                 }}
                 onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
-                onBlur={e => (e.target.style.borderColor = S.border)}
               />
+              {(() => {
+                const peupleVoieNoms = new Set(peuples.flatMap(p => p.cultures.flatMap(c => [c.voiePeuple, c.voieCulturelle].filter(Boolean))))
+                const isBundle = VOIES_BUNDLE_NOMS.has(selected) || peupleVoieNoms.has(selected)
+                const famille = voies.find(v => v.nom === selected)?.famille ?? ''
+                const FAMILLE_LABELS: Record<string, string> = {
+                  combattants: 'Combattants', aventuriers: 'Aventuriers', mystiques: 'Mystiques',
+                }
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>
+                      Famille
+                    </span>
+                    {isBundle ? (
+                      <span style={{ fontSize: 14, color: S.parchment, opacity: 0.7, fontStyle: 'italic' }}>
+                        {FAMILLE_LABELS[famille] ?? '— Aucune (prestige / peuple) —'}
+                      </span>
+                    ) : (
+                      <select
+                        value={famille}
+                        onChange={e => setVoieFamille(selected, e.target.value)}
+                        style={{
+                          background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
+                          color: S.parchment, fontSize: 14, padding: '3px 8px', outline: 'none', cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">— Aucune (prestige / peuple) —</option>
+                        <option value="combattants">Combattants</option>
+                        <option value="aventuriers">Aventuriers</option>
+                        <option value="mystiques">Mystiques</option>
+                      </select>
+                    )}
+                  </div>
+                )
+              })()}
               {[0,1,2,3,4].map(i => (
                 <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px dashed rgba(201,168,76,0.35)', paddingTop: i === 0 ? 0 : 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -1159,7 +1212,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               style={{ background: S.bg, border: '1px solid rgba(100,180,255,0.3)', borderRadius: 3, padding: '1px 4px', fontSize: 12, color: 'rgba(100,180,255,0.85)', outline: 'none', cursor: 'pointer' }}
                             >
                               <option value="">+ Arme…</option>
-                              {ARMES_LIST.filter(a => !cond.armes.includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
+                              {armesList.filter(a => !cond.armes.includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
                             </select>
                           </div>
                         )

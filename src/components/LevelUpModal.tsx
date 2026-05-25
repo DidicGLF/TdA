@@ -7,13 +7,8 @@ import {
 } from '../utils/levelUp'
 import type { VoieKey } from '../utils/levelUp'
 import VoieCombobox from './VoieCombobox'
-import { VOIES } from '../data/voies'
 import { computeEffects, sumStat } from '../utils/computeEffects'
-import DESCRIPTIONS_RAW from '../data/descriptions.json'
-
-type DescEffectSimple = { stat: string; value?: number; minRang?: number; avancee?: boolean }
-type DescEntrySimple = { nom: string; desc: string; effects?: DescEffectSimple[] }
-const DESCRIPTIONS = DESCRIPTIONS_RAW as Record<string, DescEntrySimple[]>
+import { useGameData } from '../context/GameDataContext'
 
 interface Props {
   character: Character
@@ -39,10 +34,11 @@ const FORMATIONS_MARTIALES = [
 
 export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const maxNiveau = 20
-  const conBonus = sumStat(computeEffects(character)['CON'] ?? [])
+  const { data, voies } = useGameData()
+  const conBonus = sumStat(computeEffects(character, data)['CON'] ?? [])
   const deFaces = parseDeVie(character.deVie)
   const usedNoms = new Set(VOIE_KEYS.map(k => (character[k] as VoiePersonnage).nom).filter(Boolean))
-  const voiesDisponibles = VOIES.filter(v => !usedNoms.has(v.nom))
+  const voiesDisponibles = voies.filter(v => !usedNoms.has(v.nom))
   const pmGainParNiveau = character.famille === 'mystiques' ? 2 : 1
 
   const [levelsGained, setLevelsGained] = useState(1)
@@ -73,7 +69,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       ptsBudget += 2
       while (stepIdx < rankSteps.length && rankSteps[stepIdx].cost <= ptsBudget) {
         const { nomVoie, rankIdx } = rankSteps[stepIdx]
-        for (const effect of DESCRIPTIONS[nomVoie]?.[rankIdx]?.effects ?? []) {
+        for (const effect of data[nomVoie]?.[rankIdx]?.effects ?? []) {
           if (!effect.avancee && effect.stat === 'CON' && effect.value !== undefined && !effect.minRang)
             bonusFromSelections += effect.value
         }

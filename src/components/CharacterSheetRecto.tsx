@@ -3,11 +3,10 @@ import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
-import DESCRIPTIONS from '../data/descriptions.json'
-import ARMES_DATA from '../data/armes.json'
-import ARMURES_DATA from '../data/armures.json'
+import type { ArmesData, ArmuresData } from '../context/GameDataContext'
 import { parseDesc } from '../utils/parseDesc'
 import { findCulture, findTrait } from '../data/peuples'
+import { useGameData } from '../context/GameDataContext'
 import { computeEffects, computeDiceEffects, sumStat } from '../utils/computeEffects'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
 
@@ -15,9 +14,9 @@ const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().to
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
 const normalizeArmeName = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
 
-const findArmeCategorie = (nomArme: string): string | null => {
+const findArmeCategorie = (armes: ArmesData, nomArme: string): string | null => {
   const key = stripExposants(nomArme).toLowerCase()
-  for (const groupe of ARMES_DATA.groupes) {
+  for (const groupe of armes.groupes) {
     for (const cat of groupe.categories) {
       if (cat.entrees.some(e => stripExposants(e.nom).toLowerCase() === key)) return cat.categorie
     }
@@ -25,9 +24,9 @@ const findArmeCategorie = (nomArme: string): string | null => {
   return null
 }
 
-const findArmeEntry = (nomArme: string) => {
+const findArmeEntry = (armes: ArmesData, nomArme: string) => {
   const key = stripExposants(nomArme).toLowerCase()
-  for (const groupe of ARMES_DATA.groupes) {
+  for (const groupe of armes.groupes) {
     for (const cat of groupe.categories) {
       const entry = cat.entrees.find(e => stripExposants(e.nom).toLowerCase() === key)
       if (entry) return entry
@@ -36,8 +35,8 @@ const findArmeEntry = (nomArme: string) => {
   return null
 }
 
-const findArmureCategorie = (nomArmure: string): string | null => {
-  for (const cat of ARMURES_DATA.categories) {
+const findArmureCategorie = (armures: ArmuresData, nomArmure: string): string | null => {
+  for (const cat of armures.categories) {
     if (cat.entrees.some(e => e.nom === nomArmure)) return cat.categorie
   }
   return null
@@ -140,6 +139,7 @@ const CARAC_ROWS = [
 export default function CharacterSheetRecto({ character, onChange, activeStep, calibrate = false, onFieldMoved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
+  const { peuples, data, armes, armures } = useGameData()
 
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(PR_CHECKBOXES.map(f => [f.nom, { top: f.top, left: f.left }]))
@@ -172,7 +172,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     if (estCoché && character.pvHistorique?.length) {
       const oldConBonus = sumStat(effects['CON'] ?? [])
       const oldConMod = getMod(character.caracteristiques.CON.valeur + oldConBonus)
-      const newEffects = computeEffects({ ...character, [voie]: { ...v, rangs: newRangs } } as Character)
+      const newEffects = computeEffects({ ...character, [voie]: { ...v, rangs: newRangs } } as Character, data)
       const newConMod = getMod(character.caracteristiques.CON.valeur + sumStat(newEffects['CON'] ?? []))
       if (newConMod !== oldConMod) {
         patch.pvHistorique = character.pvHistorique.map(entry =>
@@ -304,8 +304,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     </React.Fragment>
   )
 
-  const effects = computeEffects(character)
-  const diceEffects = computeDiceEffects(character)
+  const effects = computeEffects(character, data)
+  const diceEffects = computeDiceEffects(character, data)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
 
   const rangTooltip: TooltipData | null = hoveredRangInfo ? (() => {
@@ -363,7 +363,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
       {/* === CARACTÉRISTIQUES === */}
       {(() => {
-        const modCaracs = findCulture(character.peuple, character.culture)?.modCaracs ?? {}
+        const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
         return CARAC_ROWS.map(({ key, top, wVal }) => {
           const baseVal = character.caracteristiques[key].valeur
           const racialMod = (modCaracs[key as keyof typeof modCaracs] as number) ?? 0
@@ -420,9 +420,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
         const MALUS_SANS_FORM = 3
         const armureSansForm  = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe)
-          .some(a => { const cat = findArmureCategorie(a.nom); return cat !== null && !canUseFormation(cat) })
+          .some(a => { const cat = findArmureCategorie(armures, a.nom); return cat !== null && !canUseFormation(cat) })
         const bouclierSansForm = character.armuresEquipees.filter(a => isBouclier(a.nom) && a.equipe)
-          .some(a => { const cat = findArmureCategorie(a.nom); return cat !== null && !canUseFormation(cat) })
+          .some(a => { const cat = findArmureCategorie(armures, a.nom); return cat !== null && !canUseFormation(cat) })
         const malusEquip = (armureSansForm ? MALUS_SANS_FORM : 0) + (bouclierSansForm ? MALUS_SANS_FORM : 0)
 
         const getArmeAttType = (nomArme: string) => {
@@ -432,7 +432,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           return mod === 'DEX' ? 'DEX' : mod === 'INT' ? 'INT' : 'FOR'
         }
         const armeSansForm = (nomArme: string) => {
-          const cat = findArmeCategorie(nomArme)
+          const cat = findArmeCategorie(armes, nomArme)
           return cat !== null && !canUseFormation(cat)
         }
         const malusArmesContact = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'FOR')
@@ -648,7 +648,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           {(calibrate || character.arme1) && f({ label: "ATT Arme 1", top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, align: "center",
             formula: character.arme1 ? formulaArme(character.arme1) : undefined })}
           {(calibrate || character.arme1) && (() => {
-            const e1 = character.arme1 ? findArmeEntry(character.arme1) : null
+            const e1 = character.arme1 ? findArmeEntry(armes, character.arme1) : null
             const modVal1 = e1?.mod === 'FOR' ? FOR.mod : e1?.mod === 'DEX' ? DEX.mod : null
             const bonusContribs1 = character.arme1 ? dmArmeBonusContribs(character.arme1) : []
             const bonus1 = sumStat(bonusContribs1)
@@ -673,7 +673,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           {(calibrate || character.arme2) && f({ label: "ATT Arme 2", top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, align: "center",
             formula: character.arme2 ? formulaArme(character.arme2) : undefined })}
           {(calibrate || character.arme2) && (() => {
-            const e2 = character.arme2 ? findArmeEntry(character.arme2) : null
+            const e2 = character.arme2 ? findArmeEntry(armes, character.arme2) : null
             const modVal2 = e2?.mod === 'FOR' ? FOR.mod : e2?.mod === 'DEX' ? DEX.mod : null
             const bonusContribs2 = character.arme2 ? dmArmeBonusContribs(character.arme2) : []
             const bonus2 = sumStat(bonusContribs2)
@@ -790,7 +790,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         autoShrink
       />
       {(() => {
-        const trait = findTrait(character.peuple, character.culture)
+        const trait = findTrait(peuples, character.peuple, character.culture)
         if (!trait) return null
         return (
           <div style={{ position: 'absolute', top: '61.1%', left: '25.7%', width: '16.5%', height: '2%',
@@ -813,8 +813,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {/* === NOMS DES CAPACITÉS + ZONES HOVER === */}
       {VOIE_RANG_CHECKBOXES.map(({ id, voie, rang }) => {
         const nomVoie = (character[voie] as VoiePersonnage).nom
-        const nomCap = (DESCRIPTIONS as Record<string, { nom: string; desc: string }[]>)[nomVoie]?.[rang]?.nom || ''
-        const desc = (DESCRIPTIONS as Record<string, { nom: string; desc: string }[]>)[nomVoie]?.[rang]?.desc ?? ''
+        const nomCap = data[nomVoie]?.[rang]?.nom || ''
+        const desc = data[nomVoie]?.[rang]?.desc ?? ''
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
         return (
           <React.Fragment key={`${id}-cap`}>
@@ -867,7 +867,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
           <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
-          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character)}</div>}
+          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data)}</div>}
           {activeTooltip.lines && (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <tbody>
