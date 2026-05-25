@@ -35,12 +35,6 @@ function evaluateCondition(condition: Condition, character: Character): boolean 
   }
 }
 
-type DescEntry = {
-  nom: string
-  desc: string
-  effects?: DescEffect[]
-}
-
 const VOIE_KEYS: Array<keyof Pick<Character,
   'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3' | 'voiePrestige' | 'voieSangMele'
 >> = ['voiePeuple', 'voieCulturelle', 'voie1', 'voie2', 'voie3', 'voiePrestige', 'voieSangMele']
