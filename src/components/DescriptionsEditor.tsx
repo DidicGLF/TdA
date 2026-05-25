@@ -30,7 +30,6 @@ type Grant =
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
-type DescMap = Record<string, RangEntry[]>
 type TraitEntry = { nom: string; desc: string }
 type Culture = {
   label: string
