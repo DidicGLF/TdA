@@ -6,16 +6,6 @@ type Condition =
   | { type: 'hasArme'; armes: string[] }
   | { type: 'noArme' }
 
-type DescEffect = {
-  stat: string
-  value?: number
-  formula?: string
-  diceStr?: string
-  minRang?: number
-  avancee?: boolean
-  condition?: Condition
-}
-
 function normalizeArmeName(nom: string): string {
   return nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
 }
