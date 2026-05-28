@@ -107,7 +107,7 @@ type EffectCondition =
   | { type: 'hasBouclier' }
   | { type: 'hasArme'; armes: string[] }
   | { type: 'noArme' }
-type Effect = { stat: string; value?: number; formula?: string; diceStr?: string; minRang?: number; avancee?: boolean; condition?: EffectCondition }
+type Effect = { stat: string; value?: number; formula?: string; diceStr?: string; minRang?: number; avancee?: boolean; rangMultiplier?: boolean; condition?: EffectCondition }
 type Grant =
   | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
