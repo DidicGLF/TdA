@@ -38,6 +38,8 @@ export default function DraggableImageField({
   const [imgScale, setImgScale] = useState(initScale)
   const [imgTx, setImgTx] = useState(initTx)
   const [imgTy, setImgTy] = useState(initTy)
+  const [locked, setLocked] = useState(false)
+  const lockedRef = useRef(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const imgContainerRef = useRef<HTMLDivElement>(null)
   const calibrateRef = useRef(calibrate)
@@ -69,6 +71,7 @@ export default function DraggableImageField({
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       if (calibrateRef.current) return
+      if (lockedRef.current) return
       e.preventDefault()
       const next = Math.max(1, Math.min(5, imgScaleRef.current * Math.pow(0.999, e.deltaY)))
       imgScaleRef.current = next
@@ -83,6 +86,7 @@ export default function DraggableImageField({
   // Clic = changer l'image / Glisser = déplacer (tx/ty stockés en fraction du container)
   const handleImageMouseDown = (e: React.MouseEvent) => {
     if (calibrate) return
+    if (lockedRef.current) return
     e.preventDefault(); e.stopPropagation()
     const el = imgContainerRef.current
     const cw = el ? el.clientWidth  : 1
@@ -91,6 +95,7 @@ export default function DraggableImageField({
     const startTx = imgTxRef.current, startTy = imgTyRef.current
     let dragged = false
     const onMove = (ev: MouseEvent) => {
+      if (lockedRef.current) return
       if (!dragged && (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4)) {
         dragged = true
       }
@@ -263,28 +268,40 @@ export default function DraggableImageField({
               }}
               className="portrait-hover-hint">
                 <div style={{ textAlign: 'center', lineHeight: 1.6 }}>
-                  <div style={{ fontSize: '1.4vw' }}>↑</div>
-                  Cliquer pour changer<br />
+                  {!locked && <><div style={{ fontSize: '1.4vw' }}>↑</div>Cliquer pour changer<br /></>}
                   <span style={{ fontSize: '0.65vw', opacity: 0.7 }}>
-                    {fit === 'cover'
-                      ? 'Glisser pour cadrer · Molette pour zoomer'
-                      : 'Molette pour zoomer · Image entière visible'}
+                    {locked
+                      ? 'Portrait figé · Cliquer "Figé" pour modifier le cadrage'
+                      : fit === 'cover'
+                        ? 'Glisser pour cadrer · Molette pour zoomer'
+                        : 'Molette pour zoomer · Image entière visible'}
                   </span>
                 </div>
               </div>
               {/* Boutons d'outils */}
               <div className="portrait-tools no-print" style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3, opacity: 0, transition: 'opacity 0.15s' }}>
-                {/* Bascule cover ↔ contain */}
+                {/* Figer / Défiger */}
                 <button
-                  style={{ ...TOOL_BTN }}
-                  onClick={e => { e.stopPropagation(); onFitChange?.(fit === 'cover' ? 'contain' : 'cover') }}
+                  style={{ ...TOOL_BTN, background: locked ? 'rgba(201,168,76,0.25)' : TOOL_BTN.background, borderColor: locked ? 'rgba(201,168,76,0.6)' : undefined }}
+                  onClick={e => { e.stopPropagation(); const next = !lockedRef.current; lockedRef.current = next; setLocked(next) }}
                   onMouseDown={e => e.stopPropagation()}
-                  title={fit === 'cover' ? 'Afficher l\'image entière' : 'Recadrer (remplir le cadre)'}
+                  title={locked ? 'Défiger (autoriser le déplacement)' : 'Figer (empêcher le déplacement accidentel)'}
                 >
-                  {fit === 'cover' ? '⊡' : '▣'}
+                  {locked ? 'Figé' : 'Figer'}
                 </button>
+                {/* Bascule cover ↔ contain */}
+                {!locked && (
+                  <button
+                    style={{ ...TOOL_BTN }}
+                    onClick={e => { e.stopPropagation(); onFitChange?.(fit === 'cover' ? 'contain' : 'cover') }}
+                    onMouseDown={e => e.stopPropagation()}
+                    title={fit === 'cover' ? 'Afficher l\'image entière' : 'Recadrer (remplir le cadre)'}
+                  >
+                    {fit === 'cover' ? '⊡' : '▣'}
+                  </button>
+                )}
                 {/* Reset cadrage */}
-                {isModified && (
+                {!locked && isModified && (
                   <button
                     style={{ ...TOOL_BTN }}
                     onClick={e => { e.stopPropagation(); setImgScale(1); setImgTx(0); setImgTy(0); onPanZoomChange?.(1, 0, 0) }}

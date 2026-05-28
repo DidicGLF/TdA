@@ -115,9 +115,9 @@
         }
       },
       {
-        "label": "Ordre du Bouclier",
+        "label": "Ordre des Errants",
         "voiePeuple": "Voie du peuple nain",
-        "voieCulturelle": "Voie culturelle de l'ordre du Bouclier",
+        "voieCulturelle": "Voie culturelle de l'ordre des Errants",
         "modCaracs": {
           "CON": 2,
           "DEX": -2
@@ -128,9 +128,9 @@
         }
       },
       {
-        "label": "Ordre des Errants",
+        "label": "Ordre du Bouclier",
         "voiePeuple": "Voie du peuple nain",
-        "voieCulturelle": "Voie culturelle de l'ordre des Errants",
+        "voieCulturelle": "Voie culturelle de l'ordre du Bouclier",
         "modCaracs": {
           "CON": 2,
           "DEX": -2

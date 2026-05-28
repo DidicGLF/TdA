@@ -50,7 +50,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
   const [prestigeRangPos, setPrestigeRangPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
   )
-  const [tooltip, setTooltip] = useState<{ nom: string; desc: string; x: number; y: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ nom: string; desc: string; rang?: number; x: number; y: number } | null>(null)
 
   const togglePrestigeRang = (rang: number) => {
     if (calibrate) return
@@ -303,7 +303,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
                 }}
                 onMouseEnter={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
-                  setTooltip({ nom: nomCap, desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  setTooltip({ nom: nomCap, desc, rang: idx + 1, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
                 }}
                 onMouseMove={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
@@ -337,7 +337,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
           <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 4, fontSize: '1.05em' }}>{tooltip.nom}</div>
-          <div>{parseDesc(tooltip.desc, character)}</div>
+          <div>{parseDesc(tooltip.desc, character, data, tooltip.rang)}</div>
         </div>
       )}
 

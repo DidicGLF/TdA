@@ -10,6 +10,7 @@ export type Effect = {
   diceStr?: string
   minRang?: number
   avancee?: boolean
+  rangMultiplier?: boolean
   condition?: EffectCondition
 }
 

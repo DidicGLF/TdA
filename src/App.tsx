@@ -206,18 +206,17 @@ export default function App() {
           {/* Niveau */}
           <button
             onClick={() => setShowLevelUp(true)}
-            disabled={character.niveau >= 20}
-            title={character.niveau >= 20 ? 'Niveau maximum atteint' : `Passer au niveau ${character.niveau + 1}`}
+            title={character.niveau >= 20 ? 'Niveau maximum — cliquer pour réinitialiser' : `Passer au niveau ${character.niveau + 1}`}
             style={{
               marginBottom: 4, padding: '3px 12px', borderRadius: 4,
               border: '1px solid rgba(201,168,76,0.5)',
               background: 'transparent',
-              color: character.niveau >= 20 ? 'rgba(201,168,76,0.25)' : 'rgba(245,236,215,0.85)',
-              cursor: character.niveau >= 20 ? 'not-allowed' : 'pointer',
+              color: 'rgba(245,236,215,0.85)',
+              cursor: 'pointer',
               letterSpacing: '0.03em', fontSize: 14,
             }}
           >
-            Niv. {character.niveau} →
+            Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}
           </button>
 
           {/* Zoom */}

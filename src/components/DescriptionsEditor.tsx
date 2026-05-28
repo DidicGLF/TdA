@@ -6,7 +6,93 @@ import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import { useGameData } from '../context/GameDataContext'
 
 const VOIES_BUNDLE_NOMS = new Set(VOIES_BUNDLE.map(v => v.nom))
-const VOIES_INIT = Object.keys(DESCRIPTIONS_RAW as Record<string, unknown[]>).sort((a, b) => a.localeCompare(b, 'fr'))
+// descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
+const _descUnwrapped: Record<string, unknown[]> = (
+  DESCRIPTIONS_RAW && '_type' in (DESCRIPTIONS_RAW as object) && 'data' in (DESCRIPTIONS_RAW as object)
+    ? (DESCRIPTIONS_RAW as Record<string, unknown>).data
+    : DESCRIPTIONS_RAW
+) as Record<string, unknown[]>
+const VOIES_INIT = Object.keys(_descUnwrapped).sort((a, b) => a.localeCompare(b, 'fr'))
+
+// ── Helpers de conversion Markdown → HTML (utilisés par aperçu et impression) ──
+
+const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const inlineToHtml = (text: string): string =>
+  escHtml(text)
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*([^*]+)\*\*/g,     '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,         '<em>$1</em>')
+    .replace(/==([^=]+)==/g,         '<span class="tda-gold">$1</span>')
+    .replace(/\[([^\]]*)\]/g,        '<span class="tda-bracket">$1</span>')
+
+const blockToHtml = (text: string): string => {
+  if (!text?.trim()) return '<p class="tda-empty">—</p>'
+  const lines = text.split('\n')
+  const blocks: string[] = []
+  let i = 0
+  while (i < lines.length) {
+    if (lines[i].trimStart().startsWith('|')) {
+      const tableLines: string[] = []
+      while (i < lines.length && lines[i].trimStart().startsWith('|')) { tableLines.push(lines[i]); i++ }
+      const rows = tableLines.map(l => l.split('|').slice(1, -1).map(c => c.trim()))
+      const sepIdx = rows.findIndex(row => row.every(cell => /^[-:\s]+$/.test(cell)))
+      const headers = sepIdx > 0 ? rows.slice(0, sepIdx) : []
+      const body = sepIdx >= 0 ? rows.slice(sepIdx + 1) : rows
+      let t = '<table class="tda-table">'
+      if (headers.length > 0)
+        t += `<thead>${headers.map(row => `<tr>${row.map(c => `<th>${inlineToHtml(c)}</th>`).join('')}</tr>`).join('')}</thead>`
+      t += `<tbody>${body.map((row, ri) =>
+        `<tr${ri % 2 === 1 ? ' class="tda-alt"' : ''}>${row.map(c => `<td>${inlineToHtml(c)}</td>`).join('')}</tr>`
+      ).join('')}</tbody></table>`
+      blocks.push(t)
+    } else {
+      const paraLines: string[] = []
+      while (i < lines.length && !lines[i].trimStart().startsWith('|')) { paraLines.push(lines[i]); i++ }
+      const content = paraLines.map(l => inlineToHtml(l)).join('<br>')
+      if (content.trim()) blocks.push(`<p>${content}</p>`)
+    }
+  }
+  return blocks.join('\n')
+}
+
+const FAMILLE_LABELS: Record<string, string> = {
+  combattants: 'Combattants', aventuriers: 'Aventuriers', mystiques: 'Mystiques',
+}
+
+const PRINT_CSS = `
+  * { box-sizing: border-box; }
+  .tda-page {
+    font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+    color: #1a1208; font-size: 11pt; line-height: 1.65;
+  }
+  .tda-page h1 {
+    font-family: 'Cinzel', 'Trajan Pro', 'Times New Roman', serif;
+    font-size: 22pt; font-weight: 700; margin: 0 0 3pt;
+    color: #4a2e00; border-bottom: 1.5pt solid #a07030;
+    padding-bottom: 5pt; letter-spacing: 0.05em;
+  }
+  .tda-famille {
+    font-size: 9pt; color: #7a5010; margin: 3pt 0 18pt;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+  }
+  .tda-rang { margin-bottom: 14pt; break-inside: avoid; }
+  .tda-h2 {
+    font-family: 'Cinzel', 'Times New Roman', serif;
+    font-size: 12.5pt; font-weight: 600; color: #4a2e00;
+    margin: 0 0 4pt; border-bottom: 0.5pt solid rgba(160,112,48,0.35);
+    padding-bottom: 2pt;
+  }
+  .tda-page p { margin: 0; text-align: justify; hyphens: auto; }
+  .tda-empty { color: #999; font-style: italic; }
+  .tda-gold { color: #7a4a00; font-weight: bold; }
+  .tda-bracket { font-style: italic; color: #555; }
+  .tda-table { border-collapse: collapse; font-size: 10pt; margin: 5pt 0; width: 100%; }
+  .tda-table th { border: 0.5pt solid #a07030; padding: 3pt 8pt; background: rgba(160,112,48,0.12); color: #4a2e00; font-size: 9pt; text-align: left; }
+  .tda-table td { border: 0.5pt solid rgba(160,112,48,0.35); padding: 2pt 8pt; }
+  .tda-table .tda-alt td { background: rgba(160,112,48,0.05); }
+`
 
 const STATS = ['PV', 'DEF', 'INIT', 'PR', 'PM', 'PC', 'ATT_CONTACT', 'ATT_DISTANCE', 'ATT_MAGIQUE', 'DM_ARME', 'DM_MAINS_NUES', 'FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
 const FORMULAS = ['MOD_FOR', 'MOD_DEX', 'MOD_CON', 'MOD_INT', 'MOD_SAG', 'MOD_CHA'] as const
@@ -50,14 +136,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       .filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a.localeCompare(b, 'fr'))
   , [armes])
 
-  const [section, setSection] = useState<'voies' | 'traits' | 'peuples'>('voies')
+  const [section, setSection] = useState<'voies' | 'traits' | 'peuples'>('peuples')
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const askConfirm = (message: string, onConfirm: () => void) => setConfirmDialog({ message, onConfirm })
 
   // Voies
-  const [selected, setSelected] = useState(VOIES_INIT[0])
-  const [editingName, setEditingName] = useState(VOIES_INIT[0])
+  const [selected, setSelected] = useState(VOIES_INIT[0] ?? '')
+  const [editingName, setEditingName] = useState(VOIES_INIT[0] ?? '')
   useEffect(() => { setEditingName(selected) }, [selected])
+  const [printPreviewNom, setPrintPreviewNom] = useState<string | null>(null)
+
   const [query, setQuery] = useState('')
   const [exported, setExported] = useState(false)
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
@@ -74,6 +162,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [peupleQuery, setPeupleQuery] = useState('')
   const [peuplesExported, setPeuplesExported] = useState(false)
 
+  const [showEffectsHelp, setShowEffectsHelp] = useState(false)
+
   // Zone en attente (imports individuels)
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([])
   const [previewPendingId, setPreviewPendingId] = useState<string | null>(null)
@@ -83,6 +173,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const voiesList = useMemo(() =>
     Object.keys(data).sort((a, b) => a.localeCompare(b, 'fr'))
   , [data])
+
+  // Synchronise `selected` si la liste des voies change (chargement async ou ajout/suppression)
+  useEffect(() => {
+    if (voiesList.length === 0) return
+    if (!voiesList.includes(selected)) setSelected(voiesList[0])
+  }, [voiesList])
 
   const allTraits = useMemo(() => {
     const seen = new Map<string, string>()
@@ -140,16 +236,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateEffect = (voie: string, rang: number, effIdx: number, patch: { stat?: string; value?: number | null; formula?: string | null; minRang?: number | null; avancee?: boolean; condition?: EffectCondition | null }) => {
+  const updateEffect = (voie: string, rang: number, effIdx: number, patch: { stat?: string; value?: number | null; formula?: string | null; diceStr?: string | null; minRang?: number | null; avancee?: boolean; rangMultiplier?: boolean | null; condition?: EffectCondition | null }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
       const effects = [...(entry.effects ?? [])]
       let merged = { ...effects[effIdx], ...patch }
-      if (patch.minRang === null)   { const { minRang: _, ...r } = merged; merged = r }
-      if (patch.value === null)     { const { value: _, ...r } = merged; merged = r }
-      if (patch.formula === null)   { const { formula: _, ...r } = merged; merged = r }
-      if (patch.condition === null) { const { condition: _, ...r } = merged; merged = r }
+      if (patch.minRang === null)       { const { minRang: _, ...r } = merged; merged = r }
+      if (patch.value === null)         { const { value: _, ...r } = merged; merged = r }
+      if (patch.formula === null)       { const { formula: _, ...r } = merged; merged = r }
+      if (patch.condition === null)      { const { condition: _, ...r } = merged; merged = r }
+      if (patch.rangMultiplier === null) { const { rangMultiplier: _, ...r } = merged; merged = r }
+      if (patch.diceStr === null)        { const { diceStr: _, ...r } = merged; merged = r }
       effects[effIdx] = merged as Effect
       voieData[rang] = { ...entry, effects }
       return { ...prev, [voie]: voieData }
@@ -228,16 +326,48 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     })
   }
 
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const exportWithPrompt = (payload: unknown, type: 'descriptions' | 'peuples' | 'traits-magiques', defaultBase: string, onDone: () => void) => {
+    const input = window.prompt('Nom du fichier :', defaultBase)
+    if (input === null) return
+    const filename = (input.trim() || defaultBase) + '.json'
+    const envelope = { _type: type, data: payload }
+    const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = 'descriptions.json'
-    a.click()
+    a.href = url; a.download = filename; a.click()
     URL.revokeObjectURL(url)
-    setExported(true)
+    onDone()
   }
+
+  const importFile = (expectedType: 'descriptions' | 'peuples' | 'traits-magiques', onImport: (parsed: unknown) => void) => {
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = '.json'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = ev => {
+        try {
+          const raw = JSON.parse(ev.target?.result as string)
+          if (raw && typeof raw === 'object' && '_type' in raw && 'data' in raw) {
+            if (raw._type !== expectedType) {
+              alert(`Ce fichier est de type "${raw._type}", attendu "${expectedType}".`)
+              return
+            }
+            onImport(raw.data)
+          } else {
+            onImport(raw)
+          }
+        } catch {
+          alert('Fichier JSON invalide.')
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
+  }
+
+  const exportJson = () => exportWithPrompt(data, 'descriptions', 'descriptions', () => setExported(true))
 
   const updateTrait = (idx: number, patch: Partial<TraitEntry>) => {
     setTraits(prev => prev.map((t, i) => i === idx ? { ...t, ...patch } : t))
@@ -256,16 +386,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setTraitsExported(false)
   }
 
-  const exportTraits = () => {
-    const blob = new Blob([JSON.stringify(traits, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'traits-magiques.json'
-    a.click()
-    URL.revokeObjectURL(url)
-    setTraitsExported(true)
-  }
+  const exportTraits = () => exportWithPrompt(traits, 'traits-magiques', 'traits-magiques', () => setTraitsExported(true))
 
   const wrapTrait = (before: string, after: string) => {
     const ta = traitDescRef.current
@@ -358,14 +479,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setPeuplesExported(false)
   }
 
-  const exportPeuples = () => {
-    const blob = new Blob([JSON.stringify(peuples, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = 'peuples.json'; a.click()
-    URL.revokeObjectURL(url)
-    setPeuplesExported(true)
-  }
+  const exportPeuples = () => exportWithPrompt(peuples, 'peuples', 'peuples', () => setPeuplesExported(true))
 
   const exportSingleItem = (payload: unknown, filename: string) => {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -376,6 +490,47 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   }
 
   const safeName = (s: string) => s.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-')
+
+  const executePrint = (nom: string) => {
+    const rangs = data[nom] ?? []
+    const famille = voies.find(v => v.nom === nom)?.famille ?? ''
+    const familleLabel = famille ? (FAMILLE_LABELS[famille] ?? famille) : ''
+    const rangsHtml = rangs.map((r, i) =>
+      `<div class="tda-rang"><h2 class="tda-h2">Rang ${i + 1}${r.nom ? ` — ${escHtml(r.nom)}` : ''}</h2>${blockToHtml(r.desc)}</div>`
+    ).join('')
+
+    const STYLE_ID = 'tda-print-style'
+    const ROOT_ID  = 'tda-print-root'
+    document.getElementById(STYLE_ID)?.remove()
+    document.getElementById(ROOT_ID)?.remove()
+
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+      @media print {
+        body * { visibility: hidden !important; }
+        #${ROOT_ID}, #${ROOT_ID} * { visibility: visible !important; }
+        #${ROOT_ID} { position: fixed; inset: 0; padding: 15mm 18mm; }
+        @page { margin: 0; size: A4; }
+      }
+      #${ROOT_ID} { display: none; }
+      ${PRINT_CSS}
+    `
+    const root = document.createElement('div')
+    root.id = ROOT_ID
+    root.innerHTML = `<div class="tda-page"><h1>${escHtml(nom)}</h1>${familleLabel ? `<div class="tda-famille">${escHtml(familleLabel)}</div>` : ''}${rangsHtml}</div>`
+
+    document.head.appendChild(style)
+    document.body.appendChild(root)
+
+    const cleanup = () => {
+      document.getElementById(STYLE_ID)?.remove()
+      document.getElementById(ROOT_ID)?.remove()
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
+    window.print()
+  }
 
   const openPreview = (id: string) => {
     const item = pendingItems.find(p => p.id === id)
@@ -791,7 +946,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           flexShrink: 0, gap: 12,
         }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            {(['voies', 'traits', 'peuples'] as const).map(s => (
+            {(['peuples', 'voies', 'traits'] as const).map(s => (
               <button key={s} onClick={() => setSection(s)} style={{
                 padding: '4px 14px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -803,37 +958,49 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {section === 'voies' && (
+            {section === 'voies' && (<>
               <button onClick={exportJson} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: exported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {exported ? '✓ Exporté' : '↓ descriptions.json'}
+                {exported ? '✓ Exporté' : '↓ Exporter'}
               </button>
-            )}
-            {section === 'traits' && (
+              <button onClick={() => importFile('descriptions', v => { setData(v as typeof data); setExported(false) })} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>↑ Importer</button>
+            </>)}
+            {section === 'traits' && (<>
               <button onClick={exportTraits} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: traitsExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {traitsExported ? '✓ Exporté' : '↓ traits-magiques.json'}
+                {traitsExported ? '✓ Exporté' : '↓ Exporter'}
               </button>
-            )}
-            {section === 'peuples' && (
+              <button onClick={() => importFile('traits-magiques', v => { setTraits(v as typeof traits); setTraitsExported(false) })} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>↑ Importer</button>
+            </>)}
+            {section === 'peuples' && (<>
               <button onClick={exportPeuples} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: peuplesExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {peuplesExported ? '✓ Exporté' : '↓ peuples.json'}
+                {peuplesExported ? '✓ Exporté' : '↓ Exporter'}
               </button>
-            )}
-            <button onClick={openDataDir} title="Ouvrir le dossier Documents/TdR/" style={{
+              <button onClick={() => importFile('peuples', v => { setPeuples(v as typeof peuples); setPeuplesExported(false) })} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>↑ Importer</button>
+            </>)}
+            <button onClick={openDataDir} title="Ouvrir le dossier Documents/TdA/" style={{
               padding: '5px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
               border: `1px solid ${S.border}`, background: 'transparent',
               color: 'rgba(245,236,215,0.55)',
@@ -1004,6 +1171,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         <option value="mystiques">Mystiques</option>
                       </select>
                     )}
+                    <button
+                      onClick={() => setPrintPreviewNom(selected)}
+                      title="Aperçu et impression"
+                      style={{
+                        marginLeft: 'auto', padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        cursor: 'pointer', border: `1px solid ${S.border}`,
+                        background: 'transparent', color: 'rgba(245,236,215,0.55)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      🖨 Imprimer
+                    </button>
                   </div>
                 )
               })()}
@@ -1119,6 +1298,26 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             />
                           </>
                         )}
+                        <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>Dés :</span>
+                        <input
+                          type="text"
+                          placeholder="ex: 1d6"
+                          value={eff.diceStr ?? ''}
+                          onChange={e => updateEffect(selected, i, ei, { diceStr: e.target.value || null })}
+                          style={{
+                            width: 56, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3,
+                            padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', textAlign: 'center',
+                          }}
+                        />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(180,220,140,0.85)', cursor: 'pointer', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!eff.rangMultiplier}
+                            onChange={e => updateEffect(selected, i, ei, { rangMultiplier: e.target.checked || null })}
+                            style={{ accentColor: 'rgba(180,220,140,0.85)', cursor: 'pointer' }}
+                          />
+                          × Rang
+                        </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
                           <input
                             type="checkbox"
@@ -1347,9 +1546,71 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                     return (
                       <div style={{ marginTop: 8, border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '8px 10px' }}>
-                        <div style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', marginBottom: 5, textTransform: 'uppercase' }}>
-                          Effets &amp; Accès
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            Effets &amp; Accès
+                          </span>
+                          <button
+                            onClick={() => setShowEffectsHelp(v => !v)}
+                            title="Aide sur les effets"
+                            style={{
+                              width: 18, height: 18, borderRadius: '50%', border: `1px solid rgba(201,168,76,0.45)`,
+                              background: showEffectsHelp ? 'rgba(201,168,76,0.2)' : 'transparent',
+                              color: 'rgba(201,168,76,0.7)', fontSize: 11, fontWeight: 700,
+                              cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >i</button>
                         </div>
+                        {showEffectsHelp && (
+                          <div style={{
+                            marginBottom: 10, padding: '10px 12px', borderRadius: 4,
+                            background: 'rgba(201,168,76,0.05)', border: `1px solid rgba(201,168,76,0.2)`,
+                            fontSize: 12, color: 'rgba(245,236,215,0.75)', lineHeight: 1.6,
+                            display: 'flex', flexDirection: 'column', gap: 8,
+                          }}>
+                            <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              Champs d'un effet
+                            </div>
+                            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                              <tbody>
+                                {[
+                                  ['Stat', 'Statistique modifiée sur la fiche (PV, DEF, INIT, PR, PM, PC, ATT_CONTACT, ATT_DISTANCE, ATT_MAGIQUE, DM_ARME, DM_MAINS_NUES, FOR … CHA)'],
+                                  ['Formule', 'Remplace la valeur fixe par un mod. de caractéristique (MOD_FOR, MOD_DEX, MOD_CON, MOD_INT, MOD_SAG, MOD_CHA)'],
+                                  ['Valeur', 'Bonus ou malus fixe ajouté à la stat (peut être négatif)'],
+                                  ['Dés', 'Notation de dés pour des dommages variables — ex : 1d6, 2d4. Utilisé surtout avec DM_ARME / DM_MAINS_NUES'],
+                                  ['× Rang', 'Multiplie la valeur ou le nombre de dés par le rang actuel — ex : rang 3 avec « 1d6 » → 3d6'],
+                                  ['Actif seulement au rang', "L'effet ne compte que si ce rang minimum est atteint (utile pour un bonus conditionnel déclenché plus tard)"],
+                                  ['Avancée', "L'effet appartient à la capacité avancée et n'est pas calculé dans les totaux normaux"],
+                                  ['Si…', 'Condition : bouclier équipé / manie une arme précise / sans arme en main principale'],
+                                ].map(([label, desc]) => (
+                                  <tr key={label} style={{ verticalAlign: 'top' }}>
+                                    <td style={{ color: S.gold, paddingRight: 10, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
+                                    <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2 }}>
+                              Tokens dans les descriptions
+                            </div>
+                            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                              <tbody>
+                                {[
+                                  ['[rang]', 'Rang actuel du PJ dans cette voie'],
+                                  ['[niveau]', 'Niveau du PJ'],
+                                  ['[Mod. FOR] … [Mod. CHA]', 'Modificateur de la caractéristique correspondante'],
+                                  ['[DM_ARME] [DM_MAINS_NUES]', 'Valeur de dommages calculée (inclut les bonus de voie)'],
+                                ].map(([token, desc]) => (
+                                  <tr key={token} style={{ verticalAlign: 'top' }}>
+                                    <td style={{ color: 'rgba(180,220,140,0.9)', paddingRight: 10, paddingBottom: 3, whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 11 }}>{token}</td>
+                                    <td style={{ paddingBottom: 3, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                         {normaux.map(({ e, idx }) => renderLigne(e, idx))}
                         {grantsNormaux.map(({ g, idx }) => renderGrant(g, idx))}
                         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
@@ -1730,10 +1991,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <label key={car} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, color: S.parchment }}>
                               <span style={{ color: S.gold, fontWeight: 600, minWidth: 28 }}>{car}</span>
                               <input
+                                key={`${selectedPeuple}-${ci}-${car}`}
                                 type="number"
-                                value={culture.modCaracs[car] ?? 0}
+                                defaultValue={culture.modCaracs[car] ?? 0}
                                 onChange={e => {
-                                  const val = parseInt(e.target.value) || 0
+                                  const val = parseInt(e.target.value)
+                                  if (isNaN(val)) return
                                   const newMod = { ...culture.modCaracs }
                                   if (val === 0) delete newMod[car]
                                   else newMod[car] = val
@@ -1799,14 +2062,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           fontSize: 13, color: 'rgba(245,236,215,0.4)', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
-          <span>Les modifications sont <strong style={{ color: 'rgba(201,168,76,0.6)' }}>sauvegardées automatiquement</strong> dans <em>Documents/TdR/</em>.</span>
+          <span>Les modifications sont <strong style={{ color: 'rgba(201,168,76,0.6)' }}>sauvegardées automatiquement</strong> dans <em>Documents/TdA/</em>.</span>
           <button
             onClick={() => askConfirm(
               'Réinitialiser toutes les données vers les valeurs par défaut du jeu ?',
               () => {
-                setData(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW)))
-                setTraits(JSON.parse(JSON.stringify(TRAITS_RAW)))
-                setPeuples(JSON.parse(JSON.stringify(PEUPLES_RAW)))
+                const unwrap = (v: unknown) => v && typeof v === 'object' && '_type' in (v as object) && 'data' in (v as object) ? (v as Record<string, unknown>).data : v
+                setData(unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as typeof data)
+                setTraits(unwrap(JSON.parse(JSON.stringify(TRAITS_RAW))) as typeof traits)
+                setPeuples(unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as typeof peuples)
+                setVoies(unwrap(JSON.parse(JSON.stringify(VOIES_BUNDLE))) as typeof voies)
               }
             )}
             style={{
@@ -1818,6 +2083,79 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         </div>
       </div>
     </div>
+    {/* ── Aperçu impression voie ── */}
+    {printPreviewNom && (() => {
+      const nom    = printPreviewNom
+      const rangs  = data[nom] ?? []
+      const famille = voies.find(v => v.nom === nom)?.famille ?? ''
+      const familleLabel = famille ? (FAMILLE_LABELS[famille] ?? famille) : ''
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 800,
+          background: 'rgba(0,0,0,0.82)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center',
+        }} onClick={() => setPrintPreviewNom(null)}>
+
+          {/* Barre d'actions */}
+          <div style={{
+            width: '100%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 24px',
+            background: 'rgba(12,9,5,0.95)',
+            borderBottom: '1px solid rgba(201,168,76,0.2)',
+          }} onClick={e => e.stopPropagation()}>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 15, color: 'rgba(201,168,76,0.85)', letterSpacing: '0.06em' }}>
+              Aperçu — {nom}
+            </span>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { executePrint(nom); setPrintPreviewNom(null) }}
+                style={{
+                  padding: '6px 18px', borderRadius: 4, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)',
+                  color: 'rgba(201,168,76,0.9)', fontWeight: 600,
+                }}
+              >🖨 Imprimer</button>
+              <button
+                onClick={() => setPrintPreviewNom(null)}
+                style={{
+                  padding: '6px 14px', borderRadius: 4, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
+                  color: 'rgba(245,236,215,0.5)',
+                }}
+              >✕ Fermer</button>
+            </div>
+          </div>
+
+          {/* Page A4 */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px 0', width: '100%', display: 'flex', justifyContent: 'center' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{
+              background: '#fff', color: '#1a1208',
+              width: 'min(210mm, 92vw)',
+              minHeight: '297mm',
+              padding: '18mm 22mm',
+              boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
+              fontFamily: "'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif",
+              fontSize: '11pt', lineHeight: 1.65,
+            }}>
+              <style>{PRINT_CSS}</style>
+              <div className="tda-page">
+                <h1>{nom}</h1>
+                {familleLabel && <div className="tda-famille">{familleLabel}</div>}
+                {rangs.map((r, i) => (
+                  <div key={i} className="tda-rang">
+                    <h2 className="tda-h2">Rang {i + 1}{r.nom ? ` — ${r.nom}` : ''}</h2>
+                    <div dangerouslySetInnerHTML={{ __html: blockToHtml(r.desc) }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    })()}
     </>
   )
 }

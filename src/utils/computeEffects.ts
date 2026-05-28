@@ -88,11 +88,11 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
 
         let value: number
         if (effect.value !== undefined) {
-          value = effect.value
+          value = effect.rangMultiplier ? effect.value * (i + 1) : effect.value
         } else if (effect.formula) {
           const resolved = resolveFormula(effect.formula, character)
           if (resolved === null) continue
-          value = resolved
+          value = effect.rangMultiplier ? resolved * (i + 1) : resolved
         } else {
           continue
         }
@@ -139,11 +139,14 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
         if (effect.condition && !evaluateCondition(effect.condition, character)) continue
 
         const triggerRang = effect.minRang ?? (i + 1)
+        const diceStr = effect.rangMultiplier
+          ? effect.diceStr!.replace(/^(\d+)/, n => String(parseInt(n) * (i + 1)))
+          : effect.diceStr!
         const existing = result[effect.stat]
         if (!existing || triggerRang > existing.triggerRang) {
           result[effect.stat] = {
             stat: effect.stat,
-            diceStr: effect.diceStr,
+            diceStr,
             nom: rangData.nom,
             rang: i + 1,
             triggerRang,

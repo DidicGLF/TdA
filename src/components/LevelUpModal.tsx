@@ -255,8 +255,15 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
 
         <div style={{ padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-          {/* ── Niveaux gagnés ── */}
-          <section>
+          {/* ── Niveau maximum : contenu simplifié ── */}
+          {character.niveau >= maxNiveau && (
+            <div style={{ fontSize: 14, color: 'rgba(201,168,76,0.6)', fontStyle: 'italic' }}>
+              Niveau maximum atteint. Vous pouvez réinitialiser le personnage au niveau 1 ci-dessous.
+            </div>
+          )}
+
+          {/* ── Sections level-up (masquées au niveau max) ── */}
+          {character.niveau < maxNiveau && <><section>
             <div style={SECTION_LABEL}>Niveaux gagnés</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button
@@ -606,6 +613,9 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
               </div>
             )}
           </section>
+
+          {/* ── Fin sections level-up ── */}
+          </>}
 
           {/* ── Reset niveau 1 ── */}
           {showResetConfirm ? (

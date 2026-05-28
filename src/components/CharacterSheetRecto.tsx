@@ -149,8 +149,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   )
   type TooltipLine = { label: string; value: string | number; neg?: boolean }
   type TooltipData =
-    | { nom: string; desc: string; lines?: never; total?: never; x: number; y: number }
-    | { nom: string; lines: TooltipLine[]; total: string | number; desc?: never; x: number; y: number }
+    | { nom: string; desc: string; rang?: number; lines?: never; total?: never; x: number; y: number }
+    | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; x: number; y: number }
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [hoveredRangInfo, setHoveredRangInfo] = useState<{ voie: VoieKey; rang: number; x: number; y: number } | null>(null)
 
@@ -831,7 +831,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                 }}
                 onMouseEnter={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
-                  setTooltip({ nom: nomCap, desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  setTooltip({ nom: nomCap, desc, rang: rang + 1, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
                 }}
                 onMouseMove={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
@@ -867,7 +867,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
           <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
-          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data)}</div>}
+          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data, activeTooltip.rang)}</div>}
           {activeTooltip.lines && (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <tbody>

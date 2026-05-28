@@ -74,8 +74,8 @@ function renderSegments(segments: Segment[]): React.ReactNode {
   )
 }
 
-// Matches stat modifiers, niveau, and dice effect stats (DM_*)
-const BRACKET_TOKEN_RE = /(?:Mod\.\s+(?:(?:de|d')\s*)?(FOR|DEX|CON|INT|SAG|CHA)(?!\s+du\b))|(niveau\s+du\s+PJ|niveau\b)|(DM_[A-Z_]+)/g
+// Matches stat modifiers, niveau, rang, and dice effect stats (DM_*)
+const BRACKET_TOKEN_RE = /(?:Mod\.\s+(?:(?:de|d')\s*)?(FOR|DEX|CON|INT|SAG|CHA)(?!\s+du\b))|(niveau\s+du\s+PJ|niveau\b)|(DM_[A-Z_]+)|(rang\b)/g
 
 function evalArithmetic(expr: string): number | null {
   if (/\d+\s*d\s*\d+/i.test(expr)) return null
@@ -85,7 +85,7 @@ function evalArithmetic(expr: string): number | null {
   return parts.reduce((sum, p) => sum + parseInt(p), 0)
 }
 
-function resolveBracket(inner: string, character: Character, descriptions: DescMap): { node: React.ReactNode; total?: number } {
+function resolveBracket(inner: string, character: Character, descriptions: DescMap, rang?: number): { node: React.ReactNode; total?: number } {
   const effects = computeEffects(character, descriptions)
   const diceEffects = computeDiceEffects(character, descriptions)
   const effectiveMod = (stat: Caracteristique) => {
@@ -103,7 +103,9 @@ function resolveBracket(inner: string, character: Character, descriptions: DescM
       ? effectiveMod(m[1] as Caracteristique)
       : m[3]
         ? (diceEffects[m[3]]?.diceStr ?? m[3])
-        : character.niveau
+        : m[4]
+          ? (rang ?? '?')
+          : character.niveau
     tokens.push({ index: m.index, match: m[0], value })
   }
 
@@ -152,7 +154,7 @@ function resolveBracket(inner: string, character: Character, descriptions: DescM
   return { node, total: computedTotal ?? undefined }
 }
 
-function parseInline(text: string, character?: Character, descriptions?: DescMap): React.ReactNode {
+function parseInline(text: string, character?: Character, descriptions?: DescMap, rang?: number): React.ReactNode {
   const bracketRe = /\[([^\]]+)\]/g
   const parts: Array<{ type: 'text'; content: string } | { type: 'bracket'; inner: string }> = []
   let lastIdx = 0
@@ -172,7 +174,7 @@ function parseInline(text: string, character?: Character, descriptions?: DescMap
           return <React.Fragment key={i}>{renderSegments(tokenize(part.content))}</React.Fragment>
         }
         if (character) {
-          const { node, total } = resolveBracket(part.inner, character, descriptions ?? {})
+          const { node, total } = resolveBracket(part.inner, character, descriptions ?? {}, rang)
           return (
             <span key={i} title={`[${part.inner}]`} style={{ cursor: 'help' }}>
               [{node}]{total !== undefined && (
@@ -230,7 +232,7 @@ function renderTable(lines: string[]): React.ReactNode {
   )
 }
 
-export function parseDesc(text: string, character?: Character, descriptions?: DescMap): React.ReactNode {
+export function parseDesc(text: string, character?: Character, descriptions?: DescMap, rang?: number): React.ReactNode {
   if (!text) return null
   _key = 0
 
@@ -268,7 +270,7 @@ export function parseDesc(text: string, character?: Character, descriptions?: De
             {block.lines.map((line, li) => (
               <React.Fragment key={li}>
                 {li > 0 && <br />}
-                {parseInline(line, character, descriptions)}
+                {parseInline(line, character, descriptions, rang)}
               </React.Fragment>
             ))}
             {content === '' && null}

@@ -37,13 +37,20 @@ export function useGameData() {
   return ctx
 }
 
-function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string): Dispatch<SetStateAction<T>> {
+function unwrap(parsed: unknown): unknown {
+  if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
+    return (parsed as Record<string, unknown>).data
+  }
+  return parsed
+}
+
+function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string, type: string): Dispatch<SetStateAction<T>> {
   return (updater) => {
     setter(prev => {
       const next = typeof updater === 'function'
         ? (updater as (p: T) => T)(prev)
         : updater
-      saveDataFile(filename, JSON.stringify(next, null, 2)).catch(console.error)
+      saveDataFile(filename, JSON.stringify({ _type: type, data: next }, null, 2)).catch(console.error)
       return next
     })
   }
@@ -51,22 +58,22 @@ function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string)
 
 export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [data, setDataRaw] = useState<DescMap>(() =>
-    JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))
+    unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as DescMap
   )
   const [traits, setTraitsRaw] = useState<TraitEntry[]>(() =>
-    JSON.parse(JSON.stringify(TRAITS_RAW))
+    unwrap(JSON.parse(JSON.stringify(TRAITS_RAW))) as TraitEntry[]
   )
   const [peuples, setPeuplesRaw] = useState<PeupleEntry[]>(() =>
-    JSON.parse(JSON.stringify(PEUPLES_RAW))
+    unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as PeupleEntry[]
   )
   const [armes, setArmesRaw] = useState<ArmesData>(() =>
-    JSON.parse(JSON.stringify(ARMES_RAW))
+    unwrap(JSON.parse(JSON.stringify(ARMES_RAW))) as ArmesData
   )
   const [armures, setArmuresRaw] = useState<ArmuresData>(() =>
-    JSON.parse(JSON.stringify(ARMURES_RAW))
+    unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
   )
   const [voies, setVoiesRaw] = useState<VoieEntry[]>(() =>
-    JSON.parse(JSON.stringify(VOIES_RAW))
+    unwrap(JSON.parse(JSON.stringify(VOIES_RAW))) as VoieEntry[]
   )
   const [loaded, setLoaded] = useState(false)
 
@@ -82,12 +89,12 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           loadDataFile('armures.json'),
           loadDataFile('voies.json'),
         ])
-        if (descStr) setDataRaw(JSON.parse(descStr))
-        if (traitsStr) setTraitsRaw(JSON.parse(traitsStr))
-        if (peuplesStr) setPeuplesRaw(JSON.parse(peuplesStr))
-        if (armesStr) setArmesRaw(JSON.parse(armesStr))
-        if (armuresStr) setArmuresRaw(JSON.parse(armuresStr))
-        if (voiesStr) setVoiesRaw(JSON.parse(voiesStr))
+        if (descStr) setDataRaw(unwrap(JSON.parse(descStr)) as DescMap)
+        if (traitsStr) setTraitsRaw(unwrap(JSON.parse(traitsStr)) as TraitEntry[])
+        if (peuplesStr) setPeuplesRaw(unwrap(JSON.parse(peuplesStr)) as PeupleEntry[])
+        if (armesStr) setArmesRaw(unwrap(JSON.parse(armesStr)) as ArmesData)
+        if (armuresStr) setArmuresRaw(unwrap(JSON.parse(armuresStr)) as ArmuresData)
+        if (voiesStr) setVoiesRaw(unwrap(JSON.parse(voiesStr)) as VoieEntry[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -96,27 +103,27 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
 
   // Setters avec auto-save : chaque modification écrit dans Documents/TdR/
   const setData = useCallback(
-    makeAutoSaver<DescMap>(setDataRaw, 'descriptions.json'),
+    makeAutoSaver<DescMap>(setDataRaw, 'descriptions.json', 'descriptions'),
     []
   )
   const setTraits = useCallback(
-    makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json'),
+    makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json', 'traits-magiques'),
     []
   )
   const setPeuples = useCallback(
-    makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json'),
+    makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'),
     []
   )
   const setArmes = useCallback(
-    makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json'),
+    makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'),
     []
   )
   const setArmures = useCallback(
-    makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json'),
+    makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'),
     []
   )
   const setVoies = useCallback(
-    makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json'),
+    makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json', 'voies'),
     []
   )
 
