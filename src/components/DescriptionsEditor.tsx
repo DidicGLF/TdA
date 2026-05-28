@@ -508,10 +508,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     style.id = STYLE_ID
     style.textContent = `
       @media print {
-        body * { visibility: hidden !important; }
-        #${ROOT_ID}, #${ROOT_ID} * { visibility: visible !important; }
-        #${ROOT_ID} { position: fixed; inset: 0; padding: 15mm 18mm; }
-        @page { margin: 0; size: A4; }
+        body > *:not(#${ROOT_ID}) { display: none !important; }
+        #${ROOT_ID} { display: block !important; }
+        @page { size: A4; margin: 12mm 16mm; }
       }
       #${ROOT_ID} { display: none; }
       ${PRINT_CSS}
