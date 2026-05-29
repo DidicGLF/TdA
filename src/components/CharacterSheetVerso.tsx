@@ -140,9 +140,11 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
         value={character.portrait}
         scale={character.portraitScale} tx={character.portraitTx} ty={character.portraitTy}
         fit={character.portraitFit ?? 'cover'}
+        locked={character.portraitLocked ?? false}
         onChange={v => onChange({ portrait: v })}
         onPanZoomChange={(scale, tx, ty) => onChange({ portraitScale: scale, portraitTx: tx, portraitTy: ty })}
         onFitChange={f => onChange({ portraitFit: f })}
+        onLockedChange={l => onChange({ portraitLocked: l })}
         calibrate={calibrate} label="Portrait"
         containerRef={containerRef} onMoved={cb}
       />

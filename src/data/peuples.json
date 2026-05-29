@@ -149,36 +149,7 @@
     ]
   },
   {
-    "label": "Humain",
-    "cultures": [
-      {
-        "label": "Ruines nordiques",
-        "voiePeuple": "Voie du peuple humain",
-        "voieCulturelle": "Voie culturelle des ruines nordiques",
-        "modCaracs": {}
-      },
-      {
-        "label": "Mitan",
-        "voiePeuple": "Voie du peuple humain",
-        "voieCulturelle": "Voie culturelle du Mitan",
-        "modCaracs": {}
-      },
-      {
-        "label": "Empires austraux",
-        "voiePeuple": "Voie du peuple humain",
-        "voieCulturelle": "Voie culturelle des empires austraux",
-        "modCaracs": {}
-      },
-      {
-        "label": "Terres orientales",
-        "voiePeuple": "Voie du peuple humain",
-        "voieCulturelle": "Voie culturelle des Terres orientales",
-        "modCaracs": {}
-      }
-    ]
-  },
-  {
-    "label": "Peau verte",
+    "label": "Cul vert",
     "cultures": [
       {
         "label": "Orc",
@@ -225,6 +196,35 @@
           "nom": "Endurant",
           "desc": "Le maximum de PR de l'Ogre est de 6 – et non de 5 comme pour les autres races."
         }
+      }
+    ]
+  },
+  {
+    "label": "Humain",
+    "cultures": [
+      {
+        "label": "Ruines nordiques",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des ruines nordiques",
+        "modCaracs": {}
+      },
+      {
+        "label": "Mitan",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle du Mitan",
+        "modCaracs": {}
+      },
+      {
+        "label": "Empires austraux",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des empires austraux",
+        "modCaracs": {}
+      },
+      {
+        "label": "Terres orientales",
+        "voiePeuple": "Voie du peuple humain",
+        "voieCulturelle": "Voie culturelle des Terres orientales",
+        "modCaracs": {}
       }
     ]
   },

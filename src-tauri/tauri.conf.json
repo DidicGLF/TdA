@@ -14,7 +14,8 @@
         "title": "TdA",
         "width": 1440,
         "height": 900,
-        "resizable": true
+        "resizable": true,
+        "fileDropEnabled": false
       }
     ],
     "security": {

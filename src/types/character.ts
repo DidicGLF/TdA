@@ -108,6 +108,7 @@ export interface Character {
   portraitTx: number
   portraitTy: number
   portraitFit: 'cover' | 'contain'
+  portraitLocked?: boolean
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {

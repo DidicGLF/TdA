@@ -14,6 +14,8 @@ interface Props {
   onChange: (val: string) => void
   onPanZoomChange?: (scale: number, tx: number, ty: number) => void
   onFitChange?: (fit: 'cover' | 'contain') => void
+  locked?: boolean
+  onLockedChange?: (locked: boolean) => void
   calibrate: boolean
   label: string
   containerRef: RefObject<HTMLDivElement | null>
@@ -30,7 +32,8 @@ export default function DraggableImageField({
   top, left, width: initWidth, height: initHeight,
   value, scale: initScale = 1, tx: initTx = 0, ty: initTy = 0,
   fit = 'cover',
-  onChange, onPanZoomChange, onFitChange, calibrate, label, containerRef, onMoved,
+  locked: initLocked = false,
+  onChange, onPanZoomChange, onFitChange, onLockedChange, calibrate, label, containerRef, onMoved,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
@@ -38,8 +41,8 @@ export default function DraggableImageField({
   const [imgScale, setImgScale] = useState(initScale)
   const [imgTx, setImgTx] = useState(initTx)
   const [imgTy, setImgTy] = useState(initTy)
-  const [locked, setLocked] = useState(false)
-  const lockedRef = useRef(false)
+  const [locked, setLocked] = useState(initLocked)
+  const lockedRef = useRef(initLocked)
   const fileRef = useRef<HTMLInputElement>(null)
   const imgContainerRef = useRef<HTMLDivElement>(null)
   const calibrateRef = useRef(calibrate)
@@ -283,7 +286,7 @@ export default function DraggableImageField({
                 {/* Figer / Défiger */}
                 <button
                   style={{ ...TOOL_BTN, background: locked ? 'rgba(201,168,76,0.25)' : TOOL_BTN.background, borderColor: locked ? 'rgba(201,168,76,0.6)' : undefined }}
-                  onClick={e => { e.stopPropagation(); const next = !lockedRef.current; lockedRef.current = next; setLocked(next) }}
+                  onClick={e => { e.stopPropagation(); const next = !lockedRef.current; lockedRef.current = next; setLocked(next); onLockedChange?.(next) }}
                   onMouseDown={e => e.stopPropagation()}
                   title={locked ? 'Défiger (autoriser le déplacement)' : 'Figer (empêcher le déplacement accidentel)'}
                 >
