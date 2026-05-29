@@ -53,11 +53,16 @@ pub fn run() {
             open_data_dir,
         ])
         .setup(|app| {
-            let config = app.config().app.windows.first().cloned()
-                .unwrap_or_default();
-            tauri::WebviewWindowBuilder::from_config(app, &config)?
-                .disable_drag_drop_handler()
-                .build()?;
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("TdA")
+            .inner_size(1440.0, 900.0)
+            .resizable(true)
+            .disable_drag_drop_handler()
+            .build()?;
             Ok(())
         })
         .run(tauri::generate_context!())
