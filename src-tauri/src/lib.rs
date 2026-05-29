@@ -52,6 +52,14 @@ pub fn run() {
             save_data_file,
             open_data_dir,
         ])
+        .setup(|app| {
+            let config = app.config().app.windows.first().cloned()
+                .unwrap_or_default();
+            tauri::WebviewWindowBuilder::from_config(app, &config)?
+                .disable_drag_drop_handler()
+                .build()?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application")
 }
