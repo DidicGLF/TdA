@@ -43,7 +43,8 @@ export default function SheetTextarea({
   useEffect(() => {
     if (!containerRef?.current || !lineHeightPct) return
     const update = () => {
-      const h = containerRef.current!.getBoundingClientRect().height
+      if (!containerRef.current) return
+      const h = containerRef.current.getBoundingClientRect().height
       if (!h) return
       setLhPx(lineHeightPct / 100 * h)
       setPtPx(paddingTopPct / 100 * h)

@@ -12,7 +12,7 @@
         },
         "trait": {
           "nom": "Lumière des étoiles",
-          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
+          "desc": "Pour le personnage, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -25,7 +25,7 @@
         },
         "trait": {
           "nom": "Lumière des étoiles",
-          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
+          "desc": "Pour le personnage, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -38,7 +38,7 @@
         },
         "trait": {
           "nom": "Lumière des étoiles",
-          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
+          "desc": "Pour le personnage, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -57,7 +57,7 @@
         },
         "trait": {
           "nom": "Lumière des étoiles",
-          "desc": "Pour un Elfe, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
+          "desc": "Pour le personnage, l'obscurité de la nuit sous la lumière des étoiles n'est que de la pénombre, où seuls les petits détails lui échappent."
         }
       },
       {
@@ -66,8 +66,8 @@
         "voieCulturelle": "",
         "modCaracs": {},
         "trait": {
-          "nom": "Endurant",
-          "desc": "Le maximum de PR de l'Ogre est de 6 – et non de 5 comme pour les autres races."
+          "nom": "",
+          "desc": ""
         }
       }
     ]
@@ -85,7 +85,7 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -98,7 +98,7 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -111,7 +111,7 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -124,7 +124,7 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -137,14 +137,21 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener le Nain à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
         "label": "Ordre du Malt",
         "voiePeuple": "Voie du peuple nain",
-        "voieCulturelle": "",
-        "modCaracs": {}
+        "voieCulturelle": "Voie culturelle de l'ordre du Malt",
+        "modCaracs": {
+          "DEX": -2,
+          "CON": 2
+        },
+        "trait": {
+          "nom": "Instinct de survie",
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+        }
       }
     ]
   },
@@ -163,7 +170,7 @@
         },
         "trait": {
           "nom": "Instinct de survie",
-          "desc": "Lorsqu'une attaque devrait amener l'Orc à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
+          "desc": "Lorsqu'une attaque devrait amener le personnage à 0 PV, les DM qu'elle inflige sont divisés par deux (minimum 1)."
         }
       },
       {
@@ -178,7 +185,7 @@
         },
         "trait": {
           "nom": "Vision dans le noir",
-          "desc": "Dans le noir total, le Gobelin voit comme dans la pénombre à 30 m."
+          "desc": "Dans le noir total, le personnage voit comme dans la pénombre à 30 m."
         }
       },
       {
@@ -194,7 +201,7 @@
         },
         "trait": {
           "nom": "Endurant",
-          "desc": "Le maximum de PR de l'Ogre est de 6 – et non de 5 comme pour les autres races."
+          "desc": "Le maximum de PR du personnage est de 6 – et non de 5 comme pour les autres races."
         }
       }
     ]

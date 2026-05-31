@@ -4,6 +4,7 @@ import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
 import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import { useGameData } from '../context/GameDataContext'
+import { saveDataFileToBundle } from '../utils/tauriStorage'
 
 const VOIES_BUNDLE_NOMS = new Set(VOIES_BUNDLE.map(v => v.nom))
 // descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
@@ -112,6 +113,8 @@ type Grant =
   | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
+  | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
+  | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 type TraitEntry = { nom: string; desc: string }
 type Culture = {
@@ -129,15 +132,15 @@ type PendingItem =
   | { id: string; type: 'peuple'; data: PeupleEntry; expanded: boolean }
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
-  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, openDataDir } = useGameData()
+  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, openDataDir } = useGameData()
 
   const armesList = useMemo(() =>
     armes.groupes.flatMap(g => g.categories.flatMap(c => c.entrees.map(e => e.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim())))
       .filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a.localeCompare(b, 'fr'))
   , [armes])
 
-  const [section, setSection] = useState<'voies' | 'traits' | 'peuples'>('peuples')
-  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [section, setSection] = useState<'voies' | 'traits' | 'traitsRaciaux' | 'peuples' | 'compagnons'>('peuples')
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void; label?: string; danger?: boolean } | null>(null)
   const askConfirm = (message: string, onConfirm: () => void) => setConfirmDialog({ message, onConfirm })
 
   // Voies
@@ -155,6 +158,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [traitQuery, setTraitQuery] = useState('')
   const [traitsExported, setTraitsExported] = useState(false)
   const traitDescRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const [selectedTraitRacial, setSelectedTraitRacial] = useState(0)
+  const [traitRacialQuery, setTraitRacialQuery] = useState('')
+  const [traitsRaciauxExported, setTraitsRaciauxExported] = useState(false)
+  const traitRacialDescRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Compagnons
+  const [selectedCompagnon, setSelectedCompagnon] = useState(0)
+  const [compagnonQuery, setCompagnonQuery] = useState('')
+  const [compagnonsExported, setCompagnonsExported] = useState(false)
 
   // Peuples
   const [selectedPeuple, setSelectedPeuple] = useState(0)
@@ -180,15 +193,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     if (!voiesList.includes(selected)) setSelected(voiesList[0])
   }, [voiesList])
 
-  const allTraits = useMemo(() => {
-    const seen = new Map<string, string>()
-    for (const p of peuples) {
-      for (const c of p.cultures) {
-        if (c.trait?.nom) seen.set(c.trait.nom, c.trait.desc ?? '')
-      }
-    }
-    return Array.from(seen.entries()).map(([nom, desc]) => ({ nom, desc })).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
-  }, [peuples])
+  const allTraits = useMemo(() =>
+    traitsRaciaux.map(t => ({ ...t, label: t.nom })).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  , [traitsRaciaux])
 
 
   const filtered = query
@@ -303,7 +310,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           ? { type: 'FORMATION', value: FORMATIONS[0], ...av }
           : patch.type === 'VOIE_RANG'
             ? { type: 'VOIE_RANG', voie: VOIES_INIT[0], rang: 1, ...av }
-            : { type: 'VOIE_RANG_CHOIX', voies: [], rangMax: 2, ...av }
+            : patch.type === 'VOIE_RANG_CHOIX'
+              ? { type: 'VOIE_RANG_CHOIX', voies: [], rangMax: 2, ...av }
+              : patch.type === 'COMPAGNON'
+              ? { type: 'COMPAGNON', nom: compagnons[0]?.nom ?? '', ...av }
+              : { type: 'COMPAGNON_CHOIX', noms: [], ...av }
       } else {
         grants[gIdx] = { ...current, ...patch } as Grant
       }
@@ -349,14 +360,22 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       reader.onload = ev => {
         try {
           const raw = JSON.parse(ev.target?.result as string)
-          if (raw && typeof raw === 'object' && '_type' in raw && 'data' in raw) {
-            if (raw._type !== expectedType) {
-              alert(`Ce fichier est de type "${raw._type}", attendu "${expectedType}".`)
+          if (raw && typeof raw === 'object') {
+            // Fichier d'élément individuel (voie, trait, peuple) — mauvais bouton
+            if ('type' in raw && ['voie', 'trait', 'peuple'].includes((raw as Record<string,unknown>).type as string)) {
+              const labels: Record<string, string> = { voie: 'une voie individuelle', trait: 'un trait individuel', peuple: 'un peuple individuel' }
+              alert(`Ce fichier contient ${labels[(raw as Record<string,unknown>).type as string] ?? 'un élément individuel'}.\nUtilisez le bouton "Importer une voie / Importer" dans la section correspondante, pas ce bouton.`)
               return
             }
-            onImport(raw.data)
-          } else {
-            onImport(raw)
+            if ('_type' in raw && 'data' in raw) {
+              if (raw._type !== expectedType) {
+                alert(`Ce fichier est de type "${raw._type}", attendu "${expectedType}".`)
+                return
+              }
+              onImport(raw.data)
+            } else {
+              onImport(raw)
+            }
           }
         } catch {
           alert('Fichier JSON invalide.')
@@ -386,7 +405,45 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setTraitsExported(false)
   }
 
+  const updateTraitRacial = (idx: number, patch: Partial<TraitEntry>) => {
+    setTraitsRaciaux(prev => prev.map((t, i) => i === idx ? { ...t, ...patch } : t))
+    setTraitsRaciauxExported(false)
+  }
+  const addTraitRacial = () => {
+    setTraitsRaciaux(prev => [...prev, { nom: 'Nouveau trait racial', desc: '' }])
+    setSelectedTraitRacial(traitsRaciaux.length)
+    setTraitsRaciauxExported(false)
+  }
+  const removeTraitRacial = (idx: number) => {
+    setTraitsRaciaux(prev => prev.filter((_, i) => i !== idx))
+    setSelectedTraitRacial(i => Math.min(i, traitsRaciaux.length - 2))
+    setTraitsRaciauxExported(false)
+  }
+
   const exportTraits = () => exportWithPrompt(traits, 'traits-magiques', 'traits-magiques', () => setTraitsExported(true))
+
+  // Fonctions compagnons
+  const updateCompagnon = (idx: number, patch: Partial<typeof compagnons[0]>) => {
+    setCompagnons(prev => prev.map((c, i) => i === idx ? { ...c, ...patch } : c))
+    setCompagnonsExported(false)
+  }
+
+  const addCompagnon = () => {
+    setCompagnons(prev => [...prev, {
+      nom: 'Nouveau compagnon', for: 0, dex: 0, con: 0, int: 0, sag: 0, cha: 0,
+      init: 10, def: 10, pv: 10,
+    }])
+    setSelectedCompagnon(compagnons.length)
+    setCompagnonsExported(false)
+  }
+
+  const removeCompagnon = (idx: number) => {
+    setCompagnons(prev => prev.filter((_, i) => i !== idx))
+    setSelectedCompagnon(i => Math.min(i, compagnons.length - 2))
+    setCompagnonsExported(false)
+  }
+
+  const exportCompagnons = () => exportWithPrompt(compagnons, 'compagnons' as any, 'compagnons', () => setCompagnonsExported(true))
 
   const wrapTrait = (before: string, after: string) => {
     const ta = traitDescRef.current
@@ -911,12 +968,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             >Annuler</button>
             <button
               onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null) }}
-              style={{
+              style={confirmDialog.danger === false ? {
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                border: '1px solid rgba(100,200,120,0.6)', background: 'rgba(100,200,120,0.12)',
+                color: 'rgba(120,220,140,0.95)', fontFamily: 'inherit',
+              } : {
                 padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 600,
                 border: '1px solid rgba(200,80,80,0.6)', background: 'rgba(200,80,80,0.15)',
                 color: 'rgba(240,120,120,0.95)', fontFamily: 'inherit',
               }}
-            >Supprimer</button>
+            >{confirmDialog.label ?? 'Supprimer'}</button>
           </div>
         </div>
       </div>
@@ -945,14 +1006,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           flexShrink: 0, gap: 12,
         }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            {(['peuples', 'voies', 'traits'] as const).map(s => (
+            {(['peuples', 'voies', 'traits', 'traitsRaciaux', 'compagnons'] as const).map(s => (
               <button key={s} onClick={() => setSection(s)} style={{
                 padding: '4px 14px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
                 color: S.gold, fontWeight: section === s ? 700 : 400,
               }}>
-                {s === 'voies' ? 'Voies' : s === 'traits' ? 'Traits magiques' : 'Peuples'}
+                {s === 'voies' ? 'Voies' : s === 'traits' ? 'Traits magiques' : s === 'traitsRaciaux' ? 'Traits raciaux' : s === 'compagnons' ? 'Compagnons' : 'Peuples'}
               </button>
             ))}
           </div>
@@ -981,6 +1042,34 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 {traitsExported ? '✓ Exporté' : '↓ Exporter'}
               </button>
               <button onClick={() => importFile('traits-magiques', v => { setTraits(v as typeof traits); setTraitsExported(false) })} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>↑ Importer</button>
+            </>)}
+            {section === 'traitsRaciaux' && (<>
+              <button onClick={() => exportWithPrompt(traitsRaciaux, 'traits-magiques' as any, 'traits-raciaux', () => setTraitsRaciauxExported(true))} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.gold}`,
+                background: traitsRaciauxExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
+                color: S.gold, fontWeight: 600,
+              }}>
+                {traitsRaciauxExported ? '✓ Exporté' : '↓ Exporter'}
+              </button>
+              <button onClick={() => importFile('traits-magiques' as any, v => { setTraitsRaciaux(v as typeof traitsRaciaux); setTraitsRaciauxExported(false) })} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>↑ Importer</button>
+            </>)}
+            {section === 'compagnons' && (<>
+              <button onClick={exportCompagnons} style={{
+                padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.gold}`,
+                background: compagnonsExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
+                color: S.gold, fontWeight: 600,
+              }}>
+                {compagnonsExported ? '✓ Exporté' : '↓ Exporter'}
+              </button>
+              <button onClick={() => importFile('compagnons' as any, v => { setCompagnons(v as typeof compagnons); setCompagnonsExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
@@ -1436,6 +1525,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <option value="FORMATION">Formation</option>
                             <option value="VOIE_RANG">Voie (rang fixe)</option>
                             <option value="VOIE_RANG_CHOIX">Voie (rang au choix)</option>
+                            <option value="COMPAGNON">Compagnon (fixe)</option>
+                            <option value="COMPAGNON_CHOIX">Compagnon (au choix)</option>
                           </select>
 
                           {grant.type === 'FORMATION' && (
@@ -1481,6 +1572,50 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 style={{ width: 40, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: S.gold, outline: 'none', textAlign: 'center' }}
                               />
                             </>
+                          )}
+
+                          {grant.type === 'COMPAGNON' && (<>
+                            <select
+                              value={grant.nom}
+                              onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: e.target.value })}
+                              style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', cursor: 'pointer', maxWidth: 200 }}
+                            >
+                              {compagnons.map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                            </select>
+                            <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>remplace :</span>
+                            <select
+                              value={grant.remplace ?? ''}
+                              onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: grant.nom, remplace: e.target.value || undefined } as any)}
+                              style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: grant.remplace ? S.parchment : 'rgba(245,236,215,0.3)', outline: 'none', cursor: 'pointer', maxWidth: 160 }}
+                            >
+                              <option value="">— aucun —</option>
+                              {compagnons.filter(c => c.nom !== grant.nom).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                            </select>
+                          </>)}
+
+                          {grant.type === 'COMPAGNON_CHOIX' && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              {grant.noms.map((n, ni) => (
+                                <span key={ni} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(201,168,76,0.12)', border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 6px', fontSize: 12, color: S.parchment }}>
+                                  {n}
+                                  <button
+                                    onClick={() => updateGrant(selected, i, gi, { type: 'COMPAGNON_CHOIX', noms: grant.noms.filter((_, j) => j !== ni) })}
+                                    style={{ background: 'none', border: 'none', color: '#e05555', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1 }}
+                                  >✕</button>
+                                </span>
+                              ))}
+                              <select
+                                value=""
+                                onChange={e => {
+                                  if (!e.target.value || grant.noms.includes(e.target.value)) return
+                                  updateGrant(selected, i, gi, { type: 'COMPAGNON_CHOIX', noms: [...grant.noms, e.target.value] })
+                                }}
+                                style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                              >
+                                <option value="">+ Compagnon…</option>
+                                {compagnons.filter(c => !grant.noms.includes(c.nom)).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                              </select>
+                            </div>
                           )}
 
                           <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
@@ -1815,7 +1950,71 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 />
               </div>
             )}
-          </>) : (<>
+          </>) : section === 'traitsRaciaux' ? (<>
+            {/* Colonne traits raciaux */}
+            <div style={{ width: 'max-content', minWidth: 280, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="text" placeholder="Rechercher…" value={traitRacialQuery}
+                  onChange={e => setTraitRacialQuery(e.target.value)}
+                  style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 17, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
+                />
+                <button onClick={addTraitRacial} style={{
+                  padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
+                }}>+ Nouveau trait racial</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {traitsRaciaux
+                  .map((t, i) => ({ t, i }))
+                  .filter(({ t }) => !traitRacialQuery || t.nom.toLowerCase().includes(traitRacialQuery.toLowerCase()))
+                  .map(({ t, i }) => (
+                    <div key={i} onClick={() => setSelectedTraitRacial(i)} className="voie-list-item" style={{
+                      padding: '7px 12px', fontSize: 17, cursor: 'pointer',
+                      color: selectedTraitRacial === i ? S.gold : S.parchment,
+                      background: selectedTraitRacial === i ? 'rgba(201,168,76,0.1)' : 'transparent',
+                      borderLeft: selectedTraitRacial === i ? `3px solid ${S.gold}` : '3px solid transparent',
+                      transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+                    }}>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.nom}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Éditeur trait racial */}
+            {traitsRaciaux[selectedTraitRacial] && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={traitsRaciaux[selectedTraitRacial].nom}
+                    onChange={e => updateTraitRacial(selectedTraitRacial, { nom: e.target.value })}
+                    style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 10px', fontSize: 17, color: S.gold, fontWeight: 700, outline: 'none', fontFamily: "'Cinzel', serif" }}
+                    onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                    onBlur={e => (e.target.style.borderColor = S.border)}
+                  />
+                  <button
+                    onClick={() => askConfirm(`Supprimer le trait "${traitsRaciaux[selectedTraitRacial]?.nom}" ?`, () => removeTraitRacial(selectedTraitRacial))}
+                    style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
+                  >Supprimer</button>
+                </div>
+                <textarea
+                  ref={traitRacialDescRef}
+                  value={traitsRaciaux[selectedTraitRacial].desc}
+                  onChange={e => updateTraitRacial(selectedTraitRacial, { desc: e.target.value })}
+                  rows={8}
+                  style={{
+                    width: '100%', background: S.bg, border: `1px solid ${S.border}`,
+                    borderRadius: 4, padding: '8px 10px', fontSize: 17, color: S.parchment,
+                    resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                  onBlur={e => (e.target.style.borderColor = S.border)}
+                />
+              </div>
+            )}
+          </>) : section === 'peuples' ? (<>
             {/* Colonne peuples */}
             <div style={{ width: 'max-content', minWidth: 340, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2050,6 +2249,235 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 </div>
               )
             })()}
+          </>) : null}
+
+          {section === 'compagnons' && (<>
+            {/* Liste compagnons */}
+            <div style={{
+              width: 260, flexShrink: 0, borderRight: `1px solid ${S.border}`,
+              display: 'flex', flexDirection: 'column',
+            }}>
+              <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="text" placeholder="Rechercher…" value={compagnonQuery}
+                  onChange={e => setCompagnonQuery(e.target.value)}
+                  style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 15, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
+                />
+                <button onClick={addCompagnon} style={{
+                  padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
+                }}>+ Nouveau compagnon</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {compagnons
+                  .map((c, i) => ({ c, i }))
+                  .filter(({ c }) => !compagnonQuery || c.nom.toLowerCase().includes(compagnonQuery.toLowerCase()))
+                  .map(({ c, i }) => (
+                    <div key={i} onClick={() => setSelectedCompagnon(i)} className="voie-list-item" style={{
+                      padding: '7px 12px', fontSize: 15, cursor: 'pointer',
+                      color: selectedCompagnon === i ? S.gold : S.parchment,
+                      background: selectedCompagnon === i ? 'rgba(201,168,76,0.1)' : 'transparent',
+                      borderLeft: selectedCompagnon === i ? `3px solid ${S.gold}` : '3px solid transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+                    }}>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Éditeur compagnon */}
+            {compagnons[selectedCompagnon] && (() => {
+              const c = compagnons[selectedCompagnon]
+              const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
+              const numIn = (field: keyof typeof c, label: string, showSign = false) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em' }}>{label}</span>
+                  <input
+                    type="text"
+                    defaultValue={showSign ? fmtMod((c[field] as number) ?? 0) : String((c[field] as number) ?? 0)}
+                    key={`${selectedCompagnon}-${field}`}
+                    onChange={e => {
+                      const n = parseInt(e.target.value.replace(/[^0-9-]/g, ''))
+                      if (!isNaN(n)) updateCompagnon(selectedCompagnon, { [field]: n })
+                    }}
+                    onBlur={e => {
+                      const n = parseInt(e.target.value.replace(/[^0-9-]/g, '')) || 0
+                      updateCompagnon(selectedCompagnon, { [field]: n })
+                      e.target.value = showSign ? fmtMod(n) : String(n)
+                      e.target.style.borderColor = S.border
+                    }}
+                    onFocus={e => { e.target.select(); e.target.style.borderColor = 'rgba(201,168,76,0.6)' }}
+                    style={{
+                      width: 52, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
+                      padding: '3px 4px', fontSize: 14, color: S.parchment,
+                      outline: 'none', textAlign: 'center',
+                    }}
+                  />
+                </div>
+              )
+              const attIn = (attField: 'attaque1' | 'attaque2', label: string) => {
+                const att = c[attField]
+                const bonus = att?.bonus ?? ''
+                // Formule si contient [ ou est une expression non numérique simple
+                const bonusIsFormula = /\[/.test(bonus) || (bonus !== '' && isNaN(parseFloat(bonus.replace(/^\+/, ''))) && !bonus.match(/^[+-]?\d+(\.\d+)?$/))
+                const toggleBonus = () => {
+                  const next = bonusIsFormula ? '+0' : '[formule]'
+                  updateCompagnon(selectedCompagnon, { [attField]: { nom: att?.nom ?? '', bonus: next, dm: att?.dm ?? '1d6' } })
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 12, color: S.gold, letterSpacing: '0.06em' }}>{label}</span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        placeholder="Nom" value={att?.nom ?? ''}
+                        onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: e.target.value, bonus: att?.bonus ?? '+0', dm: att?.dm ?? '1d6' } })}
+                        style={{ flex: 2, ...inStyle }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                        onBlur={e => (e.target.style.borderColor = S.border)}
+                      />
+                      {/* Toggle bonus fixe / formule */}
+                      <button
+                        onClick={toggleBonus}
+                        title={bonusIsFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                        style={{
+                          fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2, flexShrink: 0,
+                          border: `1px solid ${bonusIsFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
+                          background: bonusIsFormula ? 'rgba(201,168,76,0.2)' : 'transparent',
+                          cursor: 'pointer', color: bonusIsFormula ? S.gold : 'rgba(245,236,215,0.4)',
+                        }}
+                      >{bonusIsFormula ? 'fx' : '42'}</button>
+                      <input
+                        placeholder={bonusIsFormula ? '[formule]' : '+5'}
+                        value={att?.bonus ?? ''}
+                        onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: att?.nom ?? '', bonus: e.target.value, dm: att?.dm ?? '1d6' } })}
+                        style={{ width: bonusIsFormula ? 130 : 60, ...inStyle, textAlign: bonusIsFormula ? 'left' : 'center' }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                        onBlur={e => (e.target.style.borderColor = S.border)}
+                      />
+                      <input
+                        placeholder="DM" value={att?.dm ?? ''}
+                        onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: att?.nom ?? '', bonus: att?.bonus ?? '+0', dm: e.target.value } })}
+                        style={{ width: 72, ...inStyle, textAlign: 'center' }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                        onBlur={e => (e.target.style.borderColor = S.border)}
+                      />
+                      {att?.nom && (
+                        <button onClick={() => updateCompagnon(selectedCompagnon, { [attField]: undefined })}
+                          style={{ background: 'none', border: 'none', color: '#c05050', cursor: 'pointer', fontSize: 16, padding: '0 2px', flexShrink: 0 }}>✕</button>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+              const inStyle: React.CSSProperties = {
+                background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
+                padding: '4px 8px', fontSize: 14, color: S.parchment, outline: 'none',
+              }
+              return (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Nom + supprimer */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      value={c.nom}
+                      onChange={e => updateCompagnon(selectedCompagnon, { nom: e.target.value })}
+                      style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 10px', fontSize: 17, color: S.gold, fontWeight: 700, outline: 'none', fontFamily: "'Cinzel', serif" }}
+                      onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                      onBlur={e => (e.target.style.borderColor = S.border)}
+                    />
+                    <button onClick={() => askConfirm(`Supprimer "${c.nom}" ?`, () => removeCompagnon(selectedCompagnon))}
+                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
+                      Supprimer
+                    </button>
+                  </div>
+
+                  {/* Modificateurs + Stats sur une seule ligne */}
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Modificateurs</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {numIn('for', 'FOR', true)}{numIn('dex', 'DEX', true)}{numIn('con', 'CON', true)}
+                        {numIn('int', 'INT', true)}{numIn('sag', 'SAG', true)}{numIn('cha', 'CHA', true)}
+                      </div>
+                    </div>
+                    <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(201,168,76,0.2)', flexShrink: 0, marginTop: 18 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Stats</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                        {numIn('init', 'Init.')}{numIn('def', 'DEF')}
+                        {/* PV : fixe ou formule */}
+                        {(() => {
+                          const isFormula = typeof c.pv === 'string'
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em' }}>PV</span>
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => updateCompagnon(selectedCompagnon, { pv: isFormula ? (parseInt(String(c.pv)) || 10) : String(c.pv) })}
+                                  title={isFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                                  style={{
+                                    fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2,
+                                    border: `1px solid ${isFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
+                                    background: isFormula ? 'rgba(201,168,76,0.2)' : 'transparent',
+                                    cursor: 'pointer', color: isFormula ? S.gold : 'rgba(245,236,215,0.4)',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isFormula ? 'fx' : '42'}
+                                </button>
+                                {isFormula ? (
+                                  <input
+                                    type="text"
+                                    defaultValue={String(c.pv)}
+                                    key={`${selectedCompagnon}-pv-fx`}
+                                    placeholder="20 + [5 × niv]"
+                                    onChange={e => updateCompagnon(selectedCompagnon, { pv: e.target.value })}
+                                    onBlur={e => { updateCompagnon(selectedCompagnon, { pv: e.target.value }); e.target.style.borderColor = S.border }}
+                                    onFocus={e => { e.target.select(); e.target.style.borderColor = 'rgba(201,168,76,0.6)' }}
+                                    style={{ width: 120, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '3px 6px', fontSize: 13, color: S.parchment, outline: 'none' }}
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    defaultValue={String(c.pv ?? 0)}
+                                    key={`${selectedCompagnon}-pv-num`}
+                                    onChange={e => { const n = parseInt(e.target.value); if (!isNaN(n)) updateCompagnon(selectedCompagnon, { pv: n }) }}
+                                    onBlur={e => { updateCompagnon(selectedCompagnon, { pv: parseInt(e.target.value) || 0 }); e.target.style.borderColor = S.border }}
+                                    onFocus={e => { e.target.select(); e.target.style.borderColor = 'rgba(201,168,76,0.6)' }}
+                                    style={{ width: 52, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '3px 4px', fontSize: 14, color: S.parchment, outline: 'none', textAlign: 'center' }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attaques */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Attaques</span>
+                    {attIn('attaque1', 'Attaque 1')}
+                    {attIn('attaque2', 'Attaque 2')}
+                  </div>
+
+                  {/* Capacités */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Capacités spéciales</span>
+                    <textarea
+                      value={c.capacites ?? ''}
+                      onChange={e => updateCompagnon(selectedCompagnon, { capacites: e.target.value })}
+                      rows={3}
+                      placeholder="Ruade, Vol, Morsure venimeuse…"
+                      style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '6px 10px', fontSize: 14, color: S.parchment, resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }}
+                      onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                      onBlur={e => (e.target.style.borderColor = S.border)}
+                    />
+                  </div>
+                </div>
+              )
+            })()}
           </>)}
 
         </div>
@@ -2061,7 +2489,36 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           fontSize: 13, color: 'rgba(245,236,215,0.4)', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
-          <span>Les modifications sont <strong style={{ color: 'rgba(201,168,76,0.6)' }}>sauvegardées automatiquement</strong> dans <em>Documents/TdA/</em>.</span>
+          {import.meta.env.DEV ? (
+            <span>Mode dev — auto-save <strong style={{ color: 'rgba(201,168,76,0.6)' }}>localStorage</strong>.
+              {' '}<button
+                onClick={async () => {
+                  const ok = await new Promise<boolean>(resolve => {
+                    setConfirmDialog({
+                      message: 'Ceci va écrire dans src/data/ et recharger l\'app. Continuer ?',
+                      label: 'Sauvegarder',
+                      danger: false,
+                      onConfirm: () => resolve(true),
+                    })
+                    setTimeout(() => resolve(false), 30000)
+                  })
+                  if (!ok) return
+                  await Promise.all([
+                    saveDataFileToBundle('descriptions.json', data),
+                    saveDataFileToBundle('traits-magiques.json', traits),
+                    saveDataFileToBundle('peuples.json', peuples),
+                    saveDataFileToBundle('voies.json', voies),
+                    saveDataFileToBundle('compagnons.json', compagnons),
+                    saveDataFileToBundle('traits-raciaux.json', traitsRaciaux),
+                  ])
+                  window.location.reload()
+                }}
+                style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}
+              >⬇ Sauvegarder dans le projet</button>
+            </span>
+          ) : (
+            <span>Les modifications sont <strong style={{ color: 'rgba(201,168,76,0.6)' }}>sauvegardées automatiquement</strong> dans <em>Documents/TdA/</em>.</span>
+          )}
           <button
             onClick={() => askConfirm(
               'Réinitialiser toutes les données vers les valeurs par défaut du jeu ?',
@@ -2163,7 +2620,7 @@ function TraitNomCombobox({
   value, allTraits, onChange, style,
 }: {
   value: string
-  allTraits: { nom: string; desc: string }[]
+  allTraits: { nom: string; desc: string; label: string }[]
   onChange: (nom: string, desc: string | null) => void
   style?: React.CSSProperties
 }) {
@@ -2183,7 +2640,7 @@ function TraitNomCombobox({
   }, [open])
 
   const S2 = { bg: 'rgba(15,12,8,0.92)', border: 'rgba(201,168,76,0.35)', gold: '#c9a84c', parchment: '#f5ecd7' }
-  const filtered = allTraits.filter(t => t.nom.toLowerCase().includes(query.toLowerCase()))
+  const filtered = allTraits.filter(t => t.label.toLowerCase().includes(query.toLowerCase()))
 
   return (
     <div ref={ref} style={{ position: 'relative', ...style }}>
@@ -2207,7 +2664,7 @@ function TraitNomCombobox({
           boxShadow: '0 4px 20px rgba(0,0,0,0.7)', marginTop: 2,
         }}>
           {filtered.map(t => (
-            <TraitOption key={t.nom} trait={t} onSelect={() => { onChange(t.nom, t.desc); setQuery(t.nom); setOpen(false) }} />
+            <TraitOption key={t.label} trait={t} onSelect={() => { onChange(t.nom, t.desc); setQuery(t.nom); setOpen(false) }} />
           ))}
         </div>
       )}
@@ -2215,7 +2672,7 @@ function TraitNomCombobox({
   )
 }
 
-function TraitOption({ trait, onSelect }: { trait: { nom: string; desc: string }; onSelect: () => void }) {
+function TraitOption({ trait, onSelect }: { trait: { nom: string; desc: string; label: string }; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -2228,7 +2685,7 @@ function TraitOption({ trait, onSelect }: { trait: { nom: string; desc: string }
         color: '#f5ecd7',
       }}
     >
-      <div style={{ fontWeight: 600, color: '#c9a84c' }}>{trait.nom}</div>
+      <div style={{ fontWeight: 600, color: '#c9a84c' }}>{trait.label}</div>
       {trait.desc && <div style={{ fontSize: 11, opacity: 0.5, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{trait.desc}</div>}
     </div>
   )

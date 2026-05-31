@@ -19,6 +19,7 @@ import EquipementModal from './EquipementModal'
 import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/levelUp'
 import type { VoieKey } from '../utils/levelUp'
 import { parseDesc } from '../utils/parseDesc'
+import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
 
 type TraitEntry = { nom: string; desc: string }
 
@@ -744,6 +745,8 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const { disponibles } = calcPointsCapacite(character)
   const { data: dynamicDescriptions, peuples, voies } = useGameData()
 
+
+
   const allProfilVoies = (() => {
     const profilVoies = voies.filter(v => v.categorie === 'profil')
     const voieNoms = new Set(voies.map(v => v.nom))
@@ -1091,6 +1094,19 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         )}
       </div>
 
+      {/* ── Compagnons accordés ── */}
+      {(() => {
+        const compagnonsNoms = getCompagnonsDisponibles(character, dynamicDescriptions)
+        const choixPendants = getCompagnonChoixGrants(character, dynamicDescriptions)
+        if (compagnonsNoms.length === 0 && choixPendants.length === 0) return null
+        const msg = (compagnonsNoms.length + choixPendants.length) > 1 ? 'Des compagnons ont été accordés' : 'Un compagnon a été accordé'
+        return (
+          <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
+            {msg} par vos voies — équipez-les à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Équipement</strong>.
+          </p>
+        )
+      })()}
+
       {previewVoie && <CarteVoieModal nom={previewVoie} onClose={() => setPreviewVoie(null)} character={character} />}
     </div>
   )
@@ -1327,7 +1343,41 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const [showEquipement, setShowEquipement] = React.useState(false)
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
   const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
+  const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
   const totalArmes = character.armes.length + character.armuresEquipees.length
+
+  const { data: descriptions, compagnons: compagnonsCatalogue } = useGameData()
+  const disponiblesNoms = getCompagnonsDisponibles(character, descriptions)
+  const actifs = character.compagnonsActifs ?? [null, null]
+  const reserve = disponiblesNoms.filter(n => !actifs.includes(n))
+  const choixGrants = getCompagnonChoixGrants(character, descriptions)
+
+  const handleChoixCompagnon = (nom: string) => {
+    const newChoix = applyChoixCompagnon(character, descriptions, nom, choixGrants)
+    const newChar = { ...character, compagnonsChoix: newChoix }
+    const newActifs = autoAssignCompagnons(newChar, descriptions)
+    onChange({ compagnonsChoix: newChoix, compagnonsActifs: newActifs })
+  }
+
+  const handleCompagnonDragStart = (e: React.DragEvent, nom: string) => {
+    e.dataTransfer.setData('compagnon', nom)
+  }
+  const handleCompagnonDrop = (e: React.DragEvent, slotIdx: 0 | 1) => {
+    e.preventDefault()
+    const nom = e.dataTransfer.getData('compagnon')
+    if (!nom || !disponiblesNoms.includes(nom)) { setDragOverSlot(null); return }
+    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
+    const otherSlot = slotIdx === 0 ? 1 : 0
+    if (newActifs[otherSlot] === nom) newActifs[otherSlot] = newActifs[slotIdx]
+    newActifs[slotIdx] = nom
+    onChange({ compagnonsActifs: newActifs })
+    setDragOverSlot(null)
+  }
+  const clearCompagnonSlot = (slotIdx: 0 | 1) => {
+    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
+    newActifs[slotIdx] = null
+    onChange({ compagnonsActifs: newActifs })
+  }
 
   const showTip = (lines: string[], e: React.MouseEvent) => {
     setEqTip({ lines, x: e.clientX + 14, y: e.clientY + 14 })
@@ -1523,6 +1573,127 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       {showEquipement && (
         <EquipementModal character={character} onChange={onChange} onClose={() => setShowEquipement(false)} />
       )}
+
+      {/* ── Compagnons ── */}
+      {(disponiblesNoms.length > 0 || choixGrants.length > 0) && (
+        <div>
+          <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+            Compagnons
+          </label>
+          {/* Choix en attente */}
+          {choixGrants.filter(({ choixFait }) => !choixFait).map(({ grant }, idx) => (
+            <div key={idx} style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)' }}>
+              <div style={{ fontSize: 12, color: 'rgba(201,168,76,0.7)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Choisissez votre compagnon
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {grant.noms.map(nom => (
+                  <button
+                    key={nom}
+                    onClick={() => handleChoixCompagnon(nom)}
+                    style={{
+                      padding: '4px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
+                      border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)',
+                      color: 'var(--tdr-parchment)', fontFamily: 'inherit',
+                    }}
+                  >
+                    {nom}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Choix faits (modifiables) */}
+          {choixGrants.filter(({ choixFait }) => !!choixFait).map(({ grant, choixFait }, idx) => (
+            <div key={idx} style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 5, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,168,76,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>Compagnon choisi :</span>
+              <span style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600 }}>{choixFait}</span>
+              <span style={{ fontSize: 11, color: 'rgba(201,168,76,0.4)', marginLeft: 'auto' }}>Changer :</span>
+              {grant.noms.filter(n => n !== choixFait).map(nom => (
+                <button
+                  key={nom}
+                  onClick={() => handleChoixCompagnon(nom)}
+                  style={{
+                    padding: '2px 8px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                    border: '1px solid rgba(201,168,76,0.25)', background: 'transparent',
+                    color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
+                  }}
+                >
+                  {nom}
+                </button>
+              ))}
+            </div>
+          ))}
+
+          {/* 2 slots actifs */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {([0, 1] as const).map(slotIdx => {
+              const nom = actifs[slotIdx] ?? null
+              const isOver = dragOverSlot === slotIdx
+              return (
+                <div key={slotIdx}
+                  onDragOver={e => { e.preventDefault(); setDragOverSlot(slotIdx) }}
+                  onDragLeave={() => setDragOverSlot(null)}
+                  onDrop={e => handleCompagnonDrop(e, slotIdx)}
+                  style={{
+                    flex: 1, minHeight: 40, borderRadius: 5, border: `1px dashed ${isOver ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    background: isOver ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.02)',
+                    display: 'flex', alignItems: 'center', padding: '6px 10px', gap: 6,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  {nom ? (
+                    <>
+                      <span
+                        draggable
+                        onDragStart={e => handleCompagnonDragStart(e, nom)}
+                        style={{
+                          flex: 1, fontSize: 13, color: 'var(--tdr-parchment)', cursor: 'grab',
+                          padding: '2px 6px', borderRadius: 3, background: 'rgba(201,168,76,0.1)',
+                          border: '1px solid rgba(201,168,76,0.3)',
+                        }}
+                      >
+                        {nom}
+                      </span>
+                      <button
+                        onClick={() => clearCompagnonSlot(slotIdx)}
+                        style={{ background: 'none', border: 'none', color: 'rgba(220,100,100,0.7)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}
+                      >✕</button>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.25)', fontStyle: 'italic' }}>
+                      Glisser un compagnon ici
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {/* Réserve */}
+          {reserve.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {reserve.map(nom => (
+                <span
+                  key={nom}
+                  draggable
+                  onDragStart={e => handleCompagnonDragStart(e, nom)}
+                  style={{
+                    fontSize: 13, color: 'rgba(245,236,215,0.7)', cursor: 'grab',
+                    padding: '3px 10px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(201,168,76,0.25)',
+                    userSelect: 'none',
+                  }}
+                >
+                  {nom}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Description du personnage

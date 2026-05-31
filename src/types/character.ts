@@ -109,6 +109,11 @@ export interface Character {
   portraitTy: number
   portraitFit: 'cover' | 'contain'
   portraitLocked?: boolean
+  versoMode?: 'description' | 'image'
+
+  // Compagnons
+  compagnonsActifs?: [string | null, string | null]
+  compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {

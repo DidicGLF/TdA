@@ -10,10 +10,25 @@ import DescriptionsEditor from './components/DescriptionsEditor'
 import LevelUpModal from './components/LevelUpModal'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
-import { GameDataProvider } from './context/GameDataContext'
+import { GameDataProvider, useGameData } from './context/GameDataContext'
+import { autoAssignCompagnons } from './utils/compagnons'
 
 export default function App() {
+  return <GameDataProvider><AppContent /></GameDataProvider>
+}
+
+function AppContent() {
+  const { data: descriptions } = useGameData()
   const [character, setCharacter] = useState<Character>(defaultCharacter())
+
+  // Synchronise compagnonsActifs dès qu'un rang de voie change, quelle que soit l'origine
+  useEffect(() => {
+    const newActifs = autoAssignCompagnons(character, descriptions)
+    const cur = character.compagnonsActifs ?? [null, null]
+    if (newActifs[0] !== (cur[0] ?? null) || newActifs[1] !== (cur[1] ?? null)) {
+      setCharacter(prev => ({ ...prev, compagnonsActifs: newActifs }))
+    }
+  }, [character.voiePeuple, character.voieCulturelle, character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele])
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
   const [sheetPage, setSheetPage] = useState<'recto' | 'verso'>('recto')
@@ -138,7 +153,6 @@ export default function App() {
   }
 
   return (
-    <GameDataProvider>
     <div className="app-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
 
       {/* === CONTENEUR IMPRESSION (hors flux, caché à l'écran, visible à l'impression) === */}
@@ -350,7 +364,7 @@ export default function App() {
               </span>
               <button
                 onClick={() => navigator.clipboard.writeText(
-                  `top={${lastMoved.top}} left={${lastMoved.left}}` +
+                  `${lastMoved.label}  top={${lastMoved.top}} left={${lastMoved.left}}` +
                   (lastMoved.width  !== undefined ? ` width={${lastMoved.width}}`   : '') +
                   (lastMoved.height !== undefined ? ` height={${lastMoved.height}}` : '')
                 )}
@@ -468,6 +482,5 @@ export default function App() {
         </div>
       </div>
     </div>
-    </GameDataProvider>
   )
 }

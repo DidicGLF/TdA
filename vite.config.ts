@@ -19,7 +19,7 @@ export default defineConfig({
           req.on('end', () => {
             try {
               const { file, data } = JSON.parse(body) as { file: string; data: unknown }
-              const allowed = ['descriptions.json', 'traits-magiques.json', 'peuples.json']
+              const allowed = ['descriptions.json', 'traits-magiques.json', 'peuples.json', 'compagnons.json', 'voies.json', 'armes.json', 'armures.json', 'traits-raciaux.json']
               if (!allowed.includes(file)) { res.statusCode = 400; res.end('Fichier non autorisé'); return }
               const target = resolve(__dirname, 'src/data', file)
               writeFileSync(target, JSON.stringify(data, null, 2) + '\n', 'utf-8')

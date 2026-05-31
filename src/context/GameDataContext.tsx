@@ -5,8 +5,10 @@ import PEUPLES_RAW from '../data/peuples.json'
 import ARMES_RAW from '../data/armes.json'
 import ARMURES_RAW from '../data/armures.json'
 import VOIES_RAW from '../data/voies.json'
+import COMPAGNONS_RAW from '../data/compagnons.json'
+import TRAITS_RACIAUX_RAW from '../data/traits-raciaux.json'
 import { loadDataFile, saveDataFile, openDataDir as openDir } from '../utils/tauriStorage'
-import type { DescMap, TraitEntry, PeupleEntry } from '../types/gameData'
+import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry } from '../types/gameData'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
@@ -25,6 +27,10 @@ interface GameDataContextValue {
   setArmures: Dispatch<SetStateAction<ArmuresData>>
   voies: VoieEntry[]
   setVoies: Dispatch<SetStateAction<VoieEntry[]>>
+  compagnons: CompanionEntry[]
+  setCompagnons: Dispatch<SetStateAction<CompanionEntry[]>>
+  traitsRaciaux: TraitEntry[]
+  setTraitsRaciaux: Dispatch<SetStateAction<TraitEntry[]>>
   openDataDir: () => void
   loaded: boolean
 }
@@ -75,19 +81,26 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [voies, setVoiesRaw] = useState<VoieEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(VOIES_RAW))) as VoieEntry[]
   )
+  const [compagnons, setCompagnonsRaw] = useState<CompanionEntry[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
+  )
+  const [traitsRaciaux, setTraitsRaciauxRaw] = useState<TraitEntry[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(TRAITS_RACIAUX_RAW))) as TraitEntry[]
+  )
   const [loaded, setLoaded] = useState(false)
 
   // Chargement initial depuis Documents/TdR/ (Tauri) ou valeurs du bundle (dev)
   useEffect(() => {
     const load = async () => {
       try {
-        const [descStr, traitsStr, peuplesStr, armesStr, armuresStr, voiesStr] = await Promise.all([
+        const [descStr, traitsStr, peuplesStr, armesStr, armuresStr, voiesStr, compagnonsStr] = await Promise.all([
           loadDataFile('descriptions.json'),
           loadDataFile('traits-magiques.json'),
           loadDataFile('peuples.json'),
           loadDataFile('armes.json'),
           loadDataFile('armures.json'),
           loadDataFile('voies.json'),
+          loadDataFile('compagnons.json'),
         ])
         if (descStr) setDataRaw(unwrap(JSON.parse(descStr)) as DescMap)
         if (traitsStr) setTraitsRaw(unwrap(JSON.parse(traitsStr)) as TraitEntry[])
@@ -95,6 +108,9 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (armesStr) setArmesRaw(unwrap(JSON.parse(armesStr)) as ArmesData)
         if (armuresStr) setArmuresRaw(unwrap(JSON.parse(armuresStr)) as ArmuresData)
         if (voiesStr) setVoiesRaw(unwrap(JSON.parse(voiesStr)) as VoieEntry[])
+        if (compagnonsStr) setCompagnonsRaw(unwrap(JSON.parse(compagnonsStr)) as CompanionEntry[])
+        const traitsRaciauxStr = await loadDataFile('traits-raciaux.json')
+        if (traitsRaciauxStr) setTraitsRaciauxRaw(unwrap(JSON.parse(traitsRaciauxStr)) as TraitEntry[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -126,6 +142,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json', 'voies'),
     []
   )
+  const setCompagnons = useCallback(
+    makeAutoSaver<CompanionEntry[]>(setCompagnonsRaw, 'compagnons.json', 'compagnons'),
+    []
+  )
+  const setTraitsRaciaux = useCallback(
+    makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'),
+    []
+  )
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -137,6 +161,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       armes, setArmes,
       armures, setArmures,
       voies, setVoies,
+      compagnons, setCompagnons,
+      traitsRaciaux, setTraitsRaciaux,
       openDataDir,
       loaded,
     }}>

@@ -5,6 +5,7 @@ import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
 import { useGameData } from '../context/GameDataContext'
+import { getCompagnonsDisponibles, resolveCompagnon } from '../utils/compagnons'
 
 interface Props {
   character: Character
@@ -28,22 +29,22 @@ const VOIE_PRESTIGE_RANG_NOM_POS = PRESTIGE_RANG_TOPS.map((top, rang) => ({
 }))
 
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
-  { nom: 'Armures légères',         top: 50.0, left: 54.2 },
-  { nom: 'Armures lourdes',         top: 51.3, left: 54.2 },
-  { nom: 'Armes de jet',            top: 52.7, left: 54.2 },
-  { nom: 'Armes de trait',          top: 54.0, left: 54.2 },
-  { nom: 'Armes de tir',            top: 55.3, left: 54.2 },
-  { nom: 'Armes de guerre',         top: 51.3, left: 66.6 },
-  { nom: 'Armes de guerre lourdes', top: 52.6, left: 66.6 },
-  { nom: 'Armes de duel',           top: 54.0, left: 66.6 },
-  { nom: "Armes d'hast",            top: 55.3, left: 66.7 },
+  { nom: 'Armures légères',         top: 12.0, left: 54.5 },
+  { nom: 'Armures lourdes',         top: 13.3, left: 54.4 },
+  { nom: 'Armes de jet',            top: 14.7, left: 54.3 },
+  { nom: 'Armes de trait',          top: 16.0, left: 54.4 },
+  { nom: 'Armes de tir',            top: 17.3, left: 54.3 },
+  { nom: 'Armes de guerre',         top: 13.3, left: 66.8 },
+  { nom: 'Armes de guerre lourdes', top: 14.7, left: 66.7 },
+  { nom: 'Armes de duel',           top: 16.0, left: 66.8 },
+  { nom: "Armes d'hast",            top: 17.3, left: 66.7 },
 ]
 
 
 export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, onFieldMoved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
-  const { data } = useGameData()
+  const { data, compagnons: compagnonsCatalogue } = useGameData()
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, { top: f.top, left: f.left }]))
   )
@@ -51,6 +52,31 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
     Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
   )
   const [tooltip, setTooltip] = useState<{ nom: string; desc: string; rang?: number; x: number; y: number } | null>(null)
+  const [togglePos, setTogglePos] = useState({ top: 17.5, left: 3.3 })
+
+  const startToggleDrag = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    const startX = e.clientX, startY = e.clientY
+    const { top: startTop, left: startLeft } = togglePos
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      setTogglePos({
+        top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
+        left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
+      })
+    }
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      setTogglePos({ top: newTop, left: newLeft })
+      cb('Toggle image/description', newTop, newLeft)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   const togglePrestigeRang = (rang: number) => {
     if (calibrate) return
@@ -134,52 +160,96 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       <img src={`${import.meta.env.BASE_URL}feuille-verso.png`} alt="Feuille de personnage verso"
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
-      {/* === PORTRAIT === */}
-      <DraggableImageField
-        top={30.4} left={26.5} width={42.2} height={37.2}
-        value={character.portrait}
-        scale={character.portraitScale} tx={character.portraitTx} ty={character.portraitTy}
-        fit={character.portraitFit ?? 'cover'}
-        locked={character.portraitLocked ?? false}
-        onChange={v => onChange({ portrait: v })}
-        onPanZoomChange={(scale, tx, ty) => onChange({ portraitScale: scale, portraitTx: tx, portraitTy: ty })}
-        onFitChange={f => onChange({ portraitFit: f })}
-        onLockedChange={l => onChange({ portraitLocked: l })}
-        calibrate={calibrate} label="Portrait"
-        containerRef={containerRef} onMoved={cb}
-      />
+      {/* === TOGGLE IMAGE / DESCRIPTION === */}
+      <div style={{
+        position: 'absolute',
+        top: `${togglePos.top}%`, left: `${togglePos.left}%`,
+        transform: 'translate(-50%, -50%) rotate(-90deg) translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitFontSmoothing: 'antialiased',
+        display: 'flex', gap: 2, zIndex: 30,
+        cursor: calibrate ? 'grab' : 'default',
+      }}
+        onMouseDown={calibrate ? startToggleDrag : undefined}
+      >
+        {calibrate ? (
+          <span style={{
+            background: 'rgba(201,168,76,0.92)', color: '#1a1510',
+            fontSize: 7, fontFamily: 'monospace', fontWeight: 700,
+            padding: '1px 4px', borderRadius: 2, userSelect: 'none',
+            whiteSpace: 'nowrap', lineHeight: '13px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          }}>
+            Toggle image/description
+          </span>
+        ) : (
+          (['description', 'image'] as const).map(mode => {
+            const active = (character.versoMode ?? 'description') === mode
+            return (
+              <button key={mode} onClick={() => onChange({ versoMode: mode })} style={{
+                padding: '2px 8px', borderRadius: 3, fontSize: '0.6vw',
+                fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '0.06em',
+                border: '1px solid rgba(201,168,76,0.7)',
+                background: active ? 'rgba(201,168,76,0.85)' : 'rgba(30,20,10,0.75)',
+                color: active ? '#1a1208' : 'rgba(201,168,76,0.9)',
+                fontWeight: active ? 700 : 400,
+              }}>
+                {mode === 'description' ? '✎ Texte' : '🖼 Image'}
+              </button>
+            )
+          })
+        )}
+      </div>
 
-      {/* === DESCRIPTION === */}
-      <DraggableTextarea
-        top={17.7} left={73.2} width={44.2} height={14.7}
-        value={character.description}
-        onChange={v => onChange({ description: v })}
-        calibrate={calibrate} label="Description"
-        containerRef={containerRef} onMoved={cb}
-        lineHeightPct={1.315} paddingTopPct={0.16}
-      />
+      {/* === PORTRAIT (mode image, ou calibrage) === */}
+      {((character.versoMode ?? 'description') === 'image' || calibrate) && (
+        <>
+          {(character.versoMode ?? 'description') === 'image' && !calibrate && (
+            <div style={{
+              position: 'absolute',
+              top: '30.6%', left: '26.5%',
+              width: '44%', height: '37%',
+              transform: 'translate(-50%, -50%)',
+              background: '#fff',
+            }} />
+          )}
+          <DraggableImageField
+            top={30.6} left={26.5} width={44} height={37}
+            value={character.portrait}
+            scale={character.portraitScale} tx={character.portraitTx} ty={character.portraitTy}
+            fit={character.portraitFit ?? 'cover'}
+            locked={character.portraitLocked ?? false}
+            onChange={v => onChange({ portrait: v })}
+            onPanZoomChange={(scale, tx, ty) => onChange({ portraitScale: scale, portraitTx: tx, portraitTy: ty })}
+            onFitChange={f => onChange({ portraitFit: f })}
+            onLockedChange={l => onChange({ portraitLocked: l })}
+            calibrate={calibrate} label="Portrait"
+            containerRef={containerRef} onMoved={cb}
+          />
+        </>
+      )}
+
+      {/* === DESCRIPTION (mode texte, ou calibrage) === */}
+      {((character.versoMode ?? 'description') === 'description' || calibrate) && (
+        <DraggableTextarea
+          top={32.2} left={26.6} width={44.2} height={35.1}
+          value={character.description}
+          onChange={v => onChange({ description: v })}
+          calibrate={calibrate} label="Description"
+          containerRef={containerRef} onMoved={cb}
+          lineHeightPct={1.315} paddingTopPct={0.16}
+        />
+      )}
 
       {/* === INVENTAIRE === */}
       <DraggableTextarea
-        top={36.7} left={73.2} width={44.4} height={17.5}
+        top={40.9} left={73.3} width={44.2} height={15.5}
         value={character.inventaire}
         onChange={v => onChange({ inventaire: v })}
         calibrate={calibrate} label="Inventaire"
         containerRef={containerRef} onMoved={cb}
         lineHeightPct={1.315} paddingTopPct={0.15}
       />
-
-      {/* === FORMATIONS MARTIALES : COMPTEUR === */}
-      <div style={{
-        position: 'absolute', top: '48.3%', left: '54%',
-        transform: 'translateY(-100%)',
-        fontSize: '0.72em', fontWeight: 700, letterSpacing: '0.05em',
-        color: countFormations >= maxFormations ? '#c97a4c' : 'rgba(201,168,76,0.75)',
-        pointerEvents: 'none',
-        whiteSpace: 'nowrap',
-      }}>
-        {countFormations} / {maxFormations}
-      </div>
 
       {/* === FORMATIONS MARTIALES === */}
       {FORMATION_CHECKBOXES.map(({ nom }) => {
@@ -345,7 +415,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TALENT MAGIQUE === */}
       <DraggableField
-        top={61.8} left={79} width={29.6} height={2.0}
+        top={23.7} left={79.4} width={29.6} height={2.0}
         value={character.talentMagique.nom} onChange={v => onChange({ talentMagique: { ...character.talentMagique, nom: v } })}
         calibrate={calibrate} label="Talent magique"
         containerRef={containerRef} onMoved={cb}
@@ -354,7 +424,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {!calibrate && character.talentMagique.desc && (
         <div
           style={{
-            position: 'absolute', top: '61.8%', left: '79%',
+            position: 'absolute', top: '23.7%', left: '79.4%',
             width: '29.6%', height: '2%',
             transform: 'translate(-50%, -50%)',
             zIndex: 20, cursor: 'help',
@@ -373,7 +443,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TALENT MAGIQUE DESC === */}
       <DraggableTextarea
-        top={65.5} left={72.9} width={44.4} height={5.4}
+        top={27.3} left={73.2} width={44.4} height={5.4}
         value={character.talentMagique.desc}
         onChange={v => onChange({ talentMagique: { ...character.talentMagique, desc: v } })}
         calibrate={calibrate} label="Talent magique desc"
@@ -425,6 +495,108 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
         calibrate={calibrate} label="Capacités supp."
         containerRef={containerRef} onMoved={cb}
       />
+
+      {/* === COMPAGNONS (champs calibrables) === */}
+      {(() => {
+        const noop = () => {}
+        const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
+
+        type Pos = { top: number; left: number; width: number }
+        type SlotPositions = {
+          nom: Pos
+          for: Pos; dex: Pos; con: Pos; int: Pos; sag: Pos; cha: Pos
+          init: Pos; def: Pos; pv: Pos
+          atk1nom: Pos; atk1bonus: Pos; atk1dm: Pos
+          atk2nom: Pos; atk2bonus: Pos; atk2dm: Pos
+        }
+
+        const POS: SlotPositions[] = [
+          // C1 — calibré
+          {
+            nom:      { top: 51.5, left: 33.4, width: 28   },
+            for:      { top: 54.2, left: 15.2, width: 5.9 },
+            dex:      { top: 56.9, left: 15.2, width: 5.8 },
+            con:      { top: 59.8, left: 15.2, width: 6.1 },
+            int:      { top: 54.1, left: 30,   width: 5.7 },
+            sag:      { top: 57,   left: 30,   width: 5.8 },
+            cha:      { top: 59.8, left: 30,   width: 5.8 },
+            init:     { top: 54.2, left: 45,   width: 6.5 },
+            def:      { top: 57,   left: 45,   width: 6.5 },
+            pv:       { top: 59.7, left: 45,   width: 6.7 },
+            atk1nom:  { top: 62.5, left: 16.5, width: 17.1},
+            atk1bonus:{ top: 64.9, left: 12.8, width: 7.1 },
+            atk1dm:   { top: 64.9, left: 22.6, width: 6.6 },
+            atk2nom:  { top: 62.6, left: 38.6, width: 17.1},
+            atk2bonus:{ top: 64.9, left: 35.3, width: 7.1 },
+            atk2dm:   { top: 64.9, left: 45.1, width: 6.6 },
+          },
+          // C2 — calibré
+          {
+            nom:      { top: 51.4, left: 79.8, width: 28.3 },
+            for:      { top: 54.1, left: 61.7, width: 5.9  },
+            dex:      { top: 56.9, left: 61.8, width: 5.8  },
+            con:      { top: 59.8, left: 61.9, width: 6.1  },
+            int:      { top: 54.1, left: 76.6, width: 5.7  },
+            sag:      { top: 56.9, left: 76.5, width: 5.8  },
+            cha:      { top: 59.7, left: 76.4, width: 5.8  },
+            init:     { top: 54.2, left: 91.6, width: 6.5  },
+            def:      { top: 57,   left: 91.5, width: 6.5  },
+            pv:       { top: 59.8, left: 91.6, width: 6.7  },
+            atk1nom:  { top: 62.6, left: 63,   width: 17.1 },
+            atk1bonus:{ top: 64.9, left: 59.3, width: 7.1  },
+            atk1dm:   { top: 64.9, left: 69.1, width: 6.6  },
+            atk2nom:  { top: 62.6, left: 85.3, width: 17.1 },
+            atk2bonus:{ top: 64.9, left: 81.8, width: 7.1  },
+            atk2dm:   { top: 64.9, left: 91.6, width: 6.6  },
+          },
+        ]
+
+        return ([0, 1] as const).map(slot => {
+          const nomActif = character.compagnonsActifs?.[slot] ?? null
+          const entry = nomActif ? compagnonsCatalogue.find(c => c.nom === nomActif) : null
+          const c = entry ? resolveCompagnon(entry, character.niveau) : null
+          const Q = POS[slot]
+          const pre = `C${slot + 1} `
+          const f = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
+            <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
+              value={value} onChange={noop} align={align} label={pre + label}
+              calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+          )
+          return (
+            <React.Fragment key={slot}>
+              {f(Q.nom,       c?.nom ?? '',               'nom')}
+              {f(Q.for,       c ? fmtMod(c.for)  : '',   'FOR',       'center')}
+              {f(Q.dex,       c ? fmtMod(c.dex)  : '',   'DEX',       'center')}
+              {f(Q.con,       c ? fmtMod(c.con)  : '',   'CON',       'center')}
+              {f(Q.int,       c ? fmtMod(c.int)  : '',   'INT',       'center')}
+              {f(Q.sag,       c ? fmtMod(c.sag)  : '',   'SAG',       'center')}
+              {f(Q.cha,       c ? fmtMod(c.cha)  : '',   'CHA',       'center')}
+              {f(Q.init,      c ? String(c.init) : '',   'Init',      'center')}
+              {f(Q.def,       c ? String(c.def)  : '',   'DEF',       'center')}
+              {c
+                ? <>
+                    <DraggableField key={`C${slot+1} PV`} top={Q.pv.top} left={Q.pv.left} width={Q.pv.width} height={2}
+                      value={c.pvValue} onChange={noop} align="center" label={`C${slot+1} PV`}
+                      calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+                    {c.pvDisplay !== c.pvValue && (
+                      <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
+                        onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'PV', desc: c.pvDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                        onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
+                        onMouseLeave={() => setTooltip(null)}
+                      />
+                    )}
+                  </>
+                : f(Q.pv, '', 'PV', 'center')}
+              {f(Q.atk1nom,   c?.attaque1?.nom ?? '',     'Atk1 nom')}
+              {f(Q.atk1bonus, c?.atk1Display ?? '',       'Atk1 bonus','center')}
+              {f(Q.atk1dm,    c?.attaque1?.dm ?? '',      'Atk1 DM',   'center')}
+              {f(Q.atk2nom,   c?.attaque2?.nom ?? '',     'Atk2 nom')}
+              {f(Q.atk2bonus, c?.atk2Display ?? '',       'Atk2 bonus','center')}
+              {f(Q.atk2dm,    c?.attaque2?.dm ?? '',      'Atk2 DM',   'center')}
+            </React.Fragment>
+          )
+        })
+      })()}
     </div>
   )
 }

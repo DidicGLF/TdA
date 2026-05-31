@@ -1,0 +1,122 @@
+[
+  {
+    "nom": "Fidèle monture",
+    "for": 4,
+    "dex": 0,
+    "con": 4,
+    "int": -2,
+    "sag": 0,
+    "cha": 0,
+    "init": 10,
+    "def": 13,
+    "pv": 10,
+    "attaque1": {
+      "nom": "Ruade",
+      "bonus": "+5",
+      "dm": "1d6+4"
+    },
+    "capacites": ""
+  },
+  {
+    "nom": "Loup",
+    "for": 1,
+    "dex": 1,
+    "con": 1,
+    "int": -3,
+    "sag": 2,
+    "cha": -2,
+    "init": 13,
+    "def": 14,
+    "pv": "[NIV x 4]",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV]",
+      "dm": "1d6"
+    }
+  },
+  {
+    "nom": "Mâle alpha",
+    "for": 3,
+    "dex": 1,
+    "con": 3,
+    "int": -3,
+    "sag": 2,
+    "cha": -2,
+    "init": 13,
+    "def": 16,
+    "pv": "[NIV] x 4",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV] + 2",
+      "dm": "1d6"
+    }
+  },
+  {
+    "nom": "Arbre animé",
+    "for": 0,
+    "dex": 0,
+    "con": 0,
+    "int": 0,
+    "sag": 0,
+    "cha": 0,
+    "init": 7,
+    "def": 13,
+    "pv": "[RANG] x 10",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV]",
+      "dm": "1d6+3"
+    }
+  },
+  {
+    "nom": "Monture puissante",
+    "for": 7,
+    "dex": 2,
+    "con": 7,
+    "int": -2,
+    "sag": 1,
+    "cha": 0,
+    "init": 15,
+    "def": 18,
+    "pv": "20+[5xNIV]",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "+12",
+      "dm": "2d6+7"
+    }
+  },
+  {
+    "nom": "Scorpion géant",
+    "for": 3,
+    "dex": 1,
+    "con": 3,
+    "int": -3,
+    "sag": 3,
+    "cha": -3,
+    "init": 12,
+    "def": 16,
+    "pv": "[NIV] x 4",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV] + 3",
+      "dm": "1d6+3"
+    }
+  },
+  {
+    "nom": "Araignée géante",
+    "for": 1,
+    "dex": 3,
+    "con": 2,
+    "int": -3,
+    "sag": 4,
+    "cha": -3,
+    "init": 16,
+    "def": 15,
+    "pv": "[NIV] x 4",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV] + 3",
+      "dm": "1d6+1"
+    }
+  }
+]
