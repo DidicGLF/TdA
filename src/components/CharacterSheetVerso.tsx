@@ -5,7 +5,7 @@ import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
 import { useGameData } from '../context/GameDataContext'
-import { getCompagnonsDisponibles, resolveCompagnon } from '../utils/compagnons'
+import { resolveCompagnon } from '../utils/compagnons'
 
 interface Props {
   character: Character

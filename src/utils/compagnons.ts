@@ -75,7 +75,6 @@ export function getCompagnonChoixGrants(
 // Met à jour compagnonsChoix et nettoie les choix devenus invalides
 export function applyChoixCompagnon(
   character: Character,
-  descriptions: DescMap,
   nom: string,
   grantsActifs: ReturnType<typeof getCompagnonChoixGrants>,
 ): string[] {

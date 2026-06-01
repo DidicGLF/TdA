@@ -1346,14 +1346,14 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
   const totalArmes = character.armes.length + character.armuresEquipees.length
 
-  const { data: descriptions, compagnons: compagnonsCatalogue } = useGameData()
+  const { data: descriptions } = useGameData()
   const disponiblesNoms = getCompagnonsDisponibles(character, descriptions)
   const actifs = character.compagnonsActifs ?? [null, null]
   const reserve = disponiblesNoms.filter(n => !actifs.includes(n))
   const choixGrants = getCompagnonChoixGrants(character, descriptions)
 
   const handleChoixCompagnon = (nom: string) => {
-    const newChoix = applyChoixCompagnon(character, descriptions, nom, choixGrants)
+    const newChoix = applyChoixCompagnon(character, nom, choixGrants)
     const newChar = { ...character, compagnonsChoix: newChoix }
     const newActifs = autoAssignCompagnons(newChar, descriptions)
     onChange({ compagnonsChoix: newChoix, compagnonsActifs: newActifs })

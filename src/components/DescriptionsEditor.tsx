@@ -289,7 +289,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string; voie?: string; rang?: number; voies?: string[]; rangMax?: number; minRang?: number | null; avancee?: boolean | null }) => {
+  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string; voie?: string; rang?: number; voies?: string[]; rangMax?: number; nom?: string; noms?: string[]; remplace?: string; minRang?: number | null; avancee?: boolean | null }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
