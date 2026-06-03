@@ -114,6 +114,22 @@ export function resolveNiv(stat: number | string, niveau: number): string {
     .replace(/\[NIV\]/gi, `[NIV](${niveau})`)
 }
 
+// Résout les tokens de modificateurs de compagnon : [FOR], [DEX], etc.
+const MOD_KEYS = ['for', 'dex', 'con', 'int', 'sag', 'cha'] as const
+function resolveModTokens(s: string, entry: CompanionEntry): string {
+  let result = s
+  for (const key of MOD_KEYS) {
+    const val = entry[key] as number
+    const display = val >= 0 ? `+${val}` : `${val}`
+    result = result.replace(new RegExp(`\\[${key.toUpperCase()}\\]`, 'gi'), `[${key.toUpperCase()}](${display})`)
+  }
+  return result
+}
+
+export function resolveDM(dm: string, entry: CompanionEntry, niveau: number): string {
+  return resolveModTokens(resolveNiv(dm, niveau), entry)
+}
+
 // Retourne uniquement la valeur numérique calculée (pour l'affichage sur la fiche)
 export function computeNiv(stat: number | string, niveau: number): string {
   if (typeof stat === 'number') return String(stat)
@@ -133,12 +149,16 @@ export function computeNiv(stat: number | string, niveau: number): string {
 export function resolveCompagnon(
   entry: CompanionEntry,
   niveau: number,
-): CompanionEntry & { pvDisplay: string; pvValue: string; atk1Display?: string; atk2Display?: string } {
+): CompanionEntry & { pvDisplay: string; pvValue: string; initDisplay: string; initValue: string; atk1Display?: string; atk1dmDisplay?: string; atk2Display?: string; atk2dmDisplay?: string } {
   return {
     ...entry,
-    pvDisplay: resolveNiv(entry.pv, niveau),
-    pvValue:   computeNiv(entry.pv, niveau),
-    atk1Display: entry.attaque1 ? resolveNiv(entry.attaque1.bonus, niveau) : undefined,
-    atk2Display: entry.attaque2 ? resolveNiv(entry.attaque2.bonus, niveau) : undefined,
+    pvDisplay:    resolveNiv(entry.pv,   niveau),
+    pvValue:      computeNiv(entry.pv,   niveau),
+    initDisplay:  resolveNiv(entry.init, niveau),
+    initValue:    computeNiv(entry.init, niveau),
+    atk1Display:  entry.attaque1 ? resolveNiv(entry.attaque1.bonus, niveau) : undefined,
+    atk1dmDisplay:entry.attaque1 ? resolveDM(entry.attaque1.dm, entry, niveau) : undefined,
+    atk2Display:  entry.attaque2 ? resolveNiv(entry.attaque2.bonus, niveau) : undefined,
+    atk2dmDisplay:entry.attaque2 ? resolveDM(entry.attaque2.dm, entry, niveau) : undefined,
   }
 }

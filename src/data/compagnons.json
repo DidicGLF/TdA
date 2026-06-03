@@ -118,5 +118,22 @@
       "bonus": "[NIV] + 3",
       "dm": "1d6+1"
     }
+  },
+  {
+    "nom": "Monture fantastique",
+    "for": 4,
+    "dex": 2,
+    "con": 4,
+    "int": -2,
+    "sag": 1,
+    "cha": 0,
+    "init": 15,
+    "def": 16,
+    "pv": "[NIV] x 5",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "+8",
+      "dm": "1d6+4"
+    }
   }
 ]

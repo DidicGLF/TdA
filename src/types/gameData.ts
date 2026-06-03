@@ -49,7 +49,7 @@ export type CompanionEntry = {
   int: number
   sag: number
   cha: number
-  init: number
+  init: number | string
   def: number
   pv: number | string
   attaque1?: CompanionAttaque

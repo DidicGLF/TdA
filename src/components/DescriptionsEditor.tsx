@@ -2404,7 +2404,45 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Stats</span>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                        {numIn('init', 'Init.')}{numIn('def', 'DEF')}
+                        {/* Init : fixe ou formule */}
+                        {(() => {
+                          const isFormula = typeof c.init === 'string'
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em' }}>Init.</span>
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => updateCompagnon(selectedCompagnon, { init: isFormula ? (parseInt(String(c.init)) || 10) : String(c.init) })}
+                                  title={isFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                                  style={{
+                                    fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2,
+                                    border: `1px solid ${isFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
+                                    background: isFormula ? 'rgba(201,168,76,0.2)' : 'transparent',
+                                    cursor: 'pointer', color: isFormula ? S.gold : 'rgba(245,236,215,0.4)',
+                                    flexShrink: 0,
+                                  }}
+                                >{isFormula ? 'fx' : '42'}</button>
+                                {isFormula ? (
+                                  <input type="text" defaultValue={String(c.init)} key={`${selectedCompagnon}-init-fx`}
+                                    placeholder="[formule]"
+                                    onChange={e => updateCompagnon(selectedCompagnon, { init: e.target.value })}
+                                    onBlur={e => { updateCompagnon(selectedCompagnon, { init: e.target.value }); e.target.style.borderColor = S.border }}
+                                    onFocus={e => { e.target.select(); e.target.style.borderColor = 'rgba(201,168,76,0.6)' }}
+                                    style={{ width: 120, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '3px 6px', fontSize: 13, color: S.parchment, outline: 'none' }}
+                                  />
+                                ) : (
+                                  <input type="text" defaultValue={String(c.init ?? 0)} key={`${selectedCompagnon}-init-num`}
+                                    onChange={e => { const n = parseInt(e.target.value); if (!isNaN(n)) updateCompagnon(selectedCompagnon, { init: n }) }}
+                                    onBlur={e => { updateCompagnon(selectedCompagnon, { init: parseInt(e.target.value) || 0 }); e.target.style.borderColor = S.border }}
+                                    onFocus={e => { e.target.select(); e.target.style.borderColor = 'rgba(201,168,76,0.6)' }}
+                                    style={{ width: 52, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '3px 4px', fontSize: 14, color: S.parchment, outline: 'none', textAlign: 'center' }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                        {numIn('def', 'DEF')}
                         {/* PV : fixe ou formule */}
                         {(() => {
                           const isFormula = typeof c.pv === 'string'

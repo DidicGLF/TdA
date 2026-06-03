@@ -118,7 +118,13 @@
   "Voie du combat monté": [
     {
       "nom": "Fidèle monture",
-      "desc": "Le PJ possède un puissant destrier (un cheval de guerre ou un cochon de combat). À dos de monture, il peut ajouter un déplacement de 10 m avant ou après une action normale (par exemple faire 10 m et une action limitée). La monture n'attaque que si elle est elle-même attaquée au contact par une créature. \n==**Fidèle monture : **FOR +4, DEX +0, CON +4, INT -2, SAG +0, CHA +0, Init. 10, DEF 13, PV 15, ruade +5, DM 1d6+4==\n**==Capacité avancée : ==**au lieu de réaliser un déplacement supplémentaire, le PJ peut commander à sa monture d’attaquer sa cible."
+      "desc": "Le PJ possède un puissant destrier (un cheval de guerre ou un cochon de combat). À dos de monture, il peut ajouter un déplacement de 10 m avant ou après une action normale (par exemple faire 10 m et une action limitée). La monture n'attaque que si elle est elle-même attaquée au contact par une créature. \n==**Fidèle monture : **FOR +4, DEX +0, CON +4, INT -2, SAG +0, CHA +0, Init. 10, DEF 13, PV 15, ruade +5, DM 1d6+4==\n**==Capacité avancée : ==**au lieu de réaliser un déplacement supplémentaire, le PJ peut commander à sa monture d’attaquer sa cible.",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Fidèle monture"
+        }
+      ]
     },
     {
       "nom": "Cavalier émérite",
@@ -134,7 +140,14 @@
     },
     {
       "nom": "Monture fantastique",
-      "desc": "Le PJ obtient une monture volante (aspic, dragon, guivre, griffon ou wampür).\n==FOR +4, DEX +2, CON +4, INT -2, SAG +1, CHA +0, Init. 15, DEF 16, PV [5 × niveau], attaque +8, DM 1d6+4.== Lorsqu'il est en selle, le PJ peut faire attaquer sa monture une fois par tour (action gratuite), lors du même tour que lui, avec un score d'attaque égal à son niveau +3. En vol, la monture couvre une distance de 30 m par action de mouvement."
+      "desc": "Le PJ obtient une monture volante (aspic, dragon, guivre, griffon ou wampür).\n==FOR +4, DEX +2, CON +4, INT -2, SAG +1, CHA +0, Init. 15, DEF 16, PV [5 × niveau], attaque +8, DM 1d6+4.== Lorsqu'il est en selle, le PJ peut faire attaquer sa monture une fois par tour (action gratuite), lors du même tour que lui, avec un score d'attaque égal à son niveau +3. En vol, la monture couvre une distance de 30 m par action de mouvement.",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Monture fantastique",
+          "minRang": 5
+        }
+      ]
     }
   ],
   "Voie du commandement": [
@@ -710,7 +723,14 @@
     },
     {
       "nom": "Animation d'un arbre*",
-      "desc": "Une fois par combat, le PJ peut animer un arbre en le touchant. Il combat pendant [niveau du PJ] tours. \n==**Arbre animé : **Init. 7, DEF 13, PV [rang x 10], attaque de contact = [niveau du PJ], DM 1d6+3, déplacement 10 m par action de mouvement. Réduction de DM de 10 sauf contre les armes tranchantes et le feu.=="
+      "desc": "Une fois par combat, le PJ peut animer un arbre en le touchant. Il combat pendant [niveau du PJ] tours. \n==**Arbre animé : **Init. 7, DEF 13, PV [rang x 10], attaque de contact = [niveau du PJ], DM 1d6+3, déplacement 10 m par action de mouvement. Réduction de DM de 10 sauf contre les armes tranchantes et le feu.==",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Arbre animé",
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Régénération*",
@@ -931,7 +951,14 @@
     },
     {
       "nom": "Monture puissante",
-      "desc": "La monture du PJ atteint sa pleine maturité et augmente ses capacités offensives : \n==FOR +7, DEX +2, CON +7, INT -2, SAG +1, CHA +0, Init. 15, DEF 18, PV 20 + [5 x niveau], attaque +12, DM 2d6+7.=="
+      "desc": "La monture du PJ atteint sa pleine maturité et augmente ses capacités offensives : \n==FOR +7, DEX +2, CON +7, INT -2, SAG +1, CHA +0, Init. 15, DEF 18, PV 20 + [5 x niveau], attaque +12, DM 2d6+7.==",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Monture puissante",
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Souffle élémentaire",

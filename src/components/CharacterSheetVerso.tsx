@@ -571,7 +571,20 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {f(Q.int,       c ? fmtMod(c.int)  : '',   'INT',       'center')}
               {f(Q.sag,       c ? fmtMod(c.sag)  : '',   'SAG',       'center')}
               {f(Q.cha,       c ? fmtMod(c.cha)  : '',   'CHA',       'center')}
-              {f(Q.init,      c ? String(c.init) : '',   'Init',      'center')}
+              {c
+                ? <>
+                    <DraggableField key={`C${slot+1} Init`} top={Q.init.top} left={Q.init.left} width={Q.init.width} height={2}
+                      value={c.initValue} onChange={noop} align="center" label={`C${slot+1} Init`}
+                      calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+                    {c.initDisplay !== c.initValue && (
+                      <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
+                        onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'Initiative', desc: c.initDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                        onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
+                        onMouseLeave={() => setTooltip(null)}
+                      />
+                    )}
+                  </>
+                : f(Q.init, '', 'Init', 'center')}
               {f(Q.def,       c ? String(c.def)  : '',   'DEF',       'center')}
               {c
                 ? <>
@@ -589,10 +602,10 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
                 : f(Q.pv, '', 'PV', 'center')}
               {f(Q.atk1nom,   c?.attaque1?.nom ?? '',     'Atk1 nom')}
               {f(Q.atk1bonus, c?.atk1Display ?? '',       'Atk1 bonus','center')}
-              {f(Q.atk1dm,    c?.attaque1?.dm ?? '',      'Atk1 DM',   'center')}
+              {f(Q.atk1dm,    c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', 'Atk1 DM', 'center')}
               {f(Q.atk2nom,   c?.attaque2?.nom ?? '',     'Atk2 nom')}
               {f(Q.atk2bonus, c?.atk2Display ?? '',       'Atk2 bonus','center')}
-              {f(Q.atk2dm,    c?.attaque2?.dm ?? '',      'Atk2 DM',   'center')}
+              {f(Q.atk2dm,    c?.atk2dmDisplay ?? c?.attaque2?.dm ?? '', 'Atk2 DM', 'center')}
             </React.Fragment>
           )
         })
