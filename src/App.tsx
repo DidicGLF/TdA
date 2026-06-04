@@ -29,6 +29,7 @@ function AppContent() {
       setCharacter(prev => ({ ...prev, compagnonsActifs: newActifs }))
     }
   }, [character.voiePeuple, character.voieCulturelle, character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele])
+
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
   const [sheetPage, setSheetPage] = useState<'recto' | 'verso'>('recto')
@@ -58,12 +59,21 @@ function AppContent() {
   const [lastMoved, setLastMoved] = useState<{ label: string; top: number; left: number; width?: number; height?: number } | null>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
 
+  const [screenWidth, setScreenWidth] = useState(() => window.innerWidth)
+  const [mobileTab, setMobileTab] = useState<'fiche' | 'creation'>('fiche')
+
   const onChange = (patch: Partial<Character>) =>
     setCharacter(prev => ({ ...prev, ...patch }))
 
   useEffect(() => {
     setSheetPage(step >= 5 ? 'verso' : 'recto')
   }, [step])
+
+  useEffect(() => {
+    const onResize = () => setScreenWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     const BASE_PT = 12
@@ -152,18 +162,165 @@ function AppContent() {
     }
   }
 
+  const isMobile = screenWidth < 700
+
+  const handleLoad = (c: Character, savedMaxStep: number) => {
+    const tm = c.talentMagique
+    const normalized = {
+      ...c,
+      talentMagique: typeof tm === 'string' ? { nom: tm, desc: '' } : (tm ?? { nom: '', desc: '' }),
+      portrait: c.portrait ?? '',
+      portraitScale: c.portraitScale ?? 1,
+      // Migration : anciennes valeurs en pixels (|val|>3) → reset à 0 (fraction du container)
+      portraitTx: Math.abs(c.portraitTx ?? 0) > 3 ? 0 : (c.portraitTx ?? 0),
+      portraitTy: Math.abs(c.portraitTy ?? 0) > 3 ? 0 : (c.portraitTy ?? 0),
+      portraitFit: c.portraitFit ?? 'cover',
+      traitPeupleDesc: c.traitPeupleDesc ?? findTrait(c.peuple, c.culture)?.desc ?? '',
+      armuresEquipees: c.armuresEquipees ?? [],
+      bonusDefense: c.bonusDefense ?? 0,
+      enchantementEncombrement: c.enchantementEncombrement ?? 0,
+      arme1: c.arme1 ?? '',
+      arme2: c.arme2 ?? '',
+      dmArme1: c.dmArme1 ?? '',
+      dmArme2: c.dmArme2 ?? '',
+    }
+    setCharacter(normalized)
+    setStep(savedMaxStep)
+    setMaxStep(savedMaxStep)
+  }
+
+  const printContainer = (
+    <div className="print-only" style={{ '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
+      <div className="print-page-recto">
+        <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1} />
+      </div>
+      <div className="print-page-verso">
+        <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1} />
+      </div>
+    </div>
+  )
+
+  const modals = (
+    <>
+      {showLevelUp && (
+        <LevelUpModal character={character} onConfirm={onChange} onClose={() => setShowLevelUp(false)} />
+      )}
+      {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
+      {showSave && (
+        <SaveLoadPanel
+          character={character}
+          maxStep={maxStep}
+          library={library}
+          onLibraryChange={setLibrary}
+          onLoad={handleLoad}
+          onNew={() => { setCharacter(defaultCharacter()); setStep(0); setMaxStep(0) }}
+          onClose={() => setShowSave(false)}
+        />
+      )}
+    </>
+  )
+
+  // ─── Layout mobile (< 700px) ────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
+        {printContainer}
+
+        {/* Zone de contenu */}
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+
+          {mobileTab === 'fiche' ? (
+            <div style={{ height: '100%', overflowY: 'auto', background: '#111' }}>
+              {/* Toolbar compact */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px',
+                position: 'sticky', top: 0, zIndex: 10, background: '#111',
+                borderBottom: '1px solid rgba(201,168,76,0.15)',
+              }}>
+                {(['recto', 'verso'] as const).map(p => (
+                  <button key={p} onClick={() => setSheetPage(p)} style={{
+                    padding: '6px 14px', borderRadius: '4px 4px 0 0',
+                    border: '1px solid rgba(201,168,76,0.4)',
+                    borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
+                    background: sheetPage === p ? 'rgba(201,168,76,0.1)' : 'transparent',
+                    color: sheetPage === p ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                    cursor: 'pointer', fontSize: 15,
+                    fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+                  }}>
+                    {p === 'recto' ? 'Recto' : 'Verso'}
+                  </button>
+                ))}
+                <div style={{ flex: 1 }} />
+                <button onClick={() => setShowSave(true)} style={{
+                  padding: '6px 12px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13,
+                }}>Personnages</button>
+                <button onClick={() => setShowLevelUp(true)} style={{
+                  padding: '6px 12px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
+                  color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13,
+                }}>Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}</button>
+              </div>
+              {/* Feuille scrollable */}
+              <div style={{ padding: '0 4px 80px' }}>
+                {sheetPage === 'recto'
+                  ? <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
+                  : <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />}
+              </div>
+            </div>
+
+          ) : (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(20,16,10,0.98)' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
+                  Terres d'Arran
+                </div>
+                <div style={{ fontSize: 17, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
+                  Création de personnage
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <CreationWizard
+                  step={step} maxStep={maxStep} character={character} onChange={onChange}
+                  onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                  onPrev={() => setStep(s => Math.max(s - 1, 0))}
+                  onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
+                  onSave={() => setShowSave(true)}
+                  onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Barre de navigation basse */}
+        <div style={{
+          display: 'flex', height: 56, flexShrink: 0,
+          borderTop: '1px solid rgba(201,168,76,0.25)',
+          background: 'rgba(15,12,8,0.98)',
+        }}>
+          {([['fiche', 'Fiche'], ['creation', 'Création']] as const).map(([tab, label]) => (
+            <button key={tab} onClick={() => setMobileTab(tab)} style={{
+              flex: 1, border: 'none', background: 'transparent',
+              color: mobileTab === tab ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.45)',
+              fontSize: 15, fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+              borderTop: mobileTab === tab ? '2px solid var(--tdr-gold)' : '2px solid transparent',
+              cursor: 'pointer',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {modals}
+      </div>
+    )
+  }
+
+  // ─── Layout desktop / tablette (>= 700px) ───────────────────────────────
   return (
     <div className="app-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
 
-      {/* === CONTENEUR IMPRESSION (hors flux, caché à l'écran, visible à l'impression) === */}
-      <div className="print-only" style={{ '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
-        <div className="print-page-recto">
-          <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1} />
-        </div>
-        <div className="print-page-verso">
-          <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1} />
-        </div>
-      </div>
+      {printContainer}
 
       {/* === FEUILLE (gauche, scrollable) === */}
       <div className="no-print" style={{ width: `${zoom}%`, flexShrink: 0, minWidth: 280, overflowY: 'auto', background: '#111' }}>
@@ -292,7 +449,6 @@ function AppContent() {
                 calibrate={calibrate} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
             )}
 
-
             {/* Tooltip coordonnées au survol (suit le curseur) */}
             {calibrate && hover && (
               <div style={{
@@ -407,53 +563,7 @@ function AppContent() {
         </div>
       )}
 
-      {/* === MONTÉE DE NIVEAU === */}
-      {showLevelUp && (
-        <LevelUpModal
-          character={character}
-          onConfirm={onChange}
-          onClose={() => setShowLevelUp(false)}
-        />
-      )}
-
-      {/* === ÉDITEUR DESCRIPTIONS === */}
-      {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
-
-      {/* === PANNEAU SAUVEGARDE === */}
-      {showSave && (
-        <SaveLoadPanel
-          character={character}
-          maxStep={maxStep}
-          library={library}
-          onLibraryChange={setLibrary}
-          onLoad={(c, savedMaxStep) => {
-            const tm = c.talentMagique
-            const normalized = {
-              ...c,
-              talentMagique: typeof tm === 'string' ? { nom: tm, desc: '' } : (tm ?? { nom: '', desc: '' }),
-              portrait: c.portrait ?? '',
-              portraitScale: c.portraitScale ?? 1,
-              // Migration : anciennes valeurs en pixels (|val|>3) → reset à 0 (fraction du container)
-              portraitTx: Math.abs(c.portraitTx ?? 0) > 3 ? 0 : (c.portraitTx ?? 0),
-              portraitTy: Math.abs(c.portraitTy ?? 0) > 3 ? 0 : (c.portraitTy ?? 0),
-              portraitFit: c.portraitFit ?? 'cover',
-              traitPeupleDesc: c.traitPeupleDesc ?? findTrait(c.peuple, c.culture)?.desc ?? '',
-              armuresEquipees: c.armuresEquipees ?? [],
-              bonusDefense: c.bonusDefense ?? 0,
-              enchantementEncombrement: c.enchantementEncombrement ?? 0,
-              arme1: c.arme1 ?? '',
-              arme2: c.arme2 ?? '',
-              dmArme1: c.dmArme1 ?? '',
-              dmArme2: c.dmArme2 ?? '',
-            }
-            setCharacter(normalized)
-            setStep(savedMaxStep)
-            setMaxStep(savedMaxStep)
-          }}
-          onNew={() => { setCharacter(defaultCharacter()); setStep(0); setMaxStep(0) }}
-          onClose={() => setShowSave(false)}
-        />
-      )}
+      {modals}
 
       {/* === WIZARD (droite, flexible) === */}
       <div className="no-print" style={{
