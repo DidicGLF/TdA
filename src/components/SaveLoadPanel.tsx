@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useModalBackButton } from '../hooks/useModalBackButton'
 import type { Character } from '../types/character'
 
 export interface SavedEntry {
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function SaveLoadPanel({ character, maxStep, library, onLibraryChange, onLoad, onNew, onClose }: Props) {
+  useModalBackButton(onClose)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
 

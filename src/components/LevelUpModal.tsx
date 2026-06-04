@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useModalBackButton } from '../hooks/useModalBackButton'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import {
@@ -33,6 +34,7 @@ const FORMATIONS_MARTIALES = [
 ]
 
 export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
+  useModalBackButton(onClose)
   const maxNiveau = 20
   const { data, voies } = useGameData()
   const conBonus = sumStat(computeEffects(character, data)['CON'] ?? [])

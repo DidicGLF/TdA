@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import type { Character } from '../types/character'
 import { useGameData } from '../context/GameDataContext'
+import { useModalBackButton } from '../hooks/useModalBackButton'
 
 type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string }
 type EntreeArmure = { nom: string; def: number; prix: string }
@@ -64,6 +65,8 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)
+  const isMobile = window.innerWidth < 700
+  const [mobileCatKey, setMobileCatKey] = useState('0-0')
 
   const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
@@ -436,6 +439,106 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const handleStyle: React.CSSProperties = {
     cursor: 'grab', opacity: 0.35, fontSize: 13, flexShrink: 0,
     userSelect: 'none', paddingRight: 4,
+  }
+
+  useModalBackButton(onClose)
+
+  // ── Layout mobile ──────────────────────────────────────────────────────
+  if (isMobile) {
+    // Liste plate des catégories armes
+    const mobileCatsArmes: { key: string; label: string; gi: number; ci: number }[] = []
+    groupes.forEach((g, gi) => g.categories.forEach((c, ci) => {
+      mobileCatsArmes.push({ key: `${gi}-${ci}`, label: `${g.groupe} — ${c.categorie}`, gi, ci })
+    }))
+    const mobileCatsArmures = armures.map((c, ci) => ({ key: `${ci}`, label: c.categorie, ci }))
+
+    const [mgi, mci] = mobileCatKey.split('-').map(Number)
+    const mobileCatArme  = section === 'armes'   ? groupes[mgi]?.categories[mci]   : null
+    const mobileCatArmure = section === 'armures' ? armures[Number(mobileCatKey)]   : null
+    const withPortee = section === 'armes' && mobileCatArme ? isDistance(groupes[mgi].groupe) : false
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(18,14,9,0.99)',
+        display: 'flex', flexDirection: 'column' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px',
+          borderBottom: `1px solid ${S.border}`, flexShrink: 0 }}>
+          {(['armes', 'armures'] as const).map(s => (
+            <button key={s} onClick={() => { setSection(s); setMobileCatKey('0-0') }} style={{
+              padding: '6px 16px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+              border: `1px solid ${S.gold}`,
+              background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
+              color: S.gold, fontWeight: section === s ? 700 : 400,
+            }}>{s === 'armes' ? 'Armes' : 'Armures'}</button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none',
+            color: S.parchment, opacity: 0.6, cursor: 'pointer', fontSize: 22 }}>✕</button>
+        </div>
+
+        {/* Sélecteur de catégorie */}
+        <div style={{ padding: '10px 16px', borderBottom: `1px solid ${S.border}`, flexShrink: 0 }}>
+          <select
+            value={mobileCatKey}
+            onChange={e => setMobileCatKey(e.target.value)}
+            style={{ width: '100%', background: 'rgba(15,12,8,0.92)', border: `1px solid ${S.border}`,
+              borderRadius: 4, color: S.parchment, fontSize: 15, padding: '8px 10px' }}
+          >
+            {section === 'armes'
+              ? mobileCatsArmes.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
+              : mobileCatsArmures.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
+            }
+          </select>
+        </div>
+
+        {/* Liste des entrées */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+          {section === 'armes' && mobileCatArme && mobileCatArme.entrees.map((e, ei) => (
+            <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
+                  {e.dm}{e.mod ? ` + ${e.mod}` : ''}{withPortee && e.portee ? ` · ${e.portee}` : ''}
+                  {e.prix ? ` · ${e.prix}` : ''}
+                </div>
+              </div>
+              <button onClick={() => addArme(e)} style={{
+                flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
+                border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
+                color: S.gold, cursor: 'pointer',
+              }}>+</button>
+            </div>
+          ))}
+          {section === 'armures' && mobileCatArmure && mobileCatArmure.entrees.map((e, ei) => (
+            <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
+                  DEF +{e.def}{e.prix ? ` · ${e.prix}` : ''}
+                </div>
+              </div>
+              <button onClick={() => addArmure(e)} style={{
+                flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
+                border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
+                color: S.gold, cursor: 'pointer',
+              }}>+</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Bouton Fermer */}
+        <div style={{ padding: '12px 16px', borderTop: `1px solid ${S.border}`, flexShrink: 0 }}>
+          <button onClick={onClose} style={{
+            width: '100%', padding: '12px', borderRadius: 6, fontSize: 16,
+            border: `1px solid ${S.border}`, background: 'rgba(245,236,215,0.07)',
+            color: S.parchment, cursor: 'pointer', letterSpacing: '0.05em',
+          }}>Fermer</button>
+        </div>
+      </div>
+    )
   }
 
   return (
