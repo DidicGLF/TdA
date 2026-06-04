@@ -249,10 +249,6 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     document.addEventListener('mouseup', onUp)
   }
 
-  const setCarac = (key: typeof CARAC_ROWS[number]['key'], val: string) => {
-    const valeur = parseInt(val) || 0
-    onChange({ caracteristiques: { ...character.caracteristiques, [key]: { valeur, mod: getMod(valeur) } } })
-  }
 
   const setVoieNom = (field: 'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3', nom: string) =>
     onChange({ [field]: { ...character[field], nom } })
