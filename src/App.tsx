@@ -223,7 +223,7 @@ function AppContent() {
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         {printContainer}
 
         {/* Zone de contenu */}
@@ -299,6 +299,7 @@ function AppContent() {
           display: 'flex', height: 56, flexShrink: 0,
           borderTop: '1px solid rgba(201,168,76,0.25)',
           background: 'rgba(15,12,8,0.98)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
           {([['fiche', 'Fiche'], ['creation', 'Création']] as const).map(([tab, label]) => (
             <button key={tab} onClick={() => setMobileTab(tab)} style={{
