@@ -107,11 +107,19 @@ export function autoAssignCompagnons(
   return actifs
 }
 
-export function resolveNiv(stat: number | string, niveau: number): string {
+type AttContext = { contact: number; distance: number; magique: number }
+
+export function resolveNiv(stat: number | string, niveau: number, rang = 1, att?: AttContext): string {
   if (typeof stat === 'number') return String(stat)
+  const fmt = (n: number) => n >= 0 ? `+${n}` : `${n}`
   return stat
+    .replace(/\[RANG\s*[x×*]\s*(\d+)\]/gi, (_, n) => `[RANG×${n}](${rang * parseInt(n)})`)
+    .replace(/\[RANG\]/gi, `[RANG](${rang})`)
     .replace(/\[NIV\s*[x×*]\s*(\d+)\]/gi, (_, n) => `[NIV×${n}](${niveau * parseInt(n)})`)
     .replace(/\[NIV\]/gi, `[NIV](${niveau})`)
+    .replace(/\[ATT\s+contact\]/gi,  `[ATT contact](${fmt(att?.contact  ?? 0)})`)
+    .replace(/\[ATT\s+distance\]/gi, `[ATT distance](${fmt(att?.distance ?? 0)})`)
+    .replace(/\[ATT\s+magique\]/gi,  `[ATT magique](${fmt(att?.magique  ?? 0)})`)
 }
 
 // Résout les tokens de modificateurs de compagnon : [FOR], [DEX], etc.
@@ -126,16 +134,21 @@ function resolveModTokens(s: string, entry: CompanionEntry): string {
   return result
 }
 
-export function resolveDM(dm: string, entry: CompanionEntry, niveau: number): string {
-  return resolveModTokens(resolveNiv(dm, niveau), entry)
+export function resolveDM(dm: string, entry: CompanionEntry, niveau: number, rang = 1, att?: AttContext): string {
+  return resolveModTokens(resolveNiv(dm, niveau, rang, att), entry)
 }
 
 // Retourne uniquement la valeur numérique calculée (pour l'affichage sur la fiche)
-export function computeNiv(stat: number | string, niveau: number): string {
+export function computeNiv(stat: number | string, niveau: number, rang = 1, att?: AttContext): string {
   if (typeof stat === 'number') return String(stat)
   const expr = stat
+    .replace(/\[RANG\s*[x×*]\s*(\d+)\]/gi, (_, n) => String(rang * parseInt(n)))
+    .replace(/\[RANG\]/gi, String(rang))
     .replace(/\[NIV\s*[x×*]\s*(\d+)\]/gi, (_, n) => String(niveau * parseInt(n)))
     .replace(/\[NIV\]/gi, String(niveau))
+    .replace(/\[ATT\s+contact\]/gi,  String(att?.contact  ?? 0))
+    .replace(/\[ATT\s+distance\]/gi, String(att?.distance ?? 0))
+    .replace(/\[ATT\s+magique\]/gi,  String(att?.magique  ?? 0))
     .replace(/[x×]/gi, '*')
   try {
     // eslint-disable-next-line no-new-func
@@ -149,16 +162,18 @@ export function computeNiv(stat: number | string, niveau: number): string {
 export function resolveCompagnon(
   entry: CompanionEntry,
   niveau: number,
+  rang = 1,
+  att?: AttContext,
 ): CompanionEntry & { pvDisplay: string; pvValue: string; initDisplay: string; initValue: string; atk1Display?: string; atk1dmDisplay?: string; atk2Display?: string; atk2dmDisplay?: string } {
   return {
     ...entry,
-    pvDisplay:    resolveNiv(entry.pv,   niveau),
-    pvValue:      computeNiv(entry.pv,   niveau),
-    initDisplay:  resolveNiv(entry.init, niveau),
-    initValue:    computeNiv(entry.init, niveau),
-    atk1Display:  entry.attaque1 ? resolveNiv(entry.attaque1.bonus, niveau) : undefined,
-    atk1dmDisplay:entry.attaque1 ? resolveDM(entry.attaque1.dm, entry, niveau) : undefined,
-    atk2Display:  entry.attaque2 ? resolveNiv(entry.attaque2.bonus, niveau) : undefined,
-    atk2dmDisplay:entry.attaque2 ? resolveDM(entry.attaque2.dm, entry, niveau) : undefined,
+    pvDisplay:    resolveNiv(entry.pv,   niveau, rang, att),
+    pvValue:      computeNiv(entry.pv,   niveau, rang, att),
+    initDisplay:  resolveNiv(entry.init, niveau, rang, att),
+    initValue:    computeNiv(entry.init, niveau, rang, att),
+    atk1Display:  entry.attaque1 ? resolveNiv(entry.attaque1.bonus, niveau, rang, att) : undefined,
+    atk1dmDisplay:entry.attaque1 ? resolveDM(entry.attaque1.dm, entry, niveau, rang, att) : undefined,
+    atk2Display:  entry.attaque2 ? resolveNiv(entry.attaque2.bonus, niveau, rang, att) : undefined,
+    atk2dmDisplay:entry.attaque2 ? resolveDM(entry.attaque2.dm, entry, niveau, rang, att) : undefined,
   }
 }

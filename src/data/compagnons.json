@@ -135,5 +135,23 @@
       "bonus": "+8",
       "dm": "1d6+4"
     }
+  },
+  {
+    "nom": "Oiseau de proie",
+    "for": 0,
+    "dex": 0,
+    "con": 0,
+    "int": 0,
+    "sag": 0,
+    "cha": 0,
+    "init": 15,
+    "def": 15,
+    "pv": "[NIV] x 3",
+    "capacites": "",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[ATT magique]",
+      "dm": "1d4"
+    }
   }
 ]

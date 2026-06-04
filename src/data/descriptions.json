@@ -617,7 +617,13 @@
     },
     {
       "nom": "Le guetteur",
-      "desc": "Le PJ reçoit un oiseau de proie comme com- pagnon animal. Il possède un lien télépathique avec lui et peut percevoir par ses sens avec un bonus de +5 aux tests fondés sur la perception. \n**Oiseau de proie : **Init. 15, DEF 15, PV [niveau du PJ x 3]. Attaque de contact = [attaque magique du PJ], DM 1d4."
+      "desc": "Le PJ reçoit un oiseau de proie comme compagnon animal. Il possède un lien télépathique avec lui et peut percevoir par ses sens avec un bonus de +5 aux tests fondés sur la perception. \n**Oiseau de proie : **Init. 15, DEF 15, PV [niveau du PJ x 3]. Attaque de contact = [attaque magique du PJ], DM 1d4.",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Oiseau de proie"
+        }
+      ]
     },
     {
       "nom": "Masque du prédateur*",

@@ -42,6 +42,9 @@ function AppContent() {
   const [showSave, setShowSave] = useState(false)
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showLevelUp, setShowLevelUp] = useState(false)
+  const [ficheLocked, setFicheLocked] = useState(true)
+  const [showGestion, setShowGestion] = useState(false)
+  const gestionRef = useRef<HTMLDivElement>(null)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const [library, setLibrary] = useState<SavedEntry[]>([])
   const [libraryLoaded, setLibraryLoaded] = useState(false)
@@ -67,6 +70,16 @@ function AppContent() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    if (!showGestion) return
+    const handler = (e: MouseEvent) => {
+      if (gestionRef.current && !gestionRef.current.contains(e.target as Node))
+        setShowGestion(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showGestion])
 
   useEffect(() => {
     const BASE_PT = 12
@@ -426,33 +439,66 @@ function AppContent() {
               style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
           </div>
 
-          {/* Éditeur descriptions */}
-          <button
-            onClick={() => setShowDescEditor(d => !d)}
-            style={{
-              marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.4)',
-              background: 'transparent',
-              color: 'rgba(245,236,215,0.7)',
-              cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
-            }}
-          >
-            ✎ Données du jeu
-          </button>
+          {/* Menu Gestion */}
+          <div ref={gestionRef} style={{ position: 'relative', marginBottom: 4 }}>
+            <button
+              onClick={() => setShowGestion(g => !g)}
+              style={{
+                padding: '3px 12px', borderRadius: 4,
+                border: `1px solid ${showGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
+                background: showGestion ? 'rgba(201,168,76,0.1)' : 'transparent',
+                color: showGestion ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
+                cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+              }}
+            >
+              ⚙ Gestion
+            </button>
+            {showGestion && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
+                background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.3)',
+                borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              }}>
+                {/* Données du jeu */}
+                <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
+                  padding: '10px 16px', background: 'transparent', border: 'none',
+                  borderBottom: '1px solid rgba(201,168,76,0.1)',
+                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                }}>
+                  ✎ Données du jeu
+                </button>
 
-          {/* Calibrage */}
-          <button
-            onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null) }}
-            style={{
-              marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-              border: `1px solid ${calibrate ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
-              background: calibrate ? 'rgba(201,168,76,0.2)' : 'transparent',
-              color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
-              cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
-            }}
-          >
-            {calibrate ? '✕ Calibrage ON' : '⊹ Calibrage'}
-          </button>
+                {/* Déverrouiller la fiche */}
+                <button onClick={() => { setFicheLocked(l => !l); setShowGestion(false) }} style={{
+                  padding: '10px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
+                  border: 'none', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
+                  color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
+                  cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                }}>
+                  {ficheLocked ? '🔒 Déverrouiller la fiche' : '🔓 Verrouiller la fiche'}
+                  {!ficheLocked && (
+                    <div style={{ fontSize: 11, color: 'rgba(255,150,50,0.7)', marginTop: 3, lineHeight: 1.3 }}>
+                      ⚠ Les champs calculés modifiés<br/>peuvent casser la logique de calcul
+                    </div>
+                  )}
+                </button>
+
+                {/* Calibrage — dev uniquement */}
+                {import.meta.env.DEV && (
+                  <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
+                    padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
+                    border: 'none',
+                    color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
+                    cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                  }}>
+                    {calibrate ? '✕ Calibrage ON' : '⊹ Calibrage'}
+                    <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', marginTop: 2 }}>Mode développeur</div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Feuille + overlay calibrage */}
@@ -470,10 +516,10 @@ function AppContent() {
           >
             {sheetPage === 'recto' ? (
               <CharacterSheetRecto character={character} onChange={onChange} activeStep={step}
-                calibrate={calibrate} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
+                calibrate={calibrate} locked={ficheLocked} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
             ) : (
               <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
-                calibrate={calibrate} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
+                calibrate={calibrate} locked={ficheLocked} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
             )}
 
             {/* Tooltip coordonnées au survol (suit le curseur) */}

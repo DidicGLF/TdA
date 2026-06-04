@@ -12,6 +12,7 @@ interface Props {
   onChange: (patch: Partial<Character>) => void
   activeStep: number
   calibrate?: boolean
+  locked?: boolean
   onFieldMoved?: (label: string, top: number, left: number, width?: number, height?: number) => void
 }
 
@@ -41,7 +42,7 @@ const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
 ]
 
 
-export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, onFieldMoved }: Props) {
+export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
   const { data, compagnons: compagnonsCatalogue } = useGameData()
@@ -551,15 +552,33 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           },
         ]
 
+        const VOIE_KEYS_ALL = ['voiePeuple', 'voieCulturelle', 'voie1', 'voie2', 'voie3', 'voiePrestige', 'voieSangMele'] as const
+        const findRangCompagnon = (nomCompagnon: string): number => {
+          for (const key of VOIE_KEYS_ALL) {
+            const voie = character[key]
+            if (!voie?.nom) continue
+            const rangsData = data[voie.nom]
+            if (!rangsData) continue
+            const granted = rangsData.some(r => r?.grants?.some(g =>
+              (g.type === 'COMPAGNON' && (g as any).nom === nomCompagnon) ||
+              (g.type === 'COMPAGNON_CHOIX' && (g as any).noms?.includes(nomCompagnon))
+            ))
+            if (granted) return voie.rangs.filter(Boolean).length
+          }
+          return 1
+        }
+
         return ([0, 1] as const).map(slot => {
           const nomActif = character.compagnonsActifs?.[slot] ?? null
           const entry = nomActif ? compagnonsCatalogue.find(c => c.nom === nomActif) : null
-          const c = entry ? resolveCompagnon(entry, character.niveau) : null
+          const rang = nomActif ? findRangCompagnon(nomActif) : 1
+          const att = { contact: character.attaqueContact, distance: character.attaqueDistance, magique: character.attaqueMagique }
+          const c = entry ? resolveCompagnon(entry, character.niveau, rang, att) : null
           const Q = POS[slot]
           const pre = `C${slot + 1} `
           const f = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
             <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
-              value={value} onChange={noop} readOnly align={align} label={pre + label}
+              value={value} onChange={noop} readOnly={locked} align={align} label={pre + label}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
           )
           return (
@@ -574,7 +593,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {c
                 ? <>
                     <DraggableField key={`C${slot+1} Init`} top={Q.init.top} left={Q.init.left} width={Q.init.width} height={2}
-                      value={c.initValue} onChange={noop} readOnly align="center" label={`C${slot+1} Init`}
+                      value={c.initValue} onChange={noop} readOnly={locked} align="center" label={`C${slot+1} Init`}
                       calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
                     {c.initDisplay !== c.initValue && (
                       <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
@@ -589,7 +608,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {c
                 ? <>
                     <DraggableField key={`C${slot+1} PV`} top={Q.pv.top} left={Q.pv.left} width={Q.pv.width} height={2}
-                      value={c.pvValue} onChange={noop} readOnly align="center" label={`C${slot+1} PV`}
+                      value={c.pvValue} onChange={noop} readOnly={locked} align="center" label={`C${slot+1} PV`}
                       calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
                     {c.pvDisplay !== c.pvValue && (
                       <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
