@@ -1,7 +1,7 @@
 {
   "productName": "TdA",
   "version": "0.1.0",
-  "identifier": "com.tdr.app",
+  "identifier": "com.tda.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",

@@ -128,8 +128,17 @@ jobs:
       - name: Init Android project
         run: npx @tauri-apps/cli@^2 android init
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > tda-release.jks
+
       - name: Build APK
-        run: npx @tauri-apps/cli@^2 android build --apk --target aarch64 --debug
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ github.workspace }}/tda-release.jks
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: npx @tauri-apps/cli@^2 android build --apk --target aarch64
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
