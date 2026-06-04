@@ -31,6 +31,10 @@ src-tauri/icons/
 # Cartes de voies (images volumineuses, à transmettre séparément)
 public/cartes-voies/
 
+# Keystore Android (clé privée — ne jamais commiter)
+*.jks
+*.keystore
+
 # Fichiers personnels / outils dev local
 .claude/
 Reprendre avec CLaude.txt
