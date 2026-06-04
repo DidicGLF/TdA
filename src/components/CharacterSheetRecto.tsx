@@ -249,8 +249,6 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   }
 
 
-  const setVoieNom = (field: 'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3', nom: string) =>
-    onChange({ [field]: { ...character[field], nom } })
 
 // Appelé comme fonction (pas <F/>) pour éviter le remontage des DraggableField à chaque render
   type FProps = Omit<React.ComponentProps<typeof DraggableField>, 'calibrate' | 'containerRef' | 'onMoved'> & {
