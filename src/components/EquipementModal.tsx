@@ -459,7 +459,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(18,14,9,0.99)',
-        display: 'flex', flexDirection: 'column' }}>
+        display: 'flex', flexDirection: 'column',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px',
@@ -530,12 +534,15 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         </div>
 
         {/* Bouton Fermer */}
-        <div style={{ padding: '12px 16px', borderTop: `1px solid ${S.border}`, flexShrink: 0 }}>
-          <button onClick={onClose} style={{
-            width: '100%', padding: '12px', borderRadius: 6, fontSize: 16,
-            border: `1px solid ${S.border}`, background: 'rgba(245,236,215,0.07)',
-            color: S.parchment, cursor: 'pointer', letterSpacing: '0.05em',
-          }}>Fermer</button>
+        <div style={{ borderTop: `1px solid ${S.border}`, flexShrink: 0 }}>
+          <div style={{ padding: '12px 16px' }}>
+            <button onClick={onClose} style={{
+              width: '100%', padding: '12px', borderRadius: 6, fontSize: 16,
+              border: `1px solid ${S.border}`, background: 'rgba(245,236,215,0.07)',
+              color: S.parchment, cursor: 'pointer', letterSpacing: '0.05em',
+            }}>Fermer</button>
+          </div>
+          <div style={{ height: 'env(safe-area-inset-bottom)' }} />
         </div>
       </div>
     )

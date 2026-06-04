@@ -306,21 +306,19 @@ function AppContent() {
         </div>
 
         {/* Barre de navigation basse */}
-        <div style={{
-          display: 'flex', height: 56, flexShrink: 0,
-          borderTop: '1px solid rgba(201,168,76,0.25)',
-          background: 'rgba(15,12,8,0.98)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}>
-          {([['fiche', 'Fiche'], ['creation', 'Création']] as const).map(([tab, label]) => (
-            <button key={tab} onClick={() => setMobileTab(tab)} style={{
-              flex: 1, border: 'none', background: 'transparent',
-              color: mobileTab === tab ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.45)',
-              fontSize: 15, fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
-              borderTop: mobileTab === tab ? '2px solid var(--tdr-gold)' : '2px solid transparent',
-              cursor: 'pointer',
-            }}>{label}</button>
-          ))}
+        <div style={{ flexShrink: 0, background: 'rgba(15,12,8,0.98)', borderTop: '1px solid rgba(201,168,76,0.25)' }}>
+          <div style={{ display: 'flex', height: 56 }}>
+            {([['fiche', 'Fiche'], ['creation', 'Création']] as const).map(([tab, label]) => (
+              <button key={tab} onClick={() => setMobileTab(tab)} style={{
+                flex: 1, border: 'none', background: 'transparent',
+                color: mobileTab === tab ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.45)',
+                fontSize: 15, fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+                borderTop: mobileTab === tab ? '2px solid var(--tdr-gold)' : '2px solid transparent',
+                cursor: 'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ height: 'env(safe-area-inset-bottom)' }} />
         </div>
 
         {modals}
