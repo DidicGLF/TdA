@@ -135,7 +135,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TdA-Android
-          path: src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
           if-no-files-found: error
 
   release:
@@ -169,5 +169,5 @@ jobs:
           files: |
             artifacts/windows/*.exe
             artifacts/linux/*.AppImage
-            artifacts/android/*.apk
+            artifacts/android/*unsigned.apk
           generate_release_notes: true
