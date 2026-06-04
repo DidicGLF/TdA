@@ -371,13 +371,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           const voieBonus = sumStat(voieContribs)
           const effectiveVal = baseVal + voieBonus
           const effectiveMod = getMod(effectiveVal)
-          let caracFormula: { lines: TooltipLine[]; total: string | number } | undefined
-          if (racialMod !== 0 || voieBonus !== 0) {
-            const lines: TooltipLine[] = [{ label: 'Base', value: baseVal - racialMod }]
-            if (racialMod !== 0) lines.push({ label: character.peuple, value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
-            lines.push(...groupContribs(voieContribs))
-            caracFormula = { lines, total: effectiveVal }
-          }
+          const lines: TooltipLine[] = [{ label: 'Base', value: baseVal - racialMod }]
+          if (racialMod !== 0) lines.push({ label: character.peuple, value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
+          if (voieBonus !== 0) lines.push(...groupContribs(voieContribs))
+          const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
           return (
             <React.Fragment key={key}>
               {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: v => setCarac(key, String((parseInt(v) || 0) - voieBonus)), type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}

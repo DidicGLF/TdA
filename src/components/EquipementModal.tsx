@@ -67,6 +67,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const [dragOver,     setDragOver]     = useState<string | null>(null)
   const isMobile = window.innerWidth < 700
   const [mobileCatKey, setMobileCatKey] = useState('0-0')
+  const [mobileView, setMobileView] = useState<'catalogue' | 'equipe'>('catalogue')
 
   const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
@@ -468,70 +469,189 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px',
           borderBottom: `1px solid ${S.border}`, flexShrink: 0 }}>
-          {(['armes', 'armures'] as const).map(s => (
-            <button key={s} onClick={() => { setSection(s); setMobileCatKey('0-0') }} style={{
+          {(['catalogue', 'equipe'] as const).map(v => (
+            <button key={v} onClick={() => setMobileView(v)} style={{
               padding: '6px 16px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
               border: `1px solid ${S.gold}`,
-              background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
-              color: S.gold, fontWeight: section === s ? 700 : 400,
-            }}>{s === 'armes' ? 'Armes' : 'Armures'}</button>
+              background: mobileView === v ? 'rgba(201,168,76,0.2)' : 'transparent',
+              color: S.gold, fontWeight: mobileView === v ? 700 : 400,
+            }}>{v === 'catalogue' ? 'Catalogue' : 'Équipé'}</button>
           ))}
           <div style={{ flex: 1 }} />
           <button onClick={onClose} style={{ background: 'none', border: 'none',
             color: S.parchment, opacity: 0.6, cursor: 'pointer', fontSize: 22 }}>✕</button>
         </div>
 
-        {/* Sélecteur de catégorie */}
-        <div style={{ padding: '10px 16px', borderBottom: `1px solid ${S.border}`, flexShrink: 0 }}>
-          <select
-            value={mobileCatKey}
-            onChange={e => setMobileCatKey(e.target.value)}
-            style={{ width: '100%', background: 'rgba(15,12,8,0.92)', border: `1px solid ${S.border}`,
-              borderRadius: 4, color: S.parchment, fontSize: 15, padding: '8px 10px' }}
-          >
-            {section === 'armes'
-              ? mobileCatsArmes.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
-              : mobileCatsArmures.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
-            }
-          </select>
-        </div>
+        {mobileView === 'catalogue' ? (<>
+          {/* Sélecteur armes/armures + catégorie */}
+          <div style={{ padding: '10px 16px', borderBottom: `1px solid ${S.border}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['armes', 'armures'] as const).map(s => (
+                <button key={s} onClick={() => { setSection(s); setMobileCatKey('0-0') }} style={{
+                  flex: 1, padding: '6px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                  border: `1px solid ${S.border}`,
+                  background: section === s ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  color: section === s ? S.gold : S.parchment,
+                }}>{s === 'armes' ? 'Armes' : 'Armures'}</button>
+              ))}
+            </div>
+            <select
+              value={mobileCatKey}
+              onChange={e => setMobileCatKey(e.target.value)}
+              style={{ width: '100%', background: 'rgba(15,12,8,0.92)', border: `1px solid ${S.border}`,
+                borderRadius: 4, color: S.parchment, fontSize: 15, padding: '8px 10px' }}
+            >
+              {section === 'armes'
+                ? mobileCatsArmes.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
+                : mobileCatsArmures.map(c => <option key={c.key} value={c.key}>{c.label}</option>)
+              }
+            </select>
+          </div>
 
-        {/* Liste des entrées */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {section === 'armes' && mobileCatArme && mobileCatArme.entrees.map((e, ei) => (
-            <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
-                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
-                  {e.dm}{e.mod ? ` + ${e.mod}` : ''}{withPortee && e.portee ? ` · ${e.portee}` : ''}
-                  {e.prix ? ` · ${e.prix}` : ''}
+          {/* Liste des entrées */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            {section === 'armes' && mobileCatArme && mobileCatArme.entrees.map((e, ei) => (
+              <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
+                    {e.dm}{e.mod ? ` + ${e.mod}` : ''}{withPortee && e.portee ? ` · ${e.portee}` : ''}
+                    {e.prix ? ` · ${e.prix}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => addArme(e)} style={{
+                  flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
+                  border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
+                  color: S.gold, cursor: 'pointer',
+                }}>+</button>
+              </div>
+            ))}
+            {section === 'armures' && mobileCatArmure && mobileCatArmure.entrees.map((e, ei) => (
+              <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
+                    DEF +{e.def}{e.prix ? ` · ${e.prix}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => addArmure(e)} style={{
+                  flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
+                  border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
+                  color: S.gold, cursor: 'pointer',
+                }}>+</button>
+              </div>
+            ))}
+          </div>
+        </>) : (
+          /* Vue Équipé */
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+
+            {/* Armes */}
+            {character.armes.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Armes</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {character.armes.map((a, i) => {
+                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
+                    return (
+                      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 10px', borderRadius: 3, fontSize: 14,
+                        background: slot ? 'rgba(100,160,255,0.12)' : 'rgba(201,168,76,0.12)',
+                        border: `1px solid ${slot ? 'rgba(100,160,255,0.3)' : S.border}`,
+                        color: slot ? 'rgba(100,160,255,0.9)' : S.parchment }}>
+                        {slot && <span style={{ fontSize: 11, opacity: 0.7 }}>E{slot} · </span>}
+                        {a.nom} <span style={{ opacity: 0.5 }}>{a.dm}</span>
+                        <button onClick={() => removeArme(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0, lineHeight: 1 }}>✕</button>
+                      </span>
+                    )
+                  })}
+                </div>
+                {([1, 2] as const).map(slot => {
+                  const current = slot === 1 ? character.arme1 : character.arme2
+                  const color = 'rgba(100,160,255,0.8)'
+                  return (
+                    <div key={slot} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Emplacement {slot}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
+                          <input type="radio" name={`arme-slot-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color, width: 18, height: 18 }} />
+                          Aucune
+                        </label>
+                        {character.armes.map((a, i) => {
+                          const otherSlot = slot === 1 ? character.arme2 : character.arme1
+                          const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
+                          const isCurrent = stripExposants(current) === stripExposants(a.nom)
+                          return (
+                            <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15,
+                              cursor: takenByOther ? 'not-allowed' : 'pointer',
+                              opacity: takenByOther ? 0.4 : 1,
+                              color: isCurrent ? color : S.parchment }}>
+                              <input type="radio" name={`arme-slot-${slot}`}
+                                checked={isCurrent} disabled={takenByOther}
+                                onChange={() => equipeArmeSlot(a.nom, slot)}
+                                style={{ accentColor: color, width: 18, height: 18 }} />
+                              {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Armure portée */}
+            {armuresSeules.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Armure portée</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
+                    <input type="radio" name="armure-portee" checked={armurePortee === null} onChange={() => equipeArmure(null)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
+                    Aucune
+                  </label>
+                  {armuresSeules.map((a, i) => (
+                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
+                      color: armurePortee === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
+                      <input type="radio" name="armure-portee" checked={armurePortee === a.nom} onChange={() => equipeArmure(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
+                      {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
+                      <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0 }}>✕</button>
+                    </label>
+                  ))}
                 </div>
               </div>
-              <button onClick={() => addArme(e)} style={{
-                flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
-                border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
-                color: S.gold, cursor: 'pointer',
-              }}>+</button>
-            </div>
-          ))}
-          {section === 'armures' && mobileCatArmure && mobileCatArmure.entrees.map((e, ei) => (
-            <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
-                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
-                  DEF +{e.def}{e.prix ? ` · ${e.prix}` : ''}
+            )}
+
+            {/* Bouclier porté */}
+            {boucliersSeuls.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Bouclier porté</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
+                    <input type="radio" name="bouclier-porte" checked={bouclierPorte === null} onChange={() => equipeBouclier(null)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
+                    Aucun
+                  </label>
+                  {boucliersSeuls.map((a, i) => (
+                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
+                      color: bouclierPorte === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
+                      <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
+                      {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
+                      <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0 }}>✕</button>
+                    </label>
+                  ))}
                 </div>
               </div>
-              <button onClick={() => addArmure(e)} style={{
-                flexShrink: 0, padding: '8px 16px', borderRadius: 4, fontSize: 15,
-                border: `1px solid ${S.gold}`, background: 'rgba(201,168,76,0.1)',
-                color: S.gold, cursor: 'pointer',
-              }}>+</button>
-            </div>
-          ))}
-        </div>
+            )}
+
+            {character.armes.length === 0 && character.armuresEquipees.length === 0 && (
+              <div style={{ color: 'rgba(245,236,215,0.35)', fontSize: 15, textAlign: 'center', marginTop: 40 }}>
+                Ajoutez des armes ou armures depuis le Catalogue
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bouton Fermer */}
         <div style={{ borderTop: `1px solid ${S.border}`, flexShrink: 0 }}>
