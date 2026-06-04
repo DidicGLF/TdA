@@ -41,8 +41,8 @@ const STEPS = [
   'Caractéristiques',
   'Profil & Voies',
   'Scores dérivés',
-  'Spécialisation',
-  'Équipement',
+  'Spécialisation & équipement',
+  'Les derniers détails',
   'Finalisation',
 ]
 
@@ -745,7 +745,9 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const { disponibles } = calcPointsCapacite(character)
   const { data: dynamicDescriptions, peuples, voies } = useGameData()
 
-
+  const voiesPrestige = voies.filter(v => v.categorie === 'prestige')
+  const nomPrestige = character.voiePrestige.nom
+  const hasPrestigeDesc = !!nomPrestige && !!dynamicDescriptions[nomPrestige]
 
   const allProfilVoies = (() => {
     const profilVoies = voies.filter(v => v.categorie === 'profil')
@@ -1094,6 +1096,51 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         )}
       </div>
 
+      {/* ── Voie de prestige ── */}
+      <div>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          Voie de prestige
+        </label>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <VoieCombobox
+              value={nomPrestige}
+              onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
+              options={voiesPrestige}
+              placeholder="Rechercher une voie de prestige…"
+            />
+          </div>
+          <button
+            onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
+            disabled={!nomPrestige}
+            title="Effacer la voie"
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(180,60,60,0.35)',
+              background: nomPrestige ? 'rgba(180,60,60,0.1)' : 'transparent',
+              color: nomPrestige ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+              cursor: nomPrestige ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >×</button>
+          <button
+            onClick={() => hasPrestigeDesc && setPreviewVoie(nomPrestige)}
+            disabled={!hasPrestigeDesc}
+            title={hasPrestigeDesc ? `Voir la voie : ${nomPrestige}` : 'Sélectionnez une voie'}
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(201,168,76,0.4)',
+              background: hasPrestigeDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
+              color: hasPrestigeDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+              cursor: hasPrestigeDesc ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >
+            ▤
+          </button>
+        </div>
+      </div>
+
       {/* ── Compagnons accordés ── */}
       {(() => {
         const compagnonsNoms = getCompagnonsDisponibles(character, dynamicDescriptions)
@@ -1102,7 +1149,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         const msg = (compagnonsNoms.length + choixPendants.length) > 1 ? 'Des compagnons ont été accordés' : 'Un compagnon a été accordé'
         return (
           <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
-            {msg} par vos voies — équipez-les à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Équipement</strong>.
+            {msg} par vos voies — équipez-les à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Spécialisation &amp; équipement</strong>.
           </p>
         )
       })()}
@@ -1182,173 +1229,13 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   )
 }
 
-function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const { data, traits, voies } = useGameData()
-  const voiesPrestige = voies.filter(v => v.categorie === 'prestige')
-  const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
-  const [showTraitModal, setShowTraitModal] = React.useState(false)
-
-  const nomPrestige = character.voiePrestige.nom
-  const hasDesc = !!nomPrestige && !!data[nomPrestige]
-
-  const FORMATIONS = [
-    'Armes de paysan (gratuit)', 'Armes de guerre', 'Armes de guerre lourdes',
-    'Armes de duel', 'Armes d\'hast', 'Armes de trait', 'Armes de tir',
-    'Armes de jet', 'Armures légères', 'Armures lourdes',
-  ]
-  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
-  const countFormations = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
-
-  const toggle = (f: string) => {
-    if (f === 'Armes de paysan (gratuit)') return
-    const isChecked = character.formationsMartiales.includes(f)
-    if (!isChecked && countFormations >= maxFormations) return
-    const next = isChecked
-      ? character.formationsMartiales.filter(x => x !== f)
-      : [...character.formationsMartiales, f]
-    onChange({ formationsMartiales: next })
-  }
-  return (
-    <div className="space-y-3">
-      {/* Voie de prestige */}
-      <div>
-        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Voie de prestige
-        </label>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <VoieCombobox
-              value={nomPrestige}
-              onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
-              options={voiesPrestige}
-              placeholder="Rechercher une voie de prestige…"
-            />
-          </div>
-          <button
-            onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
-            disabled={!nomPrestige}
-            title="Effacer la voie"
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(180,60,60,0.35)',
-              background: nomPrestige ? 'rgba(180,60,60,0.1)' : 'transparent',
-              color: nomPrestige ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
-              cursor: nomPrestige ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >×</button>
-          <button
-            onClick={() => hasDesc && setPreviewVoie(nomPrestige)}
-            disabled={!hasDesc}
-            title={hasDesc ? `Voir la voie : ${nomPrestige}` : 'Sélectionnez une voie'}
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.4)',
-              background: hasDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
-              color: hasDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
-              cursor: hasDesc ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >
-            ▤
-          </button>
-        </div>
-      </div>
-
-      <div style={{ height: 1, background: 'rgba(201,168,76,0.15)', margin: '4px 0' }} />
-
-      <p className="text-base opacity-70 italic">
-        Nombre de formations selon la famille :{' '}
-        <strong style={{ color: 'var(--tdr-gold)' }}>
-          {character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1}
-        </strong>
-        {' '}(+ armes de paysan gratuit)
-      </p>
-      <div className="space-y-1.5">
-        {FORMATIONS.map(f => {
-          const isPaysan = f === 'Armes de paysan (gratuit)'
-          const isChecked = isPaysan || character.formationsMartiales.includes(f)
-          const isDisabled = isPaysan || (!isChecked && countFormations >= maxFormations)
-          return (
-            <label key={f} className="flex items-center gap-2" style={{ cursor: isDisabled ? 'default' : 'pointer', opacity: isDisabled && !isPaysan ? 0.45 : 1 }}>
-              <input
-                type="checkbox"
-                checked={isChecked}
-                disabled={isDisabled}
-                onChange={() => toggle(f)}
-                className="accent-yellow-500"
-              />
-              <span className="text-base">{f}</span>
-            </label>
-          )
-        })}
-      </div>
-      <div style={{ opacity: character.famille === 'mystiques' ? 1 : 0.35, pointerEvents: character.famille === 'mystiques' ? 'auto' : 'none' }}>
-        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Talent magique (mystiques)
-        </label>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          <TraitCombobox
-            value={character.talentMagique.nom}
-            onChange={nom => {
-              const traitEntry = traits.find(t => t.nom === nom)
-              onChange({ talentMagique: { nom, desc: traitEntry?.desc ?? character.talentMagique.desc } })
-            }}
-          />
-          <button
-            onClick={() => character.talentMagique.nom && onChange({ talentMagique: { nom: '', desc: '' } })}
-            disabled={!character.talentMagique.nom}
-            title="Effacer le trait"
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(180,60,60,0.35)',
-              background: character.talentMagique.nom ? 'rgba(180,60,60,0.1)' : 'transparent',
-              color: character.talentMagique.nom ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
-              cursor: character.talentMagique.nom ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >×</button>
-          <button
-            onClick={() => character.talentMagique.nom && setShowTraitModal(true)}
-            disabled={!character.talentMagique.nom}
-            title={character.talentMagique.nom ? `Voir : ${character.talentMagique.nom}` : 'Sélectionnez un trait'}
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.4)',
-              background: character.talentMagique.nom ? 'rgba(201,168,76,0.1)' : 'transparent',
-              color: character.talentMagique.nom ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
-              cursor: character.talentMagique.nom ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >▤</button>
-        </div>
-      </div>
-
-      {previewVoie && <CarteVoieModal nom={previewVoie} onClose={() => setPreviewVoie(null)} character={character} />}
-      {showTraitModal && (
-        <TraitMagiqueModal
-          nom={character.talentMagique.nom}
-          desc={character.talentMagique.desc}
-          onChange={(nom, desc) => onChange({ talentMagique: { nom, desc } })}
-          onClose={() => setShowTraitModal(false)}
-        />
-      )}
-    </div>
-  )
-}
-
 type EqTooltip = { lines: string[]; x: number; y: number }
 
-function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const [showEquipement, setShowEquipement] = React.useState(false)
-  const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
-  const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
+function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { traits, data: descriptions } = useGameData()
+  const [showTraitModal, setShowTraitModal] = React.useState(false)
   const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
-  const isMobile = window.innerWidth < 700
-  const [mobileSlotPicker, setMobileSlotPicker] = React.useState<null | 'mainD' | 'mainG' | 'corps'>(null)
-  const totalArmes = character.armes.length + character.armuresEquipees.length
 
-  const { data: descriptions } = useGameData()
   const disponiblesNoms = getCompagnonsDisponibles(character, descriptions)
   const actifs = character.compagnonsActifs ?? [null, null]
   const reserve = disponiblesNoms.filter(n => !actifs.includes(n))
@@ -1360,7 +1247,6 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const newActifs = autoAssignCompagnons(newChar, descriptions)
     onChange({ compagnonsChoix: newChoix, compagnonsActifs: newActifs })
   }
-
   const handleCompagnonDragStart = (e: React.DragEvent, nom: string) => {
     e.dataTransfer.setData('compagnon', nom)
   }
@@ -1380,6 +1266,12 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     newActifs[slotIdx] = null
     onChange({ compagnonsActifs: newActifs })
   }
+  const [showEquipement, setShowEquipement] = React.useState(false)
+  const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
+  const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
+  const isMobile = window.innerWidth < 700
+  const [mobileSlotPicker, setMobileSlotPicker] = React.useState<null | 'mainD' | 'mainG' | 'corps'>(null)
+  const totalArmes = character.armes.length + character.armuresEquipees.length
 
   const showTip = (lines: string[], e: React.MouseEvent) => {
     setEqTip({ lines, x: e.clientX + 14, y: e.clientY + 14 })
@@ -1387,9 +1279,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const moveTip = (e: React.MouseEvent) => {
     if (eqTip) setEqTip(t => t ? { ...t, x: e.clientX + 14, y: e.clientY + 14 } : null)
   }
-
   const is2H = (nom: string) => { const n = nom.toLowerCase(); return n.includes('deux mains') || n.includes('arc') }
-
   const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
     e.dataTransfer.setData('cat', cat)
     e.dataTransfer.setData('nom', nom)
@@ -1433,11 +1323,53 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
   }
 
+  const FORMATIONS = [
+    'Armes de paysan (gratuit)', 'Armes de guerre', 'Armes de guerre lourdes',
+    'Armes de duel', 'Armes d\'hast', 'Armes de trait', 'Armes de tir',
+    'Armes de jet', 'Armures légères', 'Armures lourdes',
+  ]
+  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const countFormations = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
+
+  const toggle = (f: string) => {
+    if (f === 'Armes de paysan (gratuit)') return
+    const isChecked = character.formationsMartiales.includes(f)
+    if (!isChecked && countFormations >= maxFormations) return
+    const next = isChecked
+      ? character.formationsMartiales.filter(x => x !== f)
+      : [...character.formationsMartiales, f]
+    onChange({ formationsMartiales: next })
+  }
   return (
     <div className="space-y-3">
-      <p className="text-base opacity-70 italic">Dernières touches avant de jouer !</p>
+      <p className="text-base opacity-70 italic">
+        Nombre de formations selon la famille :{' '}
+        <strong style={{ color: 'var(--tdr-gold)' }}>
+          {character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1}
+        </strong>
+        {' '}(+ armes de paysan gratuit)
+      </p>
+      <div className="space-y-1.5">
+        {FORMATIONS.map(f => {
+          const isPaysan = f === 'Armes de paysan (gratuit)'
+          const isChecked = isPaysan || character.formationsMartiales.includes(f)
+          const isDisabled = isPaysan || (!isChecked && countFormations >= maxFormations)
+          return (
+            <label key={f} className="flex items-center gap-2" style={{ cursor: isDisabled ? 'default' : 'pointer', opacity: isDisabled && !isPaysan ? 0.45 : 1 }}>
+              <input
+                type="checkbox"
+                checked={isChecked}
+                disabled={isDisabled}
+                onChange={() => toggle(f)}
+                className="accent-yellow-500"
+              />
+              <span className="text-base">{f}</span>
+            </label>
+          )
+        })}
+      </div>
 
-      {/* Équipement */}
+      {/* Armes & Armures */}
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
           Armes &amp; Armures
@@ -1781,6 +1713,64 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           )}
         </div>
       )}
+
+      <div style={{ opacity: character.famille === 'mystiques' ? 1 : 0.35, pointerEvents: character.famille === 'mystiques' ? 'auto' : 'none' }}>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          Talent magique (mystiques)
+        </label>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <TraitCombobox
+            value={character.talentMagique.nom}
+            onChange={nom => {
+              const traitEntry = traits.find(t => t.nom === nom)
+              onChange({ talentMagique: { nom, desc: traitEntry?.desc ?? character.talentMagique.desc } })
+            }}
+          />
+          <button
+            onClick={() => character.talentMagique.nom && onChange({ talentMagique: { nom: '', desc: '' } })}
+            disabled={!character.talentMagique.nom}
+            title="Effacer le trait"
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(180,60,60,0.35)',
+              background: character.talentMagique.nom ? 'rgba(180,60,60,0.1)' : 'transparent',
+              color: character.talentMagique.nom ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+              cursor: character.talentMagique.nom ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >×</button>
+          <button
+            onClick={() => character.talentMagique.nom && setShowTraitModal(true)}
+            disabled={!character.talentMagique.nom}
+            title={character.talentMagique.nom ? `Voir : ${character.talentMagique.nom}` : 'Sélectionnez un trait'}
+            style={{
+              padding: '6px 10px', borderRadius: 4,
+              border: '1px solid rgba(201,168,76,0.4)',
+              background: character.talentMagique.nom ? 'rgba(201,168,76,0.1)' : 'transparent',
+              color: character.talentMagique.nom ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+              cursor: character.talentMagique.nom ? 'pointer' : 'default',
+              fontSize: 16, lineHeight: 1, flexShrink: 0,
+            }}
+          >▤</button>
+        </div>
+      </div>
+
+      {showTraitModal && (
+        <TraitMagiqueModal
+          nom={character.talentMagique.nom}
+          desc={character.talentMagique.desc}
+          onChange={(nom, desc) => onChange({ talentMagique: { nom, desc } })}
+          onClose={() => setShowTraitModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  return (
+    <div className="space-y-3">
+      <p className="text-base opacity-70 italic">Dernières touches avant de jouer !</p>
 
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>

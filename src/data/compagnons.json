@@ -31,7 +31,7 @@
     "attaque1": {
       "nom": "Attaque",
       "bonus": "[NIV]",
-      "dm": "1d6"
+      "dm": "1d6+1"
     }
   },
   {
@@ -48,7 +48,7 @@
     "attaque1": {
       "nom": "Attaque",
       "bonus": "[NIV] + 2",
-      "dm": "1d6"
+      "dm": "1d6+3"
     }
   },
   {

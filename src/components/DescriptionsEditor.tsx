@@ -176,6 +176,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [peuplesExported, setPeuplesExported] = useState(false)
 
   const [showEffectsHelp, setShowEffectsHelp] = useState(false)
+  const [showCompagnonsHelp, setShowCompagnonsHelp] = useState(false)
 
   // Zone en attente (imports individuels)
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([])
@@ -1006,7 +1007,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           flexShrink: 0, gap: 12,
         }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            {(['peuples', 'voies', 'traits', 'traitsRaciaux', 'compagnons'] as const).map(s => (
+            {(['peuples', 'traitsRaciaux', 'voies', 'traits', 'compagnons'] as const).map(s => (
               <button key={s} onClick={() => setSection(s)} style={{
                 padding: '4px 14px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -2263,14 +2264,78 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   onChange={e => setCompagnonQuery(e.target.value)}
                   style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 15, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
                 />
-                <button onClick={addCompagnon} style={{
-                  padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
-                }}>+ Nouveau compagnon</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={addCompagnon} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
+                  }}>+ Nouveau compagnon</button>
+                  <button
+                    onClick={() => setShowCompagnonsHelp(v => !v)}
+                    title="Aide sur les compagnons"
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%', border: `1px solid rgba(201,168,76,0.45)`,
+                      background: showCompagnonsHelp ? 'rgba(201,168,76,0.2)' : 'transparent',
+                      color: 'rgba(201,168,76,0.7)', fontSize: 13, fontWeight: 700,
+                      cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >i</button>
+                </div>
+                {showCompagnonsHelp && (
+                  <div style={{
+                    padding: '10px 12px', borderRadius: 4,
+                    background: 'rgba(201,168,76,0.05)', border: `1px solid rgba(201,168,76,0.2)`,
+                    fontSize: 12, color: 'rgba(245,236,215,0.75)', lineHeight: 1.6,
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                  }}>
+                    <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      Champs d'un compagnon
+                    </div>
+                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                      <tbody>
+                        {[
+                          ['FOR…CHA', 'Modificateurs du compagnon (pas les valeurs brutes). Ex : +2, -1'],
+                          ['Init / PV / DEF', 'Nombre fixe ou formule. Cliquer le bouton [f] pour basculer en mode formule'],
+                          ['Attaque — Bonus', 'Modificateur d\'attaque fixe (ex : +5) ou formule (ex : [ATT contact])'],
+                          ['Attaque — DM', 'Dommages : notation de dés + modificateur. Ex : 1d8 + [FOR]'],
+                          ['Capacités', 'Texte libre décrivant les capacités spéciales du compagnon'],
+                        ].map(([label, desc]) => (
+                          <tr key={label} style={{ verticalAlign: 'top' }}>
+                            <td style={{ color: S.gold, paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
+                            <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>
+                      Formules disponibles
+                    </div>
+                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                      <tbody>
+                        {[
+                          ['[NIV]', 'Niveau du personnage'],
+                          ['[NIV × N]', 'Niveau × N — ex : [NIV × 2]'],
+                          ['[RANG]', 'Rangs acquis dans la voie qui octroie ce compagnon'],
+                          ['[RANG × N]', 'Rangs × N — ex : [RANG × 10]'],
+                          ['[ATT contact]', 'Bonus d\'attaque au contact du personnage'],
+                          ['[ATT distance]', 'Bonus d\'attaque à distance du personnage'],
+                          ['[ATT magique]', 'Bonus d\'attaque magique du personnage'],
+                          ['[FOR]…[CHA]', 'Modificateur de stat du compagnon (DM uniquement)'],
+                        ].map(([token, desc]) => (
+                          <tr key={token} style={{ verticalAlign: 'top' }}>
+                            <td style={{ color: 'rgba(100,180,255,0.85)', paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontFamily: 'monospace', fontWeight: 600 }}>{token}</td>
+                            <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {compagnons
                   .map((c, i) => ({ c, i }))
+                  .sort((a, b) => a.c.nom.localeCompare(b.c.nom, 'fr'))
                   .filter(({ c }) => !compagnonQuery || c.nom.toLowerCase().includes(compagnonQuery.toLowerCase()))
                   .map(({ c, i }) => (
                     <div key={i} onClick={() => setSelectedCompagnon(i)} className="voie-list-item" style={{
