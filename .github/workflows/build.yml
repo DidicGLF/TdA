@@ -169,5 +169,5 @@ jobs:
           files: |
             artifacts/windows/*.exe
             artifacts/linux/*.AppImage
-            artifacts/android/*unsigned.apk
+            artifacts/android/**/*.apk
           generate_release_notes: true

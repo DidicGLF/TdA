@@ -162,7 +162,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       {/* === TOGGLE IMAGE / DESCRIPTION === */}
-      <div style={{
+      <div className="no-print" style={{
         position: 'absolute',
         top: `${togglePos.top}%`, left: `${togglePos.left}%`,
         transform: 'translate(-50%, -50%) rotate(-90deg) translateZ(0)',
