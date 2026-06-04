@@ -487,7 +487,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
           <div style={{ padding: '10px 16px', borderBottom: `1px solid ${S.border}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['armes', 'armures'] as const).map(s => (
-                <button key={s} onClick={() => { setSection(s); setMobileCatKey('0-0') }} style={{
+                <button key={s} onClick={() => { setSection(s); setMobileCatKey(s === 'armes' ? '0-0' : '0') }} style={{
                   flex: 1, padding: '6px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                   border: `1px solid ${S.border}`,
                   background: section === s ? 'rgba(201,168,76,0.15)' : 'transparent',

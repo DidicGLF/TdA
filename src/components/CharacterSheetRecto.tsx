@@ -286,6 +286,15 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           onMouseEnter={e => showFormula(p.label, formula, e)}
           onMouseMove={moveTooltip}
           onMouseLeave={() => setTooltip(null)}
+          onTouchStart={e => {
+            const touch = e.touches[0]
+            const rect = containerRef.current?.getBoundingClientRect()
+            if (!rect) return
+            setTooltip({ nom: p.label, lines: formula.lines, total: formula.total,
+              x: (touch.clientX - rect.left) / rect.width * 100,
+              y: (touch.clientY - rect.top)  / rect.height * 100 })
+          }}
+          onTouchEnd={() => setTimeout(() => setTooltip(null), 2500)}
         />
       )}
       {tooltipDesc && !formula && !calibrate && (
@@ -299,6 +308,15 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           }}
           onMouseMove={moveTooltip}
           onMouseLeave={() => setTooltip(null)}
+          onTouchStart={e => {
+            const touch = e.touches[0]
+            const rect = containerRef.current?.getBoundingClientRect()
+            if (!rect) return
+            setTooltip({ nom: p.label, desc: tooltipDesc,
+              x: (touch.clientX - rect.left) / rect.width * 100,
+              y: (touch.clientY - rect.top)  / rect.height * 100 })
+          }}
+          onTouchEnd={() => setTimeout(() => setTooltip(null), 2500)}
         />
       )}
     </React.Fragment>
@@ -377,7 +395,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
           return (
             <React.Fragment key={key}>
-              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: v => setCarac(key, String((parseInt(v) || 0) - voieBonus)), type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
+              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
               {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, align: "center" })}
             </React.Fragment>
           )
