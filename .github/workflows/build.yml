@@ -133,18 +133,24 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > tda-release.jks
 
       - name: Build APK
-        env:
-          ANDROID_SIGNING_STORE_FILE: ${{ github.workspace }}/tda-release.jks
-          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: npx @tauri-apps/cli@^2 android build --apk --target aarch64
+
+      - name: Sign APK
+        run: |
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | tail -1)/apksigner sign \
+            --ks tda-release.jks \
+            --ks-pass pass:${{ secrets.ANDROID_STORE_PASSWORD }} \
+            --key-pass pass:${{ secrets.ANDROID_KEY_PASSWORD }} \
+            --ks-key-alias ${{ secrets.ANDROID_KEY_ALIAS }} \
+            --out tda-signed.apk \
+            "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TdA-Android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: tda-signed.apk
           if-no-files-found: error
 
   release:
