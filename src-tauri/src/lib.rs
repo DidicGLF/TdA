@@ -41,6 +41,8 @@ fn open_data_dir(app: tauri::AppHandle) -> Result<(), String> {
         .arg(&dir)
         .spawn()
         .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "android")]
+    let _ = dir;
     Ok(())
 }
 

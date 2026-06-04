@@ -89,8 +89,57 @@ jobs:
           path: src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
+  build-android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate icons
+        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.svg
+
+      - name: Init Android project
+        run: npx @tauri-apps/cli@^2 android init
+
+      - name: Build APK
+        run: npx @tauri-apps/cli@^2 android build --apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TdA-Android
+          path: src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -108,10 +157,17 @@ jobs:
           name: TdA-Linux
           path: artifacts/linux
 
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TdA-Android
+          path: artifacts/android
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/windows/*.exe
             artifacts/linux/*.AppImage
+            artifacts/android/*.apk
           generate_release_notes: true
