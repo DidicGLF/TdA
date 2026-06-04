@@ -233,12 +233,14 @@ function AppContent() {
             <div style={{ height: '100%', overflowY: 'auto', background: '#111' }}>
               {/* Toolbar compact */}
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '8px',
+                display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
                 position: 'sticky', top: 0, zIndex: 10, background: '#111',
                 borderBottom: '1px solid rgba(201,168,76,0.15)',
+                overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               }}>
                 {(['recto', 'verso'] as const).map(p => (
                   <button key={p} onClick={() => setSheetPage(p)} style={{
+                    flexShrink: 0,
                     padding: '6px 14px', borderRadius: '4px 4px 0 0',
                     border: '1px solid rgba(201,168,76,0.4)',
                     borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
@@ -250,20 +252,29 @@ function AppContent() {
                     {p === 'recto' ? 'Recto' : 'Verso'}
                   </button>
                 ))}
-                <div style={{ flex: 1 }} />
                 <button onClick={() => setShowSave(true)} style={{
-                  padding: '6px 12px', borderRadius: 4,
+                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
-                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13,
+                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
                 }}>Personnages</button>
                 <button onClick={() => setShowLevelUp(true)} style={{
-                  padding: '6px 12px', borderRadius: 4,
+                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
-                  color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13,
+                  color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
                 }}>Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}</button>
+                <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
+                  style={{ flexShrink: 0, color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>−</button>
+                <span style={{ flexShrink: 0, fontSize: 13, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
+                <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
+                  style={{ flexShrink: 0, color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>+</button>
+                <button onClick={() => setShowDescEditor(d => !d)} style={{
+                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+                }}>✎ Données du jeu</button>
               </div>
               {/* Feuille scrollable */}
-              <div style={{ padding: '0 4px 80px' }}>
+              <div style={{ padding: '0 4px 80px', zoom: zoom / 100 }}>
                 {sheetPage === 'recto'
                   ? <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
                   : <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />}

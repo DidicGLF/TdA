@@ -325,7 +325,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const renderArmeTable = (cat: CatArme, gi: number, ci: number, withPortee: boolean) => {
     const cols = withPortee ? 6 : 5
     return (
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse' }}>
         <thead><tr>
           <th style={{ ...headCell, textAlign: 'left' }}>Arme</th>
           <th style={{ ...headCell, textAlign: 'center', width: 70 }}>DM</th>
@@ -493,7 +493,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
           {/* Menu ancres */}
-          <div style={{ width: 210, flexShrink: 0, borderRight: `1px solid ${S.border}`,
+          <div style={{ width: 'clamp(90px, 28vw, 210px)', flexShrink: 0, borderRight: `1px solid ${S.border}`,
             display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             <div style={{ flex: 1 }}>
               {section === 'armes'
@@ -594,7 +594,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
           </div>
 
           {/* Toutes les tables */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px 24px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: '0 18px 24px', minWidth: 0 }}>
             {section === 'armes'
               ? groupes.map((g, gi) => (
                 <div key={gi}>
