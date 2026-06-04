@@ -12,6 +12,7 @@ interface SheetFieldProps {
   active?: boolean
   calibrate?: boolean
   title?: string
+  readOnly?: boolean
 }
 
 const BASE_FONT = 1.15  // vw
@@ -19,7 +20,7 @@ const MIN_FONT  = 0.45  // vw
 
 export default function SheetField({
   top, left, width, height = 2.2,
-  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title,
+  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false,
 }: SheetFieldProps) {
   const ref = useRef<HTMLInputElement>(null)
 
@@ -41,6 +42,7 @@ export default function SheetField({
       type={type}
       value={value}
       onChange={e => onChange(e.target.value)}
+      readOnly={readOnly}
       title={title}
       className="tdr-field"
       style={{

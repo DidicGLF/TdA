@@ -1344,6 +1344,8 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
   const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
   const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
+  const isMobile = window.innerWidth < 700
+  const [mobileSlotPicker, setMobileSlotPicker] = React.useState<null | 'mainD' | 'mainG' | 'corps'>(null)
   const totalArmes = character.armes.length + character.armuresEquipees.length
 
   const { data: descriptions } = useGameData()
@@ -1391,6 +1393,21 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
     e.dataTransfer.setData('cat', cat)
     e.dataTransfer.setData('nom', nom)
+  }
+  const assignToSlot = (slot: 'mainD' | 'mainG' | 'corps', nom: string, cat: 'arme' | 'armure') => {
+    if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      if (is2H(nom)) {
+        onChange({ arme1: nom, arme2: '' })
+      } else if (slot === 'mainD') {
+        onChange({ arme1: nom })
+      } else {
+        if (character.arme1 && is2H(character.arme1)) return
+        onChange({ arme2: nom })
+      }
+    } else if (slot === 'corps' && cat === 'armure') {
+      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
+    }
+    setMobileSlotPicker(null)
   }
   const handleSlotDrop = (e: React.DragEvent, slot: 'mainD' | 'mainG' | 'corps') => {
     e.preventDefault()
@@ -1470,19 +1487,21 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     onDragOver={e => { e.preventDefault(); if (!mainGBlocked) setDragOver(slot) }}
                     onDragLeave={() => setDragOver(null)}
                     onDrop={e => handleSlotDrop(e, slot)}
+                    onClick={() => isMobile && !mainGBlocked && setMobileSlotPicker(slot)}
                     style={{
                       flex: slot === 'corps' ? 2 : 1, minHeight: 72,
                       border: `1px dashed ${isOver ? '#c9a84c' : 'rgba(201,168,76,0.25)'}`,
                       borderRadius: 6,
                       background: isOver ? 'rgba(201,168,76,0.1)' : 'rgba(201,168,76,0.04)',
                       padding: '6px 8px', transition: 'border-color 0.15s, background 0.15s',
+                      cursor: isMobile && !mainGBlocked ? 'pointer' : 'default',
                     }}
                   >
                     <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.45, marginBottom: 5 }}>
                       {LABELS[slot]}
                     </div>
                     {items.length === 0 ? (
-                      <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>Glisser ici…</div>
+                      <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>{isMobile ? 'Appuyer ici…' : 'Glisser ici…'}</div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {items.map((item, i) => (
@@ -1549,6 +1568,75 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             )}
           </div>
         )}
+
+        {/* Picker mobile slots équipement */}
+        {isMobile && mobileSlotPicker && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setMobileSlotPicker(null)}>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
+              borderRadius: '12px 12px 0 0', paddingBottom: 'env(safe-area-inset-bottom)',
+              maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(201,168,76,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 16, fontFamily: "'Cinzel', serif", color: 'var(--tdr-gold)', fontWeight: 600 }}>
+                  {{ mainD: 'Main droite', mainG: 'Main gauche', corps: 'Corps' }[mobileSlotPicker]}
+                </span>
+                <button onClick={() => setMobileSlotPicker(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--tdr-parchment)', opacity: 0.5, fontSize: 22, cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {/* Option Aucune */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                  borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer' }}
+                  onClick={() => { clearSlot(mobileSlotPicker); setMobileSlotPicker(null) }}>
+                  <input type="radio" readOnly checked={
+                    mobileSlotPicker === 'mainD' ? !character.arme1 :
+                    mobileSlotPicker === 'mainG' ? !character.arme2 :
+                    character.armuresEquipees.every(a => !a.equipe)
+                  } style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>Aucune</span>
+                </div>
+                {/* Armes pour mainD/mainG */}
+                {(mobileSlotPicker === 'mainD' || mobileSlotPicker === 'mainG') && character.armes.map((a, i) => {
+                  const isAssigned = a.nom === character.arme1 || a.nom === character.arme2
+                  const isCurrent = mobileSlotPicker === 'mainD' ? a.nom === character.arme1 : a.nom === character.arme2
+                  const blockedByOther = !isCurrent && isAssigned
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                      borderBottom: '1px solid rgba(201,168,76,0.08)',
+                      cursor: blockedByOther ? 'not-allowed' : 'pointer', opacity: blockedByOther ? 0.4 : 1 }}
+                      onClick={() => !blockedByOther && assignToSlot(mobileSlotPicker, a.nom, 'arme')}>
+                      <input type="radio" readOnly checked={isCurrent}
+                        style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{a.nom}</div>
+                        <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>
+                          DM {a.dm}{is2H(a.nom) ? ' — 2 mains' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* Armures pour corps */}
+                {mobileSlotPicker === 'corps' && character.armuresEquipees.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                    borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer' }}
+                    onClick={() => assignToSlot('corps', a.nom, 'armure')}>
+                    <input type="radio" readOnly checked={a.equipe}
+                      style={{ width: 20, height: 20, accentColor: 'rgba(100,160,255,0.8)', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{a.nom}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>DEF +{a.def}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {eqTip && (
           <div style={{
             position: 'fixed', zIndex: 9999, pointerEvents: 'none',

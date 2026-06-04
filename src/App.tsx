@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
 import { defaultCharacter } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
@@ -42,16 +43,8 @@ function AppContent() {
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
-  const [library, setLibrary] = useState<SavedEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('tdr-library')
-      if (!saved) return []
-      const parsed: SavedEntry[] = JSON.parse(saved)
-      // Portraits are stored separately to handle localStorage size limits
-      const portraits: Record<string, string> = JSON.parse(localStorage.getItem('tdr-portraits') ?? '{}')
-      return parsed.map(e => ({ ...e, character: { ...e.character, portrait: portraits[e.id] ?? e.character.portrait ?? '' } }))
-    } catch { return [] }
-  })
+  const [library, setLibrary] = useState<SavedEntry[]>([])
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null)
   const [voieHovered, setVoieHovered] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
@@ -137,22 +130,52 @@ function AppContent() {
     return () => window.removeEventListener('beforeprint', before)
   }, [])
 
-  // Persist library to localStorage (portraits stored separately to handle 5MB limit)
+  // Chargement initial de la bibliothèque
   useEffect(() => {
+    async function load() {
+      try {
+        const raw = await loadDataFile('library.json')
+        if (raw) {
+          const parsed: SavedEntry[] = JSON.parse(raw)
+          const portraitsRaw = await loadDataFile('portraits.json')
+          const portraits: Record<string, string> = portraitsRaw ? JSON.parse(portraitsRaw) : {}
+          setLibrary(parsed.map(e => ({ ...e, character: { ...e.character, portrait: portraits[e.id] ?? e.character.portrait ?? '' } })))
+        }
+      } catch {
+        // Fallback localStorage (migration depuis ancienne version)
+        try {
+          const saved = localStorage.getItem('tdr-library')
+          if (saved) {
+            const parsed: SavedEntry[] = JSON.parse(saved)
+            const portraits: Record<string, string> = JSON.parse(localStorage.getItem('tdr-portraits') ?? '{}')
+            setLibrary(parsed.map(e => ({ ...e, character: { ...e.character, portrait: portraits[e.id] ?? e.character.portrait ?? '' } })))
+          }
+        } catch { /* ignore */ }
+      }
+      setLibraryLoaded(true)
+    }
+    load()
+  }, [])
+
+  // Persistance de la bibliothèque (portraits séparés pour limites de taille)
+  const saveLibrary = useCallback(async (lib: SavedEntry[]) => {
     try {
       const portraits: Record<string, string> = {}
-      const compact = library.map(e => {
+      const compact = lib.map(e => {
         if (e.character.portrait) portraits[e.id] = e.character.portrait
         return { ...e, character: { ...e.character, portrait: '' } }
       })
-      localStorage.setItem('tdr-library', JSON.stringify(compact))
+      await saveDataFile('library.json', JSON.stringify(compact))
       try {
-        localStorage.setItem('tdr-portraits', JSON.stringify(portraits))
-      } catch {
-        localStorage.removeItem('tdr-portraits')
-      }
+        await saveDataFile('portraits.json', JSON.stringify(portraits))
+      } catch { /* portrait trop grand */ }
     } catch { /* quota dépassé */ }
-  }, [library])
+  }, [])
+
+  useEffect(() => {
+    if (!libraryLoaded) return
+    saveLibrary(library)
+  }, [library, libraryLoaded, saveLibrary])
 
   const getCoords = (e: React.MouseEvent) => {
     const rect = sheetRef.current!.getBoundingClientRect()
@@ -262,11 +285,6 @@ function AppContent() {
                   border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
                   color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
                 }}>Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}</button>
-                <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                  style={{ flexShrink: 0, color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>−</button>
-                <span style={{ flexShrink: 0, fontSize: 13, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
-                <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                  style={{ flexShrink: 0, color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>+</button>
                 <button onClick={() => setShowDescEditor(d => !d)} style={{
                   flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
@@ -274,7 +292,7 @@ function AppContent() {
                 }}>✎ Données du jeu</button>
               </div>
               {/* Feuille scrollable */}
-              <div style={{ padding: '0 4px 80px', zoom: zoom / 100 }}>
+              <div style={{ padding: '0 4px 80px' }}>
                 {sheetPage === 'recto'
                   ? <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
                   : <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />}
@@ -298,7 +316,6 @@ function AppContent() {
                   onPrev={() => setStep(s => Math.max(s - 1, 0))}
                   onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                   onSave={() => setShowSave(true)}
-                  onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
                 />
               </div>
             </div>

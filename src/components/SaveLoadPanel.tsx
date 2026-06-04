@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useModalBackButton } from '../hooks/useModalBackButton'
+import { saveDataFile } from '../utils/tauriStorage'
 import type { Character } from '../types/character'
 
 export interface SavedEntry {
@@ -24,6 +25,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
   useModalBackButton(onClose)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
   const nomPerso = character.nomPersonnage?.trim() || character.nomJoueur?.trim() || 'Personnage sans nom'
 
@@ -53,12 +55,21 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
     setConfirm(null)
   }
 
-  const downloadJson = (filename: string, payload: unknown) => {
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
+  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+  const downloadJson = async (filename: string, payload: unknown) => {
+    const content = JSON.stringify(payload, null, 2)
+    if (isTauri) {
+      await saveDataFile(filename, content)
+      setSaveMsg(`Enregistré dans Documents/TdA/${filename}`)
+      setTimeout(() => setSaveMsg(null), 3000)
+    } else {
+      const blob = new Blob([content], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    }
   }
 
   const exportLibrary = () => downloadJson('personnages-tdr.json', library)
@@ -193,6 +204,14 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
             </div>
           ))}
         </div>
+
+        {/* Message confirmation export */}
+        {saveMsg && (
+          <div style={{ fontSize: 12, color: 'rgba(201,168,76,0.9)', textAlign: 'center',
+            background: 'rgba(201,168,76,0.08)', borderRadius: 4, padding: '6px 10px' }}>
+            ✓ {saveMsg}
+          </div>
+        )}
 
         {/* Import / Export */}
         <div style={{ display: 'flex', gap: 8 }}>

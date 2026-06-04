@@ -559,7 +559,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           const pre = `C${slot + 1} `
           const f = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
             <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
-              value={value} onChange={noop} align={align} label={pre + label}
+              value={value} onChange={noop} readOnly align={align} label={pre + label}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
           )
           return (
@@ -574,7 +574,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {c
                 ? <>
                     <DraggableField key={`C${slot+1} Init`} top={Q.init.top} left={Q.init.left} width={Q.init.width} height={2}
-                      value={c.initValue} onChange={noop} align="center" label={`C${slot+1} Init`}
+                      value={c.initValue} onChange={noop} readOnly align="center" label={`C${slot+1} Init`}
                       calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
                     {c.initDisplay !== c.initValue && (
                       <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
@@ -589,7 +589,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {c
                 ? <>
                     <DraggableField key={`C${slot+1} PV`} top={Q.pv.top} left={Q.pv.left} width={Q.pv.width} height={2}
-                      value={c.pvValue} onChange={noop} align="center" label={`C${slot+1} PV`}
+                      value={c.pvValue} onChange={noop} readOnly align="center" label={`C${slot+1} PV`}
                       calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
                     {c.pvDisplay !== c.pvValue && (
                       <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}

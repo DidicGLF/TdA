@@ -153,7 +153,6 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; x: number; y: number }
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [hoveredRangInfo, setHoveredRangInfo] = useState<{ voie: VoieKey; rang: number; x: number; y: number } | null>(null)
-
   const toggleVoieRang = (voie: VoieKey, rang: number) => {
     if (calibrate) return
     const v = character[voie] as VoiePersonnage
@@ -364,15 +363,15 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
       {/* === IDENTITÉ === */}
       {f({ label: "Nom joueur",  top: 10.1, left: 52.8, width: 18.3, height: 2.0, value: character.nomJoueur,     onChange: v => onChange({ nomJoueur: v }),                        active: activeStep === 0 })}
-      {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: character.profil,        onChange: v => onChange({ profil: v }),                           active: activeStep === 3 })}
+      {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: character.profil,        onChange: () => {}, readOnly: true,                                               active: activeStep === 3 })}
       {f({ label: "Genre",       top: 10.1, left: 92.3, width: 6.7,  height: 2.0, value: character.genre,         onChange: v => onChange({ genre: v }),                            active: activeStep === 0 })}
-      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : '', onChange: v => onChange({ famille: v as any }),                   active: activeStep === 3 })}
+      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : '', onChange: () => {}, readOnly: true, active: activeStep === 3 })}
       {f({ label: "Âge",         top: 12.2, left: 92.1, width: 6.4,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
       {f({ label: "Nom perso",   top: 14.4, left: 51.9, width: 20.7, height: 2.0, value: character.nomPersonnage,  onChange: v => onChange({ nomPersonnage: v }),                   active: activeStep === 0 })}
-      {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: character.peuple,        onChange: v => onChange({ peuple: v }),                           active: activeStep === 1 })}
+      {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: character.peuple,        onChange: () => {}, readOnly: true,                                               active: activeStep === 1 })}
       {f({ label: "Taille",      top: 14.3, left: 91.7, width: 5.7,  height: 2.0, value: character.taille,        onChange: v => onChange({ taille: v }),                           active: activeStep === 0 })}
-      {f({ label: "Niveau",      top: 16.5, left: 41.8, width: 4.9,  height: 2.0, value: character.niveau,        onChange: () => {}, align: "center" })}
-      {f({ label: "Culture",     top: 16.5, left: 76.3, width: 16.6, height: 2.0, value: character.culture,       onChange: v => onChange({ culture: v }),                          active: activeStep === 1 })}
+      {f({ label: "Niveau",      top: 16.5, left: 41.8, width: 4.9,  height: 2.0, value: character.niveau,        onChange: () => {}, readOnly: true, align: "center" })}
+      {f({ label: "Culture",     top: 16.5, left: 76.3, width: 16.6, height: 2.0, value: character.culture,       onChange: () => {}, readOnly: true,                                               active: activeStep === 1 })}
       {f({ label: "Poids",       top: 16.5, left: 91.6, width: 5.4,  height: 2.0, value: character.poids,         onChange: v => onChange({ poids: v }),                            active: activeStep === 0 })}
 
       {/* === CARACTÉRISTIQUES === */}
@@ -391,8 +390,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
           return (
             <React.Fragment key={key}>
-              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
-              {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, align: "center" })}
+              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, readOnly: true, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
+              {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, readOnly: true, align: "center" })}
             </React.Fragment>
           )
         })
@@ -498,17 +497,17 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         }
 
         return <>
-          {f({ label: "Initiative", top: 22.2, left: 50, width: 5.1, height: 2.0, value: DEX.valeur, onChange: () => {}, align: "center" })}
+          {f({ label: "Initiative", top: 22.2, left: 50, width: 5.1, height: 2.0, value: DEX.valeur, onChange: () => {}, readOnly: true, align: "center" })}
           {f({ label: "Enc. init.", top: 22.2, left: 62.2, width: 5.0, height: 2.0,
             value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0',
-            onChange: () => {}, align: "center",
+            onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'DEF armure équipée', value: armorDef },
               { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
             ], total: totalEncombrement > 0 ? `-${totalEncombrement}` : '0' } })}
           {f({ label: "Initiative totale", top: 22.2, left: 68.3, width: 5.0, height: 2.0,
             value: String(initiativeTotal),
-            onChange: () => {}, align: "center",
+            onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'Valeur DEX', value: DEX.valeur },
               { label: 'Encombrement', value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0', neg: totalEncombrement > 0 },
@@ -517,10 +516,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             ], total: initiativeTotal } })}
 
           {/* Défense : Mod.DEX */}
-          {f({ label: "Déf mod DEX", top: 38.1, left: 56.1, width: 5.0, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, align: "center" })}
+          {f({ label: "Déf mod DEX", top: 38.1, left: 56.1, width: 5.0, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: true, align: "center" })}
 
           {/* Défense : armure */}
-          {f({ label: "Déf armure", top: 38.1, left: 66.2, width: 5.0, height: 2.0, value: armorDef > 0 ? `+${armorDef}` : '0', onChange: () => {}, align: "center" })}
+          {f({ label: "Déf armure", top: 38.1, left: 66.2, width: 5.0, height: 2.0, value: armorDef > 0 ? `+${armorDef}` : '0', onChange: () => {}, readOnly: true, align: "center" })}
           {!calibrate && (
             <div style={{ position: 'absolute', top: '38.1%', left: '66.2%', width: '5%', height: '2%',
               transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
@@ -543,7 +542,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           )}
 
           {/* Défense : bouclier */}
-          {f({ label: "Déf bouclier", top: 38.1, left: 78.8, width: 5.0, height: 2.0, value: shieldDef > 0 ? `+${shieldDef}` : '0', onChange: () => {}, align: "center" })}
+          {f({ label: "Déf bouclier", top: 38.1, left: 78.8, width: 5.0, height: 2.0, value: shieldDef > 0 ? `+${shieldDef}` : '0', onChange: () => {}, readOnly: true, align: "center" })}
           {!calibrate && (
             <div style={{ position: 'absolute', top: '38.1%', left: '78.8%', width: '5%', height: '2%',
               transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
@@ -586,14 +585,14 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             ]
             return f({ label: "DEF total", top: 38.1, left: 93.3, width: 5.0, height: 2.0,
               value: String(defBase + defFromVoies),
-              onChange: () => {}, align: "center",
+              onChange: () => {}, readOnly: true, align: "center",
               formula: { lines: defLines, total: defBase + defFromVoies } })
           })()}
 
           {/* Encombrement (section défense) */}
           {f({ label: "Encombrement", top: 41.3, left: 77.3, width: 6.6, height: 2.0,
             value: armorDef > 0 ? `${armorDef}` : '0',
-            onChange: () => {}, align: "center",
+            onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).length > 0
               ? character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).map(a => ({ label: a.nom, value: `+${a.def}` }))
               : [{ label: 'Aucune armure équipée', value: '0' }],
@@ -604,17 +603,17 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             align: "center", tooltipDesc: "Réduction d'encombrement par enchantement magique" })}
           {f({ label: "Total encombrement", top: 41.1, left: 93.4, width: 5.0, height: 2.0,
             value: String(totalEncombrement),
-            onChange: () => {}, align: "center",
+            onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'DEF armure', value: armorDef },
               { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
             ], total: totalEncombrement } })}
 
           {/* ATT contact */}
-          {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, align: "center" })}
-          {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, align: "center" })}
-          {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, align: "center" })}
-          {f({ label: "ATT contact total",  top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, align: "center",
+          {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "ATT contact total",  top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'Niveau', value: niv },
               { label: 'Mod. FOR', value: fmt(FOR.mod) },
@@ -625,11 +624,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             ], total: fmt(attContactTotal) } })}
 
           {/* ATT distance */}
-          {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, align: "center" })}
-          {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, align: "center" })}
-          {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: true, align: "center" })}
           {f({ label: "ATT dist total",      top: 30.9, left: 68.3, width: 5.0, height: 2.0,
-            value: fmt(attDistTotal), onChange: () => {}, align: "center",
+            value: fmt(attDistTotal), onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'Niveau', value: niv },
               { label: 'Mod. DEX', value: fmt(DEX.mod) },
@@ -640,11 +639,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             ], total: fmt(attDistTotal) } })}
 
           {/* ATT magique */}
-          {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, align: "center" })}
-          {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {},  align: "center" })}
-          {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, align: "center" })}
+          {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, readOnly: true, align: "center" })}
+          {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: true,  align: "center" })}
+          {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: true, align: "center" })}
           {f({ label: "ATT mag total",      top: 33.7, left: 68.3, width: 5.0, height: 2.0,
-            value: fmt(attMagTotal), onChange: () => {}, align: "center",
+            value: fmt(attMagTotal), onChange: () => {}, readOnly: true, align: "center",
             formula: { lines: [
               { label: 'Niveau', value: niv },
               { label: 'Mod. INT', value: fmt(INT.mod) },
@@ -656,7 +655,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
           {/* Armes */}
           {f({ label: "Arme 1",    top: 22.1, left: 85.7, width: 20.0, height: 2.0, value: character.arme1,   onChange: v => onChange({ arme1: v }) })}
-          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, align: "center",
+          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, readOnly: true, align: "center",
             formula: character.arme1 ? formulaArme(character.arme1) : undefined })}
           {(calibrate || character.arme1) && (() => {
             const e1 = character.arme1 ? findArmeEntry(armes, character.arme1) : null
@@ -670,18 +669,18 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               ...(modVal1 !== null ? [{ label: `Mod. ${e1.mod}`, value: fmt(modVal1) }] : []),
               ...groupContribs(bonusContribs1),
             ], total: dm1 } : undefined
-            return f({ label: "DM Arme 1", top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, align: "center", formula: formula1 })
+            return f({ label: "DM Arme 1", top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, readOnly: true, align: "center", formula: formula1 })
           })()}
           {!calibrate && !character.arme1 && diceEffects['DM_MAINS_NUES'] && (() => {
             const { diceStr } = diceEffects['DM_MAINS_NUES']
             const forMod = getMod(FOR.valeur)
             const dm = `${diceStr} ${forMod >= 0 ? '+' : ''}${forMod}`
             return f({ label: "DM mains nues", top: 24.3, left: 91.4, width: 9.0, height: 2.0,
-              value: dm, onChange: () => {}, align: "center",
+              value: dm, onChange: () => {}, readOnly: true, align: "center",
               formula: { lines: [{ label: 'Dés', value: diceStr }, { label: 'Mod. FOR', value: fmt(forMod) }], total: dm } })
           })()}
           {f({ label: "Arme 2",    top: 29.3, left: 85.8, width: 19.9, height: 2.0, value: character.arme2,   onChange: v => onChange({ arme2: v }) })}
-          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, align: "center",
+          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, readOnly: true, align: "center",
             formula: character.arme2 ? formulaArme(character.arme2) : undefined })}
           {(calibrate || character.arme2) && (() => {
             const e2 = character.arme2 ? findArmeEntry(armes, character.arme2) : null
@@ -695,7 +694,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               ...(modVal2 !== null ? [{ label: `Mod. ${e2.mod}`, value: fmt(modVal2) }] : []),
               ...groupContribs(bonusContribs2),
             ], total: dm2 } : undefined
-            return f({ label: "DM Arme 2", top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, align: "center", formula: formula2 })
+            return f({ label: "DM Arme 2", top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: true, align: "center", formula: formula2 })
           })()}
 
           {/* PV / PM / PC */}
@@ -721,7 +720,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             }
             pvLines.push(...groupContribs(pvContribs))
             const pvTotal = pvBase + pvFromVoies
-            return f({ label: "PV total", top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, align: "center", active: activeStep === 4,
+            return f({ label: "PV total", top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, readOnly: true, align: "center", active: activeStep === 4,
               formula: { lines: pvLines, total: pvTotal } })
           })()}
           {f({ label: "PM", top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
@@ -829,7 +828,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
         return (
           <React.Fragment key={`${id}-cap`}>
-            {f({ label: `${id} nom`, top: pos.top, left: pos.left, width: pos.width, height: 2.0, value: nomCap, onChange: () => {}, active: activeStep === 3 })}
+            {f({ label: `${id} nom`, top: pos.top, left: pos.left, width: pos.width, height: 2.0, value: nomCap, onChange: () => {}, readOnly: true, active: activeStep === 3 })}
             {desc && (
               <div
                 style={{
@@ -965,11 +964,12 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       })}
 
       {/* === VOIES === */}
-      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: character.peuple,   onChange: () => {}, active: activeStep === 1 })}
-      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: character.culture, onChange: () => {}, active: activeStep === 1 })}
-      {f({ label: "Voie 1", top: 70.2, left: 22.2, width: 23.3, height: 2.0, value: character.voie1.nom, onChange: v => setVoieNom('voie1', v), active: activeStep === 3 })}
-      {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: character.voie2.nom, onChange: v => setVoieNom('voie2', v), active: activeStep === 3 })}
-      {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: character.voie3.nom, onChange: v => setVoieNom('voie3', v), active: activeStep === 3 })}
+      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: character.peuple,   onChange: () => {}, readOnly: true, active: activeStep === 1 })}
+      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: character.culture, onChange: () => {}, readOnly: true, active: activeStep === 1 })}
+      {f({ label: "Voie 1", top: 70.2, left: 22.2, width: 23.3, height: 2.0, value: character.voie1.nom, onChange: () => {}, readOnly: true, active: activeStep === 3 })}
+      {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: character.voie2.nom, onChange: () => {}, readOnly: true, active: activeStep === 3 })}
+      {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: character.voie3.nom, onChange: () => {}, readOnly: true, active: activeStep === 3 })}
+
     </div>
   )
 }
