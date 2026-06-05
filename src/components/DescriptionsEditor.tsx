@@ -5,6 +5,7 @@ import PEUPLES_RAW from '../data/peuples.json'
 import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import { useGameData } from '../context/GameDataContext'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
+import type { CompanionEntry } from '../types/gameData'
 
 const VOIES_BUNDLE_NOMS = new Set(VOIES_BUNDLE.map(v => v.nom))
 // descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
@@ -130,6 +131,8 @@ type PendingItem =
   | { id: string; type: 'voie'; nom: string; data: RangEntry[]; expanded: boolean }
   | { id: string; type: 'trait'; data: TraitEntry; expanded: boolean }
   | { id: string; type: 'peuple'; data: PeupleEntry; expanded: boolean }
+  | { id: string; type: 'trait-racial'; data: TraitEntry; expanded: boolean }
+  | { id: string; type: 'compagnon'; data: CompanionEntry; expanded: boolean }
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
   const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, openDataDir } = useGameData()
@@ -163,6 +166,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [traitRacialQuery, setTraitRacialQuery] = useState('')
   const [traitsRaciauxExported, setTraitsRaciauxExported] = useState(false)
   const traitRacialDescRef = useRef<HTMLTextAreaElement | null>(null)
+  const traitRacialImportRef = useRef<HTMLInputElement | null>(null)
+  const compagnonImportRef = useRef<HTMLInputElement | null>(null)
 
   // Compagnons
   const [selectedCompagnon, setSelectedCompagnon] = useState(0)
@@ -183,6 +188,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [previewPendingId, setPreviewPendingId] = useState<string | null>(null)
   const [mergeSelectedRangs, setMergeSelectedRangs] = useState<Set<number>>(new Set())
   const pendingFileRef = useRef<HTMLInputElement>(null)
+
+  // Mobile drawer
+  const isMobile = window.innerWidth <= 700
+  const [mobileListOpen, setMobileListOpen] = useState(true)
+  const touchStartX = useRef<number | null>(null)
+  const closeMobileList = () => { if (isMobile) setMobileListOpen(false) }
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobile || touchStartX.current === null) return
+    if (e.changedTouches[0].clientX - touchStartX.current > 70) setMobileListOpen(true)
+    touchStartX.current = null
+  }
 
   const voiesList = useMemo(() =>
     Object.keys(data).sort((a, b) => a.localeCompare(b, 'fr'))
@@ -642,7 +659,70 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     e.target.value = ''
   }
 
+  const importSingleTraitRacial = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const raw = JSON.parse(ev.target?.result as string)
+        if (raw.type === 'trait-racial' && raw.data?.nom !== undefined) {
+          setPendingItems(prev => [...prev, { id: crypto.randomUUID(), type: 'trait-racial', data: raw.data, expanded: false }])
+        } else { alert('Format non reconnu. Utilisez les fichiers exportés depuis cet éditeur (type: trait-racial).') }
+      } catch { alert('Fichier JSON invalide.') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const importSingleCompagnon = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const raw = JSON.parse(ev.target?.result as string)
+        if (raw.type === 'compagnon' && raw.data?.nom !== undefined) {
+          setPendingItems(prev => [...prev, { id: crypto.randomUUID(), type: 'compagnon', data: raw.data, expanded: false }])
+        } else { alert('Format non reconnu. Utilisez les fichiers exportés depuis cet éditeur (type: compagnon).') }
+      } catch { alert('Fichier JSON invalide.') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA']
+
+  const renderCompagnonStats = (c: CompanionEntry) => {
+    const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
+    const stats: [string, string][] = [
+      ['FOR', fmtMod(c.for)], ['DEX', fmtMod(c.dex)], ['CON', fmtMod(c.con)],
+      ['INT', fmtMod(c.int)], ['SAG', fmtMod(c.sag)], ['CHA', fmtMod(c.cha)],
+      ['Init', String(c.init)], ['DEF', String(c.def)], ['PV', String(c.pv)],
+    ]
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {stats.map(([label, val]) => (
+            <span key={label} style={{ fontSize: 13, color: S.parchment }}>
+              <span style={{ color: S.gold, fontWeight: 600, marginRight: 3 }}>{label}</span>{val}
+            </span>
+          ))}
+        </div>
+        {(c.attaque1 || c.attaque2) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {[c.attaque1, c.attaque2].filter(Boolean).map((a, i) => (
+              <div key={i} style={{ fontSize: 13, color: S.parchment }}>
+                <span style={{ color: S.gold, fontWeight: 600, marginRight: 4 }}>{a!.nom || `Attaque ${i+1}`}</span>
+                {a!.bonus} — {a!.dm}
+              </div>
+            ))}
+          </div>
+        )}
+        {c.capacites && <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{c.capacites}</div>}
+      </div>
+    )
+  }
 
   const S = {
     gold: 'var(--tdr-gold)',
@@ -654,6 +734,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   return (
     <>
     <input ref={pendingFileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importPending} />
+    <input ref={traitRacialImportRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importSingleTraitRacial} />
+    <input ref={compagnonImportRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importSingleCompagnon} />
 
     {/* Modal de prévisualisation / comparaison d'un élément en attente */}
     {previewPendingId && (() => {
@@ -661,8 +743,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       if (!item) return null
       const isDoublon = item.type === 'voie' ? !!data[item.nom]
         : item.type === 'trait' ? traits.some(t => t.nom === item.data.nom)
+        : item.type === 'trait-racial' ? traitsRaciaux.some(t => t.nom === item.data.nom)
+        : item.type === 'compagnon' ? compagnons.some(c => c.nom === item.data.nom)
         : peuples.some(p => p.label === item.data.label)
-      const nomAffiche = item.type === 'voie' ? item.nom : item.type === 'trait' ? item.data.nom : item.data.label
+      const nomAffiche = item.type === 'voie' ? item.nom
+        : item.type === 'peuple' ? item.data.label
+        : item.data.nom
 
       const incorporer = () => {
         if (item.type === 'voie') {
@@ -671,6 +757,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           if (isDoublon) setTraits(prev => prev.map(t => t.nom === item.data.nom ? item.data : t))
           else { setTraits(prev => [...prev, item.data]); setSelectedTrait(traits.length) }
           setTraitsExported(false)
+        } else if (item.type === 'trait-racial') {
+          if (isDoublon) setTraitsRaciaux(prev => prev.map(t => t.nom === item.data.nom ? item.data : t))
+          else { setTraitsRaciaux(prev => [...prev, item.data]); setSelectedTraitRacial(traitsRaciaux.length) }
+          setTraitsRaciauxExported(false)
+        } else if (item.type === 'compagnon') {
+          if (isDoublon) setCompagnons(prev => prev.map(c => c.nom === item.data.nom ? item.data : c))
+          else { setCompagnons(prev => [...prev, item.data]); setSelectedCompagnon(compagnons.length) }
+          setCompagnonsExported(false)
         } else {
           if (isDoublon) setPeuples(prev => prev.map(p => p.label === item.data.label ? item.data : p))
           else { setPeuples(prev => [...prev, item.data]); setSelectedPeuple(peuples.length) }
@@ -687,6 +781,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         } else if (item.type === 'trait') {
           let n = `${item.data.nom} (2)`; let i = 3; while (traits.some(t => t.nom === n)) n = `${item.data.nom} (${i++})`
           setTraits(prev => [...prev, { ...item.data, nom: n }]); setSelectedTrait(traits.length); setTraitsExported(false)
+        } else if (item.type === 'trait-racial') {
+          let n = `${item.data.nom} (2)`; let i = 3; while (traitsRaciaux.some(t => t.nom === n)) n = `${item.data.nom} (${i++})`
+          setTraitsRaciaux(prev => [...prev, { ...item.data, nom: n }]); setSelectedTraitRacial(traitsRaciaux.length); setTraitsRaciauxExported(false)
+        } else if (item.type === 'compagnon') {
+          let n = `${item.data.nom} (2)`; let i = 3; while (compagnons.some(c => c.nom === n)) n = `${item.data.nom} (${i++})`
+          setCompagnons(prev => [...prev, { ...item.data, nom: n }]); setSelectedCompagnon(compagnons.length); setCompagnonsExported(false)
         } else {
           let n = `${item.data.label} (2)`; let i = 3; while (peuples.some(p => p.label === n)) n = `${item.data.label} (${i++})`
           setPeuples(prev => [...prev, { ...item.data, label: n }]); setSelectedPeuple(peuples.length); setPeuplesExported(false)
@@ -783,6 +883,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     </div>
                   ))}
                   {item.type === 'trait' && <div style={{ fontSize: 14, color: S.parchment, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{traits.find(t => t.nom === item.data.nom)?.desc || '—'}</div>}
+                  {item.type === 'trait-racial' && <div style={{ fontSize: 14, color: S.parchment, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{traitsRaciaux.find(t => t.nom === item.data.nom)?.desc || '—'}</div>}
+                  {item.type === 'compagnon' && (() => { const ex = compagnons.find(c => c.nom === item.data.nom); return ex ? renderCompagnonStats(ex) : null })()}
                   {item.type === 'peuple' && renderCulturesPreview(peuples.find(p => p.label === item.data.label) ?? { label: '', cultures: [] })}
                 </div>
               )}
@@ -841,6 +943,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   )
                 })}
                 {item.type === 'trait' && <div style={{ fontSize: 14, color: S.parchment, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{item.data.desc || '—'}</div>}
+                {item.type === 'trait-racial' && <div style={{ fontSize: 14, color: S.parchment, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{item.data.desc || '—'}</div>}
+                {item.type === 'compagnon' && renderCompagnonStats(item.data)}
                 {item.type === 'peuple' && (() => {
                   const existingPeuple = isDoublon ? peuples.find(p => p.label === item.data.label) : null
                   return (
@@ -990,26 +1094,36 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     }} onClick={onClose}>
       <div style={{
         background: 'rgba(18,14,9,0.99)',
-        border: `1px solid ${S.border}`,
-        borderRadius: 8,
-        margin: '24px auto',
-        width: '90vw', maxWidth: 1200,
+        border: isMobile ? 'none' : `1px solid ${S.border}`,
+        borderRadius: isMobile ? 0 : 8,
+        margin: isMobile ? 0 : '24px auto',
+        width: isMobile ? '100%' : '90vw',
+        maxWidth: isMobile ? '100%' : 1200,
+        height: isMobile ? '100%' : undefined,
         display: 'flex', flexDirection: 'column',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
+        boxShadow: isMobile ? 'none' : '0 8px 40px rgba(0,0,0,0.9)',
         overflow: 'hidden',
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 20px',
+          padding: isMobile ? '10px 12px' : '14px 20px',
           borderBottom: `1px solid ${S.border}`,
-          flexShrink: 0, gap: 12,
+          flexShrink: 0, gap: 8,
         }}>
-          <div style={{ display: 'flex', gap: 6 }}>
+          {isMobile && !mobileListOpen && (
+            <button onClick={() => setMobileListOpen(true)} style={{
+              flexShrink: 0, background: 'none', border: `1px solid ${S.border}`,
+              borderRadius: 4, color: S.gold, fontSize: 20, padding: '2px 8px',
+              cursor: 'pointer', lineHeight: 1,
+            }}>☰</button>
+          )}
+          <div style={{ display: 'flex', gap: 6, overflowX: isMobile ? 'auto' : undefined, flex: isMobile ? 1 : undefined, WebkitOverflowScrolling: 'touch' }}>
             {(['peuples', 'traitsRaciaux', 'voies', 'traits', 'compagnons'] as const).map(s => (
-              <button key={s} onClick={() => setSection(s)} style={{
-                padding: '4px 14px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
+              <button key={s} onClick={() => { setSection(s); setMobileListOpen(true) }} style={{
+                flexShrink: 0,
+                padding: isMobile ? '4px 10px' : '4px 14px', borderRadius: 4, fontSize: isMobile ? 14 : 17, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
                 color: S.gold, fontWeight: section === s ? 700 : 400,
@@ -1018,8 +1132,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {section === 'voies' && (<>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {!isMobile && section === 'voies' && (<>
               <button onClick={exportJson} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -1033,7 +1147,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
             </>)}
-            {section === 'traits' && (<>
+            {!isMobile && section === 'traits' && (<>
               <button onClick={exportTraits} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -1047,7 +1161,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
             </>)}
-            {section === 'traitsRaciaux' && (<>
+            {!isMobile && section === 'traitsRaciaux' && (<>
               <button onClick={() => exportWithPrompt(traitsRaciaux, 'traits-magiques' as any, 'traits-raciaux', () => setTraitsRaciauxExported(true))} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -1061,7 +1175,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
             </>)}
-            {section === 'compagnons' && (<>
+            {!isMobile && section === 'compagnons' && (<>
               <button onClick={exportCompagnons} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -1075,7 +1189,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
             </>)}
-            {section === 'peuples' && (<>
+            {!isMobile && section === 'peuples' && (<>
               <button onClick={exportPeuples} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
@@ -1089,11 +1203,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>↑ Importer</button>
             </>)}
-            <button onClick={openDataDir} title="Ouvrir le dossier Documents/TdA/" style={{
-              padding: '5px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-              border: `1px solid ${S.border}`, background: 'transparent',
-              color: 'rgba(245,236,215,0.55)',
-            }}>📁 Données</button>
+            {!isMobile && (
+              <button onClick={openDataDir} title="Ouvrir le dossier Documents/TdA/" style={{
+                padding: '5px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent',
+                color: 'rgba(245,236,215,0.55)',
+              }}>📁 Données</button>
+            )}
             <button onClick={onClose} style={{
               background: 'none', border: 'none', color: S.parchment,
               opacity: 0.5, cursor: 'pointer', fontSize: 20, lineHeight: 1,
@@ -1102,14 +1218,31 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         </div>
 
         {/* Corps */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div
+          style={{ display: 'flex', flex: 1, overflow: 'hidden', position: isMobile ? 'relative' : undefined }}
+          onTouchStart={isMobile ? handleTouchStart : undefined}
+          onTouchEnd={isMobile ? handleTouchEnd : undefined}
+        >
+          {/* Scrim mobile — ferme le drawer en tapant à côté */}
+          {isMobile && mobileListOpen && (
+            <div onClick={() => setMobileListOpen(false)} style={{
+              position: 'absolute', inset: 0, zIndex: 4,
+              background: 'rgba(0,0,0,0.45)',
+            }} />
+          )}
 
           {section === 'voies' ? (<>
             {/* Colonne voies */}
-            <div style={{
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 5,
+              width: 'min(85vw, 340px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
+              transform: mobileListOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.25s ease',
+              boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
+            } : {
               width: 'max-content', minWidth: 380, flexShrink: 0,
-              borderRight: `1px solid ${S.border}`,
-              display: 'flex', flexDirection: 'column',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
             }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
@@ -1138,7 +1271,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {filtered.map(voie => (
-                  <div key={voie} onClick={() => setSelected(voie)} className="voie-list-item" style={{
+                  <div key={voie} onClick={() => { setSelected(voie); closeMobileList() }} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selected === voie ? S.gold : S.parchment,
                     background: selected === voie ? 'rgba(201,168,76,0.1)' : 'transparent',
@@ -1795,10 +1928,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             </div>
           </>) : section === 'traits' ? (<>
             {/* Colonne traits */}
-            <div style={{
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 5,
+              width: 'min(85vw, 320px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
+              transform: mobileListOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.25s ease',
+              boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
+            } : {
               width: 'max-content', minWidth: 280, flexShrink: 0,
-              borderRight: `1px solid ${S.border}`,
-              display: 'flex', flexDirection: 'column',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
             }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
@@ -1827,7 +1966,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {traits.map((t, i) => ({ t, i })).filter(({ t }) => !traitQuery || t.nom.toLowerCase().includes(traitQuery.toLowerCase())).map(({ t, i }) => (
-                  <div key={i} onClick={() => setSelectedTrait(i)} className="voie-list-item" style={{
+                  <div key={i} onClick={() => { setSelectedTrait(i); closeMobileList() }} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedTrait === i ? S.gold : S.parchment,
                     background: selectedTrait === i ? 'rgba(201,168,76,0.1)' : 'transparent',
@@ -1953,24 +2092,38 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             )}
           </>) : section === 'traitsRaciaux' ? (<>
             {/* Colonne traits raciaux */}
-            <div style={{ width: 'max-content', minWidth: 280, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 5,
+              width: 'min(85vw, 320px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
+              transform: mobileListOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.25s ease',
+              boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
+            } : { width: 'max-content', minWidth: 280, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="text" placeholder="Rechercher…" value={traitRacialQuery}
                   onChange={e => setTraitRacialQuery(e.target.value)}
                   style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 17, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
                 />
-                <button onClick={addTraitRacial} style={{
-                  padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                  border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
-                }}>+ Nouveau trait racial</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={addTraitRacial} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold, boxSizing: 'border-box',
+                  }}>+ Nouveau trait racial</button>
+                  <button onClick={() => traitRacialImportRef.current?.click()} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'transparent',
+                    color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
+                  }}>↑ Importer un trait</button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {traitsRaciaux
                   .map((t, i) => ({ t, i }))
                   .filter(({ t }) => !traitRacialQuery || t.nom.toLowerCase().includes(traitRacialQuery.toLowerCase()))
                   .map(({ t, i }) => (
-                    <div key={i} onClick={() => setSelectedTraitRacial(i)} className="voie-list-item" style={{
+                    <div key={i} onClick={() => { setSelectedTraitRacial(i); closeMobileList() }} className="voie-list-item" style={{
                       padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                       color: selectedTraitRacial === i ? S.gold : S.parchment,
                       background: selectedTraitRacial === i ? 'rgba(201,168,76,0.1)' : 'transparent',
@@ -1978,9 +2131,54 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.nom}</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait-racial', data: t }, `trait-racial-${safeName(t.nom)}.json`) }}
+                        style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
+                        className="voie-delete-btn"
+                        title="Exporter ce trait racial"
+                      >↓</button>
                     </div>
                   ))}
               </div>
+              {/* Zone en attente — traits raciaux */}
+              {pendingItems.some(p => p.type === 'trait-racial') && (
+                <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
+                  <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
+                    En attente ({pendingItems.filter(p => p.type === 'trait-racial').length})
+                  </div>
+                  <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                    {pendingItems.filter(p => p.type === 'trait-racial').map(item => {
+                      if (item.type !== 'trait-racial') return null
+                      const isDoublon = traitsRaciaux.some(t => t.nom === item.data.nom)
+                      return (
+                        <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.nom}</span>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                          </div>
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                            <button onClick={() => {
+                              if (isDoublon) setTraitsRaciaux(prev => prev.map(t => t.nom === item.data.nom ? item.data : t))
+                              else { setTraitsRaciaux(prev => [...prev, item.data]); setSelectedTraitRacial(traitsRaciaux.length) }
+                              setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsRaciauxExported(false)
+                            }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
+                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                            </button>
+                            {isDoublon && <button onClick={() => {
+                              let n = `${item.data.nom} (2)`; let i = 3; while (traitsRaciaux.some(t => t.nom === n)) n = `${item.data.nom} (${i++})`
+                              setTraitsRaciaux(prev => [...prev, { ...item.data, nom: n }]); setSelectedTraitRacial(traitsRaciaux.length)
+                              setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsRaciauxExported(false)
+                            }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
+                            <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Éditeur trait racial */}
@@ -2017,7 +2215,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             )}
           </>) : section === 'peuples' ? (<>
             {/* Colonne peuples */}
-            <div style={{ width: 'max-content', minWidth: 340, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 5,
+              width: 'min(85vw, 340px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
+              transform: mobileListOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.25s ease',
+              boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
+            } : { width: 'max-content', minWidth: 340, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="text"
@@ -2045,7 +2250,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {peuples.map((p, i) => ({ p, i })).filter(({ p }) => !peupleQuery || p.label.toLowerCase().includes(peupleQuery.toLowerCase())).map(({ p, i }) => (
-                  <div key={i} onClick={() => { setSelectedPeuple(i); setSelectedCulture(0) }} className="voie-list-item" style={{
+                  <div key={i} onClick={() => { setSelectedPeuple(i); setSelectedCulture(0); closeMobileList() }} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedPeuple === i ? S.gold : S.parchment,
                     background: selectedPeuple === i ? 'rgba(201,168,76,0.1)' : 'transparent',
@@ -2254,7 +2459,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
           {section === 'compagnons' && (<>
             {/* Liste compagnons */}
-            <div style={{
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 5,
+              width: 'min(85vw, 300px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column',
+              transform: mobileListOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.25s ease',
+              boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
+            } : {
               width: 260, flexShrink: 0, borderRight: `1px solid ${S.border}`,
               display: 'flex', flexDirection: 'column',
             }}>
@@ -2269,6 +2481,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
                   }}>+ Nouveau compagnon</button>
+                  <button onClick={() => compagnonImportRef.current?.click()} style={{
+                    flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                    border: `1px solid ${S.border}`, background: 'transparent',
+                    color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
+                  }}>↑ Importer</button>
                   <button
                     onClick={() => setShowCompagnonsHelp(v => !v)}
                     title="Aide sur les compagnons"
@@ -2338,7 +2555,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   .sort((a, b) => a.c.nom.localeCompare(b.c.nom, 'fr'))
                   .filter(({ c }) => !compagnonQuery || c.nom.toLowerCase().includes(compagnonQuery.toLowerCase()))
                   .map(({ c, i }) => (
-                    <div key={i} onClick={() => setSelectedCompagnon(i)} className="voie-list-item" style={{
+                    <div key={i} onClick={() => { setSelectedCompagnon(i); closeMobileList() }} className="voie-list-item" style={{
                       padding: '7px 12px', fontSize: 15, cursor: 'pointer',
                       color: selectedCompagnon === i ? S.gold : S.parchment,
                       background: selectedCompagnon === i ? 'rgba(201,168,76,0.1)' : 'transparent',
@@ -2346,9 +2563,54 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'compagnon', data: c }, `compagnon-${safeName(c.nom)}.json`) }}
+                        style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
+                        className="voie-delete-btn"
+                        title="Exporter ce compagnon"
+                      >↓</button>
                     </div>
                   ))}
               </div>
+              {/* Zone en attente — compagnons */}
+              {pendingItems.some(p => p.type === 'compagnon') && (
+                <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
+                  <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
+                    En attente ({pendingItems.filter(p => p.type === 'compagnon').length})
+                  </div>
+                  <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                    {pendingItems.filter(p => p.type === 'compagnon').map(item => {
+                      if (item.type !== 'compagnon') return null
+                      const isDoublon = compagnons.some(c => c.nom === item.data.nom)
+                      return (
+                        <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.nom}</span>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                          </div>
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                            <button onClick={() => {
+                              if (isDoublon) setCompagnons(prev => prev.map(c => c.nom === item.data.nom ? item.data : c))
+                              else { setCompagnons(prev => [...prev, item.data]); setSelectedCompagnon(compagnons.length) }
+                              setPendingItems(prev => prev.filter(p => p.id !== item.id)); setCompagnonsExported(false)
+                            }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
+                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                            </button>
+                            {isDoublon && <button onClick={() => {
+                              let n = `${item.data.nom} (2)`; let i = 3; while (compagnons.some(c => c.nom === n)) n = `${item.data.nom} (${i++})`
+                              setCompagnons(prev => [...prev, { ...item.data, nom: n }]); setSelectedCompagnon(compagnons.length)
+                              setPendingItems(prev => prev.filter(p => p.id !== item.id)); setCompagnonsExported(false)
+                            }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
+                            <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Éditeur compagnon */}
