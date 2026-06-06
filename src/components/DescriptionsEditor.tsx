@@ -554,6 +554,47 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setPeuplesExported(false)
   }
 
+  const cloneVoie = () => {
+    const base = `${selected} (copie)`
+    let n = base; let i = 2; while (data[n]) n = `${base} ${i++}`
+    setData(prev => ({ ...prev, [n]: JSON.parse(JSON.stringify(data[selected])) }))
+    setVoies(prev => [...prev, { nom: n, famille: voies.find(v => v.nom === selected)?.famille ?? '', categorie: 'profil' as const }])
+    setSelected(n)
+    setExported(false)
+  }
+
+  const cloneTrait = () => {
+    const base = `${traits[selectedTrait].nom} (copie)`
+    let n = base; let i = 2; while (traits.some(t => t.nom === n)) n = `${base} ${i++}`
+    setTraits(prev => [...prev, { ...traits[selectedTrait], nom: n }])
+    setSelectedTrait(traits.length)
+    setTraitsExported(false)
+  }
+
+  const cloneTraitRacial = () => {
+    const base = `${traitsRaciaux[selectedTraitRacial].nom} (copie)`
+    let n = base; let i = 2; while (traitsRaciaux.some(t => t.nom === n)) n = `${base} ${i++}`
+    setTraitsRaciaux(prev => [...prev, { ...traitsRaciaux[selectedTraitRacial], nom: n }])
+    setSelectedTraitRacial(traitsRaciaux.length)
+    setTraitsRaciauxExported(false)
+  }
+
+  const cloneCompagnon = () => {
+    const base = `${compagnons[selectedCompagnon].nom} (copie)`
+    let n = base; let i = 2; while (compagnons.some(c => c.nom === n)) n = `${base} ${i++}`
+    setCompagnons(prev => [...prev, { ...compagnons[selectedCompagnon], nom: n }])
+    setSelectedCompagnon(compagnons.length)
+    setCompagnonsExported(false)
+  }
+
+  const clonePeuple = () => {
+    const base = `${peuples[selectedPeuple].label} (copie)`
+    let n = base; let i = 2; while (peuples.some(p => p.label === n)) n = `${base} ${i++}`
+    setPeuples(prev => [...prev, { ...JSON.parse(JSON.stringify(peuples[selectedPeuple])), label: n }])
+    setSelectedPeuple(peuples.length)
+    setPeuplesExported(false)
+  }
+
   const exportPeuples = () => exportWithPrompt(peuples, 'peuples', 'peuples', () => setPeuplesExported(true))
 
   const exportSingleItem = (payload: unknown, filename: string) => {
@@ -1394,10 +1435,20 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       </select>
                     )}
                     <button
+                      onClick={cloneVoie}
+                      title="Cloner cette voie"
+                      style={{
+                        marginLeft: 'auto', padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`,
+                        background: 'transparent', color: 'rgba(201,168,76,0.7)',
+                        flexShrink: 0,
+                      }}
+                    >⎘ Cloner</button>
+                    <button
                       onClick={() => setPrintPreviewNom(selected)}
                       title="Aperçu et impression"
                       style={{
-                        marginLeft: 'auto', padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        padding: '4px 12px', borderRadius: 4, fontSize: 13,
                         cursor: 'pointer', border: `1px solid ${S.border}`,
                         background: 'transparent', color: 'rgba(245,236,215,0.55)',
                         flexShrink: 0,
@@ -2043,6 +2094,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     onBlur={e => (e.target.style.borderColor = S.border)}
                   />
                   <button
+                    onClick={cloneTrait}
+                    title="Cloner ce trait"
+                    style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
+                  >⎘ Cloner</button>
+                  <button
                     onClick={() => askConfirm(`Supprimer le trait "${traits[selectedTrait]?.nom}" ?`, () => removeTrait(selectedTrait))}
                     title="Supprimer ce trait"
                     style={{
@@ -2194,6 +2250,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     onBlur={e => (e.target.style.borderColor = S.border)}
                   />
                   <button
+                    onClick={cloneTraitRacial}
+                    title="Cloner ce trait racial"
+                    style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
+                  >⎘ Cloner</button>
+                  <button
                     onClick={() => askConfirm(`Supprimer le trait "${traitsRaciaux[selectedTraitRacial]?.nom}" ?`, () => removeTraitRacial(selectedTraitRacial))}
                     style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
                   >Supprimer</button>
@@ -2328,6 +2389,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    <button onClick={clonePeuple} title="Cloner ce peuple" style={{
+                      padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                      border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0,
+                    }}>⎘ Cloner</button>
                     <button onClick={() => askConfirm(`Supprimer le peuple "${peuple.label}" et toutes ses cultures ?`, () => removePeuple(selectedPeuple))} style={{
                       padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
@@ -2467,7 +2532,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               transition: 'transform 0.25s ease',
               boxShadow: mobileListOpen ? '4px 0 24px rgba(0,0,0,0.7)' : 'none',
             } : {
-              width: 260, flexShrink: 0, borderRight: `1px solid ${S.border}`,
+              width: 320, flexShrink: 0, borderRight: `1px solid ${S.border}`,
               display: 'flex', flexDirection: 'column',
             }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2480,74 +2545,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <button onClick={addCompagnon} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
+                    whiteSpace: 'nowrap',
                   }}>+ Nouveau compagnon</button>
                   <button onClick={() => compagnonImportRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
                   }}>↑ Importer</button>
-                  <button
-                    onClick={() => setShowCompagnonsHelp(v => !v)}
-                    title="Aide sur les compagnons"
-                    style={{
-                      width: 28, height: 28, borderRadius: '50%', border: `1px solid rgba(201,168,76,0.45)`,
-                      background: showCompagnonsHelp ? 'rgba(201,168,76,0.2)' : 'transparent',
-                      color: 'rgba(201,168,76,0.7)', fontSize: 13, fontWeight: 700,
-                      cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >i</button>
                 </div>
-                {showCompagnonsHelp && (
-                  <div style={{
-                    padding: '10px 12px', borderRadius: 4,
-                    background: 'rgba(201,168,76,0.05)', border: `1px solid rgba(201,168,76,0.2)`,
-                    fontSize: 12, color: 'rgba(245,236,215,0.75)', lineHeight: 1.6,
-                    display: 'flex', flexDirection: 'column', gap: 8,
-                  }}>
-                    <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                      Champs d'un compagnon
-                    </div>
-                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
-                      <tbody>
-                        {[
-                          ['FOR…CHA', 'Modificateurs du compagnon (pas les valeurs brutes). Ex : +2, -1'],
-                          ['Init / PV / DEF', 'Nombre fixe ou formule. Cliquer le bouton [f] pour basculer en mode formule'],
-                          ['Attaque — Bonus', 'Modificateur d\'attaque fixe (ex : +5) ou formule (ex : [ATT contact])'],
-                          ['Attaque — DM', 'Dommages : notation de dés + modificateur. Ex : 1d8 + [FOR]'],
-                          ['Capacités', 'Texte libre décrivant les capacités spéciales du compagnon'],
-                        ].map(([label, desc]) => (
-                          <tr key={label} style={{ verticalAlign: 'top' }}>
-                            <td style={{ color: S.gold, paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
-                            <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>
-                      Formules disponibles
-                    </div>
-                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
-                      <tbody>
-                        {[
-                          ['[NIV]', 'Niveau du personnage'],
-                          ['[NIV × N]', 'Niveau × N — ex : [NIV × 2]'],
-                          ['[RANG]', 'Rangs acquis dans la voie qui octroie ce compagnon'],
-                          ['[RANG × N]', 'Rangs × N — ex : [RANG × 10]'],
-                          ['[ATT contact]', 'Bonus d\'attaque au contact du personnage'],
-                          ['[ATT distance]', 'Bonus d\'attaque à distance du personnage'],
-                          ['[ATT magique]', 'Bonus d\'attaque magique du personnage'],
-                          ['[FOR]…[CHA]', 'Modificateur de stat du compagnon (DM uniquement)'],
-                        ].map(([token, desc]) => (
-                          <tr key={token} style={{ verticalAlign: 'top' }}>
-                            <td style={{ color: 'rgba(100,180,255,0.85)', paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontFamily: 'monospace', fontWeight: 600 }}>{token}</td>
-                            <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {compagnons
@@ -2712,6 +2717,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    <button onClick={cloneCompagnon} title="Cloner ce compagnon"
+                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
+                      ⎘ Cloner
+                    </button>
                     <button onClick={() => askConfirm(`Supprimer "${c.nom}" ?`, () => removeCompagnon(selectedCompagnon))}
                       style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
                       Supprimer
@@ -2839,6 +2848,71 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                  </div>
+
+                  {/* Bouton aide compagnons */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button
+                      onClick={() => setShowCompagnonsHelp(v => !v)}
+                      title="Aide sur les compagnons"
+                      style={{
+                        alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 4,
+                        border: `1px solid rgba(201,168,76,0.45)`,
+                        background: showCompagnonsHelp ? 'rgba(201,168,76,0.12)' : 'transparent',
+                        color: 'rgba(201,168,76,0.7)', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', letterSpacing: '0.04em',
+                      }}
+                    >i — Aide sur les champs</button>
+                    {showCompagnonsHelp && (
+                      <div style={{
+                        padding: '10px 12px', borderRadius: 4,
+                        background: 'rgba(201,168,76,0.05)', border: `1px solid rgba(201,168,76,0.2)`,
+                        fontSize: 12, color: 'rgba(245,236,215,0.75)', lineHeight: 1.6,
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                      }}>
+                        <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                          Champs d'un compagnon
+                        </div>
+                        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                          <tbody>
+                            {[
+                              ['FOR…CHA', 'Modificateurs du compagnon (pas les valeurs brutes). Ex : +2, -1'],
+                              ['Init / PV / DEF', 'Nombre fixe ou formule. Cliquer le bouton [f] pour basculer en mode formule'],
+                              ['Attaque — Bonus', 'Modificateur d\'attaque fixe (ex : +5) ou formule (ex : [ATT contact])'],
+                              ['Attaque — DM', 'Dommages : notation de dés + modificateur. Ex : 1d8 + [FOR]'],
+                              ['Capacités', 'Texte libre décrivant les capacités spéciales du compagnon'],
+                            ].map(([label, desc]) => (
+                              <tr key={label} style={{ verticalAlign: 'top' }}>
+                                <td style={{ color: S.gold, paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
+                                <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>
+                          Formules disponibles
+                        </div>
+                        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                          <tbody>
+                            {[
+                              ['[NIV]', 'Niveau du personnage'],
+                              ['[NIV × N]', 'Niveau × N — ex : [NIV × 2]'],
+                              ['[RANG]', 'Rangs acquis dans la voie qui octroie ce compagnon'],
+                              ['[RANG × N]', 'Rangs × N — ex : [RANG × 10]'],
+                              ['[ATT contact]', 'Bonus d\'attaque au contact du personnage'],
+                              ['[ATT distance]', 'Bonus d\'attaque à distance du personnage'],
+                              ['[ATT magique]', 'Bonus d\'attaque magique du personnage'],
+                              ['[FOR]…[CHA]', 'Modificateur de stat du compagnon (DM uniquement)'],
+                            ].map(([token, desc]) => (
+                              <tr key={token} style={{ verticalAlign: 'top' }}>
+                                <td style={{ color: 'rgba(100,180,255,0.85)', paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontFamily: 'monospace', fontWeight: 600 }}>{token}</td>
+                                <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
