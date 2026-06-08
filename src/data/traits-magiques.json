@@ -18,9 +18,5 @@
   {
     "nom": "Projectile de force",
     "desc": "Pour une action d'attaque, le mystique choisit une cible visible à moins de 50 mètres et projette une onde de choc qui la touche automatiquement, lui infligeant 1d4 DM. Le projectile de force est presque invisible et n'émet aucun son lorsqu'il file dans l'air."
-  },
-  {
-    "nom": "Trait droit",
-    "desc": "N'ai jamais tordu"
   }
 ]

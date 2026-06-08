@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import type { Character, VoiePersonnage } from '../types/character'
+import type { Character, VoiePersonnage, CompagnonOverride } from '../types/character'
 import { parseDesc } from '../utils/parseDesc'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
@@ -416,7 +416,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TALENT MAGIQUE === */}
       <DraggableField
-        top={23.7} left={79.4} width={29.6} height={2.0}
+        top={23.8} left={79.6} width={29.6} height={2.0}
         value={character.talentMagique.nom} onChange={v => onChange({ talentMagique: { ...character.talentMagique, nom: v } })}
         calibrate={calibrate} label="Talent magique"
         containerRef={containerRef} onMoved={cb}
@@ -425,7 +425,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {!calibrate && character.talentMagique.desc && (
         <div
           style={{
-            position: 'absolute', top: '23.7%', left: '79.4%',
+            position: 'absolute', top: '23.8%', left: '79.6%',
             width: '29.6%', height: '2%',
             transform: 'translate(-50%, -50%)',
             zIndex: 20, cursor: 'help',
@@ -508,7 +508,6 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           for: Pos; dex: Pos; con: Pos; int: Pos; sag: Pos; cha: Pos
           init: Pos; def: Pos; pv: Pos
           atk1nom: Pos; atk1bonus: Pos; atk1dm: Pos
-          atk2nom: Pos; atk2bonus: Pos; atk2dm: Pos
         }
 
         const POS: SlotPositions[] = [
@@ -525,11 +524,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
             def:      { top: 57,   left: 45,   width: 6.5 },
             pv:       { top: 59.7, left: 45,   width: 6.7 },
             atk1nom:  { top: 62.5, left: 16.5, width: 17.1},
-            atk1bonus:{ top: 64.9, left: 12.8, width: 7.1 },
-            atk1dm:   { top: 64.9, left: 22.6, width: 6.6 },
-            atk2nom:  { top: 62.6, left: 38.6, width: 17.1},
-            atk2bonus:{ top: 64.9, left: 35.3, width: 7.1 },
-            atk2dm:   { top: 64.9, left: 45.1, width: 6.6 },
+            atk1bonus:{ top: 62.6, left: 35.2, width: 7.1 },
+            atk1dm:   { top: 62.7, left: 45,   width: 6.6 },
           },
           // C2 — calibré
           {
@@ -544,11 +540,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
             def:      { top: 57,   left: 91.5, width: 6.5  },
             pv:       { top: 59.8, left: 91.6, width: 6.7  },
             atk1nom:  { top: 62.6, left: 63,   width: 17.1 },
-            atk1bonus:{ top: 64.9, left: 59.3, width: 7.1  },
-            atk1dm:   { top: 64.9, left: 69.1, width: 6.6  },
-            atk2nom:  { top: 62.6, left: 85.3, width: 17.1 },
-            atk2bonus:{ top: 64.9, left: 81.8, width: 7.1  },
-            atk2dm:   { top: 64.9, left: 91.6, width: 6.6  },
+            atk1bonus:{ top: 62.6, left: 81.8, width: 7.1  },
+            atk1dm:   { top: 62.7, left: 91.4, width: 6.6  },
           },
         ]
 
@@ -576,55 +569,54 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           const c = entry ? resolveCompagnon(entry, character.niveau, rang, att) : null
           const Q = POS[slot]
           const pre = `C${slot + 1} `
-          const f = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
+          const ov = character.compagnonsOverrides?.[slot] ?? {}
+          const setOv = (field: keyof CompagnonOverride, val: string) => {
+            const cur = character.compagnonsOverrides ?? [null, null]
+            const next: [CompagnonOverride | null, CompagnonOverride | null] = [cur[0], cur[1]]
+            next[slot] = { ...(cur[slot] ?? {}), [field]: val }
+            onChange({ compagnonsOverrides: next })
+          }
+          // Champ éditable par le joueur (stocké dans compagnonsOverrides)
+          const f = (pos: Pos, field: keyof CompagnonOverride, computed: string, label: string, align?: 'left'|'center'|'right') => (
+            <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
+              value={ov[field] ?? computed} onChange={v => setOv(field, v)} readOnly={locked} align={align} label={pre + label}
+              calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+          )
+          // Champ en lecture seule (données du catalogue non modifiables par le joueur)
+          const fRO = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
             <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
               value={value} onChange={noop} readOnly={locked} align={align} label={pre + label}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
           )
           return (
             <React.Fragment key={slot}>
-              {f(Q.nom,       c?.nom ?? '',               'nom')}
-              {f(Q.for,       c ? fmtMod(c.for)  : '',   'FOR',       'center')}
-              {f(Q.dex,       c ? fmtMod(c.dex)  : '',   'DEX',       'center')}
-              {f(Q.con,       c ? fmtMod(c.con)  : '',   'CON',       'center')}
-              {f(Q.int,       c ? fmtMod(c.int)  : '',   'INT',       'center')}
-              {f(Q.sag,       c ? fmtMod(c.sag)  : '',   'SAG',       'center')}
-              {f(Q.cha,       c ? fmtMod(c.cha)  : '',   'CHA',       'center')}
-              {c
-                ? <>
-                    <DraggableField key={`C${slot+1} Init`} top={Q.init.top} left={Q.init.left} width={Q.init.width} height={2}
-                      value={c.initValue} onChange={noop} readOnly={locked} align="center" label={`C${slot+1} Init`}
-                      calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
-                    {c.initDisplay !== c.initValue && (
-                      <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
-                        onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'Initiative', desc: c.initDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
-                        onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
-                        onMouseLeave={() => setTooltip(null)}
-                      />
-                    )}
-                  </>
-                : f(Q.init, '', 'Init', 'center')}
-              {f(Q.def,       c ? String(c.def)  : '',   'DEF',       'center')}
-              {c
-                ? <>
-                    <DraggableField key={`C${slot+1} PV`} top={Q.pv.top} left={Q.pv.left} width={Q.pv.width} height={2}
-                      value={c.pvValue} onChange={noop} readOnly={locked} align="center" label={`C${slot+1} PV`}
-                      calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
-                    {c.pvDisplay !== c.pvValue && (
-                      <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
-                        onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'PV', desc: c.pvDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
-                        onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
-                        onMouseLeave={() => setTooltip(null)}
-                      />
-                    )}
-                  </>
-                : f(Q.pv, '', 'PV', 'center')}
-              {f(Q.atk1nom,   c?.attaque1?.nom ?? '',     'Atk1 nom')}
-              {f(Q.atk1bonus, c?.atk1Display ?? '',       'Atk1 bonus','center')}
-              {f(Q.atk1dm,    c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', 'Atk1 DM', 'center')}
-              {f(Q.atk2nom,   c?.attaque2?.nom ?? '',     'Atk2 nom')}
-              {f(Q.atk2bonus, c?.atk2Display ?? '',       'Atk2 bonus','center')}
-              {f(Q.atk2dm,    c?.atk2dmDisplay ?? c?.attaque2?.dm ?? '', 'Atk2 DM', 'center')}
+              {fRO(Q.nom,      c?.nom ?? '',               'nom')}
+              {f(Q.for,       'for', c ? fmtMod(c.for)  : '',   'FOR',  'center')}
+              {f(Q.dex,       'dex', c ? fmtMod(c.dex)  : '',   'DEX',  'center')}
+              {f(Q.con,       'con', c ? fmtMod(c.con)  : '',   'CON',  'center')}
+              {f(Q.int,       'int', c ? fmtMod(c.int)  : '',   'INT',  'center')}
+              {f(Q.sag,       'sag', c ? fmtMod(c.sag)  : '',   'SAG',  'center')}
+              {f(Q.cha,       'cha', c ? fmtMod(c.cha)  : '',   'CHA',  'center')}
+              {f(Q.init,      'init', c?.initValue ?? '',        'Init', 'center')}
+              {c && !ov.init && c.initDisplay !== c.initValue && (
+                <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
+                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'Initiative', desc: c.initDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                  onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              )}
+              {f(Q.def,       'def', c ? String(c.def)  : '',   'DEF',  'center')}
+              {f(Q.pv,        'pv',  c?.pvValue ?? '',           'PV',   'center')}
+              {c && !ov.pv && c.pvDisplay !== c.pvValue && (
+                <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
+                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'PV', desc: c.pvDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                  onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              )}
+              {fRO(Q.atk1nom,   c?.attaque1?.nom ?? '',    'Atk1 nom')}
+              {fRO(Q.atk1bonus, c?.atk1Display ?? '',      'Atk1 bonus', 'center')}
+              {fRO(Q.atk1dm,    c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', 'Atk1 DM', 'center')}
             </React.Fragment>
           )
         })

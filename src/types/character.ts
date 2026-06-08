@@ -1,5 +1,10 @@
 export type Famille = 'combattants' | 'aventuriers' | 'mystiques'
 
+export type CompagnonOverride = {
+  for?: string; dex?: string; con?: string; int?: string; sag?: string; cha?: string
+  init?: string; def?: string; pv?: string
+}
+
 export type Caracteristique = 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA'
 
 export interface CaracteristiqueScore {
@@ -114,6 +119,7 @@ export interface Character {
   // Compagnons
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
+  compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {

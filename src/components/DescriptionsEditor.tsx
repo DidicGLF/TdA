@@ -587,11 +587,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setCompagnonsExported(false)
   }
 
-  const clonePeuple = () => {
-    const base = `${peuples[selectedPeuple].label} (copie)`
-    let n = base; let i = 2; while (peuples.some(p => p.label === n)) n = `${base} ${i++}`
-    setPeuples(prev => [...prev, { ...JSON.parse(JSON.stringify(peuples[selectedPeuple])), label: n }])
-    setSelectedPeuple(peuples.length)
+  const cloneCulture = (pIdx: number, cIdx: number) => {
+    const src = peuples[pIdx].cultures[cIdx]
+    const base = `${src.label} (copie)`
+    let n = base; let i = 2
+    while (peuples[pIdx].cultures.some(c => c.label === n)) n = `${base} ${i++}`
+    const clone = { ...JSON.parse(JSON.stringify(src)), label: n, voiePeuple: '', voieCulturelle: '' }
+    setPeuples(prev => prev.map((p, pi) => pi === pIdx
+      ? { ...p, cultures: [...p.cultures, clone] }
+      : p
+    ))
+    setSelectedCulture(peuples[pIdx].cultures.length)
     setPeuplesExported(false)
   }
 
@@ -1149,7 +1155,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: isMobile ? '10px 12px' : '14px 20px',
+          paddingTop: isMobile ? 'calc(10px + env(safe-area-inset-top))' : '14px',
+          paddingBottom: isMobile ? '10px' : '14px',
+          paddingLeft: isMobile ? 'calc(12px + env(safe-area-inset-left))' : '20px',
+          paddingRight: isMobile ? 'calc(12px + env(safe-area-inset-right))' : '20px',
           borderBottom: `1px solid ${S.border}`,
           flexShrink: 0, gap: 8,
         }}>
@@ -2389,10 +2398,6 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
-                    <button onClick={clonePeuple} title="Cloner ce peuple" style={{
-                      padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                      border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0,
-                    }}>⎘ Cloner</button>
                     <button onClick={() => askConfirm(`Supprimer le peuple "${peuple.label}" et toutes ses cultures ?`, () => removePeuple(selectedPeuple))} style={{
                       padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
@@ -2423,6 +2428,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                           onBlur={e => (e.target.style.borderColor = S.border)}
                         />
+                        <button onClick={() => cloneCulture(selectedPeuple, ci)} title="Cloner cette culture" style={{
+                          padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
+                          border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', color: 'rgba(201,168,76,0.7)',
+                        }}>⎘</button>
                         <button onClick={() => askConfirm(`Supprimer la culture "${culture.label}" ?`, () => removeCulture(selectedPeuple, ci))} style={{
                           padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                           border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
@@ -2924,7 +2933,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
         {/* Footer */}
         <div style={{
-          padding: '8px 20px', borderTop: `1px solid ${S.border}`,
+          paddingTop: '8px',
+          paddingLeft: isMobile ? 'calc(20px + env(safe-area-inset-left))' : '20px',
+          paddingRight: isMobile ? 'calc(20px + env(safe-area-inset-right))' : '20px',
+          paddingBottom: isMobile ? 'calc(8px + env(safe-area-inset-bottom))' : '8px',
+          borderTop: `1px solid ${S.border}`,
           fontSize: 13, color: 'rgba(245,236,215,0.4)', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
