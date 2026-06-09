@@ -1235,6 +1235,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { traits, data: descriptions } = useGameData()
   const [showTraitModal, setShowTraitModal] = React.useState(false)
   const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
+  const [mobileCompagnonPicker, setMobileCompagnonPicker] = React.useState<0 | 1 | null>(null)
 
   const disponiblesNoms = getCompagnonsDisponibles(character, descriptions)
   const actifs = character.compagnonsActifs ?? [null, null]
@@ -1265,6 +1266,14 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
     newActifs[slotIdx] = null
     onChange({ compagnonsActifs: newActifs })
+  }
+  const assignCompagnonToSlot = (slotIdx: 0 | 1, nom: string) => {
+    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
+    const otherSlot = slotIdx === 0 ? 1 : 0
+    if (newActifs[otherSlot] === nom) newActifs[otherSlot] = newActifs[slotIdx]
+    newActifs[slotIdx] = nom
+    onChange({ compagnonsActifs: newActifs })
+    setMobileCompagnonPicker(null)
   }
   const [showEquipement, setShowEquipement] = React.useState(false)
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
@@ -1502,6 +1511,56 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
         )}
 
         {/* Picker mobile slots équipement */}
+        {isMobile && mobileCompagnonPicker !== null && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setMobileCompagnonPicker(null)}>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
+              borderRadius: '12px 12px 0 0', paddingBottom: 'env(safe-area-inset-bottom)',
+              maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(201,168,76,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 16, fontFamily: "'Cinzel', serif", color: 'var(--tdr-gold)', fontWeight: 600 }}>
+                  Compagnon {mobileCompagnonPicker + 1}
+                </span>
+                <button onClick={() => setMobileCompagnonPicker(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--tdr-parchment)', opacity: 0.5, fontSize: 22, cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                  borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer' }}
+                  onClick={() => { clearCompagnonSlot(mobileCompagnonPicker); setMobileCompagnonPicker(null) }}>
+                  <input type="radio" readOnly checked={!actifs[mobileCompagnonPicker]}
+                    style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>Aucun</span>
+                </div>
+                {disponiblesNoms.map(nom => {
+                  const isCurrent = actifs[mobileCompagnonPicker] === nom
+                  const inOtherSlot = actifs[mobileCompagnonPicker === 0 ? 1 : 0] === nom
+                  return (
+                    <div key={nom} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                      borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer',
+                      opacity: inOtherSlot && !isCurrent ? 0.5 : 1 }}
+                      onClick={() => assignCompagnonToSlot(mobileCompagnonPicker, nom)}>
+                      <input type="radio" readOnly checked={isCurrent}
+                        style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{nom}</div>
+                        {inOtherSlot && !isCurrent && (
+                          <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>
+                            Slot {mobileCompagnonPicker === 0 ? 2 : 1} — sera déplacé
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {isMobile && mobileSlotPicker && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
             onClick={() => setMobileSlotPicker(null)}>
@@ -1656,20 +1715,23 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                   onDragOver={e => { e.preventDefault(); setDragOverSlot(slotIdx) }}
                   onDragLeave={() => setDragOverSlot(null)}
                   onDrop={e => handleCompagnonDrop(e, slotIdx)}
+                  onClick={() => isMobile && disponiblesNoms.length > 0 && setMobileCompagnonPicker(slotIdx)}
                   style={{
-                    flex: 1, minHeight: 40, borderRadius: 5, border: `1px dashed ${isOver ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    flex: 1, minHeight: 40, borderRadius: 5,
+                    border: `1px dashed ${isOver ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
                     background: isOver ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.02)',
                     display: 'flex', alignItems: 'center', padding: '6px 10px', gap: 6,
                     transition: 'border-color 0.15s, background 0.15s',
+                    cursor: isMobile ? 'pointer' : 'default',
                   }}
                 >
                   {nom ? (
                     <>
                       <span
-                        draggable
+                        draggable={!isMobile}
                         onDragStart={e => handleCompagnonDragStart(e, nom)}
                         style={{
-                          flex: 1, fontSize: 13, color: 'var(--tdr-parchment)', cursor: 'grab',
+                          flex: 1, fontSize: 13, color: 'var(--tdr-parchment)', cursor: isMobile ? 'pointer' : 'grab',
                           padding: '2px 6px', borderRadius: 3, background: 'rgba(201,168,76,0.1)',
                           border: '1px solid rgba(201,168,76,0.3)',
                         }}
@@ -1677,13 +1739,13 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         {nom}
                       </span>
                       <button
-                        onClick={() => clearCompagnonSlot(slotIdx)}
+                        onClick={e => { e.stopPropagation(); clearCompagnonSlot(slotIdx) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(220,100,100,0.7)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}
                       >✕</button>
                     </>
                   ) : (
                     <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.25)', fontStyle: 'italic' }}>
-                      Glisser un compagnon ici
+                      {isMobile ? 'Toucher pour choisir…' : 'Glisser un compagnon ici'}
                     </span>
                   )}
                 </div>
