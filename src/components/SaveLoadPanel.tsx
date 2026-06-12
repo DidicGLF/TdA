@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import { saveDataFile } from '../utils/tauriStorage'
 import type { Character } from '../types/character'
@@ -23,16 +24,18 @@ interface Props {
 
 export default function SaveLoadPanel({ character, maxStep, library, onLibraryChange, onLoad, onNew, onClose }: Props) {
   useModalBackButton(onClose)
+  const { t, i18n } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
-  const nomPerso = character.nomPersonnage?.trim() || character.nomJoueur?.trim() || 'Personnage sans nom'
+  const nomPerso = character.nomPersonnage?.trim() || character.nomJoueur?.trim() || t('saveLoad.nomSansNom')
+  const locale = i18n.language === 'fr' ? 'fr-FR' : 'en-GB'
 
   const fmt = (iso: string) => {
     const d = new Date(iso)
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-      + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' })
+      + ' ' + d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
   }
 
   const addToLibrary = () => {
@@ -61,7 +64,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
     const content = JSON.stringify(payload, null, 2)
     if (isTauri) {
       await saveDataFile(filename, content)
-      setSaveMsg(`Enregistré dans Documents/TdA/${filename}`)
+      setSaveMsg(t('saveLoad.enregistreDans', { filename }))
       setTimeout(() => setSaveMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })
@@ -102,16 +105,16 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
           // Ancien format (personnage nu sans enveloppe SavedEntry)
           const entry: SavedEntry = {
             id: crypto.randomUUID(),
-            nom: data.nomPersonnage?.trim() || data.nomJoueur?.trim() || 'Importé',
+            nom: data.nomPersonnage?.trim() || data.nomJoueur?.trim() || t('saveLoad.nomImporte'),
             date: new Date().toISOString(),
             character: data,
           }
           onLibraryChange([...library, entry])
         } else {
-          alert('Fichier non reconnu.')
+          alert(t('saveLoad.fichierNonReconnu'))
         }
       } catch {
-        alert('Fichier invalide.')
+        alert(t('saveLoad.fichierInvalide'))
       }
     }
     reader.readAsText(file)
@@ -146,7 +149,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: 'var(--tdr-gold)', fontWeight: 700 }}>
-            Personnages
+            {t('toolbar.personnages')}
           </span>
           <button onClick={onClose} style={{ ...btn, border: 'none', opacity: 0.5 }}>✕</button>
         </div>
@@ -160,11 +163,11 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
           <div>
             <div style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600 }}>{nomPerso}</div>
             <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.45)', marginTop: 2 }}>
-              {character.peuple || '—'} · Niv. {character.niveau}
+              {character.peuple || '—'} · {t('toolbar.niveau', { niveau: character.niveau })}
             </div>
           </div>
           <button onClick={addToLibrary} style={{ ...btn, background: 'rgba(201,168,76,0.15)', whiteSpace: 'nowrap' }}>
-            + Sauvegarder
+            {t('saveLoad.sauvegarder')}
           </button>
         </div>
 
@@ -172,7 +175,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
           {library.length === 0 ? (
             <div style={{ color: 'rgba(245,236,215,0.35)', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-              Aucun personnage — importez un fichier ou sauvegardez le personnage courant
+              {t('saveLoad.aucunPersonnage')}
             </div>
           ) : library.map(e => (
             <div key={e.id} style={{
@@ -186,19 +189,19 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
                   {e.nom}
                 </div>
                 <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', marginTop: 1 }}>
-                  {e.character.peuple || '—'} · Niv. {e.character.niveau} · {fmt(e.date)}
+                  {e.character.peuple || '—'} · {t('toolbar.niveau', { niveau: e.character.niveau })} · {fmt(e.date)}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => exportCharacter(e)} style={btn} title="Exporter ce personnage">↓</button>
-                <button onClick={() => { onLoad(e.character, e.maxStep ?? 0); onClose() }} style={btn}>Charger</button>
+                <button onClick={() => exportCharacter(e)} style={btn} title={t('saveLoad.exporterTitle')}>↓</button>
+                <button onClick={() => { onLoad(e.character, e.maxStep ?? 0); onClose() }} style={btn}>{t('saveLoad.charger')}</button>
                 {confirm === e.id ? (
                   <>
-                    <button onClick={() => remove(e.id)} style={btnDanger}>Confirmer</button>
+                    <button onClick={() => remove(e.id)} style={btnDanger}>{t('saveLoad.confirmerSuppression')}</button>
                     <button onClick={() => setConfirm(null)} style={{ ...btn, opacity: 0.5 }}>✕</button>
                   </>
                 ) : (
-                  <button onClick={() => setConfirm(e.id)} style={btnDanger}>Suppr.</button>
+                  <button onClick={() => setConfirm(e.id)} style={btnDanger}>{t('saveLoad.supprimer')}</button>
                 )}
               </div>
             </div>
@@ -216,11 +219,11 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
         {/* Import / Export */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => fileInputRef.current?.click()} style={{ ...btn, flex: 1, textAlign: 'center' }}>
-            ↑ Importer
+            {t('saveLoad.importer')}
           </button>
           <button onClick={exportLibrary} disabled={library.length === 0}
             style={{ ...btn, flex: 1, textAlign: 'center', opacity: library.length === 0 ? 0.35 : 1 }}>
-            ↓ Exporter
+            {t('saveLoad.exporterBiblio')}
           </button>
           <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importLibrary} />
         </div>
@@ -228,7 +231,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
         {/* Nouveau */}
         <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: 12 }}>
           <button onClick={() => { onNew(); onClose() }} style={{ ...btn, width: '100%', textAlign: 'center', opacity: 0.7 }}>
-            + Nouveau personnage
+            {t('saveLoad.nouveauPersonnage')}
           </button>
         </div>
 

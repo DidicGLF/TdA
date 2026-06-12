@@ -7,12 +7,17 @@ import ARMURES_RAW from '../data/armures.json'
 import VOIES_RAW from '../data/voies.json'
 import COMPAGNONS_RAW from '../data/compagnons.json'
 import TRAITS_RACIAUX_RAW from '../data/traits-raciaux.json'
+import FIELD_POSITIONS_RAW from '../data/field-positions.json'
+import SHEET_IMAGES_RAW from '../data/sheet-images.json'
 import { loadDataFile, saveDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry } from '../types/gameData'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
 export type VoieEntry = { nom: string; famille: string; categorie: string }
+export type FieldPosition = { top: number; left: number; width?: number; height?: number }
+export type FieldPositions = Record<string, FieldPosition>
+export type SheetImages = { recto: string; verso: string }
 
 interface GameDataContextValue {
   data: DescMap
@@ -31,6 +36,10 @@ interface GameDataContextValue {
   setCompagnons: Dispatch<SetStateAction<CompanionEntry[]>>
   traitsRaciaux: TraitEntry[]
   setTraitsRaciaux: Dispatch<SetStateAction<TraitEntry[]>>
+  fieldPositions: FieldPositions
+  setFieldPositions: Dispatch<SetStateAction<FieldPositions>>
+  sheetImages: SheetImages
+  setSheetImages: Dispatch<SetStateAction<SheetImages>>
   openDataDir: () => void
   loaded: boolean
 }
@@ -87,6 +96,12 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [traitsRaciaux, setTraitsRaciauxRaw] = useState<TraitEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(TRAITS_RACIAUX_RAW))) as TraitEntry[]
   )
+  const [fieldPositions, setFieldPositionsRaw] = useState<FieldPositions>(() =>
+    unwrap(JSON.parse(JSON.stringify(FIELD_POSITIONS_RAW))) as FieldPositions
+  )
+  const [sheetImages, setSheetImagesRaw] = useState<SheetImages>(() =>
+    JSON.parse(JSON.stringify(SHEET_IMAGES_RAW)) as SheetImages
+  )
   const [loaded, setLoaded] = useState(false)
 
   // Chargement initial depuis Documents/TdR/ (Tauri) ou valeurs du bundle (dev)
@@ -111,6 +126,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (compagnonsStr) setCompagnonsRaw(unwrap(JSON.parse(compagnonsStr)) as CompanionEntry[])
         const traitsRaciauxStr = await loadDataFile('traits-raciaux.json')
         if (traitsRaciauxStr) setTraitsRaciauxRaw(unwrap(JSON.parse(traitsRaciauxStr)) as TraitEntry[])
+        const fieldPositionsStr = await loadDataFile('field-positions.json')
+        if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
+        const sheetImagesStr = await loadDataFile('sheet-images.json')
+        if (sheetImagesStr) setSheetImagesRaw(unwrap(JSON.parse(sheetImagesStr)) as SheetImages)
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -150,6 +169,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'),
     []
   )
+  const setFieldPositions = useCallback(
+    makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'),
+    []
+  )
+  const setSheetImages = useCallback(
+    makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'),
+    []
+  )
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -163,6 +190,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       voies, setVoies,
       compagnons, setCompagnons,
       traitsRaciaux, setTraitsRaciaux,
+      fieldPositions, setFieldPositions,
+      sheetImages, setSheetImages,
       openDataDir,
       loaded,
     }}>

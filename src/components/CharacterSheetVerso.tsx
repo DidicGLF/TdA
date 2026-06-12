@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage, CompagnonOverride } from '../types/character'
 import { parseDesc } from '../utils/parseDesc'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
 import { useGameData } from '../context/GameDataContext'
+import type { FieldPositions } from '../context/GameDataContext'
 import { resolveCompagnon } from '../utils/compagnons'
 
 interface Props {
@@ -14,6 +16,8 @@ interface Props {
   calibrate?: boolean
   locked?: boolean
   onFieldMoved?: (label: string, top: number, left: number, width?: number, height?: number) => void
+  fieldPositions?: FieldPositions
+  sheetImage?: string
 }
 
 const PRESTIGE_RANG_TOPS = [72.0, 76.3, 80.7, 85.1, 89.4]
@@ -42,18 +46,29 @@ const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
 ]
 
 
-export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved }: Props) {
+export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved, fieldPositions, sheetImage }: Props) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
+  const fp = (label: string, t: number, l: number, w: number, h?: number) => {
+    const ov = fieldPositions?.[label]
+    return { top: ov?.top ?? t, left: ov?.left ?? l, width: ov?.width ?? w, height: ov?.height ?? h }
+  }
   const { data, compagnons: compagnonsCatalogue } = useGameData()
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
-    Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, { top: f.top, left: f.left }]))
+    Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }]))
   )
   const [prestigeRangPos, setPrestigeRangPos] = useState<Record<string, { top: number; left: number }>>(
-    Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
+    Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }]))
   )
   const [tooltip, setTooltip] = useState<{ nom: string; desc: string; rang?: number; x: number; y: number } | null>(null)
-  const [togglePos, setTogglePos] = useState({ top: 17.5, left: 3.3 })
+  const [togglePos, setTogglePos] = useState(fieldPositions?.['Toggle image/description'] ?? { top: 17.5, left: 3.3 })
+
+  React.useEffect(() => {
+    setCbPos(Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }])))
+    setPrestigeRangPos(Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }])))
+    if (fieldPositions?.['Toggle image/description']) setTogglePos(fieldPositions['Toggle image/description'])
+  }, [fieldPositions])
 
   const startToggleDrag = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -158,7 +173,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <img src={`${import.meta.env.BASE_URL}feuille-verso.png`} alt="Feuille de personnage verso"
+      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-verso.png`} alt="Feuille de personnage verso"
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       {/* === TOGGLE IMAGE / DESCRIPTION === */}
@@ -195,7 +210,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
                 color: active ? '#1a1208' : 'rgba(201,168,76,0.9)',
                 fontWeight: active ? 700 : 400,
               }}>
-                {mode === 'description' ? '✎ Texte' : '🖼 Image'}
+                {mode === 'description' ? t('fiche.modeTexte') : t('fiche.modeImage')}
               </button>
             )
           })
@@ -233,7 +248,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {/* === DESCRIPTION (mode texte, ou calibrage) === */}
       {((character.versoMode ?? 'description') === 'description' || calibrate) && (
         <DraggableTextarea
-          top={32.2} left={26.6} width={44.2} height={35.1}
+          {...fp("Description", 32.2, 26.6, 44.2, 35.1)}
           value={character.description}
           onChange={v => onChange({ description: v })}
           calibrate={calibrate} label="Description"
@@ -244,7 +259,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === INVENTAIRE === */}
       <DraggableTextarea
-        top={40.9} left={73.3} width={44.2} height={15.5}
+        {...fp("Inventaire", 40.9, 73.3, 44.2, 15.5)}
         value={character.inventaire}
         onChange={v => onChange({ inventaire: v })}
         calibrate={calibrate} label="Inventaire"
@@ -315,7 +330,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
             <div
               data-voie="true"
               onClick={() => character.niveau >= 8 && togglePrestigeRang(rang)}
-              title={character.niveau < 8 ? 'Déblocable au niveau 8' : undefined}
+              title={character.niveau < 8 ? t('fiche.deblocableNiveau', { n: 8 }) : undefined}
               style={{
                 position: 'absolute', top: `${top}%`, left: `${left}%`,
                 width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
@@ -353,11 +368,13 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
         const nomVoie = character.voiePrestige.nom
         const nomCap = data[nomVoie]?.[idx]?.nom || ''
         const desc = data[nomVoie]?.[idx]?.desc ?? ''
+        const label = `prestige-cap-${idx}`
+        const efp = fp(label, top, left, width, 2.0)
         return (
           <React.Fragment key={`${id}-cap`}>
             <DraggableField
-              label={`prestige-cap-${idx}`}
-              top={top} left={left} width={width} height={2.0}
+              label={label}
+              {...efp}
               value={nomCap}
               onChange={() => {}}
               calibrate={calibrate}
@@ -368,8 +385,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               <div
                 style={{
                   position: 'absolute',
-                  top: `${top}%`, left: `${left}%`,
-                  width: `${width}%`, height: '2%',
+                  top: `${efp.top}%`, left: `${efp.left}%`,
+                  width: `${efp.width}%`, height: '2%',
                   transform: 'translate(-50%, -50%)',
                   zIndex: 20,
                   cursor: 'help',
@@ -416,7 +433,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TALENT MAGIQUE === */}
       <DraggableField
-        top={23.8} left={79.6} width={29.6} height={2.0}
+        {...fp("Talent magique", 23.8, 79.6, 29.6, 2.0)}
         value={character.talentMagique.nom} onChange={v => onChange({ talentMagique: { ...character.talentMagique, nom: v } })}
         calibrate={calibrate} label="Talent magique"
         containerRef={containerRef} onMoved={cb}
@@ -444,7 +461,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TALENT MAGIQUE DESC === */}
       <DraggableTextarea
-        top={27.3} left={73.2} width={44.4} height={5.4}
+        {...fp("Talent magique desc", 27.3, 73.2, 44.4, 5.4)}
         value={character.talentMagique.desc}
         onChange={v => onChange({ talentMagique: { ...character.talentMagique, desc: v } })}
         calibrate={calibrate} label="Talent magique desc"
@@ -455,7 +472,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === VOIE DE PRESTIGE === */}
       <DraggableField
-        top={70} left={25.9} width={16.4} height={2.0}
+        {...fp("Voie prestige", 70, 25.9, 16.4, 2.0)}
         value={character.voiePrestige.nom}
         onChange={v => onChange({ voiePrestige: { ...character.voiePrestige, nom: v } })}
         calibrate={calibrate} label="Voie prestige"
@@ -464,7 +481,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === VOIE DE SANG-MÊLÉ === */}
       <DraggableField
-        top={78.8} left={57.6} width={14} height={2.0}
+        {...fp("Voie sang-mêlé", 78.8, 57.6, 14, 2.0)}
         value={character.voieSangMele.nom}
         onChange={v => onChange({ voieSangMele: { ...character.voieSangMele, nom: v } })}
         calibrate={calibrate} label="Voie sang-mêlé"
@@ -473,7 +490,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === TRÉSORERIE === */}
       <DraggableField
-        top={72.2} left={49.9} width={29.2} height={2.0}
+        {...fp("Trésorerie", 72.2, 49.9, 29.2, 2.0)}
         value={character.tresorerie} onChange={v => onChange({ tresorerie: v })}
         calibrate={calibrate} label="Trésorerie"
         containerRef={containerRef} onMoved={cb}
@@ -482,7 +499,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === NOM DU JOUEUR === */}
       <DraggableField
-        top={9.1} left={37} width={22.8} height={2.0}
+        {...fp("Nom du joueur", 9.1, 37, 22.8, 2.0)}
         value={character.nomJoueur} onChange={() => {}}
         calibrate={calibrate} label="Nom du joueur"
         containerRef={containerRef} onMoved={cb}
@@ -490,7 +507,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === CAPACITÉS SUPPLÉMENTAIRES === */}
       <DraggableTextarea
-        top={82} left={80.7} width={29.1} height={21.1}
+        {...fp("Capacités supp.", 82, 80.7, 29.1, 21.1)}
         value={character.capacitesSupplementaires}
         onChange={v => onChange({ capacitesSupplementaires: v })}
         calibrate={calibrate} label="Capacités supp."
@@ -578,29 +595,29 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           }
           // Champ éditable par le joueur (stocké dans compagnonsOverrides)
           const f = (pos: Pos, field: keyof CompagnonOverride, computed: string, label: string, align?: 'left'|'center'|'right') => (
-            <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
+            <DraggableField key={label} {...fp(pre + label, pos.top, pos.left, pos.width, 2)}
               value={ov[field] ?? computed} onChange={v => setOv(field, v)} readOnly={locked} align={align} label={pre + label}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
           )
-          // Champ en lecture seule (données du catalogue non modifiables par le joueur)
-          const fRO = (pos: Pos, value: string, label: string, align?: 'left'|'center'|'right') => (
-            <DraggableField key={label} top={pos.top} left={pos.left} width={pos.width} height={2}
-              value={value} onChange={noop} readOnly={locked} align={align} label={pre + label}
+          // Champ catalogue — éditable uniquement si déverrouillé
+          const fRO = (pos: Pos, field: keyof CompagnonOverride, value: string, label: string, align?: 'left'|'center'|'right') => (
+            <DraggableField key={label} {...fp(pre + label, pos.top, pos.left, pos.width, 2)}
+              value={locked ? value : (ov[field] ?? value)} onChange={v => !locked && setOv(field, v)} readOnly={locked} align={align} label={pre + label}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
           )
           return (
             <React.Fragment key={slot}>
-              {fRO(Q.nom,      c?.nom ?? '',               'nom')}
-              {f(Q.for,       'for', c ? fmtMod(c.for)  : '',   'FOR',  'center')}
-              {f(Q.dex,       'dex', c ? fmtMod(c.dex)  : '',   'DEX',  'center')}
-              {f(Q.con,       'con', c ? fmtMod(c.con)  : '',   'CON',  'center')}
-              {f(Q.int,       'int', c ? fmtMod(c.int)  : '',   'INT',  'center')}
-              {f(Q.sag,       'sag', c ? fmtMod(c.sag)  : '',   'SAG',  'center')}
-              {f(Q.cha,       'cha', c ? fmtMod(c.cha)  : '',   'CHA',  'center')}
+              {fRO(Q.nom,      'nom', c?.nom ?? '',               'nom')}
+              {f(Q.for,       'for', c ? fmtMod(c.for)  : '',   t('stats.FOR'),  'center')}
+              {f(Q.dex,       'dex', c ? fmtMod(c.dex)  : '',   t('stats.DEX'),  'center')}
+              {f(Q.con,       'con', c ? fmtMod(c.con)  : '',   t('stats.CON'),  'center')}
+              {f(Q.int,       'int', c ? fmtMod(c.int)  : '',   t('stats.INT'),  'center')}
+              {f(Q.sag,       'sag', c ? fmtMod(c.sag)  : '',   t('stats.SAG'),  'center')}
+              {f(Q.cha,       'cha', c ? fmtMod(c.cha)  : '',   t('stats.CHA'),  'center')}
               {f(Q.init,      'init', c?.initValue ?? '',        'Init', 'center')}
               {c && !ov.init && c.initDisplay !== c.initValue && (
                 <div style={{ position: 'absolute', top: `${Q.init.top}%`, left: `${Q.init.left}%`, width: `${Q.init.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
-                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'Initiative', desc: c.initDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: t('recto.initiative'), desc: c.initDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
                   onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
                   onMouseLeave={() => setTooltip(null)}
                 />
@@ -609,14 +626,14 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
               {f(Q.pv,        'pv',  c?.pvValue ?? '',           'PV',   'center')}
               {c && !ov.pv && c.pvDisplay !== c.pvValue && (
                 <div style={{ position: 'absolute', top: `${Q.pv.top}%`, left: `${Q.pv.left}%`, width: `${Q.pv.width}%`, height: '2%', zIndex: 50, cursor: 'help' }}
-                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: 'PV', desc: c.pvDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
+                  onMouseEnter={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip({ nom: t('recto.pv'), desc: c.pvDisplay, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 }) }}
                   onMouseMove={e => { const r = containerRef.current!.getBoundingClientRect(); setTooltip(p => p ? { ...p, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 } : null) }}
                   onMouseLeave={() => setTooltip(null)}
                 />
               )}
-              {fRO(Q.atk1nom,   c?.attaque1?.nom ?? '',    'Atk1 nom')}
-              {fRO(Q.atk1bonus, c?.atk1Display ?? '',      'Atk1 bonus', 'center')}
-              {fRO(Q.atk1dm,    c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', 'Atk1 DM', 'center')}
+              {fRO(Q.atk1nom,   'atk1nom',   c?.attaque1?.nom ?? '',    'Atk1 nom')}
+              {fRO(Q.atk1bonus, 'atk1bonus', c?.atk1Display ?? '',      'Atk1 bonus', 'center')}
+              {fRO(Q.atk1dm,    'atk1dm',    c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', 'Atk1 DM', 'center')}
             </React.Fragment>
           )
         })

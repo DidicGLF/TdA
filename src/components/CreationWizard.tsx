@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import { findCulture, findTrait } from '../data/peuples'
@@ -35,16 +36,7 @@ interface Props {
   onPrint?: () => void
 }
 
-const STEPS = [
-  'Identité',
-  'Peuple & Culture',
-  'Caractéristiques',
-  'Profil & Voies',
-  'Scores dérivés',
-  'Spécialisation & équipement',
-  'Les derniers détails',
-  'Finalisation',
-]
+const STEP_COUNT = 8
 
 const DISTRIBUTION = [10, 11, 12, 13, 14, 16]
 
@@ -54,13 +46,13 @@ const INPUT_STYLE = {
   color: 'var(--tdr-parchment)',
 }
 
-const CARACS: { key: Caracteristique; label: string; desc: string }[] = [
-  { key: 'FOR', label: 'Force', desc: 'Puissance physique. Attaques de contact et dommages.' },
-  { key: 'DEX', label: 'Dextérité', desc: 'Agilité et réflexes. Initiative, attaques à distance, DEF.' },
-  { key: 'CON', label: 'Constitution', desc: 'Endurance. Points de vie et résistance.' },
-  { key: 'INT', label: 'Intelligence', desc: 'Raisonnement. Efficacité des sorts.' },
-  { key: 'SAG', label: 'Sagesse', desc: 'Volonté et perception. Points de magie et durée des sorts.' },
-  { key: 'CHA', label: 'Charisme', desc: 'Persuasion et présence. Points de chance.' },
+const CARACS: { key: Caracteristique }[] = [
+  { key: 'FOR' },
+  { key: 'DEX' },
+  { key: 'CON' },
+  { key: 'INT' },
+  { key: 'SAG' },
+  { key: 'CHA' },
 ]
 
 const BTN_RANG: React.CSSProperties = {
@@ -74,6 +66,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
   disponibles: number
   onChange: (newRangs: boolean[]) => void
 }) {
+  const { t } = useTranslation()
   const firstNext = prochainRang(voie)
   const maxed = firstNext === null
   const costNext = firstNext !== null ? coutRangPourVoie(voieKey, firstNext) : 0
@@ -109,10 +102,10 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
       </div>
       <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', flex: 1 }}>
         {maxed
-          ? 'Tous les rangs acquis'
+          ? t('wizard.voieRangBar.tousAcquis')
           : acquired === 0
-            ? `Rang 1 · ${costNext} pt${costNext > 1 ? 's' : ''}`
-            : `Rang ${acquired} acquis · suivant : ${costNext} pt${costNext > 1 ? 's' : ''}`}
+            ? t('wizard.voieRangBar.rang1', { count: costNext })
+            : t('wizard.voieRangBar.rangAcquis', { acquired, count: costNext })}
       </span>
       <button
         onClick={remove} disabled={!canRemove}
@@ -139,6 +132,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
 function StepIndicator({ current, maxStep, total, stepOk, onGoTo }: {
   current: number; maxStep: number; total: number; stepOk: boolean[]; onGoTo: (i: number) => void
 }) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = React.useState<number | null>(null)
   return (
     <div className="flex gap-1 mb-4" style={{ position: 'relative' }}>
@@ -182,7 +176,7 @@ function StepIndicator({ current, maxStep, total, stepOk, onGoTo }: {
           zIndex: 100,
           pointerEvents: 'none',
         }}>
-          {STEPS[hovered]}
+          {t(`wizard.stepNames.${hovered}`)}
         </div>
       )}
     </div>
@@ -190,20 +184,21 @@ function StepIndicator({ current, maxStep, total, stepOk, onGoTo }: {
 }
 
 function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-3">
-      <p className="text-base opacity-70 italic">Commençons par les informations de base sur votre personnage.</p>
+      <p className="text-base opacity-70 italic">{t('wizard.step0.intro')}</p>
       {[
-        { label: 'Nom du joueur', field: 'nomJoueur' },
-        { label: 'Nom du personnage', field: 'nomPersonnage' },
-        { label: 'Genre', field: 'genre' },
-        { label: 'Âge', field: 'age' },
-        { label: 'Taille', field: 'taille' },
-        { label: 'Poids', field: 'poids' },
-      ].map(({ label, field }) => (
+        { labelKey: 'wizard.step0.nomJoueur', field: 'nomJoueur' },
+        { labelKey: 'wizard.step0.nomPersonnage', field: 'nomPersonnage' },
+        { labelKey: 'wizard.step0.genre', field: 'genre' },
+        { labelKey: 'wizard.step0.age', field: 'age' },
+        { labelKey: 'wizard.step0.taille', field: 'taille' },
+        { labelKey: 'wizard.step0.poids', field: 'poids' },
+      ].map(({ labelKey, field }) => (
         <div key={field}>
           <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-            {label}
+            {t(labelKey)}
           </label>
           <input
             className="w-full border rounded px-3 py-1.5 text-base"
@@ -218,6 +213,7 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { t } = useTranslation()
   const { peuples } = useGameData()
   const selectedPeuple = peuples.find(p => p.label === character.peuple) ?? null
   const cultures = selectedPeuple?.cultures ?? []
@@ -256,12 +252,12 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   return (
     <div className="space-y-3">
       <p className="text-base opacity-70 italic">
-        Le peuple détermine vos modificateurs de caractéristiques, votre voie de peuple et votre voie culturelle.
+        {t('wizard.step1.intro')}
       </p>
 
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Peuple
+          {t('wizard.step1.peuple')}
         </label>
         <select
           className="w-full border rounded px-3 py-1.5 text-base"
@@ -269,7 +265,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           value={character.peuple}
           onChange={e => onPeupleChange(e.target.value)}
         >
-          <option value="">-- Choisir --</option>
+          <option value="">{t('wizard.step1.choisir')}</option>
           {peuples.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
         </select>
       </div>
@@ -277,7 +273,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       {cultures.length > 1 && (
         <div>
           <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-            Culture
+            {t('wizard.step1.culture')}
           </label>
           <select
             className="w-full border rounded px-3 py-1.5 text-base"
@@ -285,7 +281,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             value={character.culture}
             onChange={e => onCultureChange(e.target.value)}
           >
-            <option value="">-- Choisir --</option>
+            <option value="">{t('wizard.step1.choisir')}</option>
             {cultures.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
           </select>
         </div>
@@ -293,13 +289,13 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
       {modText && (
         <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(201,168,76,0.1)', color: 'var(--tdr-gold)' }}>
-          Modificateurs : {modText}
+          {t('wizard.step1.modificateurs', { mods: modText })}
         </p>
       )}
 
       {character.peuple && (
         <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
-          Vos voies de peuple et culturelle seront disponibles à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Profil &amp; Voies</strong>.
+          <Trans i18nKey="wizard.step1.voiesInfo" components={{ strong: <strong style={{ color: 'rgba(245,236,215,0.7)' }} /> }} />
         </p>
       )}
 
@@ -308,7 +304,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
         return (
           <div>
             <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-              Trait de peuple
+              {t('wizard.step1.traitPeuple')}
             </label>
             {trait ? (
               <div style={{ padding: '10px 14px', borderRadius: 6, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)' }}>
@@ -319,7 +315,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               <input
                 className="w-full border rounded px-3 py-1.5 text-base"
                 style={INPUT_STYLE}
-                placeholder="Aucun"
+                placeholder={t('wizard.step1.aucun')}
                 value={character.traitPeuple}
                 onChange={e => onChange({ traitPeuple: e.target.value })}
               />
@@ -332,6 +328,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { t } = useTranslation()
   const { peuples } = useGameData()
   const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
 
@@ -404,7 +401,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               fontWeight: method === m ? 700 : 400,
             }}
           >
-            {m === 'distribution' ? 'Distribution' : 'Aléatoire'}
+            {m === 'distribution' ? t('wizard.step2.distribution') : t('wizard.step2.aleatoire')}
           </button>
         ))}
       </div>
@@ -415,7 +412,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           className="w-full py-1.5 rounded text-base border"
           style={{ borderColor: 'rgba(201,168,76,0.5)', color: 'var(--tdr-parchment)' }}
         >
-          Lancer les dés (4d6, garder 3)
+          {t('wizard.step2.lancerDes')}
         </button>
       )}
 
@@ -426,12 +423,12 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             {v}
           </span>
         ))}
-        {pool.length === 0 && <span className="text-base opacity-50 italic">Tous les scores sont assignés</span>}
+        {pool.length === 0 && <span className="text-base opacity-50 italic">{t('wizard.step2.tousAssignes')}</span>}
       </div>
 
       {Object.keys(modCaracs).length > 0 && (
         <div style={{ padding: '6px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', fontSize: 13 }}>
-          <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 6 }}>Modificateurs raciaux —</span>
+          <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 6 }}>{t('wizard.step2.modRaciaux')}</span>
           <span style={{ color: 'var(--tdr-gold)', fontWeight: 600, marginRight: 8 }}>
             {(() => {
               const peupleData = peuples.find(p => p.label === character.peuple)
@@ -449,14 +446,14 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       )}
 
       <div className="space-y-2">
-        {CARACS.map(({ key, desc }) => {
+        {CARACS.map(({ key }) => {
           const base = assigned[key]
           const racialMod = ((modCaracs as Record<string, number>)[key]) ?? 0
           const finalVal = base !== null ? base + racialMod : null
           const finalMod = finalVal !== null ? getMod(finalVal) : null
           return (
             <div key={key} className="flex items-center gap-2">
-              <div className="w-10 text-center font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{key}</div>
+              <div className="w-10 text-center font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{t(`stats.${key}`)}</div>
               <select
                 className="flex-1 border rounded px-2 py-1 text-base"
                 style={{ ...INPUT_STYLE, cursor: 'pointer' }}
@@ -493,7 +490,7 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               <div className="w-10 text-center text-base" style={{ color: 'var(--tdr-gold)' }}>
                 {finalMod !== null ? (finalMod >= 0 ? `+${finalMod}` : finalMod) : '—'}
               </div>
-              <div className="text-base opacity-50 hidden xl:block" style={{ width: '8rem' }}>{desc.split('.')[0]}</div>
+              <div className="text-base opacity-50 hidden xl:block" style={{ width: '8rem' }}>{t(`wizard.caracs.${key}.desc`).split('.')[0]}</div>
             </div>
           )
         })}
@@ -507,6 +504,7 @@ function renderDesc(text: string, character?: Character): React.ReactNode {
 }
 
 function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () => void; character?: Character }) {
+  const { t } = useTranslation()
   const { data } = useGameData()
   const capacites = data[nom] ?? data[nom.toLowerCase()] ?? []
 
@@ -568,7 +566,7 @@ function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () 
                 color: 'rgba(201,168,76,0.7)', marginBottom: 5,
                 textTransform: 'uppercase',
               }}>
-                Rang {i + 1} · {cap.nom}
+                {t('wizard.step3.rangCarteTitre', { rang: i + 1, nom: cap.nom })}
               </div>
               <div style={{
                 fontSize: 18, lineHeight: 1.6,
@@ -585,6 +583,7 @@ function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () 
 }
 
 function TraitCombobox({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const { t } = useTranslation()
   const { traits } = useGameData()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState(value)
@@ -608,7 +607,7 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
       <input
         type="text"
         value={query}
-        placeholder={open && !query && value ? value : 'Rechercher un trait magique…'}
+        placeholder={open && !query && value ? value : t('wizard.step5.rechercherTrait')}
         onFocus={() => { setQuery(''); setOpen(true) }}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onBlur={() => setTimeout(() => { setOpen(false); setQuery(value) }, 150)}
@@ -734,13 +733,10 @@ function deriveFamille(voies: { nom: string; famille: string; categorie: string 
   return null
 }
 
-const FAMILLE_INFO = {
-  combattants: { label: 'Combattants', bonus: 'd10 PV · 3 formations · Contact+2 · Distance+2' },
-  aventuriers:  { label: 'Aventuriers',  bonus: 'd8 PV · 2 formations · Contact+1 · Distance+1 · PC+2' },
-  mystiques:    { label: 'Mystiques',    bonus: 'd6 PV · 1 formation · Magique+2 · PM×2 · Talent magique' },
-}
+const FAMILLE_KEYS = ['combattants', 'aventuriers', 'mystiques'] as const
 
 function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'character' | 'onChange'> & { modeVoies: 'libre' | 'profil'; setModeVoies: (m: 'libre' | 'profil') => void }) {
+  const { t } = useTranslation()
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const { disponibles } = calcPointsCapacite(character)
   const { data: dynamicDescriptions, peuples, voies } = useGameData()
@@ -848,14 +844,14 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       border: `1px solid ${disponibles === 0 ? 'rgba(120,210,120,0.35)' : 'rgba(201,168,76,0.35)'}`,
       color: disponibles === 0 ? 'rgba(120,210,120,0.9)' : 'var(--tdr-gold)',
     }}>
-      {disponibles === 0 ? '✓ Points distribués' : `${disponibles} pt${disponibles > 1 ? 's' : ''} restant${disponibles > 1 ? 's' : ''}`}
+      {disponibles === 0 ? t('wizard.step3.pointsDistribues') : t('wizard.step3.ptsRestant', { count: disponibles })}
     </span>
   )
 
   return (
     <div className="space-y-3">
       <p className="text-base opacity-70 italic">
-        {modeVoies === 'libre' ? 'Choisissez 3 voies de profil — la famille est déterminée par votre sélection.' : 'Choisissez un profil — ses voies et formations martiales sont fixées automatiquement.'}
+        {modeVoies === 'libre' ? t('wizard.step3.introLibre') : t('wizard.step3.introProfil')}
       </p>
 
       {/* ── Profil ── */}
@@ -863,7 +859,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           {modeVoies === 'profil' && (
             <label className="text-base uppercase tracking-widest" style={{ color: 'var(--tdr-gold)' }}>
-              Profil
+              {t('wizard.step3.profil')}
             </label>
           )}
           <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
@@ -879,7 +875,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                   color: modeVoies === mode ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.5)',
                 }}
               >
-                {mode === 'libre' ? 'Voies libres' : 'Par profil'}
+                {mode === 'libre' ? t('wizard.step3.voiesLibres') : t('wizard.step3.parProfil')}
               </button>
             ))}
           </div>
@@ -892,7 +888,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               value={character.profil}
               onChange={e => applyProfil(e.target.value)}
             >
-              <option value="">— Choisir un profil —</option>
+              <option value="">{t('wizard.step3.choisirProfil')}</option>
               {PROFILS_GROUPED.map(group => (
                 <optgroup key={group.famille} label={group.famille}>
                   {group.profils.map(p => (
@@ -906,11 +902,11 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               const match = character.culture && rec.toLowerCase().includes(character.culture.toLowerCase())
               return (
                 <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(201,168,76,0.65)', fontStyle: 'italic' }}>
-                  Peuple recommandé :{' '}
+                  {t('wizard.step3.peupleRecommande')}{' '}
                   <button
                     onClick={() => !match && applyPeupleRecommandé(rec)}
                     disabled={!!match}
-                    title={match ? 'Peuple déjà correspondant' : `Appliquer : ${rec}`}
+                    title={match ? t('wizard.step3.peupleDejaOk') : t('wizard.step3.appliquerPeuple', { peuple: rec })}
                     style={{
                       fontFamily: 'inherit', fontSize: 13, fontStyle: 'italic', fontWeight: 700,
                       background: 'none', border: 'none', padding: 0,
@@ -922,7 +918,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                     {match ? '✓ ' : '⚠ '}{rec}
                   </button>
                   {profilActuel.talentMagique && (
-                    <> · Talent magique suggéré : <strong style={{ color: 'rgba(201,168,76,0.85)' }}>{profilActuel.talentMagique}</strong></>
+                    <> · {t('wizard.step3.talentSuggere')} <strong style={{ color: 'rgba(201,168,76,0.85)' }}>{profilActuel.talentMagique}</strong></>
                   )}
                 </div>
               )
@@ -934,7 +930,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Compteur de points ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
         <span className="text-base uppercase tracking-widest" style={{ color: 'rgba(201,168,76,0.6)', fontSize: 11 }}>
-          Rangs de voie
+          {t('wizard.step3.rangsVoie')}
         </span>
         {ptsBadge}
       </div>
@@ -942,10 +938,10 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Voies de peuple & culturelle ── */}
       <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.04)' }}>
         <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
-          Voies issues du peuple &amp; de la culture
+          {t('wizard.step3.voiesPeuplesCulture')}
         </div>
         {(['voiePeuple', 'voieCulturelle'] as const).map(field => {
-          const label = field === 'voiePeuple' ? 'Voie de peuple' : 'Voie culturelle'
+          const label = field === 'voiePeuple' ? t('wizard.step3.voiePeuple') : t('wizard.step3.voieCulturelle')
           const nom = character[field].nom
           const hasDesc = !!nom && !!dynamicDescriptions[nom]
           return (
@@ -959,12 +955,12 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                   style={{ ...INPUT_STYLE, opacity: 0.75 }}
                   value={nom}
                   readOnly
-                  title="Déterminé par le peuple et la culture (étape 2)"
+                  title={t('wizard.step3.determinePeupleEtape')}
                 />
                 <button
                   onClick={() => hasDesc && setPreviewVoie(nom)}
                   disabled={!hasDesc}
-                  title={hasDesc ? `Voir la voie : ${nom}` : 'Sélectionnez un peuple/culture'}
+                  title={hasDesc ? t('wizard.step3.voirVoie', { nom }) : t('wizard.step3.selectionnerPeuple')}
                   style={{
                     padding: '6px 10px', borderRadius: 4,
                     border: '1px solid rgba(201,168,76,0.4)',
@@ -991,7 +987,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Voies de profil ── */}
       <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.04)' }}>
         <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
-          Voies de profil
+          {t('wizard.step3.voiesDeProfil')}
         </div>
       {(['voie1', 'voie2', 'voie3'] as const).map((v, i) => {
         const nomVoie = character[v].nom
@@ -1003,7 +999,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         return (
           <div key={v}>
             <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-              Voie {i + 1}
+              {t('wizard.step3.voie_n', { n: i + 1 })}
             </label>
             <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
               {modeVoies === 'profil' ? (
@@ -1012,7 +1008,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                   style={{ ...INPUT_STYLE, opacity: 0.75 }}
                   value={nomVoie}
                   readOnly
-                  title="Fixée par le profil"
+                  title={t('wizard.step3.fixeeParProfil')}
                 />
               ) : (
                 <div style={{ flex: 1 }}>
@@ -1021,7 +1017,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                     onChange={nom => setVoie(v, nom)}
                     options={allProfilVoies}
                     alreadyChosen={autresVoies}
-                    placeholder="Rechercher une voie…"
+                    placeholder={t('wizard.step3.rechercherVoie')}
                   />
                 </div>
               )}
@@ -1029,7 +1025,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 <button
                   onClick={() => nomVoie && clearVoie(v)}
                   disabled={!nomVoie}
-                  title="Effacer la voie"
+                  title={t('wizard.step3.effacerVoie')}
                   style={{
                     padding: '6px 10px', borderRadius: 4,
                     border: '1px solid rgba(180,60,60,0.35)',
@@ -1043,7 +1039,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               <button
                 onClick={() => hasDesc && setPreviewVoie(nomVoie)}
                 disabled={!hasDesc}
-                title={hasDesc ? `Voir la voie : ${nomVoie}` : 'Sélectionnez une voie'}
+                title={hasDesc ? t('wizard.step3.voirVoie', { nom: nomVoie }) : t('wizard.step3.selectionnerVoie')}
                 style={{
                   padding: '6px 10px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)',
@@ -1071,10 +1067,10 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Famille (dérivée des voies) ── */}
       <div>
         <label className="block text-base uppercase tracking-widest mb-2" style={{ color: 'var(--tdr-gold)' }}>
-          Famille
+          {t('wizard.step3.famille')}
         </label>
         <div className="space-y-2">
-          {(Object.entries(FAMILLE_INFO) as [keyof typeof FAMILLE_INFO, typeof FAMILLE_INFO[keyof typeof FAMILLE_INFO]][]).map(([key, f]) => (
+          {FAMILLE_KEYS.map(key => (
             <div
               key={key}
               className="w-full text-left p-2 rounded border"
@@ -1084,14 +1080,14 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 opacity: familleDérivée && familleDérivée !== key ? 0.45 : 1,
               }}
             >
-              <div className="font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{f.label}</div>
-              <div className="text-base opacity-60">{f.bonus}</div>
+              <div className="font-bold text-base" style={{ color: 'var(--tdr-gold)' }}>{t(`wizard.famille.${key}.label`)}</div>
+              <div className="text-base opacity-60">{t(`wizard.famille.${key}.bonus`)}</div>
             </div>
           ))}
         </div>
         {!familleDérivée && (
           <div className="text-base opacity-50 italic mt-2">
-            Choisissez au moins 2 voies d'une même famille pour déterminer votre famille.
+            {t('wizard.step3.choisir2Voies')}
           </div>
         )}
       </div>
@@ -1099,7 +1095,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Voie de prestige ── */}
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Voie de prestige
+          {t('wizard.step3.voiePrestige')}
         </label>
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
@@ -1107,13 +1103,13 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               value={nomPrestige}
               onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
               options={voiesPrestige}
-              placeholder="Rechercher une voie de prestige…"
+              placeholder={t('wizard.step3.rechercherPrestige')}
             />
           </div>
           <button
             onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
             disabled={!nomPrestige}
-            title="Effacer la voie"
+            title={t('wizard.step3.effacerVoie')}
             style={{
               padding: '6px 10px', borderRadius: 4,
               border: '1px solid rgba(180,60,60,0.35)',
@@ -1126,7 +1122,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
           <button
             onClick={() => hasPrestigeDesc && setPreviewVoie(nomPrestige)}
             disabled={!hasPrestigeDesc}
-            title={hasPrestigeDesc ? `Voir la voie : ${nomPrestige}` : 'Sélectionnez une voie'}
+            title={hasPrestigeDesc ? t('wizard.step3.voirVoie', { nom: nomPrestige }) : t('wizard.step3.selectionnerVoie')}
             style={{
               padding: '6px 10px', borderRadius: 4,
               border: '1px solid rgba(201,168,76,0.4)',
@@ -1146,10 +1142,11 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         const compagnonsNoms = getCompagnonsDisponibles(character, dynamicDescriptions)
         const choixPendants = getCompagnonChoixGrants(character, dynamicDescriptions)
         if (compagnonsNoms.length === 0 && choixPendants.length === 0) return null
-        const msg = (compagnonsNoms.length + choixPendants.length) > 1 ? 'Des compagnons ont été accordés' : 'Un compagnon a été accordé'
+        const count = compagnonsNoms.length + choixPendants.length
         return (
           <p className="text-base px-2 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
-            {msg} par vos voies — équipez-les à l'étape <strong style={{ color: 'rgba(245,236,215,0.7)' }}>Spécialisation &amp; équipement</strong>.
+            {t('wizard.step3.compagnonsAccordes', { count })}{' '}
+            <Trans i18nKey="wizard.step3.compagnonsEtape" components={{ strong: <strong style={{ color: 'rgba(245,236,215,0.7)' }} /> }} />
           </p>
         )
       })()}
@@ -1175,6 +1172,8 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const attaqueContact  = niv + FOR.mod + (famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0)
   const attaqueDistance = niv + DEX.mod + (famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0)
   const attaqueMagique  = niv + INT.mod + (famille === 'mystiques'   ? 2 : 0)
+
+  const { t } = useTranslation()
 
   React.useEffect(() => {
     onChange({ pvTotal, pvRestants: pvTotal, pm: Math.max(0, pm), pc, pr, prUtilises: Array(pr).fill(true), defense, initiative, attaqueContact, attaqueDistance, attaqueMagique })
@@ -1205,25 +1204,25 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
   return (
     <div>
-      <p className="text-base opacity-70 italic mb-3">Scores calculés automatiquement d'après vos choix.</p>
+      <p className="text-base opacity-70 italic mb-3">{t('wizard.step4.intro')}</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 3rem 1.6fr', columnGap: 12 }}>
-        {row('Points de vie', pvTotal, <>{deVieFamille} ({V(deVie)}) + Mod.CON ({V(fmt(CON.mod))})</>)}
-        {row('Points de récupération', pr, character.peuple.toLowerCase().includes('ogre') ? <>Ogre ({V(6)})</> : <>Fixe ({V(5)})</>)}
-        {row('Points de magie', Math.max(0, pm), famille === 'mystiques'
-          ? <>(Niv ({V(niv)}) + Mod.SAG ({V(fmt(SAG.mod))})) × 2</>
-          : <>Niv ({V(niv)}) + Mod.SAG ({V(fmt(SAG.mod))})</>)}
-        {row('Points de chance', pc, famille === 'aventuriers'
-          ? <>Mod.CHA ({V(fmt(CHA.mod))}) + Base ({V('+2')}) + Aventuriers ({V('+2')})</>
-          : <>Mod.CHA ({V(fmt(CHA.mod))}) + Base ({V('+2')})</>)}
-        {row('Défense', defense, <>Base ({V(10)}) + Mod.DEX ({V(fmt(DEX.mod))})</>)}
-        {row('Initiative', initiative, <>Valeur DEX ({V(DEX.valeur)})</>)}
-        {row('Attaque contact', attaqueContact >= 0 ? `+${attaqueContact}` : attaqueContact,
-          <>Niv ({V(niv)}) + Mod.FOR ({V(fmt(FOR.mod))}) + Famille ({V(fmt(bonusContact))})</>)}
-        {row('Attaque distance', attaqueDistance >= 0 ? `+${attaqueDistance}` : attaqueDistance,
-          <>Niv ({V(niv)}) + Mod.DEX ({V(fmt(DEX.mod))}) + Famille ({V(fmt(bonusContact))})</>)}
-        {row('Attaque magique', attaqueMagique >= 0 ? `+${attaqueMagique}` : attaqueMagique,
-          <>Niv ({V(niv)}) + Mod.INT ({V(fmt(INT.mod))}) + Famille ({V(fmt(bonusMagique))})</>)}
-        {row('Dé de vie', `1${deVieFamille}`, <>Famille ({V(deVieFamille)})</>)}
+        {row(t('wizard.step4.pointsVie'), pvTotal, <>{deVieFamille} ({V(deVie)}) + {t('stats.modCON')} ({V(fmt(CON.mod))})</>)}
+        {row(t('wizard.step4.pointsRecup'), pr, character.peuple.toLowerCase().includes('ogre') ? <>Ogre ({V(6)})</> : <>{t('wizard.step4.fixe')} ({V(5)})</>)}
+        {row(t('wizard.step4.pointsMagie'), Math.max(0, pm), famille === 'mystiques'
+          ? <>({t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modSAG')} ({V(fmt(SAG.mod))})) × 2</>
+          : <>{t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modSAG')} ({V(fmt(SAG.mod))})</>)}
+        {row(t('wizard.step4.pointsChance'), pc, famille === 'aventuriers'
+          ? <>{t('stats.modCHA')} ({V(fmt(CHA.mod))}) + {t('recto.tlBase')} ({V('+2')}) + {t('recto.tlAventuriers')} ({V('+2')})</>
+          : <>{t('stats.modCHA')} ({V(fmt(CHA.mod))}) + {t('recto.tlBase')} ({V('+2')})</>)}
+        {row(t('wizard.step4.defense'), defense, <>{t('recto.tlBase')} ({V(10)}) + {t('stats.modDEX')} ({V(fmt(DEX.mod))})</>)}
+        {row(t('wizard.step4.initiative'), initiative, <>{t('stats.valDEX')} ({V(DEX.valeur)})</>)}
+        {row(t('wizard.step4.attaqueContact'), attaqueContact >= 0 ? `+${attaqueContact}` : attaqueContact,
+          <>{t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modFOR')} ({V(fmt(FOR.mod))}) + {t('wizard.step4.famille')} ({V(fmt(bonusContact))})</>)}
+        {row(t('wizard.step4.attaqueDistance'), attaqueDistance >= 0 ? `+${attaqueDistance}` : attaqueDistance,
+          <>{t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modDEX')} ({V(fmt(DEX.mod))}) + {t('wizard.step4.famille')} ({V(fmt(bonusContact))})</>)}
+        {row(t('wizard.step4.attaqueMagique'), attaqueMagique >= 0 ? `+${attaqueMagique}` : attaqueMagique,
+          <>{t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modINT')} ({V(fmt(INT.mod))}) + {t('wizard.step4.famille')} ({V(fmt(bonusMagique))})</>)}
+        {row(t('wizard.step4.deVie'), `1${deVieFamille}`, <>{t('wizard.step4.famille')} ({V(deVieFamille)})</>)}
       </div>
     </div>
   )
@@ -1275,6 +1274,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     onChange({ compagnonsActifs: newActifs })
     setMobileCompagnonPicker(null)
   }
+  const { t } = useTranslation()
   const [showEquipement, setShowEquipement] = React.useState(false)
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
   const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
@@ -1352,11 +1352,12 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   return (
     <div className="space-y-3">
       <p className="text-base opacity-70 italic">
-        Nombre de formations selon la famille :{' '}
-        <strong style={{ color: 'var(--tdr-gold)' }}>
-          {character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1}
-        </strong>
-        {' '}(+ armes de paysan gratuit)
+        <Trans
+          i18nKey="wizard.step5.introFormations"
+          count={character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1}
+          values={{ count: character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1 }}
+          components={{ strong: <strong style={{ color: 'var(--tdr-gold)' }} /> }}
+        />
       </p>
       <div className="space-y-1.5">
         {FORMATIONS.map(f => {
@@ -1381,7 +1382,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       {/* Armes & Armures */}
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Armes &amp; Armures
+          {t('wizard.step5.armesArmures')}
         </label>
         <button
           onClick={() => setShowEquipement(true)}
@@ -1392,10 +1393,10 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}
         >
-          <span>Choisir armes &amp; armures…</span>
+          <span>{t('wizard.step5.choisirArmes')}</span>
           {totalArmes > 0 && (
             <span style={{ fontSize: 12, opacity: 0.7 }}>
-              {totalArmes} élément{totalArmes > 1 ? 's' : ''} choisi{totalArmes > 1 ? 's' : ''}
+              {t('wizard.step5.elementsChoisis', { count: totalArmes })}
             </span>
           )}
         </button>
@@ -1404,7 +1405,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             {/* Slots */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {(['mainG', 'corps', 'mainD'] as const).map(slot => {
-                const LABELS = { mainG: 'Main gauche', corps: 'Corps', mainD: 'Main droite' }
+                const LABELS = { mainG: t('wizard.step5.mainGauche'), corps: t('wizard.step5.corps'), mainD: t('wizard.step5.mainDroite') }
                 const mainGBlocked = slot === 'mainG' && !!character.arme1 && is2H(character.arme1)
                 const isOver = dragOver === slot && !mainGBlocked
                 type SlotItem = { nom: string; sub?: string; ghost?: boolean }
@@ -1412,10 +1413,10 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 if (slot === 'mainD' && character.arme1) {
                   const a = character.armes.find(x => x.nom === character.arme1)
                   const two = is2H(character.arme1)
-                  items = [{ nom: character.arme1, sub: a ? `DM ${a.dm}${two ? ' — 2 mains' : ''}` : undefined }]
+                  items = [{ nom: character.arme1, sub: a ? `DM ${a.dm}${two ? ` — ${t('wizard.step5.deuxMains')}` : ''}` : undefined }]
                 } else if (slot === 'mainG') {
                   if (mainGBlocked) {
-                    items = [{ nom: character.arme1, sub: '2 mains', ghost: true }]
+                    items = [{ nom: character.arme1, sub: t('wizard.step5.deuxMains'), ghost: true }]
                   } else if (character.arme2) {
                     const a = character.armes.find(x => x.nom === character.arme2)
                     items = [{ nom: character.arme2, sub: a ? `DM ${a.dm}` : undefined }]
@@ -1442,7 +1443,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                       {LABELS[slot]}
                     </div>
                     {items.length === 0 ? (
-                      <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>{isMobile ? 'Appuyer ici…' : 'Glisser ici…'}</div>
+                      <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>{isMobile ? t('wizard.step5.appuyer') : t('wizard.step5.glisserIci')}</div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {items.map((item, i) => (
@@ -1467,7 +1468,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             {/* Items draggables */}
             {character.armes.length > 0 && (
               <>
-                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>Armes</div>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>{t('wizard.step5.armesLabel')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                   {character.armes.map((a, i) => (
                     <span key={i}
@@ -1488,7 +1489,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             )}
             {character.armuresEquipees.length > 0 && (
               <>
-                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>Armures</div>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>{t('wizard.step5.armuresLabel')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {character.armuresEquipees.map((a, i) => (
                     <span key={i}
@@ -1522,7 +1523,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(201,168,76,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 16, fontFamily: "'Cinzel', serif", color: 'var(--tdr-gold)', fontWeight: 600 }}>
-                  Compagnon {mobileCompagnonPicker + 1}
+                  {t('wizard.step5.compagnonPicker', { n: mobileCompagnonPicker + 1 })}
                 </span>
                 <button onClick={() => setMobileCompagnonPicker(null)}
                   style={{ background: 'none', border: 'none', color: 'var(--tdr-parchment)', opacity: 0.5, fontSize: 22, cursor: 'pointer' }}>✕</button>
@@ -1533,7 +1534,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                   onClick={() => { clearCompagnonSlot(mobileCompagnonPicker); setMobileCompagnonPicker(null) }}>
                   <input type="radio" readOnly checked={!actifs[mobileCompagnonPicker]}
                     style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
-                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>Aucun</span>
+                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{t('wizard.step5.aucun')}</span>
                 </div>
                 {disponiblesNoms.map(nom => {
                   const isCurrent = actifs[mobileCompagnonPicker] === nom
@@ -1549,7 +1550,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{nom}</div>
                         {inOtherSlot && !isCurrent && (
                           <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>
-                            Slot {mobileCompagnonPicker === 0 ? 2 : 1} — sera déplacé
+                            {t('wizard.step5.seraDeplace', { slot: mobileCompagnonPicker === 0 ? 2 : 1 })}
                           </div>
                         )}
                       </div>
@@ -1572,7 +1573,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(201,168,76,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 16, fontFamily: "'Cinzel', serif", color: 'var(--tdr-gold)', fontWeight: 600 }}>
-                  {{ mainD: 'Main droite', mainG: 'Main gauche', corps: 'Corps' }[mobileSlotPicker]}
+                  {{ mainD: t('wizard.step5.mainDroite'), mainG: t('wizard.step5.mainGauche'), corps: t('wizard.step5.corps') }[mobileSlotPicker]}
                 </span>
                 <button onClick={() => setMobileSlotPicker(null)}
                   style={{ background: 'none', border: 'none', color: 'var(--tdr-parchment)', opacity: 0.5, fontSize: 22, cursor: 'pointer' }}>✕</button>
@@ -1587,7 +1588,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     mobileSlotPicker === 'mainG' ? !character.arme2 :
                     character.armuresEquipees.every(a => !a.equipe)
                   } style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
-                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>Aucune</span>
+                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{t('wizard.step5.aucune')}</span>
                 </div>
                 {/* Armes pour mainD/mainG */}
                 {(mobileSlotPicker === 'mainD' || mobileSlotPicker === 'mainG') && character.armes.map((a, i) => {
@@ -1604,7 +1605,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                       <div>
                         <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{a.nom}</div>
                         <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>
-                          DM {a.dm}{is2H(a.nom) ? ' — 2 mains' : ''}
+                          DM {a.dm}{is2H(a.nom) ? ` — ${t('wizard.step5.deuxMains')}` : ''}
                         </div>
                       </div>
                     </div>
@@ -1657,13 +1658,13 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       {(disponiblesNoms.length > 0 || choixGrants.length > 0) && (
         <div>
           <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-            Compagnons
+            {t('wizard.step5.compagnons')}
           </label>
           {/* Choix en attente */}
           {choixGrants.filter(({ choixFait }) => !choixFait).map(({ grant }, idx) => (
             <div key={idx} style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)' }}>
               <div style={{ fontSize: 12, color: 'rgba(201,168,76,0.7)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Choisissez votre compagnon
+                {t('wizard.step5.choisirCompagnon')}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {grant.noms.map(nom => (
@@ -1686,9 +1687,9 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           {/* Choix faits (modifiables) */}
           {choixGrants.filter(({ choixFait }) => !!choixFait).map(({ grant, choixFait }, idx) => (
             <div key={idx} style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 5, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,168,76,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>Compagnon choisi :</span>
+              <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>{t('wizard.step5.compagnonChoisi')}</span>
               <span style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600 }}>{choixFait}</span>
-              <span style={{ fontSize: 11, color: 'rgba(201,168,76,0.4)', marginLeft: 'auto' }}>Changer :</span>
+              <span style={{ fontSize: 11, color: 'rgba(201,168,76,0.4)', marginLeft: 'auto' }}>{t('wizard.step5.changer')}</span>
               {grant.noms.filter(n => n !== choixFait).map(nom => (
                 <button
                   key={nom}
@@ -1745,7 +1746,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     </>
                   ) : (
                     <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.25)', fontStyle: 'italic' }}>
-                      {isMobile ? 'Toucher pour choisir…' : 'Glisser un compagnon ici'}
+                      {isMobile ? t('wizard.step5.toucherPourChoisir') : t('wizard.step5.glisserCompagnon')}
                     </span>
                   )}
                 </div>
@@ -1778,7 +1779,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
       <div style={{ opacity: character.famille === 'mystiques' ? 1 : 0.35, pointerEvents: character.famille === 'mystiques' ? 'auto' : 'none' }}>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Talent magique (mystiques)
+          {t('wizard.step5.talentMagique')}
         </label>
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
           <TraitCombobox
@@ -1791,7 +1792,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <button
             onClick={() => character.talentMagique.nom && onChange({ talentMagique: { nom: '', desc: '' } })}
             disabled={!character.talentMagique.nom}
-            title="Effacer le trait"
+            title={t('wizard.step5.effacerTrait')}
             style={{
               padding: '6px 10px', borderRadius: 4,
               border: '1px solid rgba(180,60,60,0.35)',
@@ -1804,7 +1805,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <button
             onClick={() => character.talentMagique.nom && setShowTraitModal(true)}
             disabled={!character.talentMagique.nom}
-            title={character.talentMagique.nom ? `Voir : ${character.talentMagique.nom}` : 'Sélectionnez un trait'}
+            title={character.talentMagique.nom ? t('wizard.step5.voirTrait', { nom: character.talentMagique.nom }) : t('wizard.step5.selectionnerTrait')}
             style={{
               padding: '6px 10px', borderRadius: 4,
               border: '1px solid rgba(201,168,76,0.4)',
@@ -1830,13 +1831,14 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-3">
-      <p className="text-base opacity-70 italic">Dernières touches avant de jouer !</p>
+      <p className="text-base opacity-70 italic">{t('wizard.step6.intro')}</p>
 
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Description du personnage
+          {t('wizard.step6.description')}
         </label>
         <textarea
           className="w-full border rounded px-3 py-2 text-base"
@@ -1847,7 +1849,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       </div>
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Inventaire de départ
+          {t('wizard.step6.inventaire')}
         </label>
         <textarea
           className="w-full border rounded px-3 py-2 text-base"
@@ -1856,12 +1858,12 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           onChange={e => onChange({ inventaire: e.target.value })}
         />
         <p className="text-base italic mt-1" style={{ color: 'rgba(245,236,215,0.5)', fontSize: '0.9em' }}>
-          N'hésitez pas à personnaliser son inventaire avec des objets intimes sans valeur marchande, telle qu'une lettre, un coquillage imprégné de souvenirs, la plume du premier rapace qu'il a chassé, etc.
+          {t('wizard.step6.inventaireHint')}
         </p>
       </div>
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          Trésorerie
+          {t('wizard.step6.tresorerie')}
         </label>
         <input
           className="w-full border rounded px-3 py-1.5 text-base"
@@ -1876,6 +1878,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 }
 
 function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void }) {
+  const { t } = useTranslation()
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
   const nbFormationsChoisies = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
@@ -1883,24 +1886,24 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
 
   type CheckItem = { label: string; ok: boolean; niveau: 'requis' | 'conseille' }
   const checks: CheckItem[] = [
-    { label: 'Nom du joueur',                   ok: !!character.nomJoueur.trim(),          niveau: 'requis' },
-    { label: 'Nom du personnage',                ok: !!character.nomPersonnage.trim(),       niveau: 'requis' },
-    { label: 'Peuple renseigné',                 ok: !!character.peuple,                     niveau: 'requis' },
-    { label: 'Culture renseignée',               ok: !!character.culture,                    niveau: 'requis' },
-    { label: 'Profil renseigné',                 ok: modeVoies === 'libre' || !!character.profil, niveau: 'requis' },
-    { label: 'Famille déterminée',               ok: !!character.famille,                    niveau: 'requis' },
-    { label: 'Voie 1 choisie',                   ok: !!character.voie1.nom,                  niveau: 'requis' },
-    { label: 'Voie 2 choisie',                   ok: !!character.voie2.nom,                  niveau: 'requis' },
-    { label: 'Voie 3 choisie',                   ok: !!character.voie3.nom,                  niveau: 'requis' },
-    { label: `Points de capacité dépensés (${ptsDisponibles} restant${ptsDisponibles > 1 ? 's' : ''})`,
+    { label: t('wizard.step7.checks.nomJoueur'),       ok: !!character.nomJoueur.trim(),          niveau: 'requis' },
+    { label: t('wizard.step7.checks.nomPersonnage'),   ok: !!character.nomPersonnage.trim(),       niveau: 'requis' },
+    { label: t('wizard.step7.checks.peupleRenseigne'), ok: !!character.peuple,                     niveau: 'requis' },
+    { label: t('wizard.step7.checks.cultureRenseignee'), ok: !!character.culture,                  niveau: 'requis' },
+    { label: t('wizard.step7.checks.profilRenseigne'), ok: modeVoies === 'libre' || !!character.profil, niveau: 'requis' },
+    { label: t('wizard.step7.checks.familleDeterminee'), ok: !!character.famille,                  niveau: 'requis' },
+    { label: t('wizard.step7.checks.voie1'),           ok: !!character.voie1.nom,                  niveau: 'requis' },
+    { label: t('wizard.step7.checks.voie2'),           ok: !!character.voie2.nom,                  niveau: 'requis' },
+    { label: t('wizard.step7.checks.voie3'),           ok: !!character.voie3.nom,                  niveau: 'requis' },
+    { label: t('wizard.step7.checks.pointsCapacite', { count: ptsDisponibles }),
                                                   ok: ptsDisponibles === 0,                   niveau: 'requis' },
-    { label: 'Points de vie calculés',           ok: character.pvTotal > 0,                  niveau: 'requis' },
-    { label: `Formations martiales (${nbFormationsChoisies}/${maxFormations})`,
+    { label: t('wizard.step7.checks.pointsVieCalcules'), ok: character.pvTotal > 0,               niveau: 'requis' },
+    { label: t('wizard.step7.checks.formations', { nb: nbFormationsChoisies, max: maxFormations }),
                                                   ok: nbFormationsChoisies >= maxFormations,  niveau: 'requis' },
-    { label: 'Armes ou armures choisies',        ok: totalArmes > 0,                         niveau: 'conseille' },
-    { label: 'Talent magique (Mystiques)',
+    { label: t('wizard.step7.checks.armesChoisis'),    ok: totalArmes > 0,                         niveau: 'conseille' },
+    { label: t('wizard.step7.checks.talentMagique'),
       ok: character.famille !== 'mystiques' || !!character.talentMagique.nom,                 niveau: 'conseille' },
-    { label: 'Portrait',                         ok: !!character.portrait,                   niveau: 'conseille' },
+    { label: t('wizard.step7.checks.portrait'),        ok: !!character.portrait,                   niveau: 'conseille' },
   ]
   const manquants  = checks.filter(c => !c.ok && c.niveau === 'requis')
   const conseilles = checks.filter(c => !c.ok && c.niveau === 'conseille')
@@ -1917,10 +1920,10 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 28, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'rgba(120,200,120,0.95)', marginBottom: 8 }}>
-              Bonne aventure !
+              {t('wizard.step7.bonneAventure')}
             </div>
             <p style={{ fontSize: 14, color: 'rgba(120,200,120,0.7)', margin: 0, fontStyle: 'italic' }}>
-              Tous les éléments sont renseignés. Votre personnage est prêt à jouer.
+              {t('wizard.step7.personnagePret')}
             </p>
           </div>
 
@@ -1931,9 +1934,9 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 13, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>Sauvegarder le personnage</div>
+              <div style={{ fontSize: 13, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.sauvegarder')}</div>
               <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                Enregistrez votre personnage dans la bibliothèque pour le retrouver lors de vos prochaines sessions.
+                {t('wizard.step7.sauvegarderDesc')}
               </div>
             </div>
             {onSave && (
@@ -1942,7 +1945,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
                 border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.15)',
                 color: 'var(--tdr-gold)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                + Sauvegarder
+                {t('wizard.step7.btnSauvegarder')}
               </button>
             )}
           </div>
@@ -1954,9 +1957,9 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 13, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>Imprimer la fiche</div>
+              <div style={{ fontSize: 13, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.imprimer')}</div>
               <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                Imprimez la fiche recto-verso pour jouer avec une feuille physique à portée de main.
+                {t('wizard.step7.imprimerDesc')}
               </div>
             </div>
             {onPrint && (
@@ -1965,7 +1968,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
                 border: '1px solid rgba(120,180,255,0.35)', background: 'rgba(120,180,255,0.08)',
                 color: 'rgba(140,190,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                Imprimer
+                {t('wizard.step7.btnImprimer')}
               </button>
             )}
           </div>
@@ -1980,7 +1983,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
             fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 10,
             color: manquants.length > 0 ? '#c97a4c' : 'var(--tdr-gold)',
           }}>
-            {`Récapitulatif — ${manquants.length + conseilles.length} élément${manquants.length + conseilles.length > 1 ? 's' : ''} à compléter`}
+            {t('wizard.step7.recap', { count: manquants.length + conseilles.length })}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {[...manquants, ...conseilles].map((c, i) => (
@@ -1999,7 +2002,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
                   {c.label}
                 </span>
                 {c.niveau === 'conseille' && (
-                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>conseillé</span>
+                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>{t('wizard.step7.conseille')}</span>
                 )}
               </div>
             ))}
@@ -2011,6 +2014,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
 }
 
 export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint }: Props) {
+  const { t } = useTranslation()
   const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('libre')
   const ptsDisp = calcPointsCapacite(character).disponibles
   const maxForms = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
@@ -2048,11 +2052,11 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
       {/* Header */}
       <div className="px-4 pt-4 pb-2 border-b" style={{ borderColor: 'rgba(201,168,76,0.2)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-base uppercase tracking-widest opacity-50">Étape {step + 1}/{STEPS.length}</span>
+          <span className="text-base uppercase tracking-widest opacity-50">{t('wizard.etape', { current: step + 1, total: STEP_COUNT })}</span>
         </div>
-        <StepIndicator current={step} maxStep={maxStep} total={STEPS.length} stepOk={stepOk} onGoTo={onGoTo} />
+        <StepIndicator current={step} maxStep={maxStep} total={STEP_COUNT} stepOk={stepOk} onGoTo={onGoTo} />
         <h2 className="text-2xl font-bold" style={{ color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>
-          {STEPS[step]}
+          {t(`wizard.stepNames.${step}`)}
         </h2>
       </div>
 
@@ -2069,18 +2073,18 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
           className="flex-1 py-2 rounded border text-base transition-all disabled:opacity-30"
           style={{ borderColor: 'rgba(201,168,76,0.4)', color: 'var(--tdr-parchment)' }}
         >
-          ← Précédent
+          {t('wizard.nav.precedent')}
         </button>
-        {step < STEPS.length - 1 && (
+        {step < STEP_COUNT - 1 && (
           <button
             onClick={onNext}
             className="flex-1 py-2 rounded text-base font-bold transition-all"
             style={{ background: 'var(--tdr-gold)', color: 'var(--tdr-dark)' }}
           >
-            Suivant →
+            {t('wizard.nav.suivant')}
           </button>
         )}
-        {step === STEPS.length - 1 && (
+        {step === STEP_COUNT - 1 && (
           <button
             onClick={onNext}
             disabled={!personnageComplet}
@@ -2091,9 +2095,9 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
               cursor: personnageComplet ? 'pointer' : 'not-allowed',
               border: personnageComplet ? 'none' : '1px solid rgba(201,168,76,0.25)',
             }}
-            title={!personnageComplet ? 'Complétez les éléments requis avant de terminer' : ''}
+            title={!personnageComplet ? t('wizard.nav.terminerTitle') : ''}
           >
-            Terminer ✓
+            {t('wizard.nav.terminer')}
           </button>
         )}
       </div>

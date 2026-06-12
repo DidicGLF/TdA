@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
-import type { ArmesData, ArmuresData } from '../context/GameDataContext'
+import type { ArmesData, ArmuresData, FieldPositions } from '../context/GameDataContext'
 import { parseDesc } from '../utils/parseDesc'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
@@ -49,6 +50,8 @@ interface Props {
   calibrate?: boolean
   locked?: boolean
   onFieldMoved?: (label: string, top: number, left: number, width?: number, height?: number) => void
+  fieldPositions?: FieldPositions
+  sheetImage?: string
 }
 
 const PR_CHECKBOXES = [
@@ -137,7 +140,8 @@ const CARAC_ROWS = [
   { key: 'CHA', top: 33.7, wVal: 6.3 },
 ] as const
 
-export default function CharacterSheetRecto({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved }: Props) {
+export default function CharacterSheetRecto({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved, fieldPositions, sheetImage }: Props) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
   const { peuples, data, armes, armures } = useGameData()
@@ -255,6 +259,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   type FProps = Omit<React.ComponentProps<typeof DraggableField>, 'calibrate' | 'containerRef' | 'onMoved'> & {
     formula?: { lines: TooltipLine[]; total: string | number }
     tooltipDesc?: string
+    tooltipTitle?: string
   }
   const showFormula = (nom: string, formula: { lines: TooltipLine[]; total: string | number }, e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect()
@@ -270,21 +275,25 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       x: (e.clientX - rect.left) / rect.width * 100,
       y: (e.clientY - rect.top)  / rect.height * 100 } : null)
   }
-  const f = ({ formula, tooltipDesc, title, ...p }: FProps) => (
-    <React.Fragment key={p.label}>
-      <DraggableField {...p} title={formula || tooltipDesc ? undefined : title} calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
+  const f = ({ formula, tooltipDesc, title, tooltipTitle, ...p }: FProps) => {
+    const fp = fieldPositions?.[p.label]
+    const ep = fp ? { ...p, top: fp.top, left: fp.left, ...(fp.width !== undefined ? { width: fp.width } : {}), ...(fp.height !== undefined ? { height: fp.height } : {}) } : p
+    const ttitle = tooltipTitle ?? ep.label
+    return (
+    <React.Fragment key={ep.label}>
+      <DraggableField {...ep} title={formula || tooltipDesc ? undefined : title} calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
       {formula && !calibrate && (
-        <div style={{ position: 'absolute', top: `${p.top}%`, left: `${p.left}%`,
-          width: `${p.width}%`, height: `${p.height ?? 2.2}%`,
+        <div style={{ position: 'absolute', top: `${ep.top}%`, left: `${ep.left}%`,
+          width: `${ep.width}%`, height: `${ep.height ?? 2.2}%`,
           transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
-          onMouseEnter={e => showFormula(p.label, formula, e)}
+          onMouseEnter={e => showFormula(ttitle, formula, e)}
           onMouseMove={moveTooltip}
           onMouseLeave={() => setTooltip(null)}
           onTouchStart={e => {
             const touch = e.touches[0]
             const rect = containerRef.current?.getBoundingClientRect()
             if (!rect) return
-            setTooltip({ nom: p.label, lines: formula.lines, total: formula.total,
+            setTooltip({ nom: ttitle, lines: formula.lines, total: formula.total,
               x: (touch.clientX - rect.left) / rect.width * 100,
               y: (touch.clientY - rect.top)  / rect.height * 100 })
           }}
@@ -292,13 +301,13 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         />
       )}
       {tooltipDesc && !formula && !calibrate && (
-        <div style={{ position: 'absolute', top: `${p.top}%`, left: `${p.left}%`,
-          width: `${p.width}%`, height: `${p.height ?? 2.2}%`,
+        <div style={{ position: 'absolute', top: `${ep.top}%`, left: `${ep.left}%`,
+          width: `${ep.width}%`, height: `${ep.height ?? 2.2}%`,
           transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
           onMouseEnter={e => {
             const rect = containerRef.current?.getBoundingClientRect()
             if (!rect) return
-            setTooltip({ nom: p.label, desc: tooltipDesc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+            setTooltip({ nom: ttitle, desc: tooltipDesc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
           }}
           onMouseMove={moveTooltip}
           onMouseLeave={() => setTooltip(null)}
@@ -306,7 +315,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const touch = e.touches[0]
             const rect = containerRef.current?.getBoundingClientRect()
             if (!rect) return
-            setTooltip({ nom: p.label, desc: tooltipDesc,
+            setTooltip({ nom: ttitle, desc: tooltipDesc,
               x: (touch.clientX - rect.left) / rect.width * 100,
               y: (touch.clientY - rect.top)  / rect.height * 100 })
           }}
@@ -314,7 +323,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         />
       )}
     </React.Fragment>
-  )
+  )}
 
   const effects = computeEffects(character, data)
   const diceEffects = computeDiceEffects(character, data)
@@ -328,13 +337,13 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     const sequentialBlocked = !acquis && rang > 0 && !voieData.rangs[rang - 1]
     const pointsBlocked = !acquis && !sequentialBlocked && ptsDisponibles < cout
     if (sequentialBlocked)
-      return { nom: 'Ordre requis', desc: `Cochez d'abord le rang ${rang} de cette voie.`, x, y }
+      return { nom: t('recto.ordreRequis'), desc: t('recto.ordreRequisDesc', { rang }), x, y }
     if (pointsBlocked)
-      return { nom: 'Points insuffisants', desc: `Il manque ${cout - ptsDisponibles} pt${cout - ptsDisponibles > 1 ? 's' : ''} de capacité pour ce rang.`, x, y }
+      return { nom: t('recto.pointsInsuffisants'), desc: t('recto.pointsInsuffisantsDesc', { count: cout - ptsDisponibles }), x, y }
     if (ptsDisponibles > 0)
-      return { nom: 'Points de capacité', desc: `${ptsDisponibles} pt${ptsDisponibles > 1 ? 's' : ''} de capacité disponible${ptsDisponibles > 1 ? 's' : ''}.`, x, y }
+      return { nom: t('recto.pointsCapacite'), desc: t('recto.pointsDisponiblesDesc', { count: ptsDisponibles }), x, y }
     if (ptsDisponibles < 0)
-      return { nom: 'Points de capacité', desc: `${Math.abs(ptsDisponibles)} pt${Math.abs(ptsDisponibles) > 1 ? 's' : ''} de capacité en trop.`, x, y }
+      return { nom: t('recto.pointsCapacite'), desc: t('recto.pointsEnTropDesc', { count: Math.abs(ptsDisponibles) }), x, y }
     return null
   })() : null
 
@@ -350,14 +359,14 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       else map.set(key, { nom: c.nom, rang: c.rang, maxTrigger: c.triggerRang, total: c.value })
     }
     return [...map.values()].map(g => ({
-      label: g.maxTrigger === g.rang ? `${g.nom} rang ${g.rang}` : `${g.nom} rang ${g.rang}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
+      label: g.maxTrigger === g.rang ? `${g.nom} ${t('recto.rangLabel', { n: g.rang })}` : `${g.nom} ${t('recto.rangLabel', { n: g.rang })}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
       value: `+${g.total}`,
     }))
   }
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <img src={`${import.meta.env.BASE_URL}feuille-recto.png`} alt="Feuille de personnage recto"
+      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-recto.png`} alt="Feuille de personnage recto"
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       {/* === IDENTITÉ === */}
@@ -383,13 +392,13 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           const voieBonus = sumStat(voieContribs)
           const effectiveVal = baseVal + voieBonus
           const effectiveMod = getMod(effectiveVal)
-          const lines: TooltipLine[] = [{ label: 'Base', value: baseVal - racialMod }]
+          const lines: TooltipLine[] = [{ label: t('recto.tlBase'), value: baseVal - racialMod }]
           if (racialMod !== 0) lines.push({ label: character.peuple, value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
           if (voieBonus !== 0) lines.push(...groupContribs(voieContribs))
           const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
           return (
             <React.Fragment key={key}>
-              {f({ label: `${key} val`, top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, readOnly: locked, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
+              {f({ label: `${key} val`, tooltipTitle: t(`stats.${key}`), top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, readOnly: locked, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
               {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, readOnly: locked, align: "center" })}
             </React.Fragment>
           )
@@ -477,40 +486,40 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const formulaArme = (nomArme: string) => {
           const type = getArmeAttType(nomArme)
           if (type === 'DEX') return { lines: [
-            { label: 'ATT distance', value: fmt(character.attaqueDistance) },
-            ...(malusAtkDist      > 0 ? [{ label: 'Encombrement ÷ 2',     value: `-${malusAtkDist}`,      neg: true }] : []),
-            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
-            ...(malusArmesDist    > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesDist}`,    neg: true }] : []),
+            { label: t('recto.tlAttDistance'), value: fmt(character.attaqueDistance) },
+            ...(malusAtkDist      > 0 ? [{ label: t('recto.tlEncombrement2'),   value: `-${malusAtkDist}`,      neg: true }] : []),
+            ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesDist    > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesDist}`,    neg: true }] : []),
           ], total: fmt(attDistTotal) }
           if (type === 'INT') return { lines: [
-            { label: 'ATT magique', value: fmt(character.attaqueMagique) },
-            ...(armorDef          > 0 ? [{ label: 'Encombrement',          value: `-${armorDef}`,          neg: true }] : []),
-            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
-            ...(malusArmesMag     > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesMag}`,     neg: true }] : []),
+            { label: t('recto.tlAttMagique'), value: fmt(character.attaqueMagique) },
+            ...(armorDef          > 0 ? [{ label: t('recto.tlEncombrement'),    value: `-${armorDef}`,          neg: true }] : []),
+            ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesMag     > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesMag}`,     neg: true }] : []),
           ], total: fmt(attMagTotal) }
           return { lines: [
-            { label: 'ATT contact', value: fmt(character.attaqueContact) },
-            ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
-            ...(malusArmesContact > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesContact}`, neg: true }] : []),
+            { label: t('recto.tlAttContact'), value: fmt(character.attaqueContact) },
+            ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
+            ...(malusArmesContact > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesContact}`, neg: true }] : []),
           ], total: fmt(attContactTotal) }
         }
 
         return <>
           {f({ label: "Initiative", top: 22.2, left: 50, width: 5.1, height: 2.0, value: DEX.valeur, onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "Enc. init.", top: 22.2, left: 62.2, width: 5.0, height: 2.0,
+          {f({ label: "Enc. init.", tooltipTitle: t('recto.encInit'), top: 22.2, left: 62.2, width: 5.0, height: 2.0,
             value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0',
             onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'DEF armure équipée', value: armorDef },
-              { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
+              { label: t('recto.tlDefArmureEquipee'), value: armorDef },
+              { label: t('recto.tlEnchantement'), value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
             ], total: totalEncombrement > 0 ? `-${totalEncombrement}` : '0' } })}
-          {f({ label: "Initiative totale", top: 22.2, left: 68.3, width: 5.0, height: 2.0,
+          {f({ label: "Initiative totale", tooltipTitle: t('recto.initiativeTotale'), top: 22.2, left: 68.3, width: 5.0, height: 2.0,
             value: String(initiativeTotal),
             onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'Valeur DEX', value: DEX.valeur },
-              { label: 'Encombrement', value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0', neg: totalEncombrement > 0 },
-              ...(malusEquip > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`, neg: true }] : []),
+              { label: t('stats.valDEX'), value: DEX.valeur },
+              { label: t('recto.tlEncombrement'), value: totalEncombrement > 0 ? `-${totalEncombrement}` : '0', neg: totalEncombrement > 0 },
+              ...(malusEquip > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`, neg: true }] : []),
               ...groupContribs(initContribs),
             ], total: initiativeTotal } })}
 
@@ -528,8 +537,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                 const armures = character.armuresEquipees.filter(a => !isBouclier(a.nom))
                 const desc = armures.length > 0
                   ? armures.map(a => `${a.nom} : +${a.def}`).join('\n')
-                  : 'Aucune armure équipée'
-                setTooltip({ nom: 'DEF Armure', desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  : t('recto.tlAucuneArmure')
+                setTooltip({ nom: t('recto.defArmureTitre'), desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
               }}
               onMouseMove={e => {
                 const rect = containerRef.current?.getBoundingClientRect()
@@ -551,8 +560,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                 const boucliers = character.armuresEquipees.filter(a => isBouclier(a.nom))
                 const desc = boucliers.length > 0
                   ? boucliers.map(a => `${a.nom} : +${a.def}`).join('\n')
-                  : 'Aucun bouclier équipé'
-                setTooltip({ nom: 'DEF Bouclier', desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  : t('recto.tlAucuneArmure')
+                setTooltip({ nom: t('recto.defBouclierTitre'), desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
               }}
               onMouseMove={e => {
                 const rect = containerRef.current?.getBoundingClientRect()
@@ -564,10 +573,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           )}
 
           {/* Défense : bonus */}
-          {f({ label: "Bonus DEF", top: 38.1, left: 87.2, width: 5.0, height: 2.0,
+          {f({ label: "Bonus DEF", tooltipTitle: t('recto.bonusDef'), top: 38.1, left: 87.2, width: 5.0, height: 2.0,
             value: (character.bonusDefense ?? 0) >= 0 ? `+${character.bonusDefense ?? 0}` : `${character.bonusDefense ?? 0}`,
             onChange: v => { const n = parseInt(v); onChange({ bonusDefense: isNaN(n) ? 0 : n }) },
-            align: "center", tooltipDesc: "Bonus de défense divers (armures magiques, sorts, etc.)" })}
+            align: "center", tooltipDesc: t('recto.bonusDefDisp') })}
 
           {/* Défense : total */}
           {(() => {
@@ -575,50 +584,50 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const defFromVoies = sumStat(defContribs)
             const defBase = 10 + DEX.mod + armorDef + shieldDef + (character.bonusDefense ?? 0)
             const defLines = [
-              { label: 'Base', value: 10 },
-              { label: 'Mod. DEX', value: fmt(DEX.mod) },
-              { label: 'DEF armure', value: `+${armorDef}` },
-              { label: 'DEF bouclier', value: `+${shieldDef}` },
-              { label: 'Bonus DEF', value: fmt(character.bonusDefense ?? 0) },
+              { label: t('recto.tlBase'), value: 10 },
+              { label: t('stats.modDEX'), value: fmt(DEX.mod) },
+              { label: t('recto.tlDefArmure'), value: `+${armorDef}` },
+              { label: t('recto.tlDefBouclier'), value: `+${shieldDef}` },
+              { label: t('recto.tlBonusDef'), value: fmt(character.bonusDefense ?? 0) },
               ...groupContribs(defContribs),
             ]
-            return f({ label: "DEF total", top: 38.1, left: 93.3, width: 5.0, height: 2.0,
+            return f({ label: "DEF total", tooltipTitle: t('recto.defTotal'), top: 38.1, left: 93.3, width: 5.0, height: 2.0,
               value: String(defBase + defFromVoies),
               onChange: () => {}, readOnly: locked, align: "center",
               formula: { lines: defLines, total: defBase + defFromVoies } })
           })()}
 
           {/* Encombrement (section défense) */}
-          {f({ label: "Encombrement", top: 41.3, left: 77.3, width: 6.6, height: 2.0,
+          {f({ label: "Encombrement", tooltipTitle: t('recto.tlEncombrement'), top: 41.3, left: 77.3, width: 6.6, height: 2.0,
             value: armorDef > 0 ? `${armorDef}` : '0',
             onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).length > 0
               ? character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).map(a => ({ label: a.nom, value: `+${a.def}` }))
-              : [{ label: 'Aucune armure équipée', value: '0' }],
+              : [{ label: t('recto.tlAucuneArmure'), value: '0' }],
               total: armorDef } })}
-          {f({ label: "Enchantement", top: 41.2, left: 85.6, width: 8.1, height: 2.0,
+          {f({ label: "Enchantement", tooltipTitle: t('recto.tlEnchantement'), top: 41.2, left: 85.6, width: 8.1, height: 2.0,
             value: String(enchantEnc),
             onChange: v => { const n = parseInt(v); onChange({ enchantementEncombrement: isNaN(n) ? 0 : n }) },
-            align: "center", tooltipDesc: "Réduction d'encombrement par enchantement magique" })}
-          {f({ label: "Total encombrement", top: 41.1, left: 93.4, width: 5.0, height: 2.0,
+            align: "center", tooltipDesc: t('recto.reductionEnc') })}
+          {f({ label: "Total encombrement", tooltipTitle: t('recto.totalEncombrement'), top: 41.1, left: 93.4, width: 5.0, height: 2.0,
             value: String(totalEncombrement),
             onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'DEF armure', value: armorDef },
-              { label: 'Enchantement', value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
+              { label: t('recto.tlDefArmure'), value: armorDef },
+              { label: t('recto.tlEnchantement'), value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
             ], total: totalEncombrement } })}
 
           {/* ATT contact */}
           {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "ATT contact total",  top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, readOnly: locked, align: "center",
+          {f({ label: "ATT contact total",  tooltipTitle: t('recto.attContactTotal'), top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'Niveau', value: niv },
-              { label: 'Mod. FOR', value: fmt(FOR.mod) },
-              { label: `Famille (${character.famille ?? '—'})`, value: fmt(famContact) },
-              ...(malusEquip        > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,        neg: true }] : []),
-              ...(malusArmesContact > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesContact}`, neg: true }] : []),
+              { label: t('recto.tlNiveau'), value: niv },
+              { label: t('stats.modFOR'), value: fmt(FOR.mod) },
+              { label: t('recto.tlFamille', { fam: character.famille ?? '—' }), value: fmt(famContact) },
+              ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`,        neg: true }] : []),
+              ...(malusArmesContact > 0 ? [{ label: t('recto.tlArmeSansForm'), value: `-${malusArmesContact}`, neg: true }] : []),
               ...groupContribs(effects['ATT_CONTACT'] ?? []),
             ], total: fmt(attContactTotal) } })}
 
@@ -626,35 +635,35 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "ATT dist total",      top: 30.9, left: 68.3, width: 5.0, height: 2.0,
+          {f({ label: "ATT dist total",      tooltipTitle: t('recto.attDistTotal'), top: 30.9, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attDistTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'Niveau', value: niv },
-              { label: 'Mod. DEX', value: fmt(DEX.mod) },
-              { label: `Famille (${character.famille ?? '—'})`, value: fmt(famContact) },
-              { label: 'Encombrement ÷ 2', value: malusAtkDist > 0 ? `-${malusAtkDist}` : '0', neg: malusAtkDist > 0 },
-              ...(malusEquip     > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,     neg: true }] : []),
-              ...(malusArmesDist > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesDist}`, neg: true }] : []),
+              { label: t('recto.tlNiveau'), value: niv },
+              { label: t('stats.modDEX'), value: fmt(DEX.mod) },
+              { label: t('recto.tlFamille', { fam: character.famille ?? '—' }), value: fmt(famContact) },
+              { label: t('recto.tlEncombrement2'), value: malusAtkDist > 0 ? `-${malusAtkDist}` : '0', neg: malusAtkDist > 0 },
+              ...(malusEquip     > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`,     neg: true }] : []),
+              ...(malusArmesDist > 0 ? [{ label: t('recto.tlArmeSansForm'), value: `-${malusArmesDist}`, neg: true }] : []),
             ], total: fmt(attDistTotal) } })}
 
           {/* ATT magique */}
           {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked,  align: "center" })}
           {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "ATT mag total",      top: 33.7, left: 68.3, width: 5.0, height: 2.0,
+          {f({ label: "ATT mag total",      tooltipTitle: t('recto.attMagTotal'), top: 33.7, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attMagTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
-              { label: 'Niveau', value: niv },
-              { label: 'Mod. INT', value: fmt(INT.mod) },
-              { label: 'Mystiques', value: fmt(famMagique) },
-              { label: 'Encombrement', value: armorDef > 0 ? `-${armorDef}` : '0', neg: armorDef > 0 },
-              ...(malusEquip    > 0 ? [{ label: 'Équip. sans formation', value: `-${malusEquip}`,    neg: true }] : []),
-              ...(malusArmesMag > 0 ? [{ label: 'Arme sans formation',   value: `-${malusArmesMag}`, neg: true }] : []),
+              { label: t('recto.tlNiveau'), value: niv },
+              { label: t('stats.modINT'), value: fmt(INT.mod) },
+              { label: t('recto.tlMystiques'), value: fmt(famMagique) },
+              { label: t('recto.tlEncombrement'), value: armorDef > 0 ? `-${armorDef}` : '0', neg: armorDef > 0 },
+              ...(malusEquip    > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`,    neg: true }] : []),
+              ...(malusArmesMag > 0 ? [{ label: t('recto.tlArmeSansForm'), value: `-${malusArmesMag}`, neg: true }] : []),
             ], total: fmt(attMagTotal) } })}
 
           {/* Armes */}
           {f({ label: "Arme 1",    top: 22.1, left: 85.7, width: 20.0, height: 2.0, value: character.arme1,   onChange: v => onChange({ arme1: v }) })}
-          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, readOnly: locked, align: "center",
+          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", tooltipTitle: t('recto.attArme', { arme: character.arme1 ?? '1' }), top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, readOnly: locked, align: "center",
             formula: character.arme1 ? formulaArme(character.arme1) : undefined })}
           {(calibrate || character.arme1) && (() => {
             const e1 = character.arme1 ? findArmeEntry(armes, character.arme1) : null
@@ -664,22 +673,22 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const dm1base = e1 ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}` : character.dmArme1
             const dm1 = bonus1 !== 0 ? `${dm1base} ${fmt(bonus1)}` : dm1base
             const formula1 = e1 ? { lines: [
-              { label: 'Dés', value: e1.dm },
-              ...(modVal1 !== null ? [{ label: `Mod. ${e1.mod}`, value: fmt(modVal1) }] : []),
+              { label: t('recto.tlDes'), value: e1.dm },
+              ...(modVal1 !== null ? [{ label: t(`stats.mod${e1.mod}`), value: fmt(modVal1) }] : []),
               ...groupContribs(bonusContribs1),
             ], total: dm1 } : undefined
-            return f({ label: "DM Arme 1", top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, readOnly: locked, align: "center", formula: formula1 })
+            return f({ label: "DM Arme 1", tooltipTitle: t('recto.dmArme', { arme: character.arme1 ?? '1' }), top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, readOnly: locked, align: "center", formula: formula1 })
           })()}
           {!calibrate && !character.arme1 && diceEffects['DM_MAINS_NUES'] && (() => {
             const { diceStr } = diceEffects['DM_MAINS_NUES']
             const forMod = getMod(FOR.valeur)
             const dm = `${diceStr} ${forMod >= 0 ? '+' : ''}${forMod}`
-            return f({ label: "DM mains nues", top: 24.3, left: 91.4, width: 9.0, height: 2.0,
+            return f({ label: "DM mains nues", tooltipTitle: t('recto.dmMainsNues'), top: 24.3, left: 91.4, width: 9.0, height: 2.0,
               value: dm, onChange: () => {}, readOnly: locked, align: "center",
-              formula: { lines: [{ label: 'Dés', value: diceStr }, { label: 'Mod. FOR', value: fmt(forMod) }], total: dm } })
+              formula: { lines: [{ label: t('recto.tlDes'), value: diceStr }, { label: t('stats.modFOR'), value: fmt(forMod) }], total: dm } })
           })()}
           {f({ label: "Arme 2",    top: 29.3, left: 85.8, width: 19.9, height: 2.0, value: character.arme2,   onChange: v => onChange({ arme2: v }) })}
-          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, readOnly: locked, align: "center",
+          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", tooltipTitle: t('recto.attArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, readOnly: locked, align: "center",
             formula: character.arme2 ? formulaArme(character.arme2) : undefined })}
           {(calibrate || character.arme2) && (() => {
             const e2 = character.arme2 ? findArmeEntry(armes, character.arme2) : null
@@ -689,11 +698,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const dm2base = e2 ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}` : character.dmArme2
             const dm2 = bonus2 !== 0 ? `${dm2base} ${fmt(bonus2)}` : dm2base
             const formula2 = e2 ? { lines: [
-              { label: 'Dés', value: e2.dm },
-              ...(modVal2 !== null ? [{ label: `Mod. ${e2.mod}`, value: fmt(modVal2) }] : []),
+              { label: t('recto.tlDes'), value: e2.dm },
+              ...(modVal2 !== null ? [{ label: t(`stats.mod${e2.mod}`), value: fmt(modVal2) }] : []),
               ...groupContribs(bonusContribs2),
             ], total: dm2 } : undefined
-            return f({ label: "DM Arme 2", top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: locked, align: "center", formula: formula2 })
+            return f({ label: "DM Arme 2", tooltipTitle: t('recto.dmArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: locked, align: "center", formula: formula2 })
           })()}
 
           {/* PV / PM / PC */}
@@ -703,35 +712,35 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const pvLines: { label: string; value: string | number }[] = []
             let pvBase: number
             if (character.niveau1Base) {
-              pvLines.push({ label: `Niv.1 — ${character.deVie} + CON (${fmt(character.caracteristiques.CON.mod)})`, value: `+${character.niveau1Base.pvTotal}` })
+              pvLines.push({ label: t('recto.tlNiv1', { dv: character.deVie, mod: fmt(character.caracteristiques.CON.mod) }), value: `+${character.niveau1Base.pvTotal}` })
               pvBase = character.niveau1Base.pvTotal
             } else {
-              pvLines.push({ label: `Dé de vie (${character.deVie})`, value: deVieFaces })
-              pvLines.push({ label: 'Mod. CON', value: fmt(CON.mod) })
+              pvLines.push({ label: t('recto.tlDeVie', { dv: character.deVie }), value: deVieFaces })
+              pvLines.push({ label: t('stats.modCON'), value: fmt(CON.mod) })
               pvBase = deVieFaces + CON.mod
             }
             if (character.pvHistorique) {
               for (const e of character.pvHistorique) {
                 const detail = e.conMod !== 0 ? ` (${e.jet} ${e.conMod >= 0 ? '+' : '−'} ${Math.abs(e.conMod)} CON)` : ` (${e.jet})`
-                pvLines.push({ label: `Niv.${e.niveauDe}${detail}`, value: `+${e.total}` })
+                pvLines.push({ label: `${t('recto.tlNivDe', { n: e.niveauDe })}${detail}`, value: `+${e.total}` })
                 pvBase += e.total
               }
             }
             pvLines.push(...groupContribs(pvContribs))
             const pvTotal = pvBase + pvFromVoies
-            return f({ label: "PV total", top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, readOnly: locked, align: "center", active: activeStep === 4,
+            return f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, readOnly: locked, align: "center", active: activeStep === 4,
               formula: { lines: pvLines, total: pvTotal } })
           })()}
-          {f({ label: "PM", top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
+          {f({ label: "PM", tooltipTitle: t('recto.pm'), top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'mystiques'
-              ? { lines: [{ label: 'Niveau', value: niv }, { label: 'Mod. SAG', value: fmt(SAG.mod) }, { label: '× 2 (Mystiques)', value: '' }], total: pm }
-              : { lines: [{ label: 'Niveau', value: niv }, { label: 'Mod. SAG', value: fmt(SAG.mod) }], total: pm } })}
-          {f({ label: "PC", top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
+              ? { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }, { label: t('recto.tlX2Mystiques'), value: '' }], total: pm }
+              : { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }], total: pm } })}
+          {f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'aventuriers'
-              ? { lines: [{ label: 'Mod. CHA', value: fmt(CHA.mod) }, { label: 'Base', value: '+2' }, { label: 'Aventuriers', value: '+2' }], total: CHA.mod + 4 }
-              : { lines: [{ label: 'Mod. CHA', value: fmt(CHA.mod) }, { label: 'Base', value: '+2' }], total: CHA.mod + 2 } })}
-          {f({ label: "Dé de vie", top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie, onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4,
-            formula: { lines: [{ label: 'Combattants', value: 'd10' }, { label: 'Aventuriers', value: 'd8' }, { label: 'Mystiques', value: 'd6' }], total: character.deVie } })}
+              ? { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }, { label: t('recto.tlAventuriers'), value: '+2' }], total: CHA.mod + 4 }
+              : { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }], total: CHA.mod + 2 } })}
+          {f({ label: "Dé de vie", tooltipTitle: t('recto.deVie'), top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie, onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4,
+            formula: { lines: [{ label: t('recto.tlCombattants'), value: 'd10' }, { label: t('recto.tlAventuriers'), value: 'd8' }, { label: t('recto.tlMystiques'), value: 'd6' }], total: character.deVie } })}
         </>
       })()}
 
@@ -895,7 +904,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               </tbody>
               <tfoot>
                 <tr style={{ borderTop: '1px solid rgba(201,168,76,0.35)' }}>
-                  <td style={{ paddingTop: 4, color: '#c9a84c', fontWeight: 700 }}>Total</td>
+                  <td style={{ paddingTop: 4, color: '#c9a84c', fontWeight: 700 }}>{t('fiche.total')}</td>
                   <td style={{ paddingTop: 4, textAlign: 'right', color: '#c9a84c', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{String(activeTooltip.total)}</td>
                 </tr>
               </tfoot>

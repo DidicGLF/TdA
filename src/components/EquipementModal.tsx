@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import type { Character } from '../types/character'
 import { useGameData } from '../context/GameDataContext'
 import { useModalBackButton } from '../hooks/useModalBackButton'
@@ -51,6 +52,9 @@ function exportJson(data: unknown, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+const ARMES_NOTES_FR   = "¹ Arme tenue à deux mains.\n² Critique sur 19 ou 20.\n³ Règles spéciales, voir ci-dessous.\n⁴ Score minimum en FOR requis : 12 pour l'arc long, 14 pour le composite.\n⁵ Nécessite une action limitée pour ajouter le Mod. de Carac. aux DM.\n⁶ Nécessite une action d'attaque pour être rechargée.\n⁷ Nécessite une action limitée pour être rechargée.\n* Nécessite une capacité pour être maîtrisée."
+const ARMURES_NOTES_FR = "¹ Encombrantes, ces armures annulent le bonus de DEX à la DEF.\n² Fabriquée sur mesure, nécessite la capacité Armure lourde (voie du bastion) pour être portée."
+
 const isDistance = (groupe: string) => groupe.toLowerCase().includes('distance')
 
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
@@ -60,6 +64,7 @@ type DragSrc =
   | { type: 'cat'; gi: number; ci: number }
 
 export default function EquipementModal({ character, onChange, onClose }: Props) {
+  const { t } = useTranslation()
   const [section,      setSection]      = useState<'armes' | 'armures'>('armes')
   const [editMode,     setEditMode]     = useState(false)
   const [exported,     setExported]     = useState(false)
@@ -72,8 +77,14 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
   const [armures,      setArmures]      = useState<CatArmure[]>  (() => JSON.parse(JSON.stringify(armuresCtx.categories)))
-  const [armesNotes,   setArmesNotes]   = useState<string>(() => armesCtx.notes ?? '')
-  const [armuresNotes, setArmuresNotes] = useState<string>(() => armuresCtx.notes ?? '')
+  const [armesNotes,   setArmesNotes]   = useState<string>(() => {
+    const s = armesCtx.notes ?? ''
+    return (s === '' || s === ARMES_NOTES_FR) ? t('equipement.armesNotesDef') : s
+  })
+  const [armuresNotes, setArmuresNotes] = useState<string>(() => {
+    const s = armuresCtx.notes ?? ''
+    return (s === '' || s === ARMURES_NOTES_FR) ? t('equipement.armuresNotesDef') : s
+  })
 
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
   const dragSrc     = useRef<DragSrc | null>(null)
@@ -120,7 +131,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     setExported(false)
   }
   const addGroupe = () => {
-    setGroupes(prev => [...prev, { groupe: 'Nouveau groupe', categories: [] }])
+    setGroupes(prev => [...prev, { groupe: t('equipement.nouveauGroupe'), categories: [] }])
     setExported(false)
   }
 
@@ -139,7 +150,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   }
   const addCatArme = (gi: number) => {
     setGroupes(prev => prev.map((g, i) => i !== gi ? g : {
-      ...g, categories: [...g.categories, { categorie: 'Nouvelle catégorie', entrees: [] }],
+      ...g, categories: [...g.categories, { categorie: t('equipement.nouvelleCategorie'), entrees: [] }],
     }))
     setExported(false)
   }
@@ -190,7 +201,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     setExported(false)
   }
   const addCatArmure = () => {
-    setArmures(prev => [...prev, { categorie: 'Nouvelle catégorie', entrees: [] }])
+    setArmures(prev => [...prev, { categorie: t('equipement.nouvelleCategorie'), entrees: [] }])
     setExported(false)
   }
   const updateArmure = (ci: number, ei: number, patch: Partial<EntreeArmure>) => {
@@ -331,17 +342,17 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     return (
       <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse' }}>
         <thead><tr>
-          <th style={{ ...headCell, textAlign: 'left' }}>Arme</th>
+          <th style={{ ...headCell, textAlign: 'left' }}>{t('equipement.colArme')}</th>
           <th style={{ ...headCell, textAlign: 'center', width: 70 }}>DM</th>
           <th style={{ ...headCell, textAlign: 'center', width: 70 }}>+ Mod</th>
-          {withPortee && <th style={{ ...headCell, textAlign: 'center', width: 80 }}>Portée</th>}
-          <th style={{ ...headCell, textAlign: 'center', width: 70 }}>Prix</th>
-          <th style={{ ...headCell, width: editMode ? 50 : 80, textAlign: 'center' }}>{!editMode && 'Ajouter'}</th>
+          {withPortee && <th style={{ ...headCell, textAlign: 'center', width: 80 }}>{t('equipement.colPortee')}</th>}
+          <th style={{ ...headCell, textAlign: 'center', width: 70 }}>{t('equipement.colPrix')}</th>
+          <th style={{ ...headCell, width: editMode ? 50 : 80, textAlign: 'center' }}>{!editMode && t('equipement.colAjouter')}</th>
         </tr></thead>
         <tbody>
           {cat.entrees.length === 0 && !editMode && (
             <tr><td colSpan={cols} style={{ ...cell, opacity: 0.4, fontStyle: 'italic', textAlign: 'center' }}>
-              Aucune entrée — activez le mode édition pour en ajouter
+              {t('equipement.aucuneEntree')}
             </td></tr>
           )}
           {cat.entrees.map((e, ei) => (
@@ -377,7 +388,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 <button onClick={() => addArmeEntry(gi, ci)} style={{
                   width: '100%', padding: '4px', borderRadius: 3, fontSize: 14, cursor: 'pointer',
                   border: `1px dashed ${S.border}`, background: 'transparent', color: S.gold,
-                }}>+ Nouvelle entrée</button>
+                }}>{t('equipement.nouvelleEntree')}</button>
               </td>
             </tr>
           )}
@@ -389,15 +400,15 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const renderArmureTable = (cat: CatArmure, ci: number) => (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead><tr>
-        <th style={{ ...headCell, textAlign: 'left' }}>Armure</th>
+        <th style={{ ...headCell, textAlign: 'left' }}>{t('equipement.colArmure')}</th>
         <th style={{ ...headCell, textAlign: 'center', width: 70 }}>DEF</th>
-        <th style={{ ...headCell, textAlign: 'center', width: 70 }}>Prix</th>
-        <th style={{ ...headCell, width: editMode ? 50 : 80, textAlign: 'center' }}>{!editMode && 'Ajouter'}</th>
+        <th style={{ ...headCell, textAlign: 'center', width: 70 }}>{t('equipement.colPrix')}</th>
+        <th style={{ ...headCell, width: editMode ? 50 : 80, textAlign: 'center' }}>{!editMode && t('equipement.colAjouter')}</th>
       </tr></thead>
       <tbody>
         {cat.entrees.length === 0 && !editMode && (
           <tr><td colSpan={4} style={{ ...cell, opacity: 0.4, fontStyle: 'italic', textAlign: 'center' }}>
-            Aucune entrée — activez le mode édition pour en ajouter
+            {t('equipement.aucuneEntree')}
           </td></tr>
         )}
         {cat.entrees.map((e, ei) => (
@@ -475,7 +486,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               border: `1px solid ${S.gold}`,
               background: mobileView === v ? 'rgba(201,168,76,0.2)' : 'transparent',
               color: S.gold, fontWeight: mobileView === v ? 700 : 400,
-            }}>{v === 'catalogue' ? 'Catalogue' : 'Équipé'}</button>
+            }}>{t(`equipement.${v}`)}</button>
           ))}
           <div style={{ flex: 1 }} />
           <button onClick={onClose} style={{ background: 'none', border: 'none',
@@ -492,7 +503,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   border: `1px solid ${S.border}`,
                   background: section === s ? 'rgba(201,168,76,0.15)' : 'transparent',
                   color: section === s ? S.gold : S.parchment,
-                }}>{s === 'armes' ? 'Armes' : 'Armures'}</button>
+                }}>{t(`equipement.${s}`)}</button>
               ))}
             </div>
             <select
@@ -551,7 +562,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Armes */}
             {character.armes.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Armes</div>
+                <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.armes')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                   {character.armes.map((a, i) => {
                     const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
@@ -573,11 +584,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   const color = 'rgba(100,160,255,0.8)'
                   return (
                     <div key={slot} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Emplacement {slot}</div>
+                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.emplacement', { n: slot })}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
                           <input type="radio" name={`arme-slot-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color, width: 18, height: 18 }} />
-                          Aucune
+                          {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
                           const otherSlot = slot === 1 ? character.arme2 : character.arme1
@@ -606,11 +617,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Armure portée */}
             {armuresSeules.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Armure portée</div>
+                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.armurePortee')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
                     <input type="radio" name="armure-portee" checked={armurePortee === null} onChange={() => equipeArmure(null)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
-                    Aucune
+                    {t('equipement.aucune')}
                   </label>
                   {armuresSeules.map((a, i) => (
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
@@ -627,11 +638,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Bouclier porté */}
             {boucliersSeuls.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Bouclier porté</div>
+                <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.bouclierPorte')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
                     <input type="radio" name="bouclier-porte" checked={bouclierPorte === null} onChange={() => equipeBouclier(null)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
-                    Aucun
+                    {t('equipement.aucun')}
                   </label>
                   {boucliersSeuls.map((a, i) => (
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
@@ -647,7 +658,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
             {character.armes.length === 0 && character.armuresEquipees.length === 0 && (
               <div style={{ color: 'rgba(245,236,215,0.35)', fontSize: 15, textAlign: 'center', marginTop: 40 }}>
-                Ajoutez des armes ou armures depuis le Catalogue
+                {t('equipement.ajouterDepuisCatalogue')}
               </div>
             )}
           </div>
@@ -660,7 +671,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               width: '100%', padding: '12px', borderRadius: 6, fontSize: 16,
               border: `1px solid ${S.border}`, background: 'rgba(245,236,215,0.07)',
               color: S.parchment, cursor: 'pointer', letterSpacing: '0.05em',
-            }}>Fermer</button>
+            }}>{t('equipement.fermer')}</button>
           </div>
           <div style={{ height: 'env(safe-area-inset-bottom)' }} />
         </div>
@@ -689,7 +700,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
                 color: S.gold, fontWeight: section === s ? 700 : 400,
               }}>
-                {s === 'armes' ? 'Armes' : 'Armures'}
+                {t(`equipement.${s}`)}
               </button>
             ))}
           </div>
@@ -701,7 +712,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 background: exported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.08)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {exported ? '✓ Exporté' : `↓ Exporter ${section}.json`}
+                {exported ? t('equipement.exporte') : t('equipement.exporterJson', { filename: `${section}.json` })}
               </button>
             )}
             <button onClick={() => { setEditMode(m => !m); setExported(false) }} style={{
@@ -710,7 +721,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               background: editMode ? 'rgba(180,130,255,0.15)' : 'transparent',
               color: editMode ? 'rgba(210,180,255,0.9)' : S.parchment,
             }}>
-              {editMode ? '✓ Mode édition' : '✎ Éditer'}
+              {editMode ? t('equipement.modeEdition') : t('equipement.editer')}
             </button>
             <button onClick={onClose} style={{
               background: 'none', border: 'none', color: S.parchment,
@@ -785,7 +796,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                         <button onClick={() => addCatArme(gi)} style={{
                           width: '100%', padding: '3px', borderRadius: 3, fontSize: 12, cursor: 'pointer',
                           border: `1px dashed ${S.border}`, background: 'transparent', color: S.gold,
-                        }}>+ Catégorie</button>
+                        }}>{t('equipement.ajouterCategorie')}</button>
                       </div>
                     )}
                   </div>
@@ -810,7 +821,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     width: '100%', padding: '5px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
                     border: `1px dashed rgba(180,130,255,0.4)`, background: 'transparent',
                     color: 'rgba(210,180,255,0.8)',
-                  }}>+ Groupe</button>
+                  }}>{t('equipement.ajouterGroupe')}</button>
                 )}
                 {section === 'armures' && (
                   <button onClick={addCatArmure} style={{
@@ -841,7 +852,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                       <button onClick={() => removeGroupe(gi)}
                         style={{ background: 'none', border: '1px solid rgba(220,80,80,0.4)', borderRadius: 3,
                           cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 12, padding: '2px 7px', flexShrink: 0 }}>
-                        ✕ Groupe
+                        {t('equipement.supprimerGroupe')}
                       </button>
                     )}
                   </div>
@@ -872,7 +883,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                         {renderArmeTable(cat, gi, ci, withPortee)}
                         {editMode && (
                           <textarea value={cat.notes ?? ''} onChange={e => updateArmeNotes(gi, ci, e.target.value)}
-                            placeholder="Notes de bas de page…"
+                            placeholder={t('equipement.notesBasPage')}
                             style={{ marginTop: 6, width: '100%', minHeight: 50, background: 'rgba(255,255,255,0.04)',
                               border: '1px solid rgba(201,168,76,0.2)', borderRadius: 4, resize: 'vertical',
                               color: S.parchment, fontSize: 13, padding: '6px 8px', outline: 'none',
@@ -910,7 +921,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   {renderArmureTable(cat, ci)}
                   {editMode && (
                     <textarea value={cat.notes ?? ''} onChange={e => updateArmureNotes(ci, e.target.value)}
-                      placeholder="Notes de bas de page…"
+                      placeholder={t('equipement.notesBasPage')}
                       style={{ marginTop: 8, width: '100%', minHeight: 60, background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(201,168,76,0.2)', borderRadius: 4, resize: 'vertical',
                         color: S.parchment, fontSize: 13, padding: '6px 8px', outline: 'none',
@@ -929,12 +940,12 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {editMode && (
               <div style={{ paddingTop: 20, borderTop: `1px solid ${S.border}` }}>
                 <div style={{ fontSize: 13, color: S.gold, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-                  Notes de page
+                  {t('equipement.notesPage')}
                 </div>
                 <textarea
                   value={section === 'armes' ? armesNotes : armuresNotes}
                   onChange={e => section === 'armes' ? setArmesNotes(e.target.value) : setArmuresNotes(e.target.value)}
-                  placeholder="Notes générales pour cette section…"
+                  placeholder={t('equipement.notesSection')}
                   style={{ width: '100%', minHeight: 80, background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(201,168,76,0.2)', borderRadius: 4, resize: 'vertical',
                     color: S.parchment, fontSize: 13, padding: '6px 8px', outline: 'none',
@@ -959,7 +970,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Armes */}
             {character.armes.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Armes</div>
+                <div style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.armes')}</div>
                 {/* Tags avec ✕ */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                   {character.armes.map((a, i) => {
@@ -980,7 +991,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 {/* Slots d'équipement */}
                 {([1, 2] as const).map(slot => {
                   const current = slot === 1 ? character.arme1 : character.arme2
-                  const label   = `Emplacement ${slot}`
+                  const label   = t('equipement.emplacement', { n: slot })
                   const color   = 'rgba(100,160,255,0.8)'
                   return (
                     <div key={slot} style={{ marginBottom: 4 }}>
@@ -988,7 +999,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer', color: S.parchment }}>
                           <input type="radio" name={`arme-slot-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color }} />
-                          Aucune
+                          {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
                           const otherSlot = slot === 1 ? character.arme2 : character.arme1
@@ -1018,11 +1029,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Armure portée */}
             {armuresSeules.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Armure portée</div>
+                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{t('equipement.armurePortee')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer', color: S.parchment }}>
                     <input type="radio" name="armure-portee" checked={armurePortee === null} onChange={() => equipeArmure(null)} style={{ accentColor: 'rgba(100,160,255,0.8)' }} />
-                    Aucune
+                    {t('equipement.aucune')}
                   </label>
                   {armuresSeules.map((a, i) => (
                     <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
@@ -1039,11 +1050,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {/* Bouclier porté */}
             {boucliersSeuls.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Bouclier porté</div>
+                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{t('equipement.bouclierPorte')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer', color: S.parchment }}>
                     <input type="radio" name="bouclier-porte" checked={bouclierPorte === null} onChange={() => equipeBouclier(null)} style={{ accentColor: 'rgba(100,160,255,0.8)' }} />
-                    Aucun
+                    {t('equipement.aucun')}
                   </label>
                   {boucliersSeuls.map((a, i) => (
                     <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
@@ -1063,7 +1074,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         {editMode && (
           <div style={{ borderTop: `1px solid ${S.border}`, padding: '8px 20px', flexShrink: 0,
             fontSize: 11, color: 'rgba(245,236,215,0.35)' }}>
-            Les modifications sont en mémoire jusqu'à l'export. Remplace <code>src/data/{section}.json</code> puis relance <code>npm run build</code>.
+            <Trans i18nKey="equipement.infoEdition" values={{ section }} components={{ code: <code /> }} />
           </div>
         )}
       </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
@@ -35,6 +36,7 @@ const FORMATIONS_MARTIALES = [
 
 export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   useModalBackButton(onClose)
+  const { t } = useTranslation()
   const maxNiveau = 20
   const { data, voies } = useGameData()
   const conBonus = sumStat(computeEffects(character, data)['CON'] ?? [])
@@ -249,8 +251,8 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
             color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
           }}>
             {levelsGained === 1
-              ? `Passage au niveau ${newNiveau}`
-              : `Passage du niveau ${character.niveau} au niveau ${newNiveau}`}
+              ? t('levelUp.titreSimple', { n: newNiveau })
+              : t('levelUp.titreMultiple', { de: character.niveau, a: newNiveau })}
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(245,236,215,0.45)', fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
@@ -260,13 +262,13 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
           {/* ── Niveau maximum : contenu simplifié ── */}
           {character.niveau >= maxNiveau && (
             <div style={{ fontSize: 14, color: 'rgba(201,168,76,0.6)', fontStyle: 'italic' }}>
-              Niveau maximum atteint. Vous pouvez réinitialiser le personnage au niveau 1 ci-dessous.
+              {t('levelUp.niveauMaxAtteint')}
             </div>
           )}
 
           {/* ── Sections level-up (masquées au niveau max) ── */}
           {character.niveau < maxNiveau && <><section>
-            <div style={SECTION_LABEL}>Niveaux gagnés</div>
+            <div style={SECTION_LABEL}>{t('levelUp.niveauxGagnes')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button
                 onClick={() => setLevelsGained(l => Math.max(1, l - 1))}
@@ -294,28 +296,30 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 }}
               >+</button>
               <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.4)' }}>
-                Niveau {character.niveau} → {newNiveau}
+                {t('levelUp.progressionNiveau', { de: character.niveau, a: newNiveau })}
               </span>
             </div>
           </section>
 
           {/* ── Attaques ── */}
           <section>
-            <div style={SECTION_LABEL}>Scores d'attaque</div>
+            <div style={SECTION_LABEL}>{t('levelUp.scoresAttaque')}</div>
             <div style={{ fontSize: 16, color: 'rgba(245,236,215,0.8)' }}>
-              Contact, distance et magique :{' '}
-              <span style={{ color: 'var(--tdr-gold)', fontWeight: 600 }}>+{levelsGained} chacun</span>
-              <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.4)', marginLeft: 8 }}>(automatique)</span>
+              {t('levelUp.attaquesDetails')}{' '}
+              <span style={{ color: 'var(--tdr-gold)', fontWeight: 600 }}>{t('levelUp.chacun', { n: levelsGained })}</span>
+              <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.4)', marginLeft: 8 }}>{t('levelUp.attaquesAuto')}</span>
             </div>
           </section>
 
           {/* ── Points de magie ── */}
           <section>
-            <div style={SECTION_LABEL}>Points de magie</div>
+            <div style={SECTION_LABEL}>{t('levelUp.pointsMagie')}</div>
             <div style={{ fontSize: 16, color: 'rgba(245,236,215,0.8)' }}>
               <span style={{ color: 'var(--tdr-gold)', fontWeight: 600 }}>+{pmGain} PM</span>
               <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.4)', marginLeft: 8 }}>
-                {character.famille === 'mystiques' ? `2 × ${levelsGained} niveau${levelsGained > 1 ? 'x' : ''}` : `+1 par niveau`}
+                {character.famille === 'mystiques'
+                  ? t('levelUp.pmParNiveauMystique', { count: levelsGained })
+                  : t('levelUp.pmParNiveau')}
               </span>
             </div>
             <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.35)', marginTop: 4 }}>
@@ -331,14 +335,14 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
               background: 'rgba(201,168,76,0.04)',
             }}>
               <div style={{ ...SECTION_LABEL, color: 'rgba(201,168,76,0.75)', marginBottom: 8 }}>
-                ✦ Nouvelle voie (facultatif) — niveau 8
+                {t('levelUp.nouvelleVoieTitre')}
               </div>
               <p style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', margin: '0 0 12px' }}>
-                En atteignant le niveau 8, vous pouvez débloquer une voie de prestige ou une quatrième voie. C'est facultatif — vous pouvez aussi ne rien choisir.
+                {t('levelUp.nouvelleVoieDesc')}
               </p>
               {!character.voiePrestige.nom && (
                 <div>
-                  <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Choisir une voie (facultatif)</div>
+                  <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('levelUp.choisirVoie')}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <div style={{ flex: 1 }}>
                       <VoieCombobox
@@ -362,12 +366,12 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                           border: '1px solid rgba(201,168,76,0.25)',
                           background: 'transparent', color: 'rgba(245,236,215,0.4)',
                         }}
-                      >Annuler</button>
+                      >{t('levelUp.annuler')}</button>
                     )}
                   </div>
                   {prestigeNom && (
                     <p style={{ fontSize: 13, color: 'rgba(245,236,215,0.4)', margin: '6px 0 0' }}>
-                      La voie apparaît ci-dessous pour y dépenser des points.
+                      {t('levelUp.voieApparaitra')}
                     </p>
                   )}
                 </div>
@@ -378,13 +382,13 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
           {/* ── Points de capacité ── */}
           <section>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={SECTION_LABEL}>Points de capacité</div>
+              <div style={SECTION_LABEL}>{t('levelUp.pointsCapacite')}</div>
               <div style={{
                 fontSize: 14, fontWeight: 700,
                 color: ptsRestants === 0 ? 'rgba(120,210,120,0.9)' : 'var(--tdr-gold)',
                 background: 'rgba(201,168,76,0.1)', borderRadius: 4, padding: '3px 12px',
               }}>
-                {ptsRestants} / {ptsTotal} restants
+                {t('levelUp.ptsRestants', { restants: ptsRestants, total: ptsTotal })}
               </div>
             </div>
 
@@ -418,10 +422,10 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                         <div style={{ fontSize: 16, color: 'var(--tdr-parchment)', fontWeight: 500 }}>{key === 'voiePrestige' ? (prestigeNom || voie.nom) : voie.nom}</div>
                         <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', marginTop: 3 }}>
                           {maxed && bought === 0
-                            ? 'Tous les rangs acquis'
+                            ? t('levelUp.tousRangsAcquis')
                             : bought > 0
-                            ? `${bought} rang${bought > 1 ? 's' : ''} sélectionné${bought > 1 ? 's' : ''} · ${ptsDépensés} pt${ptsDépensés > 1 ? 's' : ''} dépensé${ptsDépensés > 1 ? 's' : ''}`
-                            : `Rang ${(firstNext ?? 0) + 1} disponible · ${costNext} pt${costNext > 1 ? 's' : ''}`}
+                            ? `${t('levelUp.rangsSelectionnes', { count: bought })} · ${t('levelUp.ptsDepenses', { count: ptsDépensés })}`
+                            : t('levelUp.rangDisponible', { rang: (firstNext ?? 0) + 1, count: costNext })}
                         </div>
                       </div>
 
@@ -478,7 +482,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
 
               {voiesActives.length === 0 && (
                 <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.4)', fontStyle: 'italic' }}>
-                  Aucune voie assignée.
+                  {t('levelUp.aucuneVoie')}
                 </div>
               )}
 
@@ -489,7 +493,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 return (
                   <div style={{ marginTop: 4, borderTop: '1px solid rgba(201,168,76,0.12)', paddingTop: 14 }}>
                     <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
-                      Formations martiales — 1 pt chacune
+                      {t('levelUp.formationsMartiales')}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {disponibles.map(f => {
@@ -530,7 +534,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                         {(character.voiePrestige as VoiePersonnage).nom}
                       </div>
                       <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', marginTop: 3 }}>
-                        Voie de prestige · disponible à partir du niveau 8
+                        {t('levelUp.prestigeVerrouille')}
                       </div>
                     </div>
                     <span style={{ fontSize: 18, color: 'rgba(245,236,215,0.3)' }}>🔒</span>
@@ -544,7 +548,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
           <section>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={SECTION_LABEL}>
-                Points de vie · {levelsGained > 1 ? `${levelsGained}×` : ''}{character.deVie} + Mod.CON{(() => { const unique = [...new Set(conModPerLevel)]; return unique.length === 1 ? ` (${unique[0] >= 0 ? '+' : ''}${unique[0]})` : ` (variable)` })()} par niveau
+                {t('levelUp.pointsVie')} · {levelsGained > 1 ? `${levelsGained}×` : ''}{character.deVie} + Mod.CON{(() => { const unique = [...new Set(conModPerLevel)]; return unique.length === 1 ? ` (${unique[0] >= 0 ? '+' : ''}${unique[0]})` : ` (${t('levelUp.variable')})` })()} {t('levelUp.parNiveau')}
               </div>
               {levelsGained > 1 && (
                 <button
@@ -557,12 +561,12 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                     color: canRoll ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)', fontWeight: 600,
                     cursor: canRoll ? 'pointer' : 'not-allowed',
                   }}
-                >Lancer tous</button>
+                >{t('levelUp.lancerTous')}</button>
               )}
             </div>
             {!canRoll && (
               <div style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', marginBottom: 8, fontStyle: 'italic' }}>
-                Dépense tous tes points de voies avant de lancer les dés.
+                {t('levelUp.depenseAvantLancer')}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -572,7 +576,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 const pvCeNiveau = jet !== null ? jet + lvlConMod : null
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 13, color: 'rgba(201,168,76,0.6)', minWidth: 52, flexShrink: 0 }}>Niv.{niv}</span>
+                    <span style={{ fontSize: 13, color: 'rgba(201,168,76,0.6)', minWidth: 52, flexShrink: 0 }}>{t('levelUp.nivLabel', { n: niv })}</span>
                     <button
                       onClick={() => rollOne(i)}
                       disabled={!canRoll}
@@ -611,7 +615,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
             </div>
             {pvGagnes !== null && levelsGained > 1 && (
               <div style={{ marginTop: 10, fontSize: 15, color: 'rgba(245,236,215,0.7)', borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: 8 }}>
-                Total : <span style={{ color: 'var(--tdr-gold)', fontWeight: 700, fontSize: 17 }}>+{pvGagnes} PV</span>
+                {t('levelUp.totalPV')} <span style={{ color: 'var(--tdr-gold)', fontWeight: 700, fontSize: 17 }}>+{pvGagnes} PV</span>
               </div>
             )}
           </section>
@@ -626,7 +630,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
               padding: '14px 16px', background: 'rgba(200,80,80,0.06)',
             }}>
               <div style={{ fontSize: 14, color: 'rgba(245,200,200,0.9)', marginBottom: 8 }}>
-                Tous les rangs de voies seront effacés. Les scores seront restaurés à :
+                {t('levelUp.resetDesc')}
               </div>
               <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)', marginBottom: 12, lineHeight: 1.8 }}>
                 {base ? (
@@ -637,8 +641,8 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                   </>
                 ) : (
                   <span style={{ color: 'rgba(245,200,200,0.55)', fontStyle: 'italic' }}>
-                    Snapshot niveau 1 non disponible — PV, PM et attaques seront remis à 0.<br />
-                    Astuce : faites une montée de niveau depuis le niveau 1 pour l'enregistrer.
+                    {t('levelUp.resetSnapshotManquant')}<br />
+                    {t('levelUp.resetSnapshotAstuce')}
                   </span>
                 )}
               </div>
@@ -646,11 +650,11 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 <button
                   onClick={() => setShowResetConfirm(false)}
                   style={{ ...BTN_BASE, border: '1px solid rgba(245,236,215,0.2)', background: 'transparent', color: 'rgba(245,236,215,0.5)' }}
-                >Annuler</button>
+                >{t('levelUp.annuler')}</button>
                 <button
                   onClick={handleReset}
                   style={{ ...BTN_BASE, fontWeight: 600, border: '1px solid rgba(200,80,80,0.6)', background: 'rgba(200,80,80,0.15)', color: 'rgba(240,120,120,0.95)' }}
-                >Confirmer la réinitialisation</button>
+                >{t('levelUp.confirmerReinit')}</button>
               </div>
             </div>
           ) : (
@@ -662,14 +666,14 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 color: 'rgba(200,100,100,0.7)',
               }}
             >
-              Réinitialiser au niveau 1…
+              {t('levelUp.reinitialiser')}
             </button>
           )}
 
           {/* ── Historique PV ── */}
           {character.pvHistorique && character.pvHistorique.length > 0 && (
             <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: 12 }}>
-              <div style={{ ...SECTION_LABEL, marginBottom: 6 }}>Historique des points de vie</div>
+              <div style={{ ...SECTION_LABEL, marginBottom: 6 }}>{t('levelUp.historiquePV')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {character.pvHistorique.map((entry, i) => (
                   <div key={i} style={{
@@ -677,7 +681,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                     background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.2)',
                     color: 'rgba(245,236,215,0.7)', whiteSpace: 'nowrap',
                   }}>
-                    <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 4 }}>Niv.{entry.niveauDe}</span>
+                    <span style={{ color: 'rgba(201,168,76,0.6)', marginRight: 4 }}>{t('levelUp.nivLabel', { n: entry.niveauDe })}</span>
                     <span style={{ color: 'var(--tdr-parchment)', fontWeight: 600 }}>+{entry.total} PV</span>
                     {entry.conMod !== 0 && (
                       <span style={{ opacity: 0.45, marginLeft: 4 }}>
@@ -696,12 +700,12 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
           {/* ── Boutons principaux ── */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4, borderTop: '1px solid rgba(201,168,76,0.15)' }}>
             <button onClick={onClose} style={{ ...BTN_BASE, border: '1px solid rgba(201,168,76,0.25)', background: 'transparent', color: 'rgba(245,236,215,0.55)' }}>
-              Annuler
+              {t('levelUp.annuler')}
             </button>
             <button
               disabled={!canConfirm}
               onClick={handleConfirm}
-              title={!canConfirm ? (!allRolled ? 'Lancez le dé de vie' : 'Dépensez tous les points de capacité') : ''}
+              title={!canConfirm ? (!allRolled ? t('levelUp.lancerDeVie') : t('levelUp.depensezPts')) : ''}
               style={{
                 ...BTN_BASE, fontWeight: 600,
                 border: `1px solid ${canConfirm ? 'rgba(201,168,76,0.65)' : 'rgba(201,168,76,0.2)'}`,
@@ -710,7 +714,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 cursor: canConfirm ? 'pointer' : 'not-allowed',
               }}
             >
-              Confirmer niveau {newNiveau}
+              {t('levelUp.confirmerNiveau', { n: newNiveau })}
             </button>
           </div>
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
 import { defaultCharacter } from './types/character'
@@ -19,8 +20,13 @@ export default function App() {
 }
 
 function AppContent() {
-  const { data: descriptions } = useGameData()
-  const [character, setCharacter] = useState<Character>(defaultCharacter())
+  const { t, i18n } = useTranslation()
+  const { data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages } = useGameData()
+  const [character, setCharacter] = useState<Character>(() => ({
+    ...defaultCharacter(),
+    inventaire: t('wizard.step6.inventaireDefault'),
+    tresorerie: t('wizard.step6.tresorerieDefault'),
+  }))
 
   // Synchronise compagnonsActifs dès qu'un rang de voie change, quelle que soit l'origine
   useEffect(() => {
@@ -43,8 +49,11 @@ function AppContent() {
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [ficheLocked, setFicheLocked] = useState(true)
+  const [showUnlockConfirm, setShowUnlockConfirm] = useState(false)
   const [showGestion, setShowGestion] = useState(false)
   const gestionRef = useRef<HTMLDivElement>(null)
+  const rectoInputRef = useRef<HTMLInputElement>(null)
+  const versoInputRef = useRef<HTMLInputElement>(null)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const [library, setLibrary] = useState<SavedEntry[]>([])
   const [libraryLoaded, setLibraryLoaded] = useState(false)
@@ -60,6 +69,15 @@ function AppContent() {
 
   const onChange = (patch: Partial<Character>) =>
     setCharacter(prev => ({ ...prev, ...patch }))
+
+  const importSheetImage = (side: 'recto' | 'verso', file: File) => {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const dataUrl = e.target?.result as string
+      setSheetImages(prev => ({ ...prev, [side]: dataUrl }))
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     setSheetPage(step >= 5 ? 'verso' : 'recto')
@@ -238,10 +256,61 @@ function AppContent() {
 
   const modals = (
     <>
+      <input ref={rectoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) importSheetImage('recto', f); e.target.value = '' }} />
+      <input ref={versoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) importSheetImage('verso', f); e.target.value = '' }} />
+
       {showLevelUp && (
         <LevelUpModal character={character} onConfirm={onChange} onClose={() => setShowLevelUp(false)} />
       )}
       {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
+
+      {showUnlockConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)',
+        }}>
+          <div style={{ background: 'rgba(22,17,11,0.99)', border: '1px solid rgba(255,160,50,0.5)',
+            borderRadius: 10, padding: '28px 28px 24px', maxWidth: 420, width: '90vw',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 18,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 28 }}>🔓</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: 'rgba(255,180,60,0.95)', fontFamily: "'Cinzel', serif" }}>
+                {t('modalDeverrouiller.titre')}
+              </span>
+            </div>
+            <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.85)', lineHeight: 1.6 }}>
+              <Trans
+                i18nKey="modalDeverrouiller.description"
+                components={{ highlight: <strong style={{ color: 'rgba(255,180,60,0.9)' }} /> }}
+              />
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,150,50,0.8)', lineHeight: 1.6,
+              background: 'rgba(255,120,30,0.08)', border: '1px solid rgba(255,120,30,0.25)',
+              borderRadius: 6, padding: '10px 14px',
+            }}>
+              <Trans
+                i18nKey="modalDeverrouiller.avertissement"
+                components={{ strong: <strong /> }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button onClick={() => setShowUnlockConfirm(false)} style={{
+                padding: '8px 20px', borderRadius: 5, cursor: 'pointer', fontSize: 14,
+                border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
+                color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
+              }}>{t('modalDeverrouiller.annuler')}</button>
+              <button onClick={() => { setFicheLocked(false); setShowUnlockConfirm(false) }} style={{
+                padding: '8px 20px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                border: '1px solid rgba(255,160,50,0.6)', background: 'rgba(255,160,50,0.15)',
+                color: 'rgba(255,180,60,0.95)', fontFamily: 'inherit',
+              }}>{t('modalDeverrouiller.confirmer')}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showSave && (
         <SaveLoadPanel
           character={character}
@@ -249,7 +318,11 @@ function AppContent() {
           library={library}
           onLibraryChange={setLibrary}
           onLoad={handleLoad}
-          onNew={() => { setCharacter(defaultCharacter()); setStep(0); setMaxStep(0) }}
+          onNew={() => {
+            setCharacter({ ...defaultCharacter(), inventaire: t('wizard.step6.inventaireDefault'), tresorerie: t('wizard.step6.tresorerieDefault') })
+            setStep(0)
+            setMaxStep(0)
+          }}
           onClose={() => setShowSave(false)}
         />
       )}
@@ -270,7 +343,7 @@ function AppContent() {
               {/* Toolbar compact */}
               <div style={{
                 display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
-                position: 'sticky', top: 0, zIndex: 10, background: '#111',
+                position: 'sticky', top: 0, zIndex: 35, background: '#111',
                 borderBottom: '1px solid rgba(201,168,76,0.15)',
                 overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               }}>
@@ -285,24 +358,24 @@ function AppContent() {
                     cursor: 'pointer', fontSize: 15,
                     fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
                   }}>
-                    {p === 'recto' ? 'Recto' : 'Verso'}
+                    {t(`fiche.${p}`)}
                   </button>
                 ))}
                 <button onClick={() => setShowSave(true)} style={{
                   flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
                   color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>Personnages</button>
+                }}>{t('toolbar.personnages')}</button>
                 <button onClick={() => setShowLevelUp(true)} style={{
                   flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
                   color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}</button>
+                }}>{t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}</button>
                 <button onClick={() => setShowDescEditor(d => !d)} style={{
                   flexShrink: 0, padding: '6px 12px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
                   color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>✎ Données du jeu</button>
+                }}>{t('toolbar.donneesJeu')}</button>
               </div>
               {/* Feuille scrollable */}
               <div style={{ padding: '0 4px 80px' }}>
@@ -316,10 +389,10 @@ function AppContent() {
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(20,16,10,0.98)' }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
-                  Terres d'Arran
+                  {t('app.titre')}
                 </div>
                 <div style={{ fontSize: 17, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
-                  Création de personnage
+                  {t('app.sousTitre')}
                 </div>
               </div>
               <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -338,14 +411,14 @@ function AppContent() {
         {/* Barre de navigation basse */}
         <div style={{ flexShrink: 0, background: 'rgba(15,12,8,0.98)', borderTop: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ display: 'flex', height: 56 }}>
-            {([['fiche', 'Fiche'], ['creation', 'Création']] as const).map(([tab, label]) => (
+            {(['fiche', 'creation'] as const).map(tab => (
               <button key={tab} onClick={() => setMobileTab(tab)} style={{
                 flex: 1, border: 'none', background: 'transparent',
                 color: mobileTab === tab ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.45)',
                 fontSize: 15, fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
                 borderTop: mobileTab === tab ? '2px solid var(--tdr-gold)' : '2px solid transparent',
                 cursor: 'pointer',
-              }}>{label}</button>
+              }}>{tab === 'fiche' ? t('mobile.ongletFiche') : t('mobile.ongletCreation')}</button>
             ))}
           </div>
           <div style={{ height: 'env(safe-area-inset-bottom)' }} />
@@ -368,7 +441,7 @@ function AppContent() {
         {/* Toolbar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
-          position: 'sticky', top: 0, zIndex: 10, background: '#111',
+          position: 'sticky', top: 0, zIndex: 35, background: '#111',
         }}>
           {(['recto', 'verso'] as const).map(p => (
             <button key={p} onClick={() => setSheetPage(p)} style={{
@@ -380,7 +453,7 @@ function AppContent() {
               cursor: 'pointer', fontSize: 15,
               fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
             }}>
-              {p === 'recto' ? 'Recto' : 'Verso'}
+              {t(`fiche.${p}`)}
             </button>
           ))}
 
@@ -397,7 +470,7 @@ function AppContent() {
               cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
             }}
           >
-            Imprimer
+            {t('toolbar.imprimer')}
           </button>
 
           {/* Sauvegarde */}
@@ -411,13 +484,13 @@ function AppContent() {
               cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
             }}
           >
-            Personnages
+            {t('toolbar.personnages')}
           </button>
 
           {/* Niveau */}
           <button
             onClick={() => setShowLevelUp(true)}
-            title={character.niveau >= 20 ? 'Niveau maximum — cliquer pour réinitialiser' : `Passer au niveau ${character.niveau + 1}`}
+            title={character.niveau >= 20 ? t('toolbar.niveauMax') : t('toolbar.niveauSuivant', { suivant: character.niveau + 1 })}
             style={{
               marginBottom: 4, padding: '3px 12px', borderRadius: 4,
               border: '1px solid rgba(201,168,76,0.5)',
@@ -427,7 +500,7 @@ function AppContent() {
               letterSpacing: '0.03em', fontSize: 14,
             }}
           >
-            Niv. {character.niveau}{character.niveau >= 20 ? ' ★' : ' →'}
+            {t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}
           </button>
 
           {/* Zoom */}
@@ -451,7 +524,7 @@ function AppContent() {
                 cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
               }}
             >
-              ⚙ Gestion
+              {t('toolbar.gestion')}
             </button>
             {showGestion && (
               <div style={{
@@ -466,36 +539,72 @@ function AppContent() {
                   borderBottom: '1px solid rgba(201,168,76,0.1)',
                   color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
                 }}>
-                  ✎ Données du jeu
+                  {t('menuGestion.donneesJeu')}
                 </button>
 
                 {/* Déverrouiller la fiche */}
-                <button onClick={() => { setFicheLocked(l => !l); setShowGestion(false) }} style={{
+                <button onClick={() => {
+                  if (ficheLocked) { setShowUnlockConfirm(true); setShowGestion(false) }
+                  else { setFicheLocked(true); setShowGestion(false) }
+                }} style={{
                   padding: '10px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
-                  border: 'none', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
+                  border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
                   color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
                   cursor: 'pointer', textAlign: 'left', fontSize: 14,
                 }}>
-                  {ficheLocked ? '🔒 Déverrouiller la fiche' : '🔓 Verrouiller la fiche'}
-                  {!ficheLocked && (
-                    <div style={{ fontSize: 11, color: 'rgba(255,150,50,0.7)', marginTop: 3, lineHeight: 1.3 }}>
-                      ⚠ Les champs calculés modifiés<br/>peuvent casser la logique de calcul
-                    </div>
-                  )}
+                  {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
                 </button>
 
-                {/* Calibrage — dev uniquement */}
-                {import.meta.env.DEV && (
-                  <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
-                    padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
-                    border: 'none',
-                    color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
-                    cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                  }}>
-                    {calibrate ? '✕ Calibrage ON' : '⊹ Calibrage'}
-                    <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', marginTop: 2 }}>Mode développeur</div>
-                  </button>
-                )}
+                {/* Langue */}
+                <div style={{
+                  padding: '8px 16px', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
+                  {(['fr', 'en'] as const).map(lang => (
+                    <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                      padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                      border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                      background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
+                      color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                    }}>{lang.toUpperCase()}</button>
+                  ))}
+                </div>
+
+                {/* Feuilles personnalisées */}
+                <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    {t('menuGestion.feuilles')}
+                  </span>
+                  {(['recto', 'verso'] as const).map(side => (
+                    <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => (side === 'recto' ? rectoInputRef : versoInputRef).current?.click()} style={{
+                        flex: 1, padding: '5px 8px', background: 'transparent',
+                        border: '1px solid rgba(201,168,76,0.25)', borderRadius: 3,
+                        color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                      }}>
+                        {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
+                      </button>
+                      {sheetImages[side] && (
+                        <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
+                          padding: '4px 6px', background: 'transparent',
+                          border: '1px solid rgba(255,80,80,0.3)', borderRadius: 3,
+                          color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 11,
+                        }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calibrage */}
+                <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
+                  padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  border: 'none',
+                  color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
+                  cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                }}>
+                  {calibrate ? t('menuGestion.calibrageOn') : t('menuGestion.calibrage')}
+                </button>
               </div>
             )}
           </div>
@@ -516,10 +625,12 @@ function AppContent() {
           >
             {sheetPage === 'recto' ? (
               <CharacterSheetRecto character={character} onChange={onChange} activeStep={step}
-                calibrate={calibrate} locked={ficheLocked} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
+                calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : (
               <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
-                calibrate={calibrate} locked={ficheLocked} onFieldMoved={(l, t, lf, w, h) => setLastMoved({ label: l, top: t, left: lf, width: w, height: h })} />
+                calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             )}
 
             {/* Tooltip coordonnées au survol (suit le curseur) */}
@@ -578,7 +689,7 @@ function AppContent() {
           display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap',
         }}>
           <span style={{ color: 'rgba(245,236,215,0.5)' }}>
-            Survol :{' '}
+            {t('calibrage.survol')}{' '}
             <span style={{ color: 'var(--tdr-gold)' }}>
               {hover ? `top=${hover.y}  left=${hover.x}` : '—'}
             </span>
@@ -603,14 +714,24 @@ function AppContent() {
                   color: 'var(--tdr-gold)', cursor: 'pointer',
                 }}
               >
-                copier
+                {t('calibrage.copier')}
               </button>
             </span>
           ) : (
             <span style={{ color: 'rgba(245,236,215,0.35)', fontSize: 11 }}>
-              Glisser un tag doré pour déplacer le champ
+              {t('calibrage.glisser')}
             </span>
           )}
+          <button
+            onClick={() => setFieldPositions({})}
+            style={{
+              marginLeft: 'auto', padding: '2px 10px', fontSize: 11, borderRadius: 3,
+              border: '1px solid rgba(255,80,80,0.4)', background: 'transparent',
+              color: 'rgba(255,110,110,0.8)', cursor: 'pointer',
+            }}
+          >
+            {t('calibrage.reinitialiser')}
+          </button>
         </div>
       )}
 
@@ -631,8 +752,8 @@ function AppContent() {
           whiteSpace: 'nowrap',
         }}>
           {ptsDisponibles > 0
-            ? `${ptsDisponibles} pt${ptsDisponibles > 1 ? 's' : ''} de capacité disponible${ptsDisponibles > 1 ? 's' : ''}`
-            : `${Math.abs(ptsDisponibles)} pt${Math.abs(ptsDisponibles) > 1 ? 's' : ''} de capacité en trop`}
+            ? t('capacite.disponible', { count: ptsDisponibles })
+            : t('capacite.enTrop', { count: Math.abs(ptsDisponibles) })}
         </div>
       )}
 
@@ -647,10 +768,10 @@ function AppContent() {
       }}>
         <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
           <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
-            Terres d'Arran
+            {t('app.titre')}
           </div>
           <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
-            Création de personnage
+            {t('app.sousTitre')}
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import SheetField from './SheetField'
 
@@ -26,10 +26,15 @@ export default function DraggableField({
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
+  const dragging = useRef(false)
+
+  useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
+  useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
 
   const handleDragMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragging.current = true
     const startX = e.clientX
     const startY = e.clientY
     const startTop = pos.top
@@ -47,6 +52,7 @@ export default function DraggableField({
       const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
       const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
       setPos({ top: newTop, left: newLeft })
+      dragging.current = false
       onMoved(label, newTop, newLeft, width)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
@@ -58,6 +64,7 @@ export default function DraggableField({
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragging.current = true
     const startX = e.clientX
     const startWidth = width
 
@@ -70,6 +77,7 @@ export default function DraggableField({
       const rect = containerRef.current!.getBoundingClientRect()
       const w = Math.max(1, +(startWidth + (ev.clientX - startX) / rect.width * 100).toFixed(1))
       setWidth(w)
+      dragging.current = false
       onMoved(label, pos.top, pos.left, w)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
@@ -135,6 +136,7 @@ type PendingItem =
   | { id: string; type: 'compagnon'; data: CompanionEntry; expanded: boolean }
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, openDataDir } = useGameData()
 
   const armesList = useMemo(() =>
@@ -145,6 +147,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [section, setSection] = useState<'voies' | 'traits' | 'traitsRaciaux' | 'peuples' | 'compagnons'>('peuples')
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void; label?: string; danger?: boolean } | null>(null)
   const askConfirm = (message: string, onConfirm: () => void) => setConfirmDialog({ message, onConfirm })
+  const [promptDialog, setPromptDialog] = useState<{ message: string; defaultValue: string; onConfirm: (value: string) => void } | null>(null)
+  const [promptValue, setPromptValue] = useState('')
 
   // Voies
   const [selected, setSelected] = useState(VOIES_INIT[0] ?? '')
@@ -356,16 +360,21 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   }
 
   const exportWithPrompt = (payload: unknown, type: 'descriptions' | 'peuples' | 'traits-magiques', defaultBase: string, onDone: () => void) => {
-    const input = window.prompt('Nom du fichier :', defaultBase)
-    if (input === null) return
-    const filename = (input.trim() || defaultBase) + '.json'
-    const envelope = { _type: type, data: payload }
-    const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
-    onDone()
+    setPromptValue(defaultBase)
+    setPromptDialog({
+      message: t('descEditor.nomFichierPrompt'),
+      defaultValue: defaultBase,
+      onConfirm: (input) => {
+        const filename = (input.trim() || defaultBase) + '.json'
+        const envelope = { _type: type, data: payload }
+        const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = filename; a.click()
+        URL.revokeObjectURL(url)
+        onDone()
+      },
+    })
   }
 
   const importFile = (expectedType: 'descriptions' | 'peuples' | 'traits-magiques', onImport: (parsed: unknown) => void) => {
@@ -381,13 +390,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           if (raw && typeof raw === 'object') {
             // Fichier d'élément individuel (voie, trait, peuple) — mauvais bouton
             if ('type' in raw && ['voie', 'trait', 'peuple'].includes((raw as Record<string,unknown>).type as string)) {
-              const labels: Record<string, string> = { voie: 'une voie individuelle', trait: 'un trait individuel', peuple: 'un peuple individuel' }
-              alert(`Ce fichier contient ${labels[(raw as Record<string,unknown>).type as string] ?? 'un élément individuel'}.\nUtilisez le bouton "Importer une voie / Importer" dans la section correspondante, pas ce bouton.`)
+              const labelKey = (raw as Record<string,unknown>).type as string
+              const labels: Record<string, string> = {
+                voie: t('descEditor.importErrContientVoie'),
+                trait: t('descEditor.importErrContientTrait'),
+                peuple: t('descEditor.importErrContientPeuple'),
+              }
+              alert(t('descEditor.importErrContientMsg', { label: labels[labelKey] ?? labelKey }))
               return
             }
             if ('_type' in raw && 'data' in raw) {
               if (raw._type !== expectedType) {
-                alert(`Ce fichier est de type "${raw._type}", attendu "${expectedType}".`)
+                alert(t('descEditor.importErrMauvaisType', { got: raw._type, expected: expectedType }))
                 return
               }
               onImport(raw.data)
@@ -396,7 +410,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             }
           }
         } catch {
-          alert('Fichier JSON invalide.')
+          alert(t('descEditor.importErrJSON'))
         }
       }
       reader.readAsText(file)
@@ -412,7 +426,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   }
 
   const addTrait = () => {
-    setTraits(prev => [...prev, { nom: 'Nouveau trait', desc: '' }])
+    setTraits(prev => [...prev, { nom: t('descEditor.nouveauTrait'), desc: '' }])
     setSelectedTrait(traits.length)
     setTraitsExported(false)
   }
@@ -428,7 +442,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setTraitsRaciauxExported(false)
   }
   const addTraitRacial = () => {
-    setTraitsRaciaux(prev => [...prev, { nom: 'Nouveau trait racial', desc: '' }])
+    setTraitsRaciaux(prev => [...prev, { nom: t('descEditor.nouveauTraitRacial'), desc: '' }])
     setSelectedTraitRacial(traitsRaciaux.length)
     setTraitsRaciauxExported(false)
   }
@@ -448,7 +462,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   const addCompagnon = () => {
     setCompagnons(prev => [...prev, {
-      nom: 'Nouveau compagnon', for: 0, dex: 0, con: 0, int: 0, sag: 0, cha: 0,
+      nom: t('descEditor.nouveauCompagnon'), for: 0, dex: 0, con: 0, int: 0, sag: 0, cha: 0,
       init: 10, def: 10, pv: 10,
     }])
     setSelectedCompagnon(compagnons.length)
@@ -478,9 +492,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   // Fonctions voies
   const addVoie = () => {
-    let nom = 'Nouvelle voie'
+    let nom = t('descEditor.nouvelleVoie')
     let n = 1
-    while (data[nom]) { nom = `Nouvelle voie ${++n}` }
+    while (data[nom]) { nom = `${t('descEditor.nouvelleVoie')} ${++n}` }
     setData(prev => ({ ...prev, [nom]: emptyRangs() }))
     setVoies(prev => [...prev, { nom, famille: '', categorie: 'profil' }])
     setSelected(nom)
@@ -511,7 +525,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   // Fonctions peuples
   const addPeuple = () => {
-    setPeuples(prev => [...prev, { label: 'Nouveau peuple', cultures: [] }])
+    setPeuples(prev => [...prev, { label: t('descEditor.nouveauPeuple'), cultures: [] }])
     setSelectedPeuple(peuples.length)
     setSelectedCulture(0)
     setPeuplesExported(false)
@@ -530,7 +544,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   const addCulture = (pIdx: number) => {
     setPeuples(prev => prev.map((p, i) => i === pIdx
-      ? { ...p, cultures: [...p.cultures, { label: 'Nouvelle culture', voiePeuple: '', voieCulturelle: '', modCaracs: {} }] }
+      ? { ...p, cultures: [...p.cultures, { label: t('descEditor.nouvelleCulture'), voiePeuple: '', voieCulturelle: '', modCaracs: {} }] }
       : p
     ))
     setSelectedCulture(peuples[pIdx]?.cultures.length ?? 0)
@@ -616,9 +630,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const executePrint = (nom: string) => {
     const rangs = data[nom] ?? []
     const famille = voies.find(v => v.nom === nom)?.famille ?? ''
-    const familleLabel = famille ? (FAMILLE_LABELS[famille] ?? famille) : ''
+    const FAMILLE_LABELS_PRINT: Record<string, string> = {
+      combattants: t('descEditor.familleCombattants'),
+      aventuriers: t('descEditor.familleAventuriers'),
+      mystiques: t('descEditor.familleMystiques'),
+    }
+    const familleLabel = famille ? (FAMILLE_LABELS_PRINT[famille] ?? famille) : ''
     const rangsHtml = rangs.map((r, i) =>
-      `<div class="tda-rang"><h2 class="tda-h2">Rang ${i + 1}${r.nom ? ` — ${escHtml(r.nom)}` : ''}</h2>${blockToHtml(r.desc)}</div>`
+      `<div class="tda-rang"><h2 class="tda-h2">${t('descEditor.rangN', { n: i + 1 })}${r.nom ? ` — ${escHtml(r.nom)}` : ''}</h2>${blockToHtml(r.desc)}</div>`
     ).join('')
 
     const STYLE_ID = 'tda-print-style'
@@ -696,10 +715,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         } else if (raw.type === 'peuple' && raw.data?.label !== undefined) {
           setPendingItems(prev => [...prev, { id: crypto.randomUUID(), type: 'peuple', data: raw.data, expanded: false }])
         } else {
-          alert('Format non reconnu. Utilisez les fichiers exportés depuis cet éditeur.')
+          alert(t('descEditor.importErrFormatGeneral'))
         }
       } catch {
-        alert('Fichier invalide.')
+        alert(t('descEditor.importErrFichier'))
       }
     }
     reader.readAsText(file)
@@ -715,8 +734,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         const raw = JSON.parse(ev.target?.result as string)
         if (raw.type === 'trait-racial' && raw.data?.nom !== undefined) {
           setPendingItems(prev => [...prev, { id: crypto.randomUUID(), type: 'trait-racial', data: raw.data, expanded: false }])
-        } else { alert('Format non reconnu. Utilisez les fichiers exportés depuis cet éditeur (type: trait-racial).') }
-      } catch { alert('Fichier JSON invalide.') }
+        } else { alert(t('descEditor.importErrFormatType', { type: 'trait-racial' })) }
+      } catch { alert(t('descEditor.importErrJSON')) }
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -731,8 +750,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         const raw = JSON.parse(ev.target?.result as string)
         if (raw.type === 'compagnon' && raw.data?.nom !== undefined) {
           setPendingItems(prev => [...prev, { id: crypto.randomUUID(), type: 'compagnon', data: raw.data, expanded: false }])
-        } else { alert('Format non reconnu. Utilisez les fichiers exportés depuis cet éditeur (type: compagnon).') }
-      } catch { alert('Fichier JSON invalide.') }
+        } else { alert(t('descEditor.importErrFormatType', { type: 'compagnon' })) }
+      } catch { alert(t('descEditor.importErrJSON')) }
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -760,7 +779,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {[c.attaque1, c.attaque2].filter(Boolean).map((a, i) => (
               <div key={i} style={{ fontSize: 13, color: S.parchment }}>
-                <span style={{ color: S.gold, fontWeight: 600, marginRight: 4 }}>{a!.nom || `Attaque ${i+1}`}</span>
+                <span style={{ color: S.gold, fontWeight: 600, marginRight: 4 }}>{a!.nom || t('descEditor.compAttaqueN', { n: i+1 })}</span>
                 {a!.bonus} — {a!.dm}
               </div>
             ))}
@@ -854,25 +873,25 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {c.voiePeuple && (
               <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>Voie du peuple</span>
+                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.voieDuPeuple')}</span>
                 <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.voiePeuple}</span>
               </div>
             )}
             {c.voieCulturelle && (
               <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>Voie culturelle</span>
+                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.voieCulturelle')}</span>
                 <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.voieCulturelle}</span>
               </div>
             )}
             {c.trait?.nom && (
               <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>Trait racial</span>
+                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.traitRacial')}</span>
                 <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.trait.nom}</span>
               </div>
             )}
             {modStr && (
               <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>Caractéristiques</span>
+                <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.modCaracs')}</span>
                 <span style={{ fontSize: 13, color: 'var(--tdr-gold)', fontWeight: 600 }}>{modStr}</span>
               </div>
             )}
@@ -891,7 +910,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {renderCultureCard(c)}
             </div>
           ))}
-          {p.cultures.length === 0 && <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)' }}>Aucune culture</div>}
+          {p.cultures.length === 0 && <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)' }}>{t('descEditor.aucuneCulture')}</div>}
         </div>
       )
 
@@ -912,7 +931,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             <div style={{ padding: '16px 22px', borderBottom: `1px solid ${S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontFamily: "'Cinzel', serif", fontSize: 17, color: S.gold, fontWeight: 700 }}>{nomAffiche}</span>
-                {isDoublon && <span style={{ fontSize: 12, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '2px 7px' }}>DOUBLON</span>}
+                {isDoublon && <span style={{ fontSize: 12, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '2px 7px' }}>{t('descEditor.DOUBLON')}</span>}
               </div>
               <button onClick={() => setPreviewPendingId(null)} style={{ background: 'none', border: 'none', color: S.parchment, opacity: 0.5, cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
             </div>
@@ -922,10 +941,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {/* Colonne "Actuelle" si doublon */}
               {isDoublon && (
                 <div>
-                  <div style={{ fontSize: 13, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10, fontWeight: 600 }}>Actuelle</div>
+                  <div style={{ fontSize: 13, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10, fontWeight: 600 }}>{t('descEditor.dialogActuelle')}</div>
                   {item.type === 'voie' && data[item.nom]?.map((r, i) => (
                     <div key={i} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 14, color: S.gold, fontWeight: 600 }}>Rang {i+1}{r.nom ? ` — ${r.nom}` : ''}</div>
+                      <div style={{ fontSize: 14, color: S.gold, fontWeight: 600 }}>{t('descEditor.rangN', { n: i+1 })}{r.nom ? ` — ${r.nom}` : ''}</div>
                       <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', whiteSpace: 'pre-wrap', marginTop: 3, lineHeight: 1.6 }}>{r.desc || '—'}</div>
                     </div>
                   ))}
@@ -940,7 +959,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ fontSize: 13, color: isDoublon ? 'rgba(100,210,130,0.9)' : S.gold, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
-                    {isDoublon ? 'Importée' : 'Contenu'}
+                    {isDoublon ? t('descEditor.dialogImportee') : t('descEditor.dialogContenu')}
                   </div>
                   {isDoublon && (item.type === 'voie' || item.type === 'peuple') && (() => {
                     const total = item.type === 'voie' ? item.data.length : item.data.cultures.length
@@ -949,7 +968,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         onClick={() => setMergeSelectedRangs(mergeSelectedRangs.size === total ? new Set() : new Set(Array.from({ length: total }, (_, i) => i)))}
                         style={{ fontSize: 11, background: 'none', border: `1px solid rgba(100,210,130,0.35)`, borderRadius: 3, color: 'rgba(100,210,130,0.75)', cursor: 'pointer', padding: '2px 8px' }}
                       >
-                        {mergeSelectedRangs.size === total ? 'Tout désélectionner' : 'Tout sélectionner'}
+                        {mergeSelectedRangs.size === total ? t('descEditor.toutDeselectionner') : t('descEditor.toutSelectionner')}
                       </button>
                     )
                   })()}
@@ -980,8 +999,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         )}
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, color: S.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            Rang {i+1}{r.nom ? ` — ${r.nom}` : ''}
-                            {isDiff && <span style={{ fontSize: 10, background: 'rgba(100,210,130,0.15)', color: 'rgba(100,210,130,0.8)', border: '1px solid rgba(100,210,130,0.3)', borderRadius: 3, padding: '1px 5px', letterSpacing: '0.04em' }}>modifié</span>}
+                            {t('descEditor.rangN', { n: i+1 })}{r.nom ? ` — ${r.nom}` : ''}
+                            {isDiff && <span style={{ fontSize: 10, background: 'rgba(100,210,130,0.15)', color: 'rgba(100,210,130,0.8)', border: '1px solid rgba(100,210,130,0.3)', borderRadius: 3, padding: '1px 5px', letterSpacing: '0.04em' }}>{t('descEditor.modifie')}</span>}
                           </div>
                           <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', whiteSpace: 'pre-wrap', marginTop: 3, lineHeight: 1.6 }}>{r.desc || '—'}</div>
                         </div>
@@ -1023,7 +1042,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 14, color: S.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                   {c.label}
-                                  {isDiff && <span style={{ fontSize: 10, background: 'rgba(100,210,130,0.15)', color: 'rgba(100,210,130,0.8)', border: '1px solid rgba(100,210,130,0.3)', borderRadius: 3, padding: '1px 5px' }}>{exC ? 'modifiée' : 'nouvelle'}</span>}
+                                  {isDiff && <span style={{ fontSize: 10, background: 'rgba(100,210,130,0.15)', color: 'rgba(100,210,130,0.8)', border: '1px solid rgba(100,210,130,0.3)', borderRadius: 3, padding: '1px 5px' }}>{exC ? t('descEditor.modifiee') : t('descEditor.nouvelleItem')}</span>}
                                 </div>
                                 <div style={{ marginTop: 4 }}>
                                   {renderCultureCard(c)}
@@ -1033,7 +1052,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </div>
                         )
                       })}
-                      {item.data.cultures.length === 0 && <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)' }}>Aucune culture</div>}
+                      {item.data.cultures.length === 0 && <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)' }}>{t('descEditor.aucuneCulture')}</div>}
                     </div>
                   )
                 })()}
@@ -1044,14 +1063,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             <div style={{ padding: '14px 22px', borderTop: `1px solid ${S.border}`, display: 'flex', gap: 10, justifyContent: 'flex-end', flexShrink: 0, flexWrap: 'wrap' }}>
               {isDoublon && (
                 <button onClick={garderDeux} style={{ padding: '7px 18px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: S.parchment }}>
-                  Garder les deux
+                  {t('descEditor.garderLesDeux')}
                 </button>
               )}
               {isDoublon && (item.type === 'voie' || item.type === 'peuple') && (() => {
                 const count = mergeSelectedRangs.size
-                const label = item.type === 'voie'
-                  ? `rang${count > 1 ? 's' : ''}`
-                  : `culture${count > 1 ? 's' : ''}`
                 return (
                   <button
                     onClick={() => {
@@ -1080,15 +1096,15 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       color: count === 0 ? 'rgba(100,210,130,0.3)' : 'rgba(100,210,130,0.9)', fontWeight: 600,
                     }}
                   >
-                    Fusionner{count > 0 ? ` (${count} ${label})` : ''}
+                    {count === 0 ? t('descEditor.fusionner') : (item.type === 'voie' ? t('descEditor.fusionnerRangs', { count }) : t('descEditor.fusionnerCultures', { count }))}
                   </button>
                 )
               })()}
               <button onClick={incorporer} style={{ padding: '7px 18px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.5)`, background: 'rgba(201,168,76,0.15)', color: S.gold, fontWeight: 600 }}>
-                {isDoublon ? 'Tout remplacer' : 'Incorporer'}
+                {isDoublon ? t('descEditor.toutRemplacer') : t('descEditor.incorporer')}
               </button>
               <button onClick={ignorer} style={{ padding: '7px 18px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>
-                Ignorer
+                {t('descEditor.ignorer')}
               </button>
             </div>
           </div>
@@ -1096,6 +1112,56 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       )
     })()}
 
+    {promptDialog && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          background: 'rgba(22,17,11,0.99)', border: '1px solid rgba(201,168,76,0.5)',
+          borderRadius: 8, padding: '24px 28px', maxWidth: 420, width: '90vw',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
+          display: 'flex', flexDirection: 'column', gap: 16,
+        }}>
+          <div style={{ fontSize: 15, color: '#f5ecd7', lineHeight: 1.5 }}>{promptDialog.message}</div>
+          <input
+            autoFocus
+            value={promptValue}
+            onChange={e => setPromptValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { promptDialog.onConfirm(promptValue); setPromptDialog(null) }
+              if (e.key === 'Escape') setPromptDialog(null)
+            }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.4)',
+              borderRadius: 5, padding: '7px 10px', fontSize: 14, color: '#f5ecd7',
+              outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+            }}
+            onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.8)')}
+            onBlur={e => (e.target.style.borderColor = 'rgba(201,168,76,0.4)')}
+          />
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setPromptDialog(null)}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14,
+                border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
+                color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
+              }}
+            >{t('descEditor.annuler')}</button>
+            <button
+              onClick={() => { promptDialog.onConfirm(promptValue); setPromptDialog(null) }}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                border: '1px solid rgba(100,200,120,0.6)', background: 'rgba(100,200,120,0.12)',
+                color: 'rgba(120,220,140,0.95)', fontFamily: 'inherit',
+              }}
+            >{t('descEditor.exporter')}</button>
+          </div>
+        </div>
+      </div>
+    )}
     {confirmDialog && (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 500,
@@ -1117,7 +1183,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
                 color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
               }}
-            >Annuler</button>
+            >{t('descEditor.annuler')}</button>
             <button
               onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null) }}
               style={confirmDialog.danger === false ? {
@@ -1129,7 +1195,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 border: '1px solid rgba(200,80,80,0.6)', background: 'rgba(200,80,80,0.15)',
                 color: 'rgba(240,120,120,0.95)', fontFamily: 'inherit',
               }}
-            >{confirmDialog.label ?? 'Supprimer'}</button>
+            >{confirmDialog.label ?? t('descEditor.supprimer')}</button>
           </div>
         </div>
       </div>
@@ -1178,7 +1244,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
                 color: S.gold, fontWeight: section === s ? 700 : 400,
               }}>
-                {s === 'voies' ? 'Voies' : s === 'traits' ? 'Traits magiques' : s === 'traitsRaciaux' ? 'Traits raciaux' : s === 'compagnons' ? 'Compagnons' : 'Peuples'}
+                {s === 'voies' ? t('descEditor.sectionVoies') : s === 'traits' ? t('descEditor.sectionTraits') : s === 'traitsRaciaux' ? t('descEditor.sectionTraitsRaciaux') : s === 'compagnons' ? t('descEditor.sectionCompagnons') : t('descEditor.sectionPeuples')}
               </button>
             ))}
           </div>
@@ -1190,12 +1256,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: exported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {exported ? '✓ Exporté' : '↓ Exporter'}
+                {exported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
               <button onClick={() => importFile('descriptions', v => { setData(v as typeof data); setExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
-              }}>↑ Importer</button>
+              }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && section === 'traits' && (<>
               <button onClick={exportTraits} style={{
@@ -1204,12 +1270,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: traitsExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {traitsExported ? '✓ Exporté' : '↓ Exporter'}
+                {traitsExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
               <button onClick={() => importFile('traits-magiques', v => { setTraits(v as typeof traits); setTraitsExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
-              }}>↑ Importer</button>
+              }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && section === 'traitsRaciaux' && (<>
               <button onClick={() => exportWithPrompt(traitsRaciaux, 'traits-magiques' as any, 'traits-raciaux', () => setTraitsRaciauxExported(true))} style={{
@@ -1218,12 +1284,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: traitsRaciauxExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {traitsRaciauxExported ? '✓ Exporté' : '↓ Exporter'}
+                {traitsRaciauxExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
               <button onClick={() => importFile('traits-magiques' as any, v => { setTraitsRaciaux(v as typeof traitsRaciaux); setTraitsRaciauxExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
-              }}>↑ Importer</button>
+              }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && section === 'compagnons' && (<>
               <button onClick={exportCompagnons} style={{
@@ -1232,12 +1298,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: compagnonsExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {compagnonsExported ? '✓ Exporté' : '↓ Exporter'}
+                {compagnonsExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
               <button onClick={() => importFile('compagnons' as any, v => { setCompagnons(v as typeof compagnons); setCompagnonsExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
-              }}>↑ Importer</button>
+              }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && section === 'peuples' && (<>
               <button onClick={exportPeuples} style={{
@@ -1246,19 +1312,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 background: peuplesExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
                 color: S.gold, fontWeight: 600,
               }}>
-                {peuplesExported ? '✓ Exporté' : '↓ Exporter'}
+                {peuplesExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
               <button onClick={() => importFile('peuples', v => { setPeuples(v as typeof peuples); setPeuplesExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
-              }}>↑ Importer</button>
+              }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && (
-              <button onClick={openDataDir} title="Ouvrir le dossier Documents/TdA/" style={{
+              <button onClick={openDataDir} title={t('descEditor.donneesTitle')} style={{
                 padding: '5px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent',
                 color: 'rgba(245,236,215,0.55)',
-              }}>📁 Données</button>
+              }}>{t('descEditor.donneesBtn')}</button>
             )}
             <button onClick={onClose} style={{
               background: 'none', border: 'none', color: S.parchment,
@@ -1297,7 +1363,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="text"
-                  placeholder="Rechercher…"
+                  placeholder={t('descEditor.rechercher')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   style={{
@@ -1311,12 +1377,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
                     color: S.gold, boxSizing: 'border-box',
-                  }}>+ Nouvelle voie</button>
+                  }}>{t('descEditor.btnNouvelleVoie')}</button>
                   <button onClick={() => pendingFileRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                  }}>↑ Importer une voie</button>
+                  }}>{t('descEditor.btnImporterVoie')}</button>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1337,16 +1403,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer',
                         fontSize: 15, fontWeight: 700, padding: '0 3px', lineHeight: 1, opacity: 0, transition: 'opacity 0.15s',
                       }}
-                      title="Exporter cette voie"
+                      title={t('descEditor.exporterVoieTitle')}
                     >↓</button>
                     <button
                       className="voie-delete-btn"
-                      onClick={e => { e.stopPropagation(); askConfirm(`Supprimer la voie "${voie}" ?`, () => removeVoie(voie)) }}
+                      onClick={e => { e.stopPropagation(); askConfirm(t('descEditor.confirmSupprimerVoie', { nom: voie }), () => removeVoie(voie)) }}
                       style={{
                         background: 'none', border: 'none', color: '#c05050', cursor: 'pointer',
                         fontSize: 14, padding: '0 2px', lineHeight: 1, opacity: 0, transition: 'opacity 0.15s',
                       }}
-                      title="Supprimer cette voie"
+                      title={t('descEditor.supprimerVoieTitle')}
                     >✕</button>
                   </div>
                 ))}
@@ -1355,7 +1421,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {pendingItems.some(p => p.type === 'voie') && (
                 <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
                   <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
-                    En attente ({pendingItems.filter(p => p.type === 'voie').length})
+                    {t('descEditor.enAttente')} ({pendingItems.filter(p => p.type === 'voie').length})
                   </div>
                   <div style={{ maxHeight: 280, overflowY: 'auto' }}>
                     {pendingItems.filter(p => p.type === 'voie').map(item => {
@@ -1364,14 +1430,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       return (
                         <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', letterSpacing: '0.04em', flexShrink: 0 }}>doublon</span>}
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', letterSpacing: '0.04em', flexShrink: 0 }}>{t('descEditor.doublon')}</span>}
                             <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nom}</span>
-                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu et comparaison">🔍</button>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title={t('descEditor.apercuComparaisonTitle')}>🔍</button>
                           </div>
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                             <button onClick={() => { setData(prev => ({ ...prev, [item.nom]: item.data })); setPendingItems(prev => prev.filter(p => p.id !== item.id)); setSelected(item.nom); setExported(false) }}
                               style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
-                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                              {isDoublon ? t('descEditor.remplacer') : t('descEditor.incorporer')}
                             </button>
                             {isDoublon && <button onClick={() => { let n = `${item.nom} (2)`; let i = 3; while (data[n]) n = `${item.nom} (${i++})`; setData(prev => ({ ...prev, [n]: item.data })); setPendingItems(prev => prev.filter(p => p.id !== item.id)); setSelected(n); setExported(false) }}
                               style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>
@@ -1416,17 +1482,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 const peupleVoieNoms = new Set(peuples.flatMap(p => p.cultures.flatMap(c => [c.voiePeuple, c.voieCulturelle].filter(Boolean))))
                 const isBundle = VOIES_BUNDLE_NOMS.has(selected) || peupleVoieNoms.has(selected)
                 const famille = voies.find(v => v.nom === selected)?.famille ?? ''
-                const FAMILLE_LABELS: Record<string, string> = {
-                  combattants: 'Combattants', aventuriers: 'Aventuriers', mystiques: 'Mystiques',
+                const FAMILLE_LABELS_T: Record<string, string> = {
+                  combattants: t('descEditor.familleCombattants'),
+                  aventuriers: t('descEditor.familleAventuriers'),
+                  mystiques: t('descEditor.familleMystiques'),
                 }
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>
-                      Famille
+                      {t('descEditor.famille')}
                     </span>
                     {isBundle ? (
                       <span style={{ fontSize: 14, color: S.parchment, opacity: 0.7, fontStyle: 'italic' }}>
-                        {FAMILLE_LABELS[famille] ?? '— Aucune (prestige / peuple) —'}
+                        {FAMILLE_LABELS_T[famille] ?? t('descEditor.familleAucune')}
                       </span>
                     ) : (
                       <select
@@ -1437,25 +1505,25 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           color: S.parchment, fontSize: 14, padding: '3px 8px', outline: 'none', cursor: 'pointer',
                         }}
                       >
-                        <option value="">— Aucune (prestige / peuple) —</option>
-                        <option value="combattants">Combattants</option>
-                        <option value="aventuriers">Aventuriers</option>
-                        <option value="mystiques">Mystiques</option>
+                        <option value="">{t('descEditor.familleAucune')}</option>
+                        <option value="combattants">{t('descEditor.familleCombattants')}</option>
+                        <option value="aventuriers">{t('descEditor.familleAventuriers')}</option>
+                        <option value="mystiques">{t('descEditor.familleMystiques')}</option>
                       </select>
                     )}
                     <button
                       onClick={cloneVoie}
-                      title="Cloner cette voie"
+                      title={t('descEditor.cloneVoieTitle')}
                       style={{
                         marginLeft: 'auto', padding: '4px 12px', borderRadius: 4, fontSize: 13,
                         cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`,
                         background: 'transparent', color: 'rgba(201,168,76,0.7)',
                         flexShrink: 0,
                       }}
-                    >⎘ Cloner</button>
+                    >{t('descEditor.cloner')}</button>
                     <button
                       onClick={() => setPrintPreviewNom(selected)}
-                      title="Aperçu et impression"
+                      title={t('descEditor.imprimerTitle')}
                       style={{
                         padding: '4px 12px', borderRadius: 4, fontSize: 13,
                         cursor: 'pointer', border: `1px solid ${S.border}`,
@@ -1463,7 +1531,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         flexShrink: 0,
                       }}
                     >
-                      🖨 Imprimer
+                      {t('descEditor.imprimerBtn')}
                     </button>
                   </div>
                 )
@@ -1472,7 +1540,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px dashed rgba(201,168,76,0.35)', paddingTop: i === 0 ? 0 : 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', flexShrink: 0 }}>
-                      Rang {i + 1} —
+                      {t('descEditor.rang', { n: i + 1 })}
                     </span>
                     <input
                       type="text"
@@ -1489,9 +1557,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   </div>
                   <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
                     {[
-                      { label: 'G', title: 'Gras (**texte**)', before: '**', after: '**', style: { fontWeight: 700 } },
-                      { label: 'I', title: 'Italique (*texte*)', before: '*', after: '*', style: { fontStyle: 'italic' } },
-                      { label: '◆', title: 'Couleur dorée (==texte==)', before: '==', after: '==', style: { color: 'var(--tdr-gold)' } },
+                      { label: 'G', title: t('descEditor.formatGras'), before: '**', after: '**', style: { fontWeight: 700 } },
+                      { label: 'I', title: t('descEditor.formatItalique'), before: '*', after: '*', style: { fontStyle: 'italic' } },
+                      { label: '◆', title: t('descEditor.formatOr'), before: '==', after: '==', style: { color: 'var(--tdr-gold)' } },
                     ].map(btn => (
                       <button
                         key={btn.label}
@@ -1553,7 +1621,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             }}
                             style={{ accentColor: S.gold, cursor: 'pointer' }}
                           />
-                          Formule
+                          {t('descEditor.formulaire')}
                         </label>
                         {eff.formula !== undefined ? (
                           <select
@@ -1568,7 +1636,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </select>
                         ) : (
                           <>
-                            <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>Valeur :</span>
+                            <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.valeurLabel')}</span>
                             <input
                               type="number"
                               value={eff.value ?? 0}
@@ -1580,7 +1648,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             />
                           </>
                         )}
-                        <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>Dés :</span>
+                        <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.desLabel')}</span>
                         <input
                           type="text"
                           placeholder="ex: 1d6"
@@ -1598,7 +1666,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             onChange={e => updateEffect(selected, i, ei, { rangMultiplier: e.target.checked || null })}
                             style={{ accentColor: 'rgba(180,220,140,0.85)', cursor: 'pointer' }}
                           />
-                          × Rang
+                          {t('descEditor.xRang')}
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
                           <input
@@ -1607,7 +1675,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             onChange={e => updateEffect(selected, i, ei, { minRang: e.target.checked ? (i + 1) : null })}
                             style={{ accentColor: S.gold, cursor: 'pointer' }}
                           />
-                          Actif seulement au rang :
+                          {t('descEditor.actifRang')}
                         </label>
                         {eff.minRang !== undefined && (
                           <input
@@ -1628,7 +1696,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             onChange={e => updateEffect(selected, i, ei, { avancee: e.target.checked || undefined })}
                             style={{ accentColor: S.gold, cursor: 'pointer' }}
                           />
-                          Avancée
+                          {t('descEditor.avancee')}
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(100,180,255,0.85)', cursor: 'pointer', userSelect: 'none' }}>
                           <input
@@ -1640,7 +1708,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             }}
                             style={{ accentColor: 'rgba(100,180,255,0.85)', cursor: 'pointer' }}
                           />
-                          Si…
+                          {t('descEditor.si')}
                         </label>
                         {eff.condition && (
                           <select
@@ -1656,14 +1724,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               padding: '2px 4px', fontSize: 13, color: 'rgba(100,180,255,0.85)', outline: 'none', cursor: 'pointer',
                             }}
                           >
-                            <option value="hasBouclier">bouclier équipé</option>
-                            <option value="hasArme">manie une arme</option>
-                            <option value="noArme">sans arme</option>
+                            <option value="hasBouclier">{t('descEditor.condBouclier')}</option>
+                            <option value="hasArme">{t('descEditor.condArme')}</option>
+                            <option value="noArme">{t('descEditor.condSansArme')}</option>
                           </select>
                         )}
                         <button
                           onClick={() => removeEffect(selected, i, ei)}
-                          title="Supprimer cet effet"
+                          title={t('descEditor.supprimerEffetTitle')}
                           style={{
                             padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                             border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
@@ -1692,7 +1760,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               }}
                               style={{ background: S.bg, border: '1px solid rgba(100,180,255,0.3)', borderRadius: 3, padding: '1px 4px', fontSize: 12, color: 'rgba(100,180,255,0.85)', outline: 'none', cursor: 'pointer' }}
                             >
-                              <option value="">+ Arme…</option>
+                              <option value="">{t('descEditor.ajouterArme')}</option>
                               {armesList.filter(a => !cond.armes.includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
                             </select>
                           </div>
@@ -1716,11 +1784,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               padding: '2px 4px', fontSize: 13, color: S.gold, outline: 'none', cursor: 'pointer',
                             }}
                           >
-                            <option value="FORMATION">Formation</option>
-                            <option value="VOIE_RANG">Voie (rang fixe)</option>
-                            <option value="VOIE_RANG_CHOIX">Voie (rang au choix)</option>
-                            <option value="COMPAGNON">Compagnon (fixe)</option>
-                            <option value="COMPAGNON_CHOIX">Compagnon (au choix)</option>
+                            <option value="FORMATION">{t('descEditor.grantFormation')}</option>
+                            <option value="VOIE_RANG">{t('descEditor.grantVoieRangFixe')}</option>
+                            <option value="VOIE_RANG_CHOIX">{t('descEditor.grantVoieRangChoix')}</option>
+                            <option value="COMPAGNON">{t('descEditor.grantCompagnonFixe')}</option>
+                            <option value="COMPAGNON_CHOIX">{t('descEditor.grantCompagnonChoix')}</option>
                           </select>
 
                           {grant.type === 'FORMATION' && (
@@ -1748,7 +1816,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               >
                                 {voiesList.map(v => <option key={v} value={v}>{v}</option>)}
                               </select>
-                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>Rang :</span>
+                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.rangLabel')}</span>
                               <input
                                 type="number" min={1} max={5} value={grant.rang}
                                 onChange={e => updateGrant(selected, i, gi, { type: 'VOIE_RANG', voie: grant.voie, rang: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) })}
@@ -1759,7 +1827,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                           {grant.type === 'VOIE_RANG_CHOIX' && (
                             <>
-                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>Rang max :</span>
+                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.rangMaxLabel')}</span>
                               <input
                                 type="number" min={1} max={5} value={grant.rangMax}
                                 onChange={e => updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: grant.voies, rangMax: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) })}
@@ -1776,13 +1844,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             >
                               {compagnons.map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
                             </select>
-                            <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>remplace :</span>
+                            <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>{t('descEditor.remplacePar')}</span>
                             <select
                               value={grant.remplace ?? ''}
                               onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: grant.nom, remplace: e.target.value || undefined } as any)}
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: grant.remplace ? S.parchment : 'rgba(245,236,215,0.3)', outline: 'none', cursor: 'pointer', maxWidth: 160 }}
                             >
-                              <option value="">— aucun —</option>
+                              <option value="">{t('descEditor.aucunRemplace')}</option>
                               {compagnons.filter(c => c.nom !== grant.nom).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
                             </select>
                           </>)}
@@ -1806,7 +1874,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 }}
                                 style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                               >
-                                <option value="">+ Compagnon…</option>
+                                <option value="">{t('descEditor.ajouterCompagnonPlus')}</option>
                                 {compagnons.filter(c => !grant.noms.includes(c.nom)).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
                               </select>
                             </div>
@@ -1839,7 +1907,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </label>
                           <button
                             onClick={() => removeGrant(selected, i, gi)}
-                            title="Supprimer cet accès"
+                            title={t('descEditor.supprimerAccesTitle')}
                             style={{ padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555' }}
                           >🗑</button>
                         </div>
@@ -1864,7 +1932,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               }}
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                             >
-                              <option value="">+ Voie…</option>
+                              <option value="">{t('descEditor.ajouterVoiePlus')}</option>
                               {VOIES_INIT.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{v}</option>)}
                             </select>
                           </div>
@@ -1876,11 +1944,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       <div style={{ marginTop: 8, border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '8px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                           <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            Effets &amp; Accès
+                            {t('descEditor.effets')}
                           </span>
                           <button
                             onClick={() => setShowEffectsHelp(v => !v)}
-                            title="Aide sur les effets"
+                            title={t('descEditor.effetsAideTitle')}
                             style={{
                               width: 18, height: 18, borderRadius: '50%', border: `1px solid rgba(201,168,76,0.45)`,
                               background: showEffectsHelp ? 'rgba(201,168,76,0.2)' : 'transparent',
@@ -1898,19 +1966,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             display: 'flex', flexDirection: 'column', gap: 8,
                           }}>
                             <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                              Champs d'un effet
+                              {t('descEditor.effetsAideTitre')}
                             </div>
                             <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
                               <tbody>
                                 {[
-                                  ['Stat', 'Statistique modifiée sur la fiche (PV, DEF, INIT, PR, PM, PC, ATT_CONTACT, ATT_DISTANCE, ATT_MAGIQUE, DM_ARME, DM_MAINS_NUES, FOR … CHA)'],
-                                  ['Formule', 'Remplace la valeur fixe par un mod. de caractéristique (MOD_FOR, MOD_DEX, MOD_CON, MOD_INT, MOD_SAG, MOD_CHA)'],
-                                  ['Valeur', 'Bonus ou malus fixe ajouté à la stat (peut être négatif)'],
-                                  ['Dés', 'Notation de dés pour des dommages variables — ex : 1d6, 2d4. Utilisé surtout avec DM_ARME / DM_MAINS_NUES'],
-                                  ['× Rang', 'Multiplie la valeur ou le nombre de dés par le rang actuel — ex : rang 3 avec « 1d6 » → 3d6'],
-                                  ['Actif seulement au rang', "L'effet ne compte que si ce rang minimum est atteint (utile pour un bonus conditionnel déclenché plus tard)"],
-                                  ['Avancée', "L'effet appartient à la capacité avancée et n'est pas calculé dans les totaux normaux"],
-                                  ['Si…', 'Condition : bouclier équipé / manie une arme précise / sans arme en main principale'],
+                                  ['Stat', t('descEditor.effetsAideStat')],
+                                  [t('descEditor.formulaire'), t('descEditor.effetsAideFormule')],
+                                  [t('descEditor.valeurLabel').replace(' :', ''), t('descEditor.effetsAideValeur')],
+                                  [t('descEditor.desLabel').replace(' :', ''), t('descEditor.effetsAideDes')],
+                                  [t('descEditor.xRang'), t('descEditor.effetsAideXRang')],
+                                  [t('descEditor.actifRang').replace(' :', ''), t('descEditor.effetsAideActifRang')],
+                                  [t('descEditor.avancee'), t('descEditor.effetsAideAvancee')],
+                                  [t('descEditor.si'), t('descEditor.effetsAideSi')],
                                 ].map(([label, desc]) => (
                                   <tr key={label} style={{ verticalAlign: 'top' }}>
                                     <td style={{ color: S.gold, paddingRight: 10, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
@@ -1920,15 +1988,15 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               </tbody>
                             </table>
                             <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2 }}>
-                              Tokens dans les descriptions
+                              {t('descEditor.effetsAideTokens')}
                             </div>
                             <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
                               <tbody>
                                 {[
-                                  ['[rang]', 'Rang actuel du PJ dans cette voie'],
-                                  ['[niveau]', 'Niveau du PJ'],
-                                  ['[Mod. FOR] … [Mod. CHA]', 'Modificateur de la caractéristique correspondante'],
-                                  ['[DM_ARME] [DM_MAINS_NUES]', 'Valeur de dommages calculée (inclut les bonus de voie)'],
+                                  ['[rang]', t('descEditor.effetsAideTokenRang')],
+                                  ['[niveau]', t('descEditor.effetsAideTokenNiveau')],
+                                  ['[Mod. FOR] … [Mod. CHA]', t('descEditor.effetsAideTokenMods')],
+                                  ['[DM_ARME] [DM_MAINS_NUES]', t('descEditor.effetsAideTokenDM')],
                                 ].map(([token, desc]) => (
                                   <tr key={token} style={{ verticalAlign: 'top' }}>
                                     <td style={{ color: 'rgba(180,220,140,0.9)', paddingRight: 10, paddingBottom: 3, whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 11 }}>{token}</td>
@@ -1948,18 +2016,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                               border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                             }}
-                          >+ Ajouter un effet</button>
+                          >{t('descEditor.ajouterEffet')}</button>
                           <button
                             onClick={() => addGrant(selected, i)}
                             style={{
                               padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                               border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                             }}
-                          >+ Ajouter un accès</button>
+                          >{t('descEditor.ajouterAcces')}</button>
                         </div>
                         <div style={{ marginTop: 10, borderRadius: 4, padding: '8px 10px', background: 'rgba(201,168,76,0.07)' }}>
                           <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.08em', marginBottom: 6, textTransform: 'uppercase' }}>
-                            Capacité avancée
+                            {t('descEditor.capaciteAvancee')}
                           </div>
                           {avances.map(({ e, idx }) => renderLigne(e, idx))}
                           {grantsAvances.map(({ g, idx }) => renderGrant(g, idx))}
@@ -1970,14 +2038,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                                 border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                               }}
-                            >+ Ajouter un effet avancé</button>
+                            >{t('descEditor.ajouterEffetAvance')}</button>
                             <button
                               onClick={() => addGrant(selected, i, true)}
                               style={{
                                 padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                                 border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                               }}
-                            >+ Ajouter un accès avancé</button>
+                            >{t('descEditor.ajouterAccesAvance')}</button>
                           </div>
                         </div>
                       </div>
@@ -2002,7 +2070,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="text"
-                  placeholder="Rechercher…"
+                  placeholder={t('descEditor.rechercher')}
                   value={traitQuery}
                   onChange={e => setTraitQuery(e.target.value)}
                   style={{
@@ -2016,16 +2084,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
                     color: S.gold, boxSizing: 'border-box',
-                  }}>+ Nouveau trait</button>
+                  }}>{t('descEditor.btnNouveauTrait')}</button>
                   <button onClick={() => pendingFileRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                  }}>↑ Importer un trait</button>
+                  }}>{t('descEditor.btnImporterTrait')}</button>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {traits.map((t, i) => ({ t, i })).filter(({ t }) => !traitQuery || t.nom.toLowerCase().includes(traitQuery.toLowerCase())).map(({ t, i }) => (
+                {traits.map((trait, i) => ({ trait, i })).filter(({ trait }) => !traitQuery || trait.nom.toLowerCase().includes(traitQuery.toLowerCase())).map(({ trait, i }) => (
                   <div key={i} onClick={() => { setSelectedTrait(i); closeMobileList() }} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedTrait === i ? S.gold : S.parchment,
@@ -2034,12 +2102,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                   }}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.nom}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trait.nom}</span>
                     <button
-                      onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait', data: t }, `trait-${safeName(t.nom)}.json`) }}
+                      onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait', data: trait }, `trait-${safeName(trait.nom)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
                       className="voie-delete-btn"
-                      title="Exporter ce trait"
+                      title={t('descEditor.exporterTraitTitle')}
                     >↓</button>
                   </div>
                 ))}
@@ -2048,7 +2116,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {pendingItems.some(p => p.type === 'trait') && (
                 <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
                   <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
-                    En attente ({pendingItems.filter(p => p.type === 'trait').length})
+                    {t('descEditor.enAttente')} ({pendingItems.filter(p => p.type === 'trait').length})
                   </div>
                   <div style={{ maxHeight: 260, overflowY: 'auto' }}>
                     {pendingItems.filter(p => p.type === 'trait').map(item => {
@@ -2057,9 +2125,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       return (
                         <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>{t('descEditor.doublon')}</span>}
                             <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.nom}</span>
-                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title={t('descEditor.apercuTitle')}>🔍</button>
                           </div>
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                             <button onClick={() => {
@@ -2067,7 +2135,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               else { setTraits(prev => [...prev, item.data]); setSelectedTrait(traits.length) }
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
-                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                              {isDoublon ? t('descEditor.remplacer') : t('descEditor.incorporer')}
                             </button>
                             {isDoublon && <button onClick={() => {
                               let n = `${item.data.nom} (2)`; let i = 3; while (traits.some(t => t.nom === n)) n = `${item.data.nom} (${i++})`
@@ -2075,7 +2143,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
                             <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
-                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>{t('descEditor.ignorer')}</button>
                           </div>
                         </div>
                       )
@@ -2104,18 +2172,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   />
                   <button
                     onClick={cloneTrait}
-                    title="Cloner ce trait"
+                    title={t('descEditor.cloneTraitTitle')}
                     style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
-                  >⎘ Cloner</button>
+                  >{t('descEditor.cloner')}</button>
                   <button
-                    onClick={() => askConfirm(`Supprimer le trait "${traits[selectedTrait]?.nom}" ?`, () => removeTrait(selectedTrait))}
-                    title="Supprimer ce trait"
+                    onClick={() => askConfirm(t('descEditor.confirmSupprimerTrait', { nom: traits[selectedTrait]?.nom }), () => removeTrait(selectedTrait))}
+                    title={t('descEditor.supprimer')}
                     style={{
                       padding: '4px 10px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent',
                       color: '#e05555', flexShrink: 0,
                     }}
-                  >Supprimer</button>
+                  >{t('descEditor.supprimer')}</button>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {[
@@ -2167,7 +2235,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             } : { width: 'max-content', minWidth: 280, flexShrink: 0, borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
-                  type="text" placeholder="Rechercher…" value={traitRacialQuery}
+                  type="text" placeholder={t('descEditor.rechercher')} value={traitRacialQuery}
                   onChange={e => setTraitRacialQuery(e.target.value)}
                   style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 17, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
                 />
@@ -2175,19 +2243,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <button onClick={addTraitRacial} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold, boxSizing: 'border-box',
-                  }}>+ Nouveau trait racial</button>
+                  }}>{t('descEditor.btnNouveauTraitRacial')}</button>
                   <button onClick={() => traitRacialImportRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                  }}>↑ Importer un trait</button>
+                  }}>{t('descEditor.btnImporterTrait')}</button>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {traitsRaciaux
-                  .map((t, i) => ({ t, i }))
-                  .filter(({ t }) => !traitRacialQuery || t.nom.toLowerCase().includes(traitRacialQuery.toLowerCase()))
-                  .map(({ t, i }) => (
+                  .map((traitR, i) => ({ traitR, i }))
+                  .filter(({ traitR }) => !traitRacialQuery || traitR.nom.toLowerCase().includes(traitRacialQuery.toLowerCase()))
+                  .map(({ traitR, i }) => (
                     <div key={i} onClick={() => { setSelectedTraitRacial(i); closeMobileList() }} className="voie-list-item" style={{
                       padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                       color: selectedTraitRacial === i ? S.gold : S.parchment,
@@ -2195,12 +2263,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       borderLeft: selectedTraitRacial === i ? `3px solid ${S.gold}` : '3px solid transparent',
                       transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.nom}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitR.nom}</span>
                       <button
-                        onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait-racial', data: t }, `trait-racial-${safeName(t.nom)}.json`) }}
+                        onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait-racial', data: traitR }, `trait-racial-${safeName(traitR.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
                         className="voie-delete-btn"
-                        title="Exporter ce trait racial"
+                        title={t('descEditor.exporterTraitRacialTitle')}
                       >↓</button>
                     </div>
                   ))}
@@ -2209,7 +2277,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {pendingItems.some(p => p.type === 'trait-racial') && (
                 <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
                   <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
-                    En attente ({pendingItems.filter(p => p.type === 'trait-racial').length})
+                    {t('descEditor.enAttente')} ({pendingItems.filter(p => p.type === 'trait-racial').length})
                   </div>
                   <div style={{ maxHeight: 260, overflowY: 'auto' }}>
                     {pendingItems.filter(p => p.type === 'trait-racial').map(item => {
@@ -2218,9 +2286,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       return (
                         <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>{t('descEditor.doublon')}</span>}
                             <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.nom}</span>
-                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title={t('descEditor.apercuTitle')}>🔍</button>
                           </div>
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                             <button onClick={() => {
@@ -2228,7 +2296,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               else { setTraitsRaciaux(prev => [...prev, item.data]); setSelectedTraitRacial(traitsRaciaux.length) }
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsRaciauxExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
-                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                              {isDoublon ? t('descEditor.remplacer') : t('descEditor.incorporer')}
                             </button>
                             {isDoublon && <button onClick={() => {
                               let n = `${item.data.nom} (2)`; let i = 3; while (traitsRaciaux.some(t => t.nom === n)) n = `${item.data.nom} (${i++})`
@@ -2236,7 +2304,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setTraitsRaciauxExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
                             <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
-                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>{t('descEditor.ignorer')}</button>
                           </div>
                         </div>
                       )
@@ -2260,13 +2328,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   />
                   <button
                     onClick={cloneTraitRacial}
-                    title="Cloner ce trait racial"
+                    title={t('descEditor.cloneTraitRacialTitle')}
                     style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
-                  >⎘ Cloner</button>
+                  >{t('descEditor.cloner')}</button>
                   <button
-                    onClick={() => askConfirm(`Supprimer le trait "${traitsRaciaux[selectedTraitRacial]?.nom}" ?`, () => removeTraitRacial(selectedTraitRacial))}
+                    onClick={() => askConfirm(t('descEditor.confirmSupprimerTraitRacial', { nom: traitsRaciaux[selectedTraitRacial]?.nom }), () => removeTraitRacial(selectedTraitRacial))}
                     style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
-                  >Supprimer</button>
+                  >{t('descEditor.supprimer')}</button>
                 </div>
                 <textarea
                   ref={traitRacialDescRef}
@@ -2296,7 +2364,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="text"
-                  placeholder="Rechercher…"
+                  placeholder={t('descEditor.rechercher')}
                   value={peupleQuery}
                   onChange={e => setPeupleQuery(e.target.value)}
                   style={{
@@ -2310,12 +2378,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)',
                     color: S.gold, boxSizing: 'border-box',
-                  }}>+ Nouveau peuple</button>
+                  }}>{t('descEditor.btnNouveauPeuple')}</button>
                   <button onClick={() => pendingFileRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                  }}>↑ Importer un peuple</button>
+                  }}>{t('descEditor.btnImporterPeuple')}</button>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -2333,7 +2401,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'peuple', data: p }, `peuple-${safeName(p.label)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
                       className="voie-delete-btn"
-                      title="Exporter ce peuple"
+                      title={t('descEditor.exporterPeupleTitle')}
                     >↓</button>
                   </div>
                 ))}
@@ -2342,7 +2410,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {pendingItems.some(p => p.type === 'peuple') && (
                 <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
                   <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
-                    En attente ({pendingItems.filter(p => p.type === 'peuple').length})
+                    {t('descEditor.enAttente')} ({pendingItems.filter(p => p.type === 'peuple').length})
                   </div>
                   <div style={{ maxHeight: 260, overflowY: 'auto' }}>
                     {pendingItems.filter(p => p.type === 'peuple').map(item => {
@@ -2351,9 +2419,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       return (
                         <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>{t('descEditor.doublon')}</span>}
                             <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.label}</span>
-                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title={t('descEditor.apercuTitle')}>🔍</button>
                           </div>
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                             <button onClick={() => {
@@ -2361,7 +2429,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               else { setPeuples(prev => [...prev, item.data]); setSelectedPeuple(peuples.length) }
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setPeuplesExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
-                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                              {isDoublon ? t('descEditor.remplacer') : t('descEditor.incorporer')}
                             </button>
                             {isDoublon && <button onClick={() => {
                               let n = `${item.data.label} (2)`; let i = 3; while (peuples.some(p => p.label === n)) n = `${item.data.label} (${i++})`
@@ -2369,7 +2437,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setPeuplesExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
                             <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
-                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>{t('descEditor.ignorer')}</button>
                           </div>
                         </div>
                       )
@@ -2398,10 +2466,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
-                    <button onClick={() => askConfirm(`Supprimer le peuple "${peuple.label}" et toutes ses cultures ?`, () => removePeuple(selectedPeuple))} style={{
+                    <button onClick={() => askConfirm(t('descEditor.confirmSupprimerPeuple', { nom: peuple.label }), () => removePeuple(selectedPeuple))} style={{
                       padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
-                    }}>Supprimer</button>
+                    }}>{t('descEditor.supprimer')}</button>
                   </div>
 
                   {/* Cultures */}
@@ -2419,7 +2487,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     return (
                     <div key={ci} style={{ border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Culture</span>
+                        <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('descEditor.culture')}</span>
                         <input
                           type="text"
                           value={culture.label}
@@ -2428,11 +2496,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                           onBlur={e => (e.target.style.borderColor = S.border)}
                         />
-                        <button onClick={() => cloneCulture(selectedPeuple, ci)} title="Cloner cette culture" style={{
+                        <button onClick={() => cloneCulture(selectedPeuple, ci)} title={t('descEditor.cloneCultureTitle')} style={{
                           padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                           border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', color: 'rgba(201,168,76,0.7)',
                         }}>⎘</button>
-                        <button onClick={() => askConfirm(`Supprimer la culture "${culture.label}" ?`, () => removeCulture(selectedPeuple, ci))} style={{
+                        <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCulture', { nom: culture.label }), () => removeCulture(selectedPeuple, ci))} style={{
                           padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                           border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
                         }}>🗑</button>
@@ -2440,7 +2508,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                       <div style={{ display: 'flex', gap: 8 }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 3 }}>Voie du peuple</div>
+                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 3 }}>{t('descEditor.voieDuPeuple')}</div>
                           <VoieSelectCombobox
                             value={culture.voiePeuple}
                             voiesList={voiesList.filter(v => v.toLowerCase().includes('peuple'))}
@@ -2450,7 +2518,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 3 }}>Voie culturelle</div>
+                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 3 }}>{t('descEditor.voieCulturelle')}</div>
                           <VoieSelectCombobox
                             value={culture.voieCulturelle}
                             voiesList={voiesList.filter(v => v.toLowerCase().includes('culturelle'))}
@@ -2463,7 +2531,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                       {/* Modificateurs de caractéristiques */}
                       <div>
-                        <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 4 }}>Modificateurs de caractéristiques</div>
+                        <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 4 }}>{t('descEditor.modCaracs')}</div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           {CARACS.map(car => (
                             <label key={car} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, color: S.parchment }}>
@@ -2490,13 +2558,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       {/* Trait */}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5 }}>Trait racial</div>
+                          <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5 }}>{t('descEditor.traitRacial')}</div>
                           {culture.trait?.nom && (
                             <button
                               onClick={() => updateCulture(selectedPeuple, ci, { trait: { nom: '', desc: '' } })}
-                              title="Effacer le trait racial"
+                              title={t('descEditor.effacerTraitTitle')}
                               style={{ background: 'none', border: 'none', color: '#c05050', cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}
-                            >✕ Effacer</button>
+                            >{t('descEditor.effacerTraitBtn')}</button>
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2508,7 +2576,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             })}
                           />
                           <textarea
-                            placeholder="Description du trait"
+                            placeholder={t('descEditor.traitDescPlaceholder')}
                             value={culture.trait?.desc ?? ''}
                             onChange={e => updateCulture(selectedPeuple, ci, { trait: { nom: culture.trait?.nom ?? '', desc: e.target.value } })}
                             rows={3}
@@ -2525,7 +2593,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <button onClick={() => addCulture(selectedPeuple)} style={{
                     padding: '5px 14px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
-                  }}>+ Nouvelle culture</button>
+                  }}>{t('descEditor.btnNouvelleCulture')}</button>
                 </div>
               )
             })()}
@@ -2546,7 +2614,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             }}>
               <div style={{ padding: '10px 12px', borderBottom: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
-                  type="text" placeholder="Rechercher…" value={compagnonQuery}
+                  type="text" placeholder={t('descEditor.rechercher')} value={compagnonQuery}
                   onChange={e => setCompagnonQuery(e.target.value)}
                   style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 8px', fontSize: 15, color: S.parchment, outline: 'none', boxSizing: 'border-box' }}
                 />
@@ -2555,12 +2623,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'rgba(201,168,76,0.07)', color: S.gold,
                     whiteSpace: 'nowrap',
-                  }}>+ Nouveau compagnon</button>
+                  }}>{t('descEditor.btnNouveauCompagnon')}</button>
                   <button onClick={() => compagnonImportRef.current?.click()} style={{
                     flex: 1, padding: '5px 8px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                     border: `1px solid ${S.border}`, background: 'transparent',
                     color: 'rgba(201,168,76,0.6)', boxSizing: 'border-box',
-                  }}>↑ Importer</button>
+                  }}>{t('descEditor.btnImporterCompagnon')}</button>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -2581,7 +2649,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'compagnon', data: c }, `compagnon-${safeName(c.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
                         className="voie-delete-btn"
-                        title="Exporter ce compagnon"
+                        title={t('descEditor.exporterCompagnonTitle')}
                       >↓</button>
                     </div>
                   ))}
@@ -2590,7 +2658,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               {pendingItems.some(p => p.type === 'compagnon') && (
                 <div style={{ borderTop: `2px solid rgba(201,168,76,0.4)`, flexShrink: 0 }}>
                   <div style={{ padding: '6px 14px', fontSize: 12, color: S.gold, opacity: 0.8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(201,168,76,0.07)', fontWeight: 600 }}>
-                    En attente ({pendingItems.filter(p => p.type === 'compagnon').length})
+                    {t('descEditor.enAttente')} ({pendingItems.filter(p => p.type === 'compagnon').length})
                   </div>
                   <div style={{ maxHeight: 260, overflowY: 'auto' }}>
                     {pendingItems.filter(p => p.type === 'compagnon').map(item => {
@@ -2599,9 +2667,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       return (
                         <div key={item.id} style={{ padding: '8px 12px', borderBottom: `1px solid rgba(201,168,76,0.1)` }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>doublon</span>}
+                            {isDoublon && <span style={{ fontSize: 11, background: 'rgba(230,140,40,0.2)', color: 'rgba(230,160,60,0.9)', border: '1px solid rgba(230,140,40,0.4)', borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>{t('descEditor.doublon')}</span>}
                             <span style={{ fontSize: 14, color: S.parchment, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.data.nom}</span>
-                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title="Aperçu">🔍</button>
+                            <button onClick={() => openPreview(item.id)} style={{ background: 'none', border: 'none', color: S.gold, cursor: 'pointer', fontSize: 15, padding: '0 3px', opacity: 0.8, flexShrink: 0 }} title={t('descEditor.apercuTitle')}>🔍</button>
                           </div>
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                             <button onClick={() => {
@@ -2609,7 +2677,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               else { setCompagnons(prev => [...prev, item.data]); setSelectedCompagnon(compagnons.length) }
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setCompagnonsExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(201,168,76,0.12)', color: S.gold }}>
-                              {isDoublon ? 'Remplacer' : 'Incorporer'}
+                              {isDoublon ? t('descEditor.remplacer') : t('descEditor.incorporer')}
                             </button>
                             {isDoublon && <button onClick={() => {
                               let n = `${item.data.nom} (2)`; let i = 3; while (compagnons.some(c => c.nom === n)) n = `${item.data.nom} (${i++})`
@@ -2617,7 +2685,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               setPendingItems(prev => prev.filter(p => p.id !== item.id)); setCompagnonsExported(false)
                             }} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.25)`, background: 'transparent', color: 'rgba(245,236,215,0.65)' }}>+copie</button>}
                             <button onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}
-                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>Ignorer</button>
+                              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.3)', background: 'transparent', color: '#e05555' }}>{t('descEditor.ignorer')}</button>
                           </div>
                         </div>
                       )
@@ -2671,7 +2739,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     <span style={{ fontSize: 12, color: S.gold, letterSpacing: '0.06em' }}>{label}</span>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input
-                        placeholder="Nom" value={att?.nom ?? ''}
+                        placeholder={t('descEditor.attNomPlaceholder')} value={att?.nom ?? ''}
                         onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: e.target.value, bonus: att?.bonus ?? '+0', dm: att?.dm ?? '1d6' } })}
                         style={{ flex: 2, ...inStyle }}
                         onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
@@ -2680,7 +2748,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       {/* Toggle bonus fixe / formule */}
                       <button
                         onClick={toggleBonus}
-                        title={bonusIsFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                        title={bonusIsFormula ? t('descEditor.compPasserFixe') : t('descEditor.compPasserFormule')}
                         style={{
                           fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2, flexShrink: 0,
                           border: `1px solid ${bonusIsFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
@@ -2697,7 +2765,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         onBlur={e => (e.target.style.borderColor = S.border)}
                       />
                       <input
-                        placeholder="DM" value={att?.dm ?? ''}
+                        placeholder={t('descEditor.attDmPlaceholder')} value={att?.dm ?? ''}
                         onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: att?.nom ?? '', bonus: att?.bonus ?? '+0', dm: e.target.value } })}
                         style={{ width: 72, ...inStyle, textAlign: 'center' }}
                         onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
@@ -2726,20 +2794,20 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
-                    <button onClick={cloneCompagnon} title="Cloner ce compagnon"
+                    <button onClick={cloneCompagnon} title={t('descEditor.cloneCompagnonTitle')}
                       style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
-                      ⎘ Cloner
+                      {t('descEditor.cloner')}
                     </button>
-                    <button onClick={() => askConfirm(`Supprimer "${c.nom}" ?`, () => removeCompagnon(selectedCompagnon))}
+                    <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCompagnon', { nom: c.nom }), () => removeCompagnon(selectedCompagnon))}
                       style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
-                      Supprimer
+                      {t('descEditor.supprimer')}
                     </button>
                   </div>
 
                   {/* Modificateurs + Stats sur une seule ligne */}
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Modificateurs</span>
+                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('descEditor.compModificateurs')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
                         {numIn('for', 'FOR', true)}{numIn('dex', 'DEX', true)}{numIn('con', 'CON', true)}
                         {numIn('int', 'INT', true)}{numIn('sag', 'SAG', true)}{numIn('cha', 'CHA', true)}
@@ -2747,18 +2815,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     </div>
                     <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(201,168,76,0.2)', flexShrink: 0, marginTop: 18 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Stats</span>
+                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('descEditor.compStats')}</span>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                         {/* Init : fixe ou formule */}
                         {(() => {
                           const isFormula = typeof c.init === 'string'
                           return (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em' }}>Init.</span>
+                              <span style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em' }}>{t('descEditor.compInit')}</span>
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <button
                                   onClick={() => updateCompagnon(selectedCompagnon, { init: isFormula ? (parseInt(String(c.init)) || 10) : String(c.init) })}
-                                  title={isFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                                  title={isFormula ? t('descEditor.compPasserFixe') : t('descEditor.compPasserFormule')}
                                   style={{
                                     fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2,
                                     border: `1px solid ${isFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
@@ -2797,7 +2865,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <button
                                   onClick={() => updateCompagnon(selectedCompagnon, { pv: isFormula ? (parseInt(String(c.pv)) || 10) : String(c.pv) })}
-                                  title={isFormula ? 'Passer en valeur fixe' : 'Passer en formule'}
+                                  title={isFormula ? t('descEditor.compPasserFixe') : t('descEditor.compPasserFormule')}
                                   style={{
                                     fontFamily: 'monospace', fontSize: 9, padding: '2px 5px', borderRadius: 2,
                                     border: `1px solid ${isFormula ? 'rgba(201,168,76,0.6)' : S.border}`,
@@ -2840,19 +2908,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                   {/* Attaques */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Attaques</span>
-                    {attIn('attaque1', 'Attaque 1')}
-                    {attIn('attaque2', 'Attaque 2')}
+                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('descEditor.compAttaques')}</span>
+                    {attIn('attaque1', t('descEditor.compAttaque1'))}
+                    {attIn('attaque2', t('descEditor.compAttaque2'))}
                   </div>
 
                   {/* Capacités */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Capacités spéciales</span>
+                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('descEditor.compCapacitesSpeciales')}</span>
                     <textarea
                       value={c.capacites ?? ''}
                       onChange={e => updateCompagnon(selectedCompagnon, { capacites: e.target.value })}
                       rows={3}
-                      placeholder="Ruade, Vol, Morsure venimeuse…"
+                      placeholder={t('descEditor.attCapacitesPlaceholder')}
                       style={{ width: '100%', background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '6px 10px', fontSize: 14, color: S.parchment, resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }}
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
@@ -2863,7 +2931,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <button
                       onClick={() => setShowCompagnonsHelp(v => !v)}
-                      title="Aide sur les compagnons"
+                      title={t('descEditor.compAideTitle')}
                       style={{
                         alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 4,
                         border: `1px solid rgba(201,168,76,0.45)`,
@@ -2871,7 +2939,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         color: 'rgba(201,168,76,0.7)', fontSize: 12, fontWeight: 600,
                         cursor: 'pointer', letterSpacing: '0.04em',
                       }}
-                    >i — Aide sur les champs</button>
+                    >{t('descEditor.compAideBtn')}</button>
                     {showCompagnonsHelp && (
                       <div style={{
                         padding: '10px 12px', borderRadius: 4,
@@ -2880,17 +2948,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         display: 'flex', flexDirection: 'column', gap: 8,
                       }}>
                         <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                          Champs d'un compagnon
+                          {t('descEditor.compAideTitre')}
                         </div>
                         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
                           <tbody>
-                            {[
-                              ['FOR…CHA', 'Modificateurs du compagnon (pas les valeurs brutes). Ex : +2, -1'],
-                              ['Init / PV / DEF', 'Nombre fixe ou formule. Cliquer le bouton [f] pour basculer en mode formule'],
-                              ['Attaque — Bonus', 'Modificateur d\'attaque fixe (ex : +5) ou formule (ex : [ATT contact])'],
-                              ['Attaque — DM', 'Dommages : notation de dés + modificateur. Ex : 1d8 + [FOR]'],
-                              ['Capacités', 'Texte libre décrivant les capacités spéciales du compagnon'],
-                            ].map(([label, desc]) => (
+                            {([
+                              ['FOR…CHA', t('descEditor.compAideForCha')],
+                              ['Init / PV / DEF', t('descEditor.compAideInitPvDef')],
+                              [t('descEditor.compAideAttBonusLabel'), t('descEditor.compAideAttBonus')],
+                              [t('descEditor.compAideAttDmLabel'), t('descEditor.compAideAttDm')],
+                              [t('descEditor.compAideCapacitesLabel'), t('descEditor.compAideCapacites')],
+                            ] as [string, string][]).map(([label, desc]) => (
                               <tr key={label} style={{ verticalAlign: 'top' }}>
                                 <td style={{ color: S.gold, paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</td>
                                 <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
@@ -2899,20 +2967,20 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </tbody>
                         </table>
                         <div style={{ fontWeight: 700, color: S.gold, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>
-                          Formules disponibles
+                          {t('descEditor.compAideFormules')}
                         </div>
                         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
                           <tbody>
-                            {[
-                              ['[NIV]', 'Niveau du personnage'],
-                              ['[NIV × N]', 'Niveau × N — ex : [NIV × 2]'],
-                              ['[RANG]', 'Rangs acquis dans la voie qui octroie ce compagnon'],
-                              ['[RANG × N]', 'Rangs × N — ex : [RANG × 10]'],
-                              ['[ATT contact]', 'Bonus d\'attaque au contact du personnage'],
-                              ['[ATT distance]', 'Bonus d\'attaque à distance du personnage'],
-                              ['[ATT magique]', 'Bonus d\'attaque magique du personnage'],
-                              ['[FOR]…[CHA]', 'Modificateur de stat du compagnon (DM uniquement)'],
-                            ].map(([token, desc]) => (
+                            {([
+                              ['[NIV]', t('descEditor.compAideTokenNiv')],
+                              ['[NIV × N]', t('descEditor.compAideTokenNivN')],
+                              ['[RANG]', t('descEditor.compAideTokenRang')],
+                              ['[RANG × N]', t('descEditor.compAideTokenRangN')],
+                              ['[ATT contact]', t('descEditor.compAideTokenAttContact')],
+                              ['[ATT distance]', t('descEditor.compAideTokenAttDistance')],
+                              ['[ATT magique]', t('descEditor.compAideTokenAttMagique')],
+                              ['[FOR]…[CHA]', t('descEditor.compAideTokenForCha')],
+                            ] as [string, string][]).map(([token, desc]) => (
                               <tr key={token} style={{ verticalAlign: 'top' }}>
                                 <td style={{ color: 'rgba(100,180,255,0.85)', paddingRight: 8, paddingBottom: 4, whiteSpace: 'nowrap', fontFamily: 'monospace', fontWeight: 600 }}>{token}</td>
                                 <td style={{ paddingBottom: 4, color: 'rgba(245,236,215,0.7)' }}>{desc}</td>
@@ -2942,13 +3010,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
           {import.meta.env.DEV ? (
-            <span>Mode dev — auto-save <strong style={{ color: 'rgba(201,168,76,0.6)' }}>localStorage</strong>.
+            <span><Trans i18nKey="descEditor.footerDevMode" components={{ strong: <strong style={{ color: 'rgba(201,168,76,0.6)' }} /> }} />
               {' '}<button
                 onClick={async () => {
                   const ok = await new Promise<boolean>(resolve => {
                     setConfirmDialog({
-                      message: 'Ceci va écrire dans src/data/ et recharger l\'app. Continuer ?',
-                      label: 'Sauvegarder',
+                      message: t('descEditor.confirmDevSauvegarderMsg'),
+                      label: t('descEditor.confirmDevSauvegarderLabel'),
                       danger: false,
                       onConfirm: () => resolve(true),
                     })
@@ -2966,14 +3034,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   window.location.reload()
                 }}
                 style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}
-              >⬇ Sauvegarder dans le projet</button>
+              >{t('descEditor.footerDevSauvegarder')}</button>
             </span>
           ) : (
-            <span>Les modifications sont <strong style={{ color: 'rgba(201,168,76,0.6)' }}>sauvegardées automatiquement</strong> dans <em>Documents/TdA/</em>.</span>
+            <span><Trans i18nKey="descEditor.footerProd" components={{ strong: <strong style={{ color: 'rgba(201,168,76,0.6)' }} />, em: <em /> }} /></span>
           )}
           <button
             onClick={() => askConfirm(
-              'Réinitialiser toutes les données vers les valeurs par défaut du jeu ?',
+              t('descEditor.confirmReinitialiserMsg'),
               () => {
                 const unwrap = (v: unknown) => v && typeof v === 'object' && '_type' in (v as object) && 'data' in (v as object) ? (v as Record<string, unknown>).data : v
                 setData(unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as typeof data)
@@ -2987,7 +3055,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               border: '1px solid rgba(200,80,80,0.3)', background: 'transparent',
               color: 'rgba(200,100,100,0.6)', fontFamily: 'inherit', whiteSpace: 'nowrap',
             }}
-          >↺ Réinitialiser depuis les fichiers</button>
+          >{t('descEditor.reinitialiserBtn')}</button>
         </div>
       </div>
     </div>
@@ -2996,7 +3064,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       const nom    = printPreviewNom
       const rangs  = data[nom] ?? []
       const famille = voies.find(v => v.nom === nom)?.famille ?? ''
-      const familleLabel = famille ? (FAMILLE_LABELS[famille] ?? famille) : ''
+      const FAMILLE_LABELS_PREVIEW: Record<string, string> = {
+        combattants: t('descEditor.familleCombattants'),
+        aventuriers: t('descEditor.familleAventuriers'),
+        mystiques: t('descEditor.familleMystiques'),
+      }
+      const familleLabel = famille ? (FAMILLE_LABELS_PREVIEW[famille] ?? famille) : ''
       return (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 800,
@@ -3014,7 +3087,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             borderBottom: '1px solid rgba(201,168,76,0.2)',
           }} onClick={e => e.stopPropagation()}>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: 15, color: 'rgba(201,168,76,0.85)', letterSpacing: '0.06em' }}>
-              Aperçu — {nom}
+              {t('descEditor.apercu', { nom })}
             </span>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
@@ -3024,7 +3097,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)',
                   color: 'rgba(201,168,76,0.9)', fontWeight: 600,
                 }}
-              >🖨 Imprimer</button>
+              >{t('descEditor.imprimerBtn')}</button>
               <button
                 onClick={() => setPrintPreviewNom(null)}
                 style={{
@@ -3032,7 +3105,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
                   color: 'rgba(245,236,215,0.5)',
                 }}
-              >✕ Fermer</button>
+              >{t('descEditor.fermerBtn')}</button>
             </div>
           </div>
 
@@ -3054,7 +3127,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 {familleLabel && <div className="tda-famille">{familleLabel}</div>}
                 {rangs.map((r, i) => (
                   <div key={i} className="tda-rang">
-                    <h2 className="tda-h2">Rang {i + 1}{r.nom ? ` — ${r.nom}` : ''}</h2>
+                    <h2 className="tda-h2">{t('descEditor.rangN', { n: i + 1 })}{r.nom ? ` — ${r.nom}` : ''}</h2>
                     <div dangerouslySetInnerHTML={{ __html: blockToHtml(r.desc) }} />
                   </div>
                 ))}
@@ -3076,6 +3149,7 @@ function TraitNomCombobox({
   onChange: (nom: string, desc: string | null) => void
   style?: React.CSSProperties
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
@@ -3099,7 +3173,7 @@ function TraitNomCombobox({
       <input
         type="text"
         value={query}
-        placeholder="Nom du trait"
+        placeholder={t('descEditor.nomDuTrait')}
         onFocus={() => { setQuery(''); setOpen(true) }}
         onChange={e => { setQuery(e.target.value); onChange(e.target.value, null); setOpen(true) }}
         onBlur={() => setTimeout(() => { setOpen(false); setQuery(value) }, 150)}
@@ -3152,6 +3226,7 @@ function VoieSelectCombobox({
   onChange: (val: string) => void
   onCreateVoie?: () => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
@@ -3198,7 +3273,7 @@ function VoieSelectCombobox({
           {used.length > 0 && (
             <>
               {available.length > 0 && <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', margin: '2px 0' }} />}
-              <div style={{ padding: '3px 10px', fontSize: 11, color: 'rgba(201,168,76,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Déjà utilisées</div>
+              <div style={{ padding: '3px 10px', fontSize: 11, color: 'rgba(201,168,76,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('descEditor.dejaUtilisees')}</div>
               {used.map(v => (
                 <VoieSelectOption key={v} nom={v} dimmed onSelect={() => { onChange(v); setQuery(v); setOpen(false) }} />
               ))}
@@ -3215,7 +3290,7 @@ function VoieSelectCombobox({
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,168,76,0.12)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ fontSize: 15 }}>+</span> Créer une nouvelle voie
+              <span style={{ fontSize: 15 }}>+</span> {t('descEditor.creerNouvelleVoie')}
             </div>
           )}
         </div>

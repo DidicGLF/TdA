@@ -1,8 +1,10 @@
 export type Famille = 'combattants' | 'aventuriers' | 'mystiques'
 
 export type CompagnonOverride = {
+  nom?: string
   for?: string; dex?: string; con?: string; int?: string; sag?: string; cha?: string
   init?: string; def?: string; pv?: string
+  atk1nom?: string; atk1bonus?: string; atk1dm?: string
 }
 
 export type Caracteristique = 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA'
@@ -196,8 +198,8 @@ export const defaultCharacter = (): Character => ({
   capacitesSupplementaires: '',
 
   description: '',
-  inventaire: 'une couverture, une torche, un briquet en silex, une outre, une gamelle',
-  tresorerie: '5 pièces d\'or',
+  inventaire: '',
+  tresorerie: '',
   portrait: '',
   portraitScale: 1,
   portraitTx: 0,

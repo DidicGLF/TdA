@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import SheetTextarea from './SheetTextarea'
 
@@ -25,10 +25,16 @@ export default function DraggableTextarea({
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
+  const dragging = useRef(false)
+
+  useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
+  useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
+  useEffect(() => { if (!dragging.current) setHeight(initHeight) }, [initHeight])
 
   const handleDragMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragging.current = true
     const startX = e.clientX
     const startY = e.clientY
     const startTop = pos.top
@@ -46,6 +52,7 @@ export default function DraggableTextarea({
       const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
       const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
       setPos({ top: newTop, left: newLeft })
+      dragging.current = false
       onMoved(label, newTop, newLeft, width, height)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
@@ -57,6 +64,7 @@ export default function DraggableTextarea({
   const handleResizeWidthMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragging.current = true
     const startX = e.clientX
     const startWidth = width
 
@@ -68,6 +76,7 @@ export default function DraggableTextarea({
       const rect = containerRef.current!.getBoundingClientRect()
       const w = Math.max(1, +(startWidth + (ev.clientX - startX) / rect.width * 100).toFixed(1))
       setWidth(w)
+      dragging.current = false
       onMoved(label, pos.top, pos.left, w, height)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
@@ -79,6 +88,7 @@ export default function DraggableTextarea({
   const handleResizeHeightMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragging.current = true
     const startY = e.clientY
     const startHeight = height
 
@@ -90,6 +100,7 @@ export default function DraggableTextarea({
       const rect = containerRef.current!.getBoundingClientRect()
       const h = Math.max(1, +(startHeight + (ev.clientY - startY) / rect.height * 100).toFixed(1))
       setHeight(h)
+      dragging.current = false
       onMoved(label, pos.top, pos.left, width, h)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
