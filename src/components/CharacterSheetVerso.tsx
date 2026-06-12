@@ -50,7 +50,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
-  const fp = (label: string, t: number, l: number, w: number, h?: number) => {
+  const fp = (label: string, t: number, l: number, w: number, h: number) => {
     const ov = fieldPositions?.[label]
     return { top: ov?.top ?? t, left: ov?.left ?? l, width: ov?.width ?? w, height: ov?.height ?? h }
   }
@@ -516,7 +516,6 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
 
       {/* === COMPAGNONS (champs calibrables) === */}
       {(() => {
-        const noop = () => {}
         const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
 
         type Pos = { top: number; left: number; width: number }

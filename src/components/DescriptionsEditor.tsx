@@ -59,10 +59,6 @@ const blockToHtml = (text: string): string => {
   return blocks.join('\n')
 }
 
-const FAMILLE_LABELS: Record<string, string> = {
-  combattants: 'Combattants', aventuriers: 'Aventuriers', mystiques: 'Mystiques',
-}
-
 const PRINT_CSS = `
   * { box-sizing: border-box; }
   .tda-page {
