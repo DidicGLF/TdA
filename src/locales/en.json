@@ -79,6 +79,7 @@
   "fiche": {
     "recto": "Front",
     "verso": "Back",
+    "golem": "Golem",
     "total": "Total",
     "deblocableNiveau": "Unlockable at level {{n}}",
     "modeTexte": "✎ Text",
@@ -600,5 +601,55 @@
     "attNomPlaceholder": "Name",
     "attDmPlaceholder": "Dmg",
     "attCapacitesPlaceholder": "Kick, Flight, Venomous bite…"
+  },
+  "golem": {
+    "titre": "Golem",
+    "activation": "Enable Golem Configuration",
+    "activationDesc": "This character doesn't have a Golem configuration yet. Enable it to choose a role and improvements once Golem Path rank 2 is reached.",
+    "desactiver": "Disable",
+    "rang": "Golem Path Rank",
+    "role": "Golem Role",
+    "roleIndisponible": "Rank 2 required",
+    "specialisation": "Specialization (rank 3)",
+    "specialisationIndisponible": "Rank 3 required",
+    "specialisationAucunRole": "Choose a role first",
+    "ameliorations": "Improvements",
+    "ameliorationsIndisponibles": "Rank 4 or level 9 required",
+    "textuel": "text",
+    "statsGolem": "Golem Statistics",
+    "statsNote": "HP and ATK are based on current level (lv. {{niveau}}). Gold values reflect active improvements.",
+    "roles": {
+      "soldat": "Soldier",
+      "gardien": "Guardian",
+      "gladiateur": "Gladiator"
+    },
+    "roleDesc": {
+      "soldat": "The golem has a built-in weapon, blades, or claws in its fists. Its damage changes to [1d10 + STR Mod.].",
+      "gardien": "Once per turn, if the golem is in contact with the PC, it may interpose itself and take the damage instead.",
+      "gladiateur": "When the golem misses a melee attack, it gains a cumulative +1 bonus to damage and melee attack rolls until it hits."
+    },
+    "specialisationDesc": {
+      "soldat": "As a limited action, the golem can attack two creatures in contact with it. A single attack roll is compared against each target's DEF.",
+      "gardien": "The golem's armor is greatly reinforced, granting DR 3. This DR does not apply against damage from magical sources (spells and magical weapons).",
+      "gladiateur": "When the golem is hit by a melee attack, it may counter once per turn as a free immediate action against its attacker."
+    },
+    "ameliorationLabels": {
+      "arme2mains": "Two-handed weapon",
+      "armureRenforcee": "Reinforced armor",
+      "formeBestiale": "Bestial form",
+      "impulsion": "Impulse",
+      "protectionRunique": "Runic protection",
+      "puissant": "Powerful",
+      "tailleSuperieure": "Superior size"
+    },
+    "ameliorationDescs": {
+      "arme2mains": "+1d8 to melee damage",
+      "armureRenforcee": "DEF +4",
+      "formeBestiale": "+3 to DEX Mod. (and DEF)",
+      "impulsion": "As a limited action, can jump 20 meters in height or distance",
+      "protectionRunique": "Immune to lightning, halves fire and cold damage",
+      "puissant": "+2 to STR Mod.",
+      "tailleSuperieure": "+10 HP and +1 STR Mod."
+    }
   }
 }

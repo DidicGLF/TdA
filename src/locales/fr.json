@@ -79,6 +79,7 @@
   "fiche": {
     "recto": "Recto",
     "verso": "Verso",
+    "golem": "Golem",
     "total": "Total",
     "deblocableNiveau": "Déblocable au niveau {{n}}",
     "modeTexte": "✎ Texte",
@@ -600,6 +601,56 @@
     "attNomPlaceholder": "Nom",
     "attDmPlaceholder": "DM",
     "attCapacitesPlaceholder": "Ruade, Vol, Morsure venimeuse…"
+  },
+  "golem": {
+    "titre": "Golem",
+    "activation": "Activer la configuration du Golem",
+    "activationDesc": "Ce personnage n'a pas encore de configuration de Golem. Activez-la pour choisir le rôle et les améliorations une fois le rang 2 de la Voie du Golem atteint.",
+    "desactiver": "Désactiver",
+    "rang": "Rang de la Voie du Golem",
+    "role": "Rôle du Golem",
+    "roleIndisponible": "Rang 2 requis",
+    "specialisation": "Spécialisation (rang 3)",
+    "specialisationIndisponible": "Rang 3 requis",
+    "specialisationAucunRole": "Choisissez d'abord un rôle",
+    "ameliorations": "Améliorations",
+    "ameliorationsIndisponibles": "Rang 4 ou niveau 9 requis",
+    "textuel": "textuel",
+    "statsGolem": "Statistiques du Golem",
+    "statsNote": "PV et ATK basés sur le niveau actuel (niv. {{niveau}}). Les modificateurs en or tiennent compte des améliorations actives.",
+    "roles": {
+      "soldat": "Soldat",
+      "gardien": "Gardien",
+      "gladiateur": "Gladiateur"
+    },
+    "roleDesc": {
+      "soldat": "Le golem dispose d'une arme, de lames ou de griffes incorporées à ses poings. Ses DM passent à [1d10 + Mod. de FOR].",
+      "gardien": "Une fois par tour, si le golem est au contact du PJ, il peut s'interposer et subir les DM à sa place.",
+      "gladiateur": "Lorsque le golem rate une attaque de contact, il gagne un bonus cumulatif de +1 en DM et aux tests d'attaque de contact jusqu'à ce qu'il touche."
+    },
+    "specialisationDesc": {
+      "soldat": "Au prix d'une action limitée, le golem peut attaquer deux créatures à son contact. Un seul test d'attaque à comparer à la DEF de chacune des cibles.",
+      "gardien": "L'armure du golem est considérablement renforcée, offrant une RD 3. Cette RD ne s'applique pas contre les DM d'origine magique (armes et sorts).",
+      "gladiateur": "Lorsque le golem est touché par une attaque de contact, il peut riposter une fois par tour au prix d'une action gratuite immédiate contre son assaillant."
+    },
+    "ameliorationLabels": {
+      "arme2mains": "Arme à deux mains",
+      "armureRenforcee": "Armure renforcée",
+      "formeBestiale": "Forme bestiale",
+      "impulsion": "Impulsion",
+      "protectionRunique": "Protection runique",
+      "puissant": "Puissant",
+      "tailleSuperieure": "Taille supérieure"
+    },
+    "ameliorationDescs": {
+      "arme2mains": "+1d8 aux DM de contact",
+      "armureRenforcee": "DEF +4",
+      "formeBestiale": "+3 au Mod. de DEX (et à la DEF)",
+      "impulsion": "Au prix d'une action limitée, peut sauter à 20 mètres en hauteur ou longueur",
+      "protectionRunique": "Immunisé à la foudre, divise par 2 les DM de feu et froid",
+      "puissant": "+2 au Mod. de FOR",
+      "tailleSuperieure": "+10 PV et +1 Mod. de FOR"
+    }
   }
 }
 

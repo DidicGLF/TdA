@@ -1,5 +1,19 @@
 export type Famille = 'combattants' | 'aventuriers' | 'mystiques'
 
+export type GolemRole = 'soldat' | 'gardien' | 'gladiateur'
+
+export interface GolemState {
+  rang: number
+  role: GolemRole | null
+  ameliorationsChoisies: string[]
+}
+
+export const defaultGolemState = (): GolemState => ({
+  rang: 2,
+  role: null,
+  ameliorationsChoisies: [],
+})
+
 export type CompagnonOverride = {
   nom?: string
   for?: string; dex?: string; con?: string; int?: string; sag?: string; cha?: string
@@ -117,6 +131,9 @@ export interface Character {
   portraitFit: 'cover' | 'contain'
   portraitLocked?: boolean
   versoMode?: 'description' | 'image'
+
+  // Golem
+  golem?: GolemState
 
   // Compagnons
   compagnonsActifs?: [string | null, string | null]

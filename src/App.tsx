@@ -6,6 +6,7 @@ import { defaultCharacter } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
+import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CreationWizard from './components/CreationWizard'
 import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
@@ -39,7 +40,7 @@ function AppContent() {
 
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem'>('recto')
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -347,7 +348,7 @@ function AppContent() {
                 borderBottom: '1px solid rgba(201,168,76,0.15)',
                 overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               }}>
-                {(['recto', 'verso'] as const).map(p => (
+                {(['recto', 'verso', 'golem'] as const).map(p => (
                   <button key={p} onClick={() => setSheetPage(p)} style={{
                     flexShrink: 0,
                     padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -379,9 +380,13 @@ function AppContent() {
               </div>
               {/* Feuille scrollable */}
               <div style={{ padding: '0 4px 80px' }}>
-                {sheetPage === 'recto'
-                  ? <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
-                  : <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />}
+                {sheetPage === 'recto' ? (
+                  <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
+                ) : sheetPage === 'verso' ? (
+                  <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                ) : (
+                  <CharacterSheetGolem character={character} onChange={onChange} />
+                )}
               </div>
             </div>
 
@@ -443,7 +448,7 @@ function AppContent() {
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
           position: 'sticky', top: 0, zIndex: 35, background: '#111',
         }}>
-          {(['recto', 'verso'] as const).map(p => (
+          {(['recto', 'verso', 'golem'] as const).map(p => (
             <button key={p} onClick={() => setSheetPage(p)} style={{
               padding: '4px 16px', borderRadius: '4px 4px 0 0',
               border: '1px solid rgba(201,168,76,0.4)',
@@ -627,10 +632,12 @@ function AppContent() {
               <CharacterSheetRecto character={character} onChange={onChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined}
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
-            ) : (
+            ) : sheetPage === 'verso' ? (
               <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined}
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+            ) : (
+              <CharacterSheetGolem character={character} onChange={onChange} />
             )}
 
             {/* Tooltip coordonnées au survol (suit le curseur) */}
