@@ -106,15 +106,6 @@ function AppContent() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showGestion])
 
-  useEffect(() => {
-    if (!showMobileGestion) return
-    const handler = (e: MouseEvent) => {
-      if (mobileGestionRef.current && !mobileGestionRef.current.contains(e.target as Node))
-        setShowMobileGestion(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showMobileGestion])
 
   useEffect(() => {
     const BASE_PT = 12
@@ -281,6 +272,77 @@ function AppContent() {
       {showLevelUp && (
         <LevelUpModal character={character} onConfirm={onChange} onClose={() => setShowLevelUp(false)} />
       )}
+
+      {/* ── Bottom sheet Gestion (mobile) ── */}
+      {showMobileGestion && (
+        <>
+          <div onClick={() => setShowMobileGestion(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)' }} />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+            background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
+            borderRadius: '12px 12px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.8)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(201,168,76,0.3)' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
+                padding: '14px 20px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
+              }}>
+                {t('menuGestion.donneesJeu')}
+              </button>
+              <button onClick={() => {
+                if (ficheLocked) { setShowUnlockConfirm(true); setShowMobileGestion(false) }
+                else { setFicheLocked(true); setShowMobileGestion(false) }
+              }} style={{
+                padding: '14px 20px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.08)',
+                border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
+                cursor: 'pointer', textAlign: 'left', fontSize: 15,
+              }}>
+                {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
+              </button>
+              <div style={{ padding: '12px 20px', borderBottom: '1px solid rgba(201,168,76,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
+                {(['fr', 'en'] as const).map(lang => (
+                  <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                    padding: '4px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontWeight: 600,
+                    border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
+                    color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                  }}>{lang.toUpperCase()}</button>
+                ))}
+              </div>
+              <div style={{ padding: '10px 20px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {t('menuGestion.feuilles')}
+                </span>
+                {(['recto', 'verso'] as const).map(side => (
+                  <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => { (side === 'recto' ? rectoInputRef : versoInputRef).current?.click(); setShowMobileGestion(false) }} style={{
+                      flex: 1, padding: '8px 12px', background: 'transparent',
+                      border: '1px solid rgba(201,168,76,0.25)', borderRadius: 4,
+                      color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 13, textAlign: 'left',
+                    }}>
+                      {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
+                    </button>
+                    {sheetImages[side] && (
+                      <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
+                        padding: '6px 10px', background: 'transparent',
+                        border: '1px solid rgba(255,80,80,0.3)', borderRadius: 4,
+                        color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 13,
+                      }}>✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
 
       {showUnlockConfirm && (
@@ -388,7 +450,7 @@ function AppContent() {
                   border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
                   color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
                 }}>{t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}</button>
-                <div ref={mobileGestionRef} style={{ position: 'relative', flexShrink: 0 }}>
+                <div ref={mobileGestionRef} style={{ flexShrink: 0 }}>
                   <button onClick={() => setShowMobileGestion(g => !g)} style={{
                     padding: '6px 12px', borderRadius: 4, whiteSpace: 'nowrap',
                     border: `1px solid ${showMobileGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
@@ -398,67 +460,6 @@ function AppContent() {
                   }}>
                     {t('toolbar.gestion')}
                   </button>
-                  {showMobileGestion && (
-                    <div style={{
-                      position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
-                      background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.3)',
-                      borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
-                      minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                    }}>
-                      <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
-                        padding: '12px 16px', background: 'transparent', border: 'none',
-                        borderBottom: '1px solid rgba(201,168,76,0.1)',
-                        color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                      }}>
-                        {t('menuGestion.donneesJeu')}
-                      </button>
-                      <button onClick={() => {
-                        if (ficheLocked) { setShowUnlockConfirm(true); setShowMobileGestion(false) }
-                        else { setFicheLocked(true); setShowMobileGestion(false) }
-                      }} style={{
-                        padding: '12px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
-                        border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
-                        color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
-                        cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                      }}>
-                        {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
-                      </button>
-                      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(201,168,76,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                        {(['fr', 'en'] as const).map(lang => (
-                          <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
-                            padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                            border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                            background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
-                            color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                          }}>{lang.toUpperCase()}</button>
-                        ))}
-                      </div>
-                      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                          {t('menuGestion.feuilles')}
-                        </span>
-                        {(['recto', 'verso'] as const).map(side => (
-                          <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <button onClick={() => { (side === 'recto' ? rectoInputRef : versoInputRef).current?.click(); setShowMobileGestion(false) }} style={{
-                              flex: 1, padding: '5px 8px', background: 'transparent',
-                              border: '1px solid rgba(201,168,76,0.25)', borderRadius: 3,
-                              color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
-                            }}>
-                              {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
-                            </button>
-                            {sheetImages[side] && (
-                              <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
-                                padding: '4px 6px', background: 'transparent',
-                                border: '1px solid rgba(255,80,80,0.3)', borderRadius: 3,
-                                color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 11,
-                              }}>✕</button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
               {/* Feuille scrollable */}
