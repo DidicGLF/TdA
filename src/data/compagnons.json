@@ -153,5 +153,39 @@
       "bonus": "[ATT magique]",
       "dm": "1d4"
     }
+  },
+  {
+    "nom": "Golem ouvrier",
+    "for": 1,
+    "dex": -1,
+    "con": 5,
+    "int": -4,
+    "sag": -3,
+    "cha": -4,
+    "init": "[initiative]",
+    "def": 10,
+    "pv": "[NIV*3]",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV]",
+      "dm": "1d4+FOR"
+    }
+  },
+  {
+    "nom": "Golem de guerre",
+    "for": 1,
+    "dex": -1,
+    "con": 10,
+    "int": -4,
+    "sag": -3,
+    "cha": -4,
+    "init": "1[initiative]",
+    "def": 10,
+    "pv": "[NIV*3]",
+    "attaque1": {
+      "nom": "Attaque",
+      "bonus": "[NIV]+FOR",
+      "dm": "1d8*FOR"
+    }
   }
 ]

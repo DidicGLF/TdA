@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
-import { getMod } from '../types/character'
+import { getMod, getGolemVoieRang } from '../types/character'
 import { findCulture, findTrait } from '../data/peuples'
 import PROFILS_RAW from '../data/profils.json'
 import { useGameData } from '../context/GameDataContext'
@@ -214,9 +214,11 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
 function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
-  const { peuples } = useGameData()
+  const { peuples, hiddenPeuples, hiddenCultures } = useGameData()
+  const cultureKey = (pl: string, cl: string) => `${pl}::${cl}`
+  const visiblePeuples = peuples.filter(p => !hiddenPeuples.includes(p.label))
   const selectedPeuple = peuples.find(p => p.label === character.peuple) ?? null
-  const cultures = selectedPeuple?.cultures ?? []
+  const cultures = (selectedPeuple?.cultures ?? []).filter(c => !hiddenCultures.includes(cultureKey(selectedPeuple?.label ?? '', c.label)))
 
   const onPeupleChange = (peupleLabel: string) => {
     const peuple = peuples.find(p => p.label === peupleLabel)
@@ -266,7 +268,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           onChange={e => onPeupleChange(e.target.value)}
         >
           <option value="">{t('wizard.step1.choisir')}</option>
-          {peuples.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+          {visiblePeuples.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
         </select>
       </div>
 
@@ -739,14 +741,14 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const { t } = useTranslation()
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const { disponibles } = calcPointsCapacite(character)
-  const { data: dynamicDescriptions, peuples, voies } = useGameData()
+  const { data: dynamicDescriptions, peuples, voies, hiddenVoies } = useGameData()
 
-  const voiesPrestige = voies.filter(v => v.categorie === 'prestige')
+  const voiesPrestige = voies.filter(v => v.categorie === 'prestige' && !hiddenVoies.includes(v.nom))
   const nomPrestige = character.voiePrestige.nom
   const hasPrestigeDesc = !!nomPrestige && !!dynamicDescriptions[nomPrestige]
 
   const allProfilVoies = (() => {
-    const profilVoies = voies.filter(v => v.categorie === 'profil')
+    const profilVoies = voies.filter(v => v.categorie === 'profil' && !hiddenVoies.includes(v.nom))
     const voieNoms = new Set(voies.map(v => v.nom))
     const peupleVoieNoms = new Set<string>()
     for (const p of peuples) {
@@ -757,7 +759,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
     }
     // Fallback : voies présentes dans descriptions mais pas encore dans voies.json
     const fallbackVoies = Object.keys(dynamicDescriptions)
-      .filter(nom => !voieNoms.has(nom) && !peupleVoieNoms.has(nom))
+      .filter(nom => !voieNoms.has(nom) && !peupleVoieNoms.has(nom) && !hiddenVoies.includes(nom))
       .map(nom => ({ nom, categorie: 'profil', famille: '' }))
     return fallbackVoies.length ? [...profilVoies, ...fallbackVoies] : profilVoies
   })()
@@ -1136,6 +1138,35 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
           </button>
         </div>
       </div>
+
+      {/* ── Notifications Golem ── */}
+      {(() => {
+        const golemRang = getGolemVoieRang(character)
+        if (golemRang < 2) return null
+        const notifs: string[] = []
+        if (golemRang >= 2) notifs.push(t('levelUp.golemRang2'))
+        if (golemRang >= 3) notifs.push(t('levelUp.golemRang3'))
+        if (golemRang >= 4) notifs.push(t('levelUp.golemRang4'))
+        return (
+          <div style={{
+            border: '1px solid rgba(130,200,180,0.35)',
+            borderRadius: 8, padding: '14px 16px',
+            background: 'rgba(130,200,180,0.05)',
+          }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(130,200,180,0.85)', marginBottom: 10 }}>
+              {t('levelUp.golemMaj')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {notifs.map((msg, i) => (
+                <div key={i} style={{ fontSize: 14, color: 'rgba(185,235,220,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: 'rgba(130,200,180,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
+                  {msg}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Compagnons accordés ── */}
       {(() => {

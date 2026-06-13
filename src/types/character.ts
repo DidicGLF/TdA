@@ -3,13 +3,11 @@ export type Famille = 'combattants' | 'aventuriers' | 'mystiques'
 export type GolemRole = 'soldat' | 'gardien' | 'gladiateur'
 
 export interface GolemState {
-  rang: number
   role: GolemRole | null
   ameliorationsChoisies: string[]
 }
 
 export const defaultGolemState = (): GolemState => ({
-  rang: 2,
   role: null,
   ameliorationsChoisies: [],
 })
@@ -151,6 +149,12 @@ export interface Character {
 
   // Historique des gains de PV par passage de niveau
   pvHistorique?: { niveauDe: number; niveauA: number; jet: number; conMod: number; total: number }[]
+}
+
+export function getGolemVoieRang(character: Character): number {
+  const voies = [character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele]
+  const v = voies.find(v => v.nom === 'Voie des golems')
+  return v ? v.rangs.filter(Boolean).length : 0
 }
 
 export const defaultCharacter = (): Character => ({

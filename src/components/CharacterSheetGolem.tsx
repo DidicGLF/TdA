@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Character, GolemState, GolemRole } from '../types/character'
-import { defaultGolemState } from '../types/character'
+import { defaultGolemState, getGolemVoieRang } from '../types/character'
 import { GOLEM_AMELIORATIONS_LIST, GOLEM_BASE } from '../data/golem'
 
 interface Props {
@@ -22,15 +22,14 @@ function slotsDisponibles(rang: number, niveau: number): number {
   return s
 }
 
-function computeStats(golem: GolemState, niveau: number) {
+function computeStats(golem: GolemState, rang: number, niveau: number) {
   const a = golem.ameliorationsChoisies
   const forMod = GOLEM_BASE.forMod + (a.includes('puissant') ? 2 : 0) + (a.includes('tailleSuperieure') ? 1 : 0)
   const dexMod = GOLEM_BASE.dexMod + (a.includes('formeBestiale') ? 3 : 0)
   const def = GOLEM_BASE.def + (a.includes('armureRenforcee') ? 4 : 0) + (a.includes('formeBestiale') ? 3 : 0)
   const pv = niveau * 4 + (a.includes('tailleSuperieure') ? 10 : 0)
-  const baseDM = golem.role === 'soldat' ? '1d10' : '1d6'
-  const extraDM = a.includes('arme2mains') ? '+1d8' : ''
-  const dm = `${baseDM}${extraDM}${fmt(forMod)}`
+  const baseDM = golem.role === 'soldat' ? '1d10' : a.includes('arme2mains') ? '1d8' : '1d6'
+  const dm = `${baseDM}${fmt(forMod)}`
   return { forMod, dexMod, def, pv, dm }
 }
 
@@ -55,36 +54,20 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
   const { t } = useTranslation()
   const golem = character.golem
 
+  // Auto-initialise le golem dès que l'onglet est monté (rang ≥ 2 garanti par App.tsx)
+  useEffect(() => {
+    if (!golem) onChange({ golem: defaultGolemState() })
+  }, [])
+
   const setGolem = (patch: Partial<GolemState>) =>
     onChange({ golem: { ...(golem ?? defaultGolemState()), ...patch } })
 
-  if (!golem) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: 400, gap: 16, color: 'rgba(245,236,215,0.6)', padding: '32px 24px',
-      }}>
-        <div style={{ fontSize: 40, opacity: 0.25 }}>⚙</div>
-        <div style={{ fontSize: 14, textAlign: 'center', maxWidth: 340, lineHeight: 1.7 }}>
-          {t('golem.activationDesc')}
-        </div>
-        <button
-          onClick={() => onChange({ golem: defaultGolemState() })}
-          style={{
-            padding: '10px 28px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 700,
-            border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)',
-            color: 'var(--tdr-gold)', fontFamily: 'inherit', letterSpacing: '0.04em',
-          }}
-        >
-          {t('golem.activation')}
-        </button>
-      </div>
-    )
-  }
+  if (!golem) return null
 
-  const { rang, role, ameliorationsChoisies } = golem
+  const rang = getGolemVoieRang(character)
+  const { role, ameliorationsChoisies } = golem
   const slots = slotsDisponibles(rang, character.niveau)
-  const stats = computeStats(golem, character.niveau)
+  const stats = computeStats(golem, rang, character.niveau)
   const dimmed = (condition: boolean): React.CSSProperties => condition ? { opacity: 0.38 } : {}
 
   const toggleAmel = (cle: string) => {
@@ -121,37 +104,15 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
           {t('golem.titre')}
         </div>
         <button
-          onClick={() => onChange({ golem: undefined })}
+          onClick={() => onChange({ golem: defaultGolemState() })}
           style={{
             padding: '3px 10px', borderRadius: 3, fontSize: 12, cursor: 'pointer',
             border: '1px solid rgba(255,80,80,0.3)', background: 'transparent',
             color: 'rgba(255,110,110,0.6)', fontFamily: 'inherit',
           }}
         >
-          {t('golem.desactiver')}
+          {t('golem.reinitialiser')}
         </button>
-      </div>
-
-      {/* Rang */}
-      <div style={SECTION}>
-        <div style={SECTION_TITLE}>{t('golem.rang')}</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[0, 1, 2, 3, 4, 5].map(r => (
-            <button
-              key={r}
-              onClick={() => setGolem({ rang: r })}
-              style={{
-                width: 36, height: 36, borderRadius: 4, cursor: 'pointer',
-                border: `1px solid ${rang === r ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                background: rang === r ? 'rgba(201,168,76,0.2)' : 'transparent',
-                color: rang === r ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                fontWeight: rang === r ? 700 : 400, fontSize: 15,
-              }}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Rôle */}
@@ -202,6 +163,57 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
             {t('golem.specialisationAucunRole')}
           </div>
         )}
+      </div>
+
+      {/* Caractéristiques calculées */}
+      <div style={SECTION}>
+        <div style={SECTION_TITLE}>{t('golem.statsGolem')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 8 }}>
+          {statCells.map(({ label, val, base }) => {
+            const modified = val !== base
+            return (
+              <div
+                key={label}
+                style={{
+                  textAlign: 'center', padding: '8px 4px',
+                  background: modified ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${modified ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                  borderRadius: 4,
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.38)', letterSpacing: '0.1em', marginBottom: 3 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: modified ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.85)' }}>
+                  {fmt(val)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+          {derivedCells.map(({ label, val, modified }) => (
+            <div
+              key={label}
+              style={{
+                textAlign: 'center', padding: '8px 4px',
+                background: modified ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${modified ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.38)', letterSpacing: '0.1em', marginBottom: 3 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: modified ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.85)' }}>
+                {val}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', marginTop: 8, fontStyle: 'italic' }}>
+          {t('golem.statsNote', { niveau: character.niveau })}
+        </div>
       </div>
 
       {/* Améliorations */}
@@ -264,57 +276,6 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
               </label>
             )
           })}
-        </div>
-      </div>
-
-      {/* Stats calculées */}
-      <div style={SECTION}>
-        <div style={SECTION_TITLE}>{t('golem.statsGolem')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 8 }}>
-          {statCells.map(({ label, val, base }) => {
-            const modified = val !== base
-            return (
-              <div
-                key={label}
-                style={{
-                  textAlign: 'center', padding: '8px 4px',
-                  background: modified ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${modified ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.07)'}`,
-                  borderRadius: 4,
-                }}
-              >
-                <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.38)', letterSpacing: '0.1em', marginBottom: 3 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: modified ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.85)' }}>
-                  {fmt(val)}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-          {derivedCells.map(({ label, val, modified }) => (
-            <div
-              key={label}
-              style={{
-                textAlign: 'center', padding: '8px 4px',
-                background: modified ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${modified ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.07)'}`,
-                borderRadius: 4,
-              }}
-            >
-              <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.38)', letterSpacing: '0.1em', marginBottom: 3 }}>
-                {label}
-              </div>
-              <div style={{ fontSize: modified ? 13 : 15, fontWeight: 700, color: modified ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.85)' }}>
-                {val}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', marginTop: 8, fontStyle: 'italic' }}>
-          {t('golem.statsNote', { niveau: character.niveau })}
         </div>
       </div>
 

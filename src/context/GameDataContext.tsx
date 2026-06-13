@@ -9,6 +9,10 @@ import COMPAGNONS_RAW from '../data/compagnons.json'
 import TRAITS_RACIAUX_RAW from '../data/traits-raciaux.json'
 import FIELD_POSITIONS_RAW from '../data/field-positions.json'
 import SHEET_IMAGES_RAW from '../data/sheet-images.json'
+import HIDDEN_VOIES_RAW from '../data/hidden-voies.json'
+import HIDDEN_PEUPLES_RAW from '../data/hidden-peuples.json'
+import HIDDEN_CULTURES_RAW from '../data/hidden-cultures.json'
+import HIDDEN_COMPAGNONS_RAW from '../data/hidden-compagnons.json'
 import { loadDataFile, saveDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry } from '../types/gameData'
 
@@ -40,6 +44,14 @@ interface GameDataContextValue {
   setFieldPositions: Dispatch<SetStateAction<FieldPositions>>
   sheetImages: SheetImages
   setSheetImages: Dispatch<SetStateAction<SheetImages>>
+  hiddenVoies: string[]
+  setHiddenVoies: Dispatch<SetStateAction<string[]>>
+  hiddenPeuples: string[]
+  setHiddenPeuples: Dispatch<SetStateAction<string[]>>
+  hiddenCultures: string[]
+  setHiddenCultures: Dispatch<SetStateAction<string[]>>
+  hiddenCompagnons: string[]
+  setHiddenCompagnons: Dispatch<SetStateAction<string[]>>
   openDataDir: () => void
   loaded: boolean
 }
@@ -102,6 +114,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [sheetImages, setSheetImagesRaw] = useState<SheetImages>(() =>
     JSON.parse(JSON.stringify(SHEET_IMAGES_RAW)) as SheetImages
   )
+  const [hiddenVoies, setHiddenVoiesRaw] = useState<string[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(HIDDEN_VOIES_RAW))) as string[]
+  )
+  const [hiddenPeuples, setHiddenPeuplesRaw] = useState<string[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(HIDDEN_PEUPLES_RAW))) as string[]
+  )
+  const [hiddenCultures, setHiddenCulturesRaw] = useState<string[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(HIDDEN_CULTURES_RAW))) as string[]
+  )
+  const [hiddenCompagnons, setHiddenCompagnonsRaw] = useState<string[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
+  )
   const [loaded, setLoaded] = useState(false)
 
   // Chargement initial depuis Documents/TdR/ (Tauri) ou valeurs du bundle (dev)
@@ -130,6 +154,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
         const sheetImagesStr = await loadDataFile('sheet-images.json')
         if (sheetImagesStr) setSheetImagesRaw(unwrap(JSON.parse(sheetImagesStr)) as SheetImages)
+        const hiddenVoiesStr = await loadDataFile('hidden-voies.json')
+        if (hiddenVoiesStr) setHiddenVoiesRaw(unwrap(JSON.parse(hiddenVoiesStr)) as string[])
+        const hiddenPeuplesStr = await loadDataFile('hidden-peuples.json')
+        if (hiddenPeuplesStr) setHiddenPeuplesRaw(unwrap(JSON.parse(hiddenPeuplesStr)) as string[])
+        const hiddenCulturesStr = await loadDataFile('hidden-cultures.json')
+        if (hiddenCulturesStr) setHiddenCulturesRaw(unwrap(JSON.parse(hiddenCulturesStr)) as string[])
+        const hiddenCompagnonsStr = await loadDataFile('hidden-compagnons.json')
+        if (hiddenCompagnonsStr) setHiddenCompagnonsRaw(unwrap(JSON.parse(hiddenCompagnonsStr)) as string[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -177,6 +209,22 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'),
     []
   )
+  const setHiddenVoies = useCallback(
+    makeAutoSaver<string[]>(setHiddenVoiesRaw, 'hidden-voies.json', 'hidden-voies'),
+    []
+  )
+  const setHiddenPeuples = useCallback(
+    makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'),
+    []
+  )
+  const setHiddenCultures = useCallback(
+    makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'),
+    []
+  )
+  const setHiddenCompagnons = useCallback(
+    makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'),
+    []
+  )
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -192,6 +240,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       traitsRaciaux, setTraitsRaciaux,
       fieldPositions, setFieldPositions,
       sheetImages, setSheetImages,
+      hiddenVoies, setHiddenVoies,
+      hiddenPeuples, setHiddenPeuples,
+      hiddenCultures, setHiddenCultures,
+      hiddenCompagnons, setHiddenCompagnons,
       openDataDir,
       loaded,
     }}>

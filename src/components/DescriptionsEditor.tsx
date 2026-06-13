@@ -17,6 +17,8 @@ const _descUnwrapped: Record<string, unknown[]> = (
 ) as Record<string, unknown[]>
 const VOIES_INIT = Object.keys(_descUnwrapped).sort((a, b) => a.localeCompare(b, 'fr'))
 
+const MASQUAGE_MOT_DE_PASSE = 'TdA-dev'
+
 // ── Helpers de conversion Markdown → HTML (utilisés par aperçu et impression) ──
 
 const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -133,7 +135,9 @@ type PendingItem =
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
-  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, openDataDir } = useGameData()
+  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, openDataDir } = useGameData()
+
+  const cultureKey = (peupleLabel: string, cultureLabel: string) => `${peupleLabel}::${cultureLabel}`
 
   const armesList = useMemo(() =>
     armes.groupes.flatMap(g => g.categories.flatMap(c => c.entrees.map(e => e.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim())))
@@ -183,6 +187,39 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [showEffectsHelp, setShowEffectsHelp] = useState(false)
   const [showCompagnonsHelp, setShowCompagnonsHelp] = useState(false)
 
+  // Voies masquées — accès protégé par mot de passe
+  const [showHidden, setShowHidden] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [passwordError, setPasswordError] = useState(false)
+  const checkPassword = () => {
+    if (passwordInput === MASQUAGE_MOT_DE_PASSE) {
+      setShowHidden(true); setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false)
+    } else {
+      setPasswordError(true)
+    }
+  }
+
+  // Désélectionner les éléments masqués si on quitte le mode admin
+  useEffect(() => {
+    if (!showHidden && hiddenVoies.includes(selected)) {
+      const visible = voiesList.find(v => !hiddenVoies.includes(v))
+      if (visible) setSelected(visible)
+    }
+  }, [showHidden, hiddenVoies])
+  useEffect(() => {
+    if (!showHidden && hiddenPeuples.includes(peuples[selectedPeuple]?.label ?? '')) {
+      const idx = peuples.findIndex(p => !hiddenPeuples.includes(p.label))
+      if (idx >= 0) setSelectedPeuple(idx)
+    }
+  }, [showHidden, hiddenPeuples])
+  useEffect(() => {
+    if (!showHidden && hiddenCompagnons.includes(compagnons[selectedCompagnon]?.nom ?? '')) {
+      const idx = compagnons.findIndex(c => !hiddenCompagnons.includes(c.nom))
+      if (idx >= 0) setSelectedCompagnon(idx)
+    }
+  }, [showHidden, hiddenCompagnons])
+
   // Zone en attente (imports individuels)
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([])
   const [previewPendingId, setPreviewPendingId] = useState<string | null>(null)
@@ -216,9 +253,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   , [traitsRaciaux])
 
 
-  const filtered = query
-    ? voiesList.filter(v => v.toLowerCase().includes(query.toLowerCase()))
-    : voiesList
+  const filtered = (() => {
+    const base = showHidden ? voiesList : voiesList.filter(v => !hiddenVoies.includes(v))
+    return query ? base.filter(v => v.toLowerCase().includes(query.toLowerCase())) : base
+  })()
 
   const getDesc = (voie: string, rang: number) =>
     (data[voie]?.[rang]?.desc) ?? ''
@@ -1108,6 +1146,29 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       )
     })()}
 
+    {showPasswordModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 8, padding: '24px 28px', maxWidth: 360, width: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>🔒 {t('descEditor.accesVoiesMasquees')}</div>
+          <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.6 }}>{t('descEditor.accesVoiesMasqueesDesc')}</div>
+          <input
+            type="password"
+            value={passwordInput}
+            autoFocus
+            onChange={e => { setPasswordInput(e.target.value); setPasswordError(false) }}
+            onKeyDown={e => e.key === 'Enter' && checkPassword()}
+            placeholder={t('descEditor.motDePasse')}
+            style={{ padding: '8px 12px', borderRadius: 4, border: `1px solid ${passwordError ? '#c05050' : 'rgba(201,168,76,0.3)'}`, background: 'rgba(255,255,255,0.05)', color: 'rgba(245,236,215,0.9)', fontSize: 14, outline: 'none', fontFamily: 'inherit' }}
+          />
+          {passwordError && <div style={{ fontSize: 12, color: '#c05050', marginTop: -8 }}>{t('descEditor.motDePasseIncorrect')}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false) }} style={{ padding: '7px 18px', borderRadius: 4, cursor: 'pointer', fontSize: 13, border: '1px solid rgba(245,236,215,0.15)', background: 'transparent', color: 'rgba(245,236,215,0.5)', fontFamily: 'inherit' }}>{t('descEditor.annuler')}</button>
+            <button onClick={checkPassword} style={{ padding: '7px 18px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>{t('descEditor.confirmer')}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {promptDialog && (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 500,
@@ -1391,7 +1452,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s', whiteSpace: 'nowrap',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
                   }}>
-                    <span style={{ flex: 1 }}>{voie}</span>
+                    <span style={{ flex: 1, opacity: hiddenVoies.includes(voie) ? 0.4 : 1 }}>{voie}</span>
+                    {hiddenVoies.includes(voie) && (
+                      <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                        {t('descEditor.masquee')}
+                      </span>
+                    )}
                     <button
                       className="voie-delete-btn"
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'voie', nom: voie, data: data[voie] }, `voie-${safeName(voie)}.json`) }}
@@ -1412,6 +1478,26 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     >✕</button>
                   </div>
                 ))}
+              </div>
+              {/* Bouton accès voies masquées */}
+              <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '6px 10px', flexShrink: 0 }}>
+                <button
+                  onClick={() => showHidden ? setShowHidden(false) : setShowPasswordModal(true)}
+                  style={{
+                    width: '100%', padding: '5px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                    border: `1px solid ${showHidden ? 'rgba(255,160,50,0.4)' : 'rgba(201,168,76,0.15)'}`,
+                    background: showHidden ? 'rgba(255,160,50,0.08)' : 'transparent',
+                    color: showHidden ? 'rgba(255,160,50,0.8)' : 'rgba(245,236,215,0.3)',
+                    textAlign: 'left',
+                  }}
+                >
+                  {showHidden
+                    ? `🔓 ${t('descEditor.masquageActif')} (${hiddenVoies.length})`
+                    : hiddenVoies.length > 0
+                      ? `🔒 ${t('descEditor.voiesMasquees', { count: hiddenVoies.length })}`
+                      : `🔒 ${t('descEditor.masquer')}`
+                  }
+                </button>
               </div>
               {/* Zone en attente — voies */}
               {pendingItems.some(p => p.type === 'voie') && (
@@ -1508,10 +1594,30 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       </select>
                     )}
                     <button
+                      onClick={() => setHiddenVoies(prev =>
+                        prev.includes(selected) ? prev.filter(v => v !== selected) : [...prev, selected]
+                      )}
+                      title={hiddenVoies.includes(selected) ? t('descEditor.rendreVisible') : t('descEditor.masquer')}
+                      style={{
+                        marginLeft: 'auto', padding: '4px 10px', borderRadius: 4, fontSize: 15,
+                        cursor: 'pointer',
+                        border: '1px solid rgba(201,168,76,0.25)',
+                        background: 'transparent',
+                        color: hiddenVoies.includes(selected) ? 'rgba(255,160,50,0.55)' : 'rgba(245,236,215,0.85)',
+                        flexShrink: 0,
+                        position: 'relative', overflow: 'hidden',
+                      }}
+                    >
+                      👁
+                      {hiddenVoies.includes(selected) && (
+                        <span style={{ position: 'absolute', top: '50%', left: '-8px', right: '-8px', height: '2px', background: 'currentColor', transform: 'rotate(-35deg)', transformOrigin: 'center', pointerEvents: 'none' }} />
+                      )}
+                    </button>
+                    <button
                       onClick={cloneVoie}
                       title={t('descEditor.cloneVoieTitle')}
                       style={{
-                        marginLeft: 'auto', padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        padding: '4px 12px', borderRadius: 4, fontSize: 13,
                         cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`,
                         background: 'transparent', color: 'rgba(201,168,76,0.7)',
                         flexShrink: 0,
@@ -2383,7 +2489,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {peuples.map((p, i) => ({ p, i })).filter(({ p }) => !peupleQuery || p.label.toLowerCase().includes(peupleQuery.toLowerCase())).map(({ p, i }) => (
+                {peuples.map((p, i) => ({ p, i }))
+                  .filter(({ p }) => showHidden || !hiddenPeuples.includes(p.label))
+                  .filter(({ p }) => !peupleQuery || p.label.toLowerCase().includes(peupleQuery.toLowerCase()))
+                  .map(({ p, i }) => (
                   <div key={i} onClick={() => { setSelectedPeuple(i); setSelectedCulture(0); closeMobileList() }} className="voie-list-item" style={{
                     padding: '7px 12px', fontSize: 17, cursor: 'pointer',
                     color: selectedPeuple === i ? S.gold : S.parchment,
@@ -2392,7 +2501,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                   }}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenPeuples.includes(p.label) ? 0.4 : 1 }}>{p.label}</span>
+                    {hiddenPeuples.includes(p.label) && (
+                      <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                        {t('descEditor.masquee')}
+                      </span>
+                    )}
                     <button
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'peuple', data: p }, `peuple-${safeName(p.label)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -2401,6 +2515,26 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     >↓</button>
                   </div>
                 ))}
+              </div>
+              {/* Bouton accès masquage peuples */}
+              <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '6px 10px', flexShrink: 0 }}>
+                <button
+                  onClick={() => showHidden ? setShowHidden(false) : setShowPasswordModal(true)}
+                  style={{
+                    width: '100%', padding: '5px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                    border: `1px solid ${showHidden ? 'rgba(255,160,50,0.4)' : 'rgba(201,168,76,0.15)'}`,
+                    background: showHidden ? 'rgba(255,160,50,0.08)' : 'transparent',
+                    color: showHidden ? 'rgba(255,160,50,0.8)' : 'rgba(245,236,215,0.3)',
+                    textAlign: 'left',
+                  }}
+                >
+                  {showHidden
+                    ? `🔓 ${t('descEditor.masquageActif')} (${hiddenPeuples.length + hiddenCultures.length})`
+                    : (hiddenPeuples.length + hiddenCultures.length) > 0
+                      ? `🔒 ${t('descEditor.peuplesMasques', { count: hiddenPeuples.length + hiddenCultures.length })}`
+                      : `🔒 ${t('descEditor.masquer')}`
+                  }
+                </button>
               </div>
               {/* Zone en attente — peuples */}
               {pendingItems.some(p => p.type === 'peuple') && (
@@ -2462,6 +2596,23 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    <button
+                      onClick={() => setHiddenPeuples(prev =>
+                        prev.includes(peuple.label) ? prev.filter(n => n !== peuple.label) : [...prev, peuple.label]
+                      )}
+                      title={hiddenPeuples.includes(peuple.label) ? t('descEditor.rendreVisible') : t('descEditor.masquer')}
+                      style={{
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                        border: '1px solid rgba(201,168,76,0.25)', background: 'transparent',
+                        color: hiddenPeuples.includes(peuple.label) ? 'rgba(255,160,50,0.55)' : 'rgba(245,236,215,0.85)',
+                        flexShrink: 0, position: 'relative', overflow: 'hidden',
+                      }}
+                    >
+                      👁
+                      {hiddenPeuples.includes(peuple.label) && (
+                        <span style={{ position: 'absolute', top: '50%', left: '-8px', right: '-8px', height: '2px', background: 'currentColor', transform: 'rotate(-35deg)', transformOrigin: 'center', pointerEvents: 'none' }} />
+                      )}
+                    </button>
                     <button onClick={() => askConfirm(t('descEditor.confirmSupprimerPeuple', { nom: peuple.label }), () => removePeuple(selectedPeuple))} style={{
                       padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
@@ -2492,6 +2643,24 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                           onBlur={e => (e.target.style.borderColor = S.border)}
                         />
+                        <button
+                          onClick={() => {
+                            const k = cultureKey(peuple.label, culture.label)
+                            setHiddenCultures(prev => prev.includes(k) ? prev.filter(c => c !== k) : [...prev, k])
+                          }}
+                          title={hiddenCultures.includes(cultureKey(peuple.label, culture.label)) ? t('descEditor.rendreVisible') : t('descEditor.masquer')}
+                          style={{
+                            padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
+                            border: '1px solid rgba(201,168,76,0.25)', background: 'transparent',
+                            color: hiddenCultures.includes(cultureKey(peuple.label, culture.label)) ? 'rgba(255,160,50,0.55)' : 'rgba(245,236,215,0.85)',
+                            position: 'relative', overflow: 'hidden',
+                          }}
+                        >
+                          👁
+                          {hiddenCultures.includes(cultureKey(peuple.label, culture.label)) && (
+                            <span style={{ position: 'absolute', top: '50%', left: '-8px', right: '-8px', height: '2px', background: 'currentColor', transform: 'rotate(-35deg)', transformOrigin: 'center', pointerEvents: 'none' }} />
+                          )}
+                        </button>
                         <button onClick={() => cloneCulture(selectedPeuple, ci)} title={t('descEditor.cloneCultureTitle')} style={{
                           padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                           border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', color: 'rgba(201,168,76,0.7)',
@@ -2631,6 +2800,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 {compagnons
                   .map((c, i) => ({ c, i }))
                   .sort((a, b) => a.c.nom.localeCompare(b.c.nom, 'fr'))
+                  .filter(({ c }) => showHidden || !hiddenCompagnons.includes(c.nom))
                   .filter(({ c }) => !compagnonQuery || c.nom.toLowerCase().includes(compagnonQuery.toLowerCase()))
                   .map(({ c, i }) => (
                     <div key={i} onClick={() => { setSelectedCompagnon(i); closeMobileList() }} className="voie-list-item" style={{
@@ -2640,7 +2810,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       borderLeft: selectedCompagnon === i ? `3px solid ${S.gold}` : '3px solid transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenCompagnons.includes(c.nom) ? 0.4 : 1 }}>{c.nom}</span>
+                      {hiddenCompagnons.includes(c.nom) && (
+                        <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                          {t('descEditor.masquee')}
+                        </span>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'compagnon', data: c }, `compagnon-${safeName(c.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -2649,6 +2824,26 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       >↓</button>
                     </div>
                   ))}
+              </div>
+              {/* Bouton accès masquage compagnons */}
+              <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '6px 10px', flexShrink: 0 }}>
+                <button
+                  onClick={() => showHidden ? setShowHidden(false) : setShowPasswordModal(true)}
+                  style={{
+                    width: '100%', padding: '5px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                    border: `1px solid ${showHidden ? 'rgba(255,160,50,0.4)' : 'rgba(201,168,76,0.15)'}`,
+                    background: showHidden ? 'rgba(255,160,50,0.08)' : 'transparent',
+                    color: showHidden ? 'rgba(255,160,50,0.8)' : 'rgba(245,236,215,0.3)',
+                    textAlign: 'left',
+                  }}
+                >
+                  {showHidden
+                    ? `🔓 ${t('descEditor.masquageActif')} (${hiddenCompagnons.length})`
+                    : hiddenCompagnons.length > 0
+                      ? `🔒 ${t('descEditor.compagnonsMasques', { count: hiddenCompagnons.length })}`
+                      : `🔒 ${t('descEditor.masquer')}`
+                  }
+                </button>
               </div>
               {/* Zone en attente — compagnons */}
               {pendingItems.some(p => p.type === 'compagnon') && (
@@ -2790,6 +2985,23 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    <button
+                      onClick={() => setHiddenCompagnons(prev =>
+                        prev.includes(c.nom) ? prev.filter(n => n !== c.nom) : [...prev, c.nom]
+                      )}
+                      title={hiddenCompagnons.includes(c.nom) ? t('descEditor.rendreVisible') : t('descEditor.masquer')}
+                      style={{
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                        border: '1px solid rgba(201,168,76,0.25)', background: 'transparent',
+                        color: hiddenCompagnons.includes(c.nom) ? 'rgba(255,160,50,0.55)' : 'rgba(245,236,215,0.85)',
+                        flexShrink: 0, position: 'relative', overflow: 'hidden',
+                      }}
+                    >
+                      👁
+                      {hiddenCompagnons.includes(c.nom) && (
+                        <span style={{ position: 'absolute', top: '50%', left: '-8px', right: '-8px', height: '2px', background: 'currentColor', transform: 'rotate(-35deg)', transformOrigin: 'center', pointerEvents: 'none' }} />
+                      )}
+                    </button>
                     <button onClick={cloneCompagnon} title={t('descEditor.cloneCompagnonTitle')}
                       style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
                       {t('descEditor.cloner')}
@@ -3026,6 +3238,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     saveDataFileToBundle('voies.json', voies),
                     saveDataFileToBundle('compagnons.json', compagnons),
                     saveDataFileToBundle('traits-raciaux.json', traitsRaciaux),
+                    saveDataFileToBundle('hidden-voies.json', hiddenVoies),
+                    saveDataFileToBundle('hidden-peuples.json', hiddenPeuples),
+                    saveDataFileToBundle('hidden-cultures.json', hiddenCultures),
+                    saveDataFileToBundle('hidden-compagnons.json', hiddenCompagnons),
                   ])
                   window.location.reload()
                 }}

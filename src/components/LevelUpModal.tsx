@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import type { Character, VoiePersonnage } from '../types/character'
-import { getMod } from '../types/character'
+import { getMod, getGolemVoieRang } from '../types/character'
 import {
   VOIE_KEYS,
   coutRangPourVoie, prochainRang, recalcAttaques, parseDeVie, rollDie,
@@ -38,11 +38,11 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   useModalBackButton(onClose)
   const { t } = useTranslation()
   const maxNiveau = 20
-  const { data, voies } = useGameData()
+  const { data, voies, hiddenVoies } = useGameData()
   const conBonus = sumStat(computeEffects(character, data)['CON'] ?? [])
   const deFaces = parseDeVie(character.deVie)
   const usedNoms = new Set(VOIE_KEYS.map(k => (character[k] as VoiePersonnage).nom).filter(Boolean))
-  const voiesDisponibles = voies.filter(v => !usedNoms.has(v.nom))
+  const voiesDisponibles = voies.filter(v => !usedNoms.has(v.nom) && !hiddenVoies.includes(v.nom))
   const pmGainParNiveau = character.famille === 'mystiques' ? 2 : 1
 
   const [levelsGained, setLevelsGained] = useState(1)
@@ -86,6 +86,17 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
 
   const newNiveau = character.niveau + levelsGained
   const atLevel8Unlock = character.niveau < 8 && newNiveau >= 8
+
+  const currentGolemRang = getGolemVoieRang(character)
+  const golemVoieKey = VOIE_KEYS.find(k => (character[k] as VoiePersonnage).nom === 'Voie des golems')
+  const newGolemRang = currentGolemRang + (golemVoieKey ? (selections[golemVoieKey] ?? 0) : 0)
+  const golemNotifs: string[] = []
+  if (currentGolemRang < 2 && newGolemRang >= 2) golemNotifs.push(t('levelUp.golemRang2'))
+  if (currentGolemRang < 3 && newGolemRang >= 3) golemNotifs.push(t('levelUp.golemRang3'))
+  if (currentGolemRang < 4 && newGolemRang >= 4) golemNotifs.push(t('levelUp.golemRang4'))
+  if (newGolemRang >= 1 && character.niveau < 9  && newNiveau >= 9)  golemNotifs.push(t('levelUp.golemNiveau9'))
+  if (newGolemRang >= 1 && character.niveau < 13 && newNiveau >= 13) golemNotifs.push(t('levelUp.golemNiveau13'))
+  if (newGolemRang >= 1 && character.niveau < 17 && newNiveau >= 17) golemNotifs.push(t('levelUp.golemNiveau17'))
   const ptsTotal = 2 * levelsGained
   const pmGain = pmGainParNiveau * levelsGained
 
@@ -619,6 +630,27 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
               </div>
             )}
           </section>
+
+          {/* ── Notifications Golem ── */}
+          {golemNotifs.length > 0 && (
+            <section style={{
+              border: '1px solid rgba(130,200,180,0.35)',
+              borderRadius: 8, padding: '14px 16px',
+              background: 'rgba(130,200,180,0.05)',
+            }}>
+              <div style={{ ...SECTION_LABEL, color: 'rgba(130,200,180,0.85)', marginBottom: 10 }}>
+                {t('levelUp.golemMaj')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {golemNotifs.map((msg, i) => (
+                  <div key={i} style={{ fontSize: 14, color: 'rgba(185,235,220,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ color: 'rgba(130,200,180,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
+                    {msg}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── Fin sections level-up ── */}
           </>}

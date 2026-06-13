@@ -14,7 +14,7 @@ function tokenize(text: string): Segment[] {
       { re: /\*\*\*([^*]+)\*\*\*/, nextBold: true, nextItalic: true },
       { re: /\*\*([^*]+)\*\*/,     nextBold: true,  nextItalic: false },
       { re: /\*([^*]+)\*/,         nextBold: false, nextItalic: true },
-      { re: /==([^=]+)==/,         gold: true },
+      { re: /==((?:[^=]|=[^=])+)==/, gold: true },
     ]
 
     let remaining = src
@@ -154,36 +154,84 @@ function resolveBracket(inner: string, character: Character, descriptions: DescM
   return { node, total: computedTotal ?? undefined }
 }
 
-function parseInline(text: string, character?: Character, descriptions?: DescMap, rang?: number): React.ReactNode {
-  const bracketRe = /\[([^\]]+)\]/g
-  const parts: Array<{ type: 'text'; content: string } | { type: 'bracket'; inner: string }> = []
-  let lastIdx = 0
-  let m: RegExpExecArray | null
+type InlineNode =
+  | { type: 'text'; text: string; bold: boolean; italic: boolean; gold: boolean }
+  | { type: 'bracket'; inner: string; gold: boolean }
 
-  while ((m = bracketRe.exec(text)) !== null) {
-    if (m.index > lastIdx) parts.push({ type: 'text', content: text.slice(lastIdx, m.index) })
-    parts.push({ type: 'bracket', inner: m[1] })
-    lastIdx = m.index + m[0].length
+function tokenizeAll(text: string): InlineNode[] {
+  const nodes: InlineNode[] = []
+
+  const process = (src: string, bold: boolean, italic: boolean, gold: boolean) => {
+    const patterns: Array<{ re: RegExp; nextBold?: boolean; nextItalic?: boolean; nextGold?: boolean; isBracket?: boolean }> = [
+      { re: /\*\*\*([^*]+)\*\*\*/, nextBold: true,  nextItalic: true  },
+      { re: /\*\*([^*]+)\*\*/,     nextBold: true,  nextItalic: false },
+      { re: /\*([^*]+)\*/,         nextBold: false, nextItalic: true  },
+      { re: /==((?:[^=]|=[^=])+)==/, nextGold: true                     },
+      { re: /\[([^\]]+)\]/,        isBracket: true                    },
+    ]
+
+    let remaining = src
+    while (remaining.length > 0) {
+      let earliest: { index: number; match: RegExpMatchArray; nextBold?: boolean; nextItalic?: boolean; nextGold?: boolean; isBracket?: boolean } | null = null
+
+      for (const p of patterns) {
+        const m = remaining.match(p.re)
+        if (m && m.index !== undefined) {
+          if (!earliest || m.index < earliest.index) {
+            earliest = { index: m.index, match: m, nextBold: p.nextBold, nextItalic: p.nextItalic, nextGold: p.nextGold, isBracket: p.isBracket }
+          }
+        }
+      }
+
+      if (!earliest) {
+        nodes.push({ type: 'text', text: remaining, bold, italic, gold })
+        break
+      }
+
+      if (earliest.index > 0) {
+        nodes.push({ type: 'text', text: remaining.slice(0, earliest.index), bold, italic, gold })
+      }
+
+      const inner = earliest.match[1]
+      if (earliest.isBracket) {
+        nodes.push({ type: 'bracket', inner, gold })
+      } else {
+        process(inner, bold || !!earliest.nextBold, italic || !!earliest.nextItalic, gold || !!earliest.nextGold)
+      }
+
+      remaining = remaining.slice(earliest.index + earliest.match[0].length)
+    }
   }
-  if (lastIdx < text.length) parts.push({ type: 'text', content: text.slice(lastIdx) })
 
+  process(text, false, false, false)
+  return nodes
+}
+
+function parseInline(text: string, character?: Character, descriptions?: DescMap, rang?: number): React.ReactNode {
+  const nodes = tokenizeAll(text)
   return (
     <>
-      {parts.map((part, i) => {
-        if (part.type === 'text') {
-          return <React.Fragment key={i}>{renderSegments(tokenize(part.content))}</React.Fragment>
+      {nodes.map((node, i) => {
+        if (node.type === 'bracket') {
+          if (character) {
+            const { node: bracketNode, total } = resolveBracket(node.inner, character, descriptions ?? {}, rang)
+            const n = (
+              <span title={`[${node.inner}]`} style={{ cursor: 'help' }}>
+                [{bracketNode}]{total !== undefined && <span style={{ color: 'var(--tdr-stat)', fontWeight: 700 }}> = {total}</span>}
+              </span>
+            )
+            return node.gold
+              ? <span key={i} style={{ color: 'var(--tdr-gold)' }}>{n}</span>
+              : <React.Fragment key={i}>{n}</React.Fragment>
+          }
+          return <React.Fragment key={i}>[{node.inner}]</React.Fragment>
         }
-        if (character) {
-          const { node, total } = resolveBracket(part.inner, character, descriptions ?? {}, rang)
-          return (
-            <span key={i} title={`[${part.inner}]`} style={{ cursor: 'help' }}>
-              [{node}]{total !== undefined && (
-                <span style={{ color: 'var(--tdr-stat)', fontWeight: 700 }}> = {total}</span>
-              )}
-            </span>
-          )
-        }
-        return <React.Fragment key={i}>[{part.inner}]</React.Fragment>
+        const k = _key++
+        let el: React.ReactNode = node.text
+        if (node.gold) el = <span style={{ color: 'var(--tdr-gold)' }}>{el}</span>
+        if (node.italic) el = <em>{el}</em>
+        if (node.bold) el = <strong>{el}</strong>
+        return <React.Fragment key={k}>{el}</React.Fragment>
       })}
     </>
   )

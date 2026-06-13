@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
-import { defaultCharacter } from './types/character'
+import { defaultCharacter, getGolemVoieRang } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
@@ -41,6 +41,10 @@ function AppContent() {
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
   const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem'>('recto')
+  const showGolemTab = getGolemVoieRang(character) >= 2
+  useEffect(() => {
+    if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
+  }, [showGolemTab])
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -53,6 +57,8 @@ function AppContent() {
   const [showUnlockConfirm, setShowUnlockConfirm] = useState(false)
   const [showGestion, setShowGestion] = useState(false)
   const gestionRef = useRef<HTMLDivElement>(null)
+  const [showMobileGestion, setShowMobileGestion] = useState(false)
+  const mobileGestionRef = useRef<HTMLDivElement>(null)
   const rectoInputRef = useRef<HTMLInputElement>(null)
   const versoInputRef = useRef<HTMLInputElement>(null)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
@@ -99,6 +105,16 @@ function AppContent() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showGestion])
+
+  useEffect(() => {
+    if (!showMobileGestion) return
+    const handler = (e: MouseEvent) => {
+      if (mobileGestionRef.current && !mobileGestionRef.current.contains(e.target as Node))
+        setShowMobileGestion(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showMobileGestion])
 
   useEffect(() => {
     const BASE_PT = 12
@@ -348,7 +364,7 @@ function AppContent() {
                 borderBottom: '1px solid rgba(201,168,76,0.15)',
                 overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               }}>
-                {(['recto', 'verso', 'golem'] as const).map(p => (
+                {(['recto', 'verso', ...(showGolemTab ? ['golem'] : [])] as ('recto' | 'verso' | 'golem')[]).map(p => (
                   <button key={p} onClick={() => setSheetPage(p)} style={{
                     flexShrink: 0,
                     padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -372,11 +388,78 @@ function AppContent() {
                   border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
                   color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
                 }}>{t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}</button>
-                <button onClick={() => setShowDescEditor(d => !d)} style={{
-                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
-                  border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
-                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>{t('toolbar.donneesJeu')}</button>
+                <div ref={mobileGestionRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <button onClick={() => setShowMobileGestion(g => !g)} style={{
+                    padding: '6px 12px', borderRadius: 4, whiteSpace: 'nowrap',
+                    border: `1px solid ${showMobileGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
+                    background: showMobileGestion ? 'rgba(201,168,76,0.1)' : 'transparent',
+                    color: showMobileGestion ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
+                    cursor: 'pointer', fontSize: 13,
+                  }}>
+                    {t('toolbar.gestion')}
+                  </button>
+                  {showMobileGestion && (
+                    <div style={{
+                      position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
+                      background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.3)',
+                      borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                      minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                    }}>
+                      <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
+                        padding: '12px 16px', background: 'transparent', border: 'none',
+                        borderBottom: '1px solid rgba(201,168,76,0.1)',
+                        color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                      }}>
+                        {t('menuGestion.donneesJeu')}
+                      </button>
+                      <button onClick={() => {
+                        if (ficheLocked) { setShowUnlockConfirm(true); setShowMobileGestion(false) }
+                        else { setFicheLocked(true); setShowMobileGestion(false) }
+                      }} style={{
+                        padding: '12px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
+                        border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
+                        color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
+                        cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                      }}>
+                        {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
+                      </button>
+                      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(201,168,76,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
+                        {(['fr', 'en'] as const).map(lang => (
+                          <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                            padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                            border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                            background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
+                            color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                          }}>{lang.toUpperCase()}</button>
+                        ))}
+                      </div>
+                      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                          {t('menuGestion.feuilles')}
+                        </span>
+                        {(['recto', 'verso'] as const).map(side => (
+                          <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button onClick={() => { (side === 'recto' ? rectoInputRef : versoInputRef).current?.click(); setShowMobileGestion(false) }} style={{
+                              flex: 1, padding: '5px 8px', background: 'transparent',
+                              border: '1px solid rgba(201,168,76,0.25)', borderRadius: 3,
+                              color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                            }}>
+                              {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
+                            </button>
+                            {sheetImages[side] && (
+                              <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
+                                padding: '4px 6px', background: 'transparent',
+                                border: '1px solid rgba(255,80,80,0.3)', borderRadius: 3,
+                                color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 11,
+                              }}>✕</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               {/* Feuille scrollable */}
               <div style={{ padding: '0 4px 80px' }}>

@@ -253,5 +253,10 @@
     "nom": "Voie des vermines",
     "famille": "mystiques",
     "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des golems",
+    "famille": "",
+    "categorie": "profil"
   }
 ]
