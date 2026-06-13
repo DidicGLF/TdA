@@ -22,7 +22,7 @@ function slotsDisponibles(rang: number, niveau: number): number {
   return s
 }
 
-function computeStats(golem: GolemState, rang: number, niveau: number) {
+function computeStats(golem: GolemState, niveau: number) {
   const a = golem.ameliorationsChoisies
   const forMod = GOLEM_BASE.forMod + (a.includes('puissant') ? 2 : 0) + (a.includes('tailleSuperieure') ? 1 : 0)
   const dexMod = GOLEM_BASE.dexMod + (a.includes('formeBestiale') ? 3 : 0)
@@ -67,7 +67,7 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
   const rang = getGolemVoieRang(character)
   const { role, ameliorationsChoisies } = golem
   const slots = slotsDisponibles(rang, character.niveau)
-  const stats = computeStats(golem, rang, character.niveau)
+  const stats = computeStats(golem, character.niveau)
   const dimmed = (condition: boolean): React.CSSProperties => condition ? { opacity: 0.38 } : {}
 
   const toggleAmel = (cle: string) => {
