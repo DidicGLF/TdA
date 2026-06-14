@@ -28,8 +28,9 @@ function computeStats(golem: GolemState, niveau: number) {
   const dexMod = GOLEM_BASE.dexMod + (a.includes('formeBestiale') ? 3 : 0)
   const def = GOLEM_BASE.def + (a.includes('armureRenforcee') ? 4 : 0) + (a.includes('formeBestiale') ? 3 : 0)
   const pv = niveau * 4 + (a.includes('tailleSuperieure') ? 10 : 0)
-  const baseDM = golem.role === 'soldat' ? '1d10' : a.includes('arme2mains') ? '1d8' : '1d6'
-  const dm = `${baseDM}${fmt(forMod)}`
+  const baseDM = golem.role === 'soldat' ? '1d10' : '1d8'
+  const extraDM = a.includes('arme2mains') ? '+1d8' : ''
+  const dm = `${baseDM}${extraDM}${fmt(forMod)}`
   return { forMod, dexMod, def, pv, dm }
 }
 
@@ -88,10 +89,10 @@ export default function CharacterSheetGolem({ character, onChange }: Props) {
   ]
 
   const derivedCells = [
-    { label: 'INIT', val: String(GOLEM_BASE.init), modified: false },
+    { label: 'INIT', val: String(character.initiative), modified: false },
     { label: 'DEF', val: String(stats.def), modified: stats.def !== GOLEM_BASE.def },
     { label: 'PV', val: String(stats.pv), modified: ameliorationsChoisies.includes('tailleSuperieure') },
-    { label: 'ATK', val: `+${character.niveau}`, modified: false },
+    { label: 'ATK', val: `+${character.niveau + stats.forMod}`, modified: stats.forMod !== GOLEM_BASE.forMod },
     { label: 'DM', val: stats.dm, modified: role === 'soldat' || ameliorationsChoisies.includes('arme2mains') },
   ]
 

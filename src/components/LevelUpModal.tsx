@@ -38,11 +38,11 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   useModalBackButton(onClose)
   const { t } = useTranslation()
   const maxNiveau = 20
-  const { data, voies, hiddenVoies } = useGameData()
+  const { data, voies, hiddenVoies, showHidden } = useGameData()
   const conBonus = sumStat(computeEffects(character, data)['CON'] ?? [])
   const deFaces = parseDeVie(character.deVie)
   const usedNoms = new Set(VOIE_KEYS.map(k => (character[k] as VoiePersonnage).nom).filter(Boolean))
-  const voiesDisponibles = voies.filter(v => !usedNoms.has(v.nom) && !hiddenVoies.includes(v.nom))
+  const voiesDisponibles = voies.filter(v => !usedNoms.has(v.nom) && (showHidden || !hiddenVoies.includes(v.nom)))
   const pmGainParNiveau = character.famille === 'mystiques' ? 2 : 1
 
   const [levelsGained, setLevelsGained] = useState(1)

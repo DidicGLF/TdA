@@ -27,6 +27,10 @@ input:not([type=checkbox]):not([type=radio]), select, textarea {
   appearance: none;
 }
 
+/* Masque le bouton natif de révélation du mot de passe (Edge/Chrome Windows) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-webkit-credentials-auto-fill-button { display: none !important; }
+
 /* Masque les spinners sur les inputs numériques (faussent le calcul scrollWidth) */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {

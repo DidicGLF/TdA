@@ -282,7 +282,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     return (
     <React.Fragment key={ep.label}>
       <DraggableField {...ep} title={formula || tooltipDesc ? undefined : title} calibrate={calibrate} containerRef={containerRef} onMoved={cb} />
-      {formula && !calibrate && (
+      {formula && !calibrate && p.readOnly && (
         <div style={{ position: 'absolute', top: `${ep.top}%`, left: `${ep.left}%`,
           width: `${ep.width}%`, height: `${ep.height ?? 2.2}%`,
           transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
@@ -728,8 +728,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             }
             pvLines.push(...groupContribs(pvContribs))
             const pvTotal = pvBase + pvFromVoies
-            return f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0, value: pvTotal, onChange: () => {}, readOnly: locked, align: "center", active: activeStep === 4,
-              formula: { lines: pvLines, total: pvTotal } })
+            return f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0,
+              value: locked ? pvTotal : (character.pvRestants || pvTotal),
+              onChange: locked ? () => {} : v => onChange({ pvRestants: parseInt(v) || 0 }),
+              readOnly: locked, align: "center", active: activeStep === 4,
+              formula: locked ? { lines: pvLines, total: pvTotal } : undefined })
           })()}
           {f({ label: "PM", tooltipTitle: t('recto.pm'), top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'mystiques'

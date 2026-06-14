@@ -271,7 +271,7 @@
     "step6": {
       "intro": "Dernières touches avant de jouer !",
       "description": "Description du personnage",
-      "inventaire": "Inventaire de départ",
+      "inventaire": "Inventaire",
       "inventaireHint": "N'hésitez pas à personnaliser son inventaire avec des objets intimes sans valeur marchande, telle qu'une lettre, un coquillage imprégné de souvenirs, la plume du premier rapace qu'il a chassé, etc.",
       "inventaireDefault": "une couverture, une torche, un briquet en silex, une outre, une gamelle",
       "tresorerie": "Trésorerie",

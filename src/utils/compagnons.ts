@@ -171,9 +171,9 @@ export function resolveCompagnon(
     pvValue:      computeNiv(entry.pv,   niveau, rang, att),
     initDisplay:  resolveNiv(entry.init, niveau, rang, att),
     initValue:    computeNiv(entry.init, niveau, rang, att),
-    atk1Display:  entry.attaque1 ? resolveNiv(entry.attaque1.bonus, niveau, rang, att) : undefined,
+    atk1Display:  entry.attaque1 ? resolveModTokens(resolveNiv(entry.attaque1.bonus, niveau, rang, att), entry) : undefined,
     atk1dmDisplay:entry.attaque1 ? resolveDM(entry.attaque1.dm, entry, niveau, rang, att) : undefined,
-    atk2Display:  entry.attaque2 ? resolveNiv(entry.attaque2.bonus, niveau, rang, att) : undefined,
+    atk2Display:  entry.attaque2 ? resolveModTokens(resolveNiv(entry.attaque2.bonus, niveau, rang, att), entry) : undefined,
     atk2dmDisplay:entry.attaque2 ? resolveDM(entry.attaque2.dm, entry, niveau, rang, att) : undefined,
   }
 }

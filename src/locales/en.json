@@ -271,7 +271,7 @@
     "step6": {
       "intro": "Final touches before playing!",
       "description": "Character description",
-      "inventaire": "Starting inventory",
+      "inventaire": "Inventory",
       "inventaireHint": "Feel free to customize the inventory with personal items without market value, such as a letter, a seashell full of memories, the feather of the first raptor they hunted, etc.",
       "inventaireDefault": "a blanket, a torch, a flint and steel, a waterskin, a mess kit",
       "tresorerie": "Treasury",

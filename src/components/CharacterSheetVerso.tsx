@@ -410,7 +410,9 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {tooltip && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(tooltip.x, 42)}%`,
+          ...(tooltip.x > 65
+            ? { right: `${100 - tooltip.x}%` }
+            : { left: `${tooltip.x + 1}%` }),
           ...(tooltip.y > 72
             ? { bottom: `${100 - tooltip.y + 1.5}%` }
             : { top: `${tooltip.y + 1.5}%` }),

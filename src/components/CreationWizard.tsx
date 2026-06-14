@@ -214,11 +214,11 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
 function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
-  const { peuples, hiddenPeuples, hiddenCultures } = useGameData()
+  const { peuples, hiddenPeuples, hiddenCultures, showHidden } = useGameData()
   const cultureKey = (pl: string, cl: string) => `${pl}::${cl}`
-  const visiblePeuples = peuples.filter(p => !hiddenPeuples.includes(p.label))
+  const visiblePeuples = peuples.filter(p => showHidden || !hiddenPeuples.includes(p.label))
   const selectedPeuple = peuples.find(p => p.label === character.peuple) ?? null
-  const cultures = (selectedPeuple?.cultures ?? []).filter(c => !hiddenCultures.includes(cultureKey(selectedPeuple?.label ?? '', c.label)))
+  const cultures = (selectedPeuple?.cultures ?? []).filter(c => showHidden || !hiddenCultures.includes(cultureKey(selectedPeuple?.label ?? '', c.label)))
 
   const onPeupleChange = (peupleLabel: string) => {
     const peuple = peuples.find(p => p.label === peupleLabel)
@@ -741,14 +741,14 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const { t } = useTranslation()
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const { disponibles } = calcPointsCapacite(character)
-  const { data: dynamicDescriptions, peuples, voies, hiddenVoies } = useGameData()
+  const { data: dynamicDescriptions, peuples, voies, hiddenVoies, showHidden } = useGameData()
 
-  const voiesPrestige = voies.filter(v => v.categorie === 'prestige' && !hiddenVoies.includes(v.nom))
+  const voiesPrestige = voies.filter(v => v.categorie === 'prestige' && (showHidden || !hiddenVoies.includes(v.nom)))
   const nomPrestige = character.voiePrestige.nom
   const hasPrestigeDesc = !!nomPrestige && !!dynamicDescriptions[nomPrestige]
 
   const allProfilVoies = (() => {
-    const profilVoies = voies.filter(v => v.categorie === 'profil' && !hiddenVoies.includes(v.nom))
+    const profilVoies = voies.filter(v => v.categorie === 'profil' && (showHidden || !hiddenVoies.includes(v.nom)))
     const voieNoms = new Set(voies.map(v => v.nom))
     const peupleVoieNoms = new Set<string>()
     for (const p of peuples) {
@@ -759,7 +759,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
     }
     // Fallback : voies présentes dans descriptions mais pas encore dans voies.json
     const fallbackVoies = Object.keys(dynamicDescriptions)
-      .filter(nom => !voieNoms.has(nom) && !peupleVoieNoms.has(nom) && !hiddenVoies.includes(nom))
+      .filter(nom => !voieNoms.has(nom) && !peupleVoieNoms.has(nom) && (showHidden || !hiddenVoies.includes(nom)))
       .map(nom => ({ nom, categorie: 'profil', famille: '' }))
     return fallbackVoies.length ? [...profilVoies, ...fallbackVoies] : profilVoies
   })()

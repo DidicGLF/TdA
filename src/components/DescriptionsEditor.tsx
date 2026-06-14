@@ -135,7 +135,7 @@ type PendingItem =
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
-  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, openDataDir } = useGameData()
+  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, showHidden, setShowHidden, openDataDir } = useGameData()
 
   const cultureKey = (peupleLabel: string, cultureLabel: string) => `${peupleLabel}::${cultureLabel}`
 
@@ -188,13 +188,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [showCompagnonsHelp, setShowCompagnonsHelp] = useState(false)
 
   // Voies masquées — accès protégé par mot de passe
-  const [showHidden, setShowHidden] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
   const [passwordError, setPasswordError] = useState(false)
+  const [showPasswordClear, setShowPasswordClear] = useState(false)
   const checkPassword = () => {
     if (passwordInput === MASQUAGE_MOT_DE_PASSE) {
-      setShowHidden(true); setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false)
+      setShowHidden(true); setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false); setShowPasswordClear(false)
     } else {
       setPasswordError(true)
     }
@@ -1151,18 +1151,27 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         <div style={{ background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 8, padding: '24px 28px', maxWidth: 360, width: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>🔒 {t('descEditor.accesVoiesMasquees')}</div>
           <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.6 }}>{t('descEditor.accesVoiesMasqueesDesc')}</div>
-          <input
-            type="password"
-            value={passwordInput}
-            autoFocus
-            onChange={e => { setPasswordInput(e.target.value); setPasswordError(false) }}
-            onKeyDown={e => e.key === 'Enter' && checkPassword()}
-            placeholder={t('descEditor.motDePasse')}
-            style={{ padding: '8px 12px', borderRadius: 4, border: `1px solid ${passwordError ? '#c05050' : 'rgba(201,168,76,0.3)'}`, background: 'rgba(255,255,255,0.05)', color: 'rgba(245,236,215,0.9)', fontSize: 14, outline: 'none', fontFamily: 'inherit' }}
-          />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              type={showPasswordClear ? 'text' : 'password'}
+              value={passwordInput}
+              autoFocus
+              onChange={e => { setPasswordInput(e.target.value); setPasswordError(false) }}
+              onKeyDown={e => e.key === 'Enter' && checkPassword()}
+              placeholder={t('descEditor.motDePasse')}
+              style={{ padding: '8px 36px 8px 12px', borderRadius: 4, border: `1px solid ${passwordError ? '#c05050' : 'rgba(201,168,76,0.3)'}`, background: 'rgba(255,255,255,0.05)', color: 'rgba(245,236,215,0.9)', fontSize: 14, outline: 'none', fontFamily: 'inherit', width: '100%' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswordClear(v => !v)}
+              style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(245,236,215,0.45)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            >
+              {showPasswordClear ? '🙈' : '👁'}
+            </button>
+          </div>
           {passwordError && <div style={{ fontSize: 12, color: '#c05050', marginTop: -8 }}>{t('descEditor.motDePasseIncorrect')}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => { setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false) }} style={{ padding: '7px 18px', borderRadius: 4, cursor: 'pointer', fontSize: 13, border: '1px solid rgba(245,236,215,0.15)', background: 'transparent', color: 'rgba(245,236,215,0.5)', fontFamily: 'inherit' }}>{t('descEditor.annuler')}</button>
+            <button onClick={() => { setShowPasswordModal(false); setPasswordInput(''); setPasswordError(false); setShowPasswordClear(false) }} style={{ padding: '7px 18px', borderRadius: 4, cursor: 'pointer', fontSize: 13, border: '1px solid rgba(245,236,215,0.15)', background: 'transparent', color: 'rgba(245,236,215,0.5)', fontFamily: 'inherit' }}>{t('descEditor.annuler')}</button>
             <button onClick={checkPassword} style={{ padding: '7px 18px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>{t('descEditor.confirmer')}</button>
           </div>
         </div>

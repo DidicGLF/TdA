@@ -19,11 +19,10 @@ export const GOLEM_AMELIORATIONS_LIST: { cle: GolemAmeliorationKey; type: 'stat'
 
 export const GOLEM_BASE = {
   def: 14,
-  forMod: 3,
-  dexMod: 0,
-  conMod: 2,
-  intMod: -3,
-  sagMod: 0,
-  chaMod: -3,
-  init: 10,
+  forMod: 1,
+  dexMod: -1,
+  conMod: 10,
+  intMod: -4,
+  sagMod: -3,
+  chaMod: -4,
 }

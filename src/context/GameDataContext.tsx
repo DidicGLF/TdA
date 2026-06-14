@@ -52,6 +52,8 @@ interface GameDataContextValue {
   setHiddenCultures: Dispatch<SetStateAction<string[]>>
   hiddenCompagnons: string[]
   setHiddenCompagnons: Dispatch<SetStateAction<string[]>>
+  showHidden: boolean
+  setShowHidden: Dispatch<SetStateAction<boolean>>
   openDataDir: () => void
   loaded: boolean
 }
@@ -126,6 +128,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCompagnons, setHiddenCompagnonsRaw] = useState<string[]>(() =>
     unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
   )
+  const [showHidden, setShowHidden] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   // Chargement initial depuis Documents/TdR/ (Tauri) ou valeurs du bundle (dev)
@@ -244,6 +247,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       hiddenPeuples, setHiddenPeuples,
       hiddenCultures, setHiddenCultures,
       hiddenCompagnons, setHiddenCompagnons,
+      showHidden, setShowHidden,
       openDataDir,
       loaded,
     }}>
