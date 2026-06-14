@@ -2621,6 +2621,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                   {/* Cultures */}
                   {peuple.cultures.map((culture, ci) => {
+                    if (!showHidden && hiddenCultures.includes(cultureKey(peuple.label, culture.label))) return null
                     // Voies du peuple utilisées par d'autres peuples (pas le peuple courant)
                     const usedVoiesPeuple = new Set(
                       peuples.flatMap((p, pi) => pi === selectedPeuple ? [] : p.cultures.map(c => c.voiePeuple)).filter(Boolean)
@@ -2837,12 +2838,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     textAlign: 'left',
                   }}
                 >
-                  {showHidden
-                    ? `🔓 ${t('descEditor.masquageActif')} (${hiddenCompagnons.length})`
-                    : hiddenCompagnons.length > 0
-                      ? `🔒 ${t('descEditor.compagnonsMasques', { count: hiddenCompagnons.length })}`
-                      : `🔒 ${t('descEditor.masquer')}`
-                  }
+                  {(() => {
+                    const countReel = hiddenCompagnons.filter(nom => compagnons.some(c => c.nom === nom)).length
+                    return showHidden
+                      ? `🔓 ${t('descEditor.masquageActif')} (${countReel})`
+                      : countReel > 0
+                        ? `🔒 ${t('descEditor.compagnonsMasques', { count: countReel })}`
+                        : `🔒 ${t('descEditor.masquer')}`
+                  })()}
                 </button>
               </div>
               {/* Zone en attente — compagnons */}
