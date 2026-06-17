@@ -474,6 +474,41 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           </div>
         </div>
       ))}
+
+      {/* Glyphes divins (si débloqués) */}
+      {divineUnlocked && (
+        <div style={{ border: `1px solid rgba(201,160,220,0.4)`, borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: '0.1em',
+            textTransform: 'uppercase' as const, color: DIVINE, textAlign: 'center' as const,
+            padding: '7px 12px', background: 'rgba(201,160,220,0.08)', borderBottom: `1px solid rgba(201,160,220,0.4)`,
+          }}>
+            Glyphes divins
+          </div>
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {data.divines.map(d => {
+              const selected = divin === d.nom
+              return (
+                <div key={d.nom} onClick={() => onDivinChange(selected ? null : d.nom)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', opacity: selected ? 0.5 : 1 }}>
+                  <div style={{
+                    padding: 0, width: 64, height: 88, boxSizing: 'border-box' as const, overflow: 'hidden', flexShrink: 0,
+                    ...TILE,
+                    border: selected ? '2px solid #c9a0dc' : '2px solid #b09040',
+                    boxShadow: selected ? '0 0 12px rgba(201,160,220,0.6), 3px 5px 10px rgba(0,0,0,0.55)' : TILE.boxShadow,
+                  }}>
+                    <img src={`/${d.code}.png`} style={{ width: '100%', height: '100%', objectFit: 'cover' as const }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: DIVINE, fontFamily: "'Cinzel', serif" }}>{d.nom}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 1, lineHeight: 1.4 }}>{parseDesc(d.effet, intMod, sagMod, rangVoie)}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 
