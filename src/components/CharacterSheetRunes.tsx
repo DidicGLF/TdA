@@ -204,28 +204,19 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
   const selectedAttrData = attributs.map(nom => allAttributs.find(a => a.nom === nom)!)
 
   // ── Règle de composition ────────────────────────────────────────────────
-  const regleSection = (
+  // Desktop : grille 7/9 colonnes identique à l'original + divine hint séparé
+  const regleSectionDesktop = (
     <div style={{
-      fontSize: mobile ? 13 : 17,
+      marginBottom: 18, fontSize: 17,
       background: 'rgba(0,0,0,0.2)',
-      ...(mobile ? {
-        borderBottom: BORDER,
-        padding: '8px 12px',
-      } : {
-        marginBottom: 18,
-        border: BORDER,
-        borderRadius: 8,
-        padding: '12px 16px',
-      }),
+      border: BORDER, borderRadius: 8, padding: '12px 16px',
     }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: maxAttributs >= 4
-          ? 'auto auto auto auto auto auto auto auto auto auto auto auto auto'
-          : 'auto auto auto auto auto auto auto auto auto auto auto',
-        columnGap: mobile ? 5 : 8,
-        rowGap: mobile ? 4 : 6,
-        alignItems: 'center',
+          ? 'auto auto auto auto auto auto auto auto 1fr'
+          : 'auto auto auto auto auto auto 1fr',
+        columnGap: 8, rowGap: 6, alignItems: 'center',
       }}>
         <span>
           <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
@@ -248,19 +239,6 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         ) : null}
         <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
 
-        {divineUnlocked && (
-          <>
-            <span style={{ opacity: 0.5 }}>+</span>
-            <TileVide count={1} />
-            <span style={{ opacity: 0.5 }}>,</span>
-            <span style={{ gridColumn: 'span 3', color: DIVINE, fontWeight: 600, fontSize: mobile ? 12 : 14 }}>
-              Glyphe Divin (optionnel) <span style={{ fontWeight: 700 }}>Rang +1</span>
-            </span>
-            {maxAttributs >= 4 ? <span style={{ gridColumn: 'span 2' }} /> : null}
-            <span />
-          </>
-        )}
-
         <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
         <span />
@@ -273,36 +251,86 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
             <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>7</span>
           </>
         ) : null}
-        {divineUnlocked ? <span style={{ color: DIVINE, fontWeight: 700 }}>+1 si Divin</span> : <span />}
+        <span />
       </div>
+
+      {divineUnlocked && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          marginTop: 8, paddingTop: 8,
+          borderTop: '1px solid rgba(201,160,220,0.2)',
+          fontSize: 15,
+        }}>
+          <span style={{ opacity: 0.7 }}>+</span>
+          <TileVide count={1} />
+          <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
+          <span style={{ color: DIVINE, fontWeight: 700, marginLeft: 8 }}>Rang +1</span>
+        </div>
+      )}
     </div>
   )
 
-  // ── Tableau principal ───────────────────────────────────────────────────
-  const tableauSection = (
+  // Mobile : layout flex simple qui wrap naturellement
+  const regleSectionMobile = (
+    <div style={{
+      fontSize: 13, background: 'rgba(0,0,0,0.2)',
+      borderBottom: BORDER, padding: '8px 12px',
+    }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, rowGap: 3 }}>
+        <span>
+          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
+          {' = '}
+          <TileVide count={1} />
+          {' Glyphe '}
+          <span style={{ color: GOLD }}>Élément</span>
+          {' +'}
+        </span>
+        <TileVide count={1} />
+        <span style={{ opacity: 0.5 }}>,</span>
+        <TileVide count={2} />
+        <span style={{ opacity: 0.6 }}>ou</span>
+        <TileVide count={3} />
+        {maxAttributs >= 4 ? (
+          <><span style={{ opacity: 0.6 }}>ou</span><TileVide count={4} /></>
+        ) : null}
+        <span>glyphes <span style={{ color: SILVER }}>Attribut</span></span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5, fontSize: 12 }}>
+        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
+        {rangsDisponibles.map(r => (
+          <span key={r} style={{ color: GOLD, fontWeight: 700 }}>{r}</span>
+        ))}
+        {divineUnlocked && (
+          <span style={{ color: DIVINE, fontWeight: 700 }}>+1 si Divin</span>
+        )}
+      </div>
+
+      {divineUnlocked && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12 }}>
+          <span style={{ opacity: 0.6 }}>+</span>
+          <TileVide count={1} />
+          <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const regleSection = mobile ? regleSectionMobile : regleSectionDesktop
+
+  // ── Tableau principal (desktop) ────────────────────────────────────────
+  const tableauSectionDesktop = (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `auto repeat(${groupesAffiches.length}, 1fr)`,
-      border: BORDER,
-      borderRadius: 8,
-      overflow: 'hidden',
-      ...(mobile ? {} : { marginBottom: 20 }),
+      border: BORDER, borderRadius: 8, overflow: 'hidden', marginBottom: 20,
     }}>
-
-      {/* Coin vide en-tête */}
       <div style={{ background: 'rgba(201,168,76,0.08)' }} />
-
-      {/* En-têtes */}
       {groupesAffiches.map((g, i) => (
         <div key={g.niveau} style={{
-          fontFamily: "'Cinzel', serif",
-          fontSize: mobile ? 12 : 14,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase' as const,
-          color: GOLD,
-          padding: mobile ? '8px 10px' : '10px 14px',
-          background: 'rgba(201,168,76,0.08)',
-          borderBottom: BORDER,
+          fontFamily: "'Cinzel', serif", fontSize: 14, letterSpacing: '0.1em',
+          textTransform: 'uppercase' as const, color: GOLD, padding: '10px 14px',
+          background: 'rgba(201,168,76,0.08)', borderBottom: BORDER,
           borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
           textAlign: 'center' as const,
         }}>
@@ -310,109 +338,67 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         </div>
       ))}
 
-      {/* En-tête de ligne — Élément */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderLeft: BORDER,
-        padding: '0 8px',
-        writingMode: 'vertical-rl' as const,
-        transform: 'rotate(180deg)',
-        fontFamily: "'Cinzel', serif",
-        fontSize: mobile ? 12 : 14,
-        letterSpacing: '0.12em',
-        color: GOLD,
-        background: 'rgba(201,168,76,0.08)',
-      }}>
-        Élément
-      </div>
+        borderLeft: BORDER, padding: '0 8px',
+        writingMode: 'vertical-rl' as const, transform: 'rotate(180deg)',
+        fontFamily: "'Cinzel', serif", fontSize: 14, letterSpacing: '0.12em',
+        color: GOLD, background: 'rgba(201,168,76,0.08)',
+      }}>Élément</div>
 
-      {/* Ligne éléments */}
       {groupesAffiches.map((g, i) => (
-        <div key={g.niveau} style={{
-          display: 'flex',
-          borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
-        }}>
-          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 8, padding: mobile ? '8px 8px' : '10px 10px' }}>
+        <div key={g.niveau} style={{ display: 'flex', borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined }}>
+          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 10px' }}>
             {g.elements.map(e => {
               const selected = element === e.nom
               const disabled = !selected && element !== null
               return (
-                <div
-                  key={e.nom}
-                  onClick={() => !disabled && handleElementClick(e.nom)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
-                >
+                <div key={e.nom} onClick={() => !disabled && handleElementClick(e.nom)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
                   {selected
                     ? <SlotVide color="rgba(201,168,76,0.35)" />
-                    : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}>
-                        <Rune nom={e.nom} width={48} height={60} color="#7a3a00" />
-                      </div>
-                  }
+                    : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}><Rune nom={e.nom} width={48} height={60} color="#7a3a00" /></div>}
                   <div style={{ opacity: selected ? 0.3 : 1 }}>
-                    <div style={{ fontSize: mobile ? 12 : 13, fontWeight: 600, color: GOLD, fontFamily: "'Cinzel', serif" }}>{e.nom}</div>
-                    <div style={{ fontSize: mobile ? 11 : 13, opacity: 0.6, marginTop: 2 }}>{e.texte}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: GOLD, fontFamily: "'Cinzel', serif" }}>{e.nom}</div>
+                    <div style={{ fontSize: 13, opacity: 0.6, marginTop: 2 }}>{e.texte}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-
-          <div style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: mobile ? '8px 8px' : '10px 12px',
-            borderLeft: '1px solid rgba(201,168,76,0.2)',
-            textAlign: 'center' as const,
-          }}>
-            <span style={{ color: GOLD, fontWeight: 700, fontSize: mobile ? 13 : 15 }}>{parseDesc(g.effetElement, intMod, sagMod, rangVoie)}</span>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 12px', borderLeft: '1px solid rgba(201,168,76,0.2)', textAlign: 'center' as const }}>
+            <span style={{ color: GOLD, fontWeight: 700, fontSize: 15 }}>{parseDesc(g.effetElement, intMod, sagMod, rangVoie)}</span>
           </div>
         </div>
       ))}
 
-      {/* Séparateur pleine largeur */}
-      <div style={{ gridColumn: '1 / -1', borderTop: BORDER, margin: 0, padding: 0 }} />
+      <div style={{ gridColumn: '1 / -1', borderTop: BORDER }} />
 
-      {/* En-tête de ligne — Attribut */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderLeft: BORDER,
-        padding: '0 8px',
-        writingMode: 'vertical-rl' as const,
-        transform: 'rotate(180deg)',
-        fontFamily: "'Cinzel', serif",
-        fontSize: mobile ? 12 : 14,
-        letterSpacing: '0.12em',
-        color: GOLD,
-        background: 'rgba(201,168,76,0.08)',
-      }}>
-        Attribut
-      </div>
+        borderLeft: BORDER, padding: '0 8px',
+        writingMode: 'vertical-rl' as const, transform: 'rotate(180deg)',
+        fontFamily: "'Cinzel', serif", fontSize: 14, letterSpacing: '0.12em',
+        color: GOLD, background: 'rgba(201,168,76,0.08)',
+      }}>Attribut</div>
 
-      {/* Ligne attributs */}
       {groupesAffiches.map((g, i) => (
         <div key={g.niveau} style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-          padding: mobile ? '8px 8px' : '10px 10px',
+          display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 10px',
           borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
         }}>
           {g.attributs.map(a => {
             const selected = attributs.includes(a.nom)
             const disabled = !selected && attributs.length >= maxAttributs
             return (
-              <div
-                key={a.nom}
-                onClick={() => !disabled && handleAttributClick(a.nom)}
-                style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
-              >
+              <div key={a.nom} onClick={() => !disabled && handleAttributClick(a.nom)}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
                 {selected
                   ? <SlotVide color="rgba(138,180,248,0.35)" />
-                  : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}>
-                      <Rune nom={a.nom} width={48} height={60} color="#1a2a5a" />
-                    </div>
-                }
+                  : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}><Rune nom={a.nom} width={48} height={60} color="#1a2a5a" /></div>}
                 <div style={{ opacity: selected ? 0.3 : 1 }}>
-                  <div style={{ fontSize: mobile ? 12 : 13, fontWeight: 600, color: SILVER, fontFamily: "'Cinzel', serif" }}>{a.nom}</div>
-                  <div style={{ fontSize: mobile ? 11 : 13, opacity: 0.7, marginTop: 2, lineHeight: 1.4 }}>{parseDesc(a.effet, intMod, sagMod, rangVoie)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: SILVER, fontFamily: "'Cinzel', serif" }}>{a.nom}</div>
+                  <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2, lineHeight: 1.4 }}>{parseDesc(a.effet, intMod, sagMod, rangVoie)}</div>
                 </div>
               </div>
             )
@@ -421,6 +407,77 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
       ))}
     </div>
   )
+
+  // ── Tableau principal (mobile) : groupes empilés verticalement ──────────
+  const tableauSectionMobile = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {groupesAffiches.map(g => (
+        <div key={g.niveau} style={{ border: BORDER, borderRadius: 8, overflow: 'hidden' }}>
+          {/* En-tête du groupe */}
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: '0.1em',
+            textTransform: 'uppercase' as const, color: GOLD, textAlign: 'center' as const,
+            padding: '7px 12px', background: 'rgba(201,168,76,0.08)', borderBottom: BORDER,
+          }}>
+            Glyphes de l'{g.niveau}
+          </div>
+
+          {/* Éléments */}
+          <div style={{ padding: '8px 10px', borderBottom: BORDER }}>
+            <div style={{ fontSize: 11, color: GOLD, opacity: 0.7, fontFamily: "'Cinzel', serif", letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
+              Élément
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {g.elements.map(e => {
+                const selected = element === e.nom
+                const disabled = !selected && element !== null
+                return (
+                  <div key={e.nom} onClick={() => !disabled && handleElementClick(e.nom)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
+                    {selected
+                      ? <SlotVide color="rgba(201,168,76,0.35)" />
+                      : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}><Rune nom={e.nom} width={48} height={60} color="#7a3a00" /></div>}
+                    <div style={{ opacity: selected ? 0.3 : 1, flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: GOLD, fontFamily: "'Cinzel', serif" }}>{e.nom}</div>
+                      <div style={{ fontSize: 12, opacity: 0.6, marginTop: 1 }}>{e.texte}</div>
+                      <div style={{ fontSize: 12, color: GOLD, fontWeight: 700, marginTop: 2 }}>{parseDesc(g.effetElement, intMod, sagMod, rangVoie)}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Attributs */}
+          <div style={{ padding: '8px 10px' }}>
+            <div style={{ fontSize: 11, color: SILVER, opacity: 0.7, fontFamily: "'Cinzel', serif", letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
+              Attribut
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {g.attributs.map(a => {
+                const selected = attributs.includes(a.nom)
+                const disabled = !selected && attributs.length >= maxAttributs
+                return (
+                  <div key={a.nom} onClick={() => !disabled && handleAttributClick(a.nom)}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
+                    {selected
+                      ? <SlotVide color="rgba(138,180,248,0.35)" />
+                      : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}><Rune nom={a.nom} width={48} height={60} color="#1a2a5a" /></div>}
+                    <div style={{ opacity: selected ? 0.3 : 1, flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: SILVER, fontFamily: "'Cinzel', serif" }}>{a.nom}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7, marginTop: 1, lineHeight: 1.4 }}>{parseDesc(a.effet, intMod, sagMod, rangVoie)}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  const tableauSection = mobile ? tableauSectionMobile : tableauSectionDesktop
 
   // ── Barre de sort ───────────────────────────────────────────────────────
   const barreSection = (
