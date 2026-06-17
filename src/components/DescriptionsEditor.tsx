@@ -1584,15 +1584,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               />
               {(() => {
                 const peupleVoieNoms = new Set(peuples.flatMap(p => p.cultures.flatMap(c => [c.voiePeuple, c.voieCulturelle].filter(Boolean))))
-                const isBundle = VOIES_BUNDLE_NOMS.has(selected) || peupleVoieNoms.has(selected)
                 const famille = voies.find(v => v.nom === selected)?.famille ?? ''
                 const categorie = voies.find(v => v.nom === selected)?.categorie ?? 'profil'
                 const isPrestige = categorie === 'prestige'
-                const FAMILLE_LABELS_T: Record<string, string> = {
-                  combattants: t('descEditor.familleCombattants'),
-                  aventuriers: t('descEditor.familleAventuriers'),
-                  mystiques: t('descEditor.familleMystiques'),
-                }
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>

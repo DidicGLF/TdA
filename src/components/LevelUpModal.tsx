@@ -10,7 +10,7 @@ import {
 import type { VoieKey } from '../utils/levelUp'
 import VoieCombobox from './VoieCombobox'
 import { computeEffects, sumStat } from '../utils/computeEffects'
-import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
+import { getEffectChoixGrants } from '../utils/effectsChoix'
 import { useGameData } from '../context/GameDataContext'
 
 interface Props {

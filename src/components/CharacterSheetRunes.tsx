@@ -84,13 +84,6 @@ const allElements = data.groupes.flatMap(g =>
 )
 const allAttributs = data.groupes.flatMap(g => g.attributs)
 
-function rangFromCount(n: number): number | null {
-  if (n === 1) return 1
-  if (n === 2) return 3
-  if (n === 3) return 5
-  if (n === 4) return 7
-  return null
-}
 
 // TILE total: 48(svg) + 2×6(padding H) + 2×2(border) = 64 wide ; 60(svg) + 2×12(padding V) + 2×2(border) = 88 tall
 function SlotVide({ color }: { color: string }) {
@@ -174,9 +167,6 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange }:
     })
   }
 
-  function handleDivinClick(nom: string) {
-    onDivinChange(divin === nom ? null : nom)
-  }
 
   function tirerAuSort() {
     if (!rangChoisi) return
