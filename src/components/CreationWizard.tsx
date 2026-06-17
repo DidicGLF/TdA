@@ -21,6 +21,7 @@ import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/lev
 import type { VoieKey } from '../utils/levelUp'
 import { parseDesc } from '../utils/parseDesc'
 import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
+import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
 
 type TraitEntry = { nom: string; desc: string }
 
@@ -1139,6 +1140,52 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
         </div>
       </div>
 
+      {/* ── Choix d'effets ── */}
+      {(() => {
+        const effectGrants = getEffectChoixGrants(character, dynamicDescriptions)
+        const pending = effectGrants.filter(g => !g.choixFait)
+        const done = effectGrants.filter(g => !!g.choixFait)
+        if (effectGrants.length === 0) return null
+        return (
+          <div style={{ border: '1px solid rgba(120,180,255,0.35)', borderRadius: 8, padding: '14px 16px', background: 'rgba(120,180,255,0.05)' }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(120,180,255,0.85)', marginBottom: 10 }}>
+              {t('wizard.step3.bonusAuChoix')}
+            </div>
+            {pending.map(({ grant, grantKey }) => (
+              <div key={grantKey} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: 'rgba(200,220,255,0.75)', marginBottom: 6 }}>
+                  {t('wizard.step3.choisirStat', { bonus: grant.value !== undefined ? (grant.value > 0 ? `+${grant.value}` : String(grant.value)) : grant.formula ?? '' })}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {grant.stats.map(stat => (
+                    <button key={stat} onClick={() => onChange({ effectsChoix: applyChoixEffect(character, grantKey, stat) })}
+                      style={{ padding: '5px 14px', borderRadius: 4, border: '1px solid rgba(120,180,255,0.5)', background: 'transparent', color: 'rgba(200,220,255,0.9)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {stat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {done.map(({ grant, grantKey, choixFait }) => (
+              <div key={grantKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: 'rgba(200,220,255,0.6)' }}>
+                  {grant.value !== undefined ? (grant.value > 0 ? `+${grant.value}` : String(grant.value)) : grant.formula ?? ''} →
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(200,220,255,0.9)' }}>{choixFait}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {grant.stats.filter(s => s !== choixFait).map(stat => (
+                    <button key={stat} onClick={() => onChange({ effectsChoix: applyChoixEffect(character, grantKey, stat) })}
+                      style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(120,180,255,0.3)', background: 'transparent', color: 'rgba(200,220,255,0.45)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {stat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* ── Notifications Golem ── */}
       {(() => {
         const golemRang = getGolemVoieRang(character)
@@ -1160,6 +1207,48 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               {notifs.map((msg, i) => (
                 <div key={i} style={{ fontSize: 14, color: 'rgba(185,235,220,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span style={{ color: 'rgba(130,200,180,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
+                  {msg}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── Notifications Runes ── */}
+      {(() => {
+        const VOIE_KEYS_ALL: VoieKey[] = ['voiePeuple', 'voieCulturelle', 'voie1', 'voie2', 'voie3', 'voiePrestige', 'voieSangMele']
+        const ethereeRang = VOIE_KEYS_ALL.reduce((acc, k) => {
+          const v = character[k] as VoiePersonnage
+          return v.nom === 'Voie éthérée' ? v.rangs.filter(Boolean).length : acc
+        }, 0)
+        const divinesRang = character.voiePrestige.nom === 'Voie des runes divines'
+          ? character.voiePrestige.rangs.filter(Boolean).length : 0
+        if (ethereeRang < 1 && divinesRang < 1) return null
+        const notifs: string[] = []
+        if (ethereeRang >= 1) notifs.push(t('levelUp.ethereeRang1'))
+        if (ethereeRang >= 2) notifs.push(t('levelUp.ethereeRang2'))
+        if (ethereeRang >= 3) notifs.push(t('levelUp.ethereeRang3'))
+        if (ethereeRang >= 4) notifs.push(t('levelUp.ethereeRang4'))
+        if (ethereeRang >= 5) notifs.push(t('levelUp.ethereeRang5'))
+        if (divinesRang >= 1) notifs.push(t('levelUp.divinesRang1'))
+        if (divinesRang >= 2) notifs.push(t('levelUp.divinesRang2'))
+        if (divinesRang >= 3) notifs.push(t('levelUp.divinesRang3'))
+        if (divinesRang >= 4) notifs.push(t('levelUp.divinesRang4'))
+        if (divinesRang >= 5) notifs.push(t('levelUp.divinesRang5'))
+        return (
+          <div style={{
+            border: '1px solid rgba(201,168,76,0.35)',
+            borderRadius: 8, padding: '14px 16px',
+            background: 'rgba(201,168,76,0.05)',
+          }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(201,168,76,0.85)', marginBottom: 10 }}>
+              {t('levelUp.runesMaj')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {notifs.map((msg, i) => (
+                <div key={i} style={{ fontSize: 14, color: 'rgba(245,225,175,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: 'rgba(201,168,76,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
                   {msg}
                 </div>
               ))}

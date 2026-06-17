@@ -77,9 +77,10 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
       if (!voie.rangs[i]) continue
 
       const rangData = rangsData[i]
-      if (!rangData?.effects?.length) continue
+      if (!rangData) continue
 
-      for (const effect of rangData.effects) {
+      // Effets normaux
+      for (const effect of rangData.effects ?? []) {
         if (effect.avancee) continue
         if (!effect.value && !effect.formula) continue
 
@@ -109,6 +110,40 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
 
         if (!result[effect.stat]) result[effect.stat] = []
         result[effect.stat].push(contribution)
+      }
+
+      // Grants EFFECT_CHOIX
+      for (let gi = 0; gi < (rangData.grants ?? []).length; gi++) {
+        const grant = rangData.grants![gi]
+        if (grant.type !== 'EFFECT_CHOIX') continue
+        if (grant.avancee) continue
+        if (grant.minRang !== undefined && !voie.rangs[grant.minRang - 1]) continue
+        if (grant.condition && !evaluateCondition(grant.condition as Condition, character)) continue
+
+        const grantKey = `${voie.nom}|${i}|${gi}`
+        const chosenStat = character.effectsChoix?.[grantKey]
+        if (!chosenStat) continue
+
+        let value: number
+        if (grant.value !== undefined) {
+          value = grant.rangMultiplier ? grant.value * (i + 1) : grant.value
+        } else if (grant.formula) {
+          const resolved = resolveFormula(grant.formula, character)
+          if (resolved === null) continue
+          value = grant.rangMultiplier ? resolved * (i + 1) : resolved
+        } else {
+          continue
+        }
+
+        if (!result[chosenStat]) result[chosenStat] = []
+        result[chosenStat].push({
+          stat: chosenStat,
+          value,
+          nom: rangData.nom,
+          rang: i + 1,
+          triggerRang: grant.minRang ?? (i + 1),
+          voie: voie.nom,
+        })
       }
     }
   }

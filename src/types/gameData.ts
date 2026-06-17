@@ -20,6 +20,7 @@ export type Grant =
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
+  | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; condition?: EffectCondition; minRang?: number; avancee?: boolean }
 
 export type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 export type DescMap = Record<string, RangEntry[]>

@@ -258,5 +258,85 @@
     "nom": "Voie des golems",
     "famille": "",
     "categorie": "profil"
+  },
+  {
+    "nom": "Voie des pentacles",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des homoncules",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des pierres alchimiques",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des pentacles interdits",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des pierres supérieures",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la mort",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la vie",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la sombre magie",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des pactes",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la non-mort",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des pactes impies",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de la gravure",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la calligraphie",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie éthérée",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des runes divines",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des pierres esprits",
+    "famille": "mystiques",
+    "categorie": "prestige"
   }
 ]

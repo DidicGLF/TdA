@@ -39,3 +39,6 @@ public/cartes-voies/
 .claude/
 Reprendre avec CLaude.txt
 resumés-voies.md
+
+# Images sources des runes (référence locale, non versionnées)
+runes-src/

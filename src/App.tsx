@@ -2,11 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
-import { defaultCharacter, getGolemVoieRang } from './types/character'
+import { defaultCharacter, getGolemVoieRang, hasVoieEtheree } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
 import CharacterSheetGolem from './components/CharacterSheetGolem'
+import CharacterSheetRunes from './components/CharacterSheetRunes'
+import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
 import CreationWizard from './components/CreationWizard'
 import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
@@ -40,11 +42,16 @@ function AppContent() {
 
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes'>('recto')
+  const [runesDivin, setRunesDivin] = useState<string | null>(null)
+  const runesDivinesUnlocked = character.voiePrestige.nom === 'Voie des runes divines' && character.voiePrestige.rangs.some(Boolean)
+  const showFullRunes = sheetPage === 'runes' && runesDivinesUnlocked
   const showGolemTab = getGolemVoieRang(character) >= 2
+  const showRunesTab = hasVoieEtheree(character)
   useEffect(() => {
     if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
-  }, [showGolemTab])
+    if (!showRunesTab && sheetPage === 'runes') setSheetPage('recto')
+  }, [showGolemTab, showRunesTab])
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -426,7 +433,7 @@ function AppContent() {
                 borderBottom: '1px solid rgba(201,168,76,0.15)',
                 overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               }}>
-                {(['recto', 'verso', ...(showGolemTab ? ['golem'] : [])] as ('recto' | 'verso' | 'golem')[]).map(p => (
+                {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
                   <button key={p} onClick={() => setSheetPage(p)} style={{
                     flexShrink: 0,
                     padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -468,6 +475,8 @@ function AppContent() {
                   <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
                 ) : sheetPage === 'verso' ? (
                   <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                ) : sheetPage === 'runes' ? (
+                  <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
                 ) : (
                   <CharacterSheetGolem character={character} onChange={onChange} />
                 )}
@@ -524,15 +533,15 @@ function AppContent() {
 
       {printContainer}
 
-      {/* === FEUILLE (gauche, scrollable) === */}
-      <div className="no-print" style={{ width: `${zoom}%`, flexShrink: 0, minWidth: 280, overflowY: 'auto', background: '#111' }}>
+      {/* === FEUILLE (gauche, ou plein écran si runes full) === */}
+      <div className="no-print" style={{ width: showFullRunes ? '100%' : `${zoom}%`, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
 
         {/* Toolbar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
           position: 'sticky', top: 0, zIndex: 35, background: '#111',
         }}>
-          {(['recto', 'verso', 'golem'] as const).map(p => (
+          {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
             <button key={p} onClick={() => setSheetPage(p)} style={{
               padding: '4px 16px', borderRadius: '4px 4px 0 0',
               border: '1px solid rgba(201,168,76,0.4)',
@@ -700,6 +709,9 @@ function AppContent() {
         </div>
 
         {/* Feuille + overlay calibrage */}
+        {showFullRunes ? (
+          <CharacterSheetRunesFull character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
+        ) : (
         <div style={{ padding: '0 8px 16px' }}>
           <div
             ref={sheetRef}
@@ -720,6 +732,8 @@ function AppContent() {
               <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined}
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+            ) : sheetPage === 'runes' ? (
+              <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
             ) : (
               <CharacterSheetGolem character={character} onChange={onChange} />
             )}
@@ -765,6 +779,7 @@ function AppContent() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* HUD coordonnées (fixe en bas à gauche, toujours visible) */}
@@ -850,32 +865,39 @@ function AppContent() {
 
       {modals}
 
-      {/* === WIZARD (droite, flexible) === */}
+      {/* === PANNEAU DROIT (wizard) — masqué en mode runes full === */}
+      {!showFullRunes && (
       <div className="no-print" style={{
         flex: 1, minWidth: 300,
         borderLeft: '1px solid rgba(201,168,76,0.2)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(20,16,10,0.98)',
+        overflow: 'hidden',
       }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
-            {t('app.titre')}
-          </div>
-          <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
-            {t('app.sousTitre')}
-          </div>
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <CreationWizard
-            step={step} maxStep={maxStep} character={character} onChange={onChange}
-            onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
-            onPrev={() => setStep(s => Math.max(s - 1, 0))}
-            onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
-            onSave={() => setShowSave(true)}
-            onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
-          />
-        </div>
+        {(false) ? null : (
+          <>
+            <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
+                {t('app.titre')}
+              </div>
+              <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
+                {t('app.sousTitre')}
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <CreationWizard
+                step={step} maxStep={maxStep} character={character} onChange={onChange}
+                onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                onPrev={() => setStep(s => Math.max(s - 1, 0))}
+                onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
+                onSave={() => setShowSave(true)}
+                onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
+              />
+            </div>
+          </>
+        )}
       </div>
+      )}
     </div>
   )
 }

@@ -2291,5 +2291,391 @@
         }
       ]
     }
+  ],
+  "Voie des mutagènes": [
+    {
+      "nom": "Renforcement (L)",
+      "desc": "Au prix d’une action limitée, le PJ active une mutation qui renforce son corps pendant [10 + Mod. de SAG] minutes. Des stigmates apparaissent et procurent l’un des effets suivants, au choix du PJ :\n==❑ Écailles draconiques :== DEF +4\n==❑  Fourrure isolante :== DM de froid et de foudre divisés par deux\n==❑  Cuirasse de cuivre :== Réduction de DM (RD) de 3\n==❑  Sang noir :== Immunité au poison\n**==Capacité avancée : ==**Le PJ peut bénéficier des effets d’un renforcement une deuxième fois par jour."
+    },
+    {
+      "nom": "Transidentité (L)",
+      "desc": "Au prix d’une action limitée, le PJ change son apparence pour celle d’un autre humanoïde pendant [30 minutes par rang atteint dans la voie]. Les proportions physiques doivent être respectées avec une marge d’erreur de 30 cm de haut et de large.\nLe PJ peut changer de sexe et d’ethnie. Le timbre de sa voix est également altéré. Il peut prendre l’apparence d’un humanoïde précis, mais pour cela il doit disposer d’un ingrédient appartenant à la cible (une mèche de cheveux par exemple). Préparer une telle potion demande 6 heures environ.\nLe PJ conserve ses caracs et ne peut être démasqué par un sort de détection de la magie ou un équivalent – mais son comportement pourrait toujours le trahir.\n**==Capacité avancée : ==**Le PJ peut changer d’identité une deuxième fois par jour."
+    },
+    {
+      "nom": "Augmentation",
+      "desc": "Le PJ améliore les capacités de son corps en choisissant une augmentation parmi la liste suivante :\n==❑==  Bonus de 2 x [Niv. du PJ] PV max\n==❑ == Bonus de [Niv. du PJ] PM max\n==❑==  Bonus de +5 aux tests de FOR\n==❑==  Bonus de +5 aux tests de SAG\nL’augmentation s’estompe au bout d’une journée. Les améliorations augmentant le seuil de PV et de PM max s’accompagnent également d’un gain de PV et de PM du même montant."
+    },
+    {
+      "nom": "Accélération métabolique (L)",
+      "desc": "Au prix d’une action limitée, le PJ accélère considérablement son métabolisme pendant une heure. Son corps récupère beaucoup plus vite de ses efforts, élimine plus rapidement toxines et poisons et guérit plus vite de ses blessures.\nIl bénéficie d’un bonus de +5 aux tests de CON et ne subit les effets des empoisonnements que pendant un tour (au lieu de leur durée normale). Pendant la durée de cette potion, lorsqu’il dépense des PR pour récupérer des PV, la formule de gain devient la suivante : [2DV + Mod. de CON + Niv] PV."
+    },
+    {
+      "nom": "Mutation génétique",
+      "desc": "Le PJ choisit une caractéristique physique (FOR, DEX ou CON) : il augmente définitivement sa valeur de +2.",
+      "effects": [],
+      "grants": [
+        {
+          "type": "EFFECT_CHOIX",
+          "stats": [
+            "FOR",
+            "DEX",
+            "CON"
+          ],
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "Voie des pentacles": [
+    {
+      "nom": "Affûtage*",
+      "desc": "Le P Jpeut toucher une arme et affûter son tranchant pendant [5 + Mod. de SAG] tours, conférant un bonus de +1 aux DM de cette arme. Ce pentacle ne peut affecter que les armes tranchantes et perforantes. Les carreaux d’arbalète et flèches d’arc peuvent être améliorées par ce sort, à raison d’un lot de 5 projectiles par sort.\nLe bonus passe à +2 au rang 3 atteint dans la voie, et à +3 au rang 5 atteint dans la voie.\n**==Capacité avancée : ==**Le PJ peut également appliquer le bonus aux tests d’attaque de contact."
+    },
+    {
+      "nom": "Peau de mercure*",
+      "desc": "La peau du PJ se transforme en mercure alchimique, lui conférant un bonus de +3 à la DEF pendant [5 + Mod. de SAG] tours.\n**==Capacité avancée :==** Sous l’effet de ce sort, le PJ bénéficie d’une réduction de DM (RD) de 2 pour tous les dégâts élémentaires et magiques."
+    },
+    {
+      "nom": "Forge alchimique*",
+      "desc": "Le PJ peut remodeler la matière et la transformer en un objet de son choix. Le PJ peut altérer ainsi l’équivalent de 10 kg de matière première par rang atteint dans la voie. Pour lancer le sort, le PJ doit disposer d’une matière première à altérer (le sol, un mur, un objet à transformer, etc.). L’objet ainsi créé reste instable et reprend ses propriétés initiales au bout d’une heure (il n’est pas possible de se nourrir avec de la nourriture créée par exemple).\nIl n’est pas possible de modifier ainsi des objets magiques ou traditionnels. Et il est formellement interdit dans la plupart des pays aux alchimistes de produire ainsi de l’or ou des gemmes précieuses."
+    },
+    {
+      "nom": "Projection de métal*",
+      "desc": "Le PJ lance un jet de métal en fusion sur une cible située à une distance de 10 mètres maximum. Sur un test d’attaque magique réussi, il inflige [2d6 + Mod. d’INT] DM. À moins de réussir un test de CON difficulté [12 + Mod. d’INT], la cible continue de subir 1d6 DM de brûlures par tour pendant [Mod. de SAG] tour(s) (minimum 1).\nUne même cible peut cumuler plusieurs fois les DM de brûlures."
+    },
+    {
+      "nom": "Dôme arcanique*",
+      "desc": "Une fois par tour et en action immédiate, le PJ peut contrer une attaque en créant un champ de force pouvant prendre la forme d’un bouclier, d’un mur ou d’un dôme de 4 mètres de rayon. Il réalise un test d’attaque magique et gagne une réduction aux DM (RD) temporaire, égale au résultat de son test. Le dôme se dissipe immédiatement après l’attaque contrée.\nCe sort ne peut bénéficier de concentration et l’alchimiste ne peut réaliser qu’une action de mouvement à son prochain tour."
+    }
+  ],
+  "Voie des homoncules": [
+    {
+      "nom": "Homoncule humanoïde (L)",
+      "desc": "Au prix d’une action limitée, le PJ donne vie à une créature humanoïde dont les caractéristiques sont les suivantes :\n**==Init. 10, DEF 12, PV [4 x Niv. du PJ].\nAttaque de contact (poings) = [niv. du PJ], DM 1d6 + 1\nFOR +1, DEX +0, CON +4, INT -4, SAG -3, CHA -4==**\nSous cette forme, il peut manipuler des objets et même utiliser des armes (mais il n’est pas formé à leur maniement et souffre d’un malus de -3 aux tests).\nAu rang 4 atteint dans cette voie, les attaques de contact de l’homoncule peuvent – sous n’importe quelle forme – bénéficier des effets d’un sort d’affutage.\n**==Capacité avancée :==** Le PJ peut ajouter son [Mod. d’INT] aux PV max de l’homoncule. Ce bonus est doublé au rang 4 atteint dans la voie."
+    },
+    {
+      "nom": "Réparation alchimique",
+      "desc": "Tant que l’homoncule n’est pas détruit (PV = 0), le PJ peut le réparer en le touchant, au prix d’une action d’attaque. Pour chaque PM dépensé, l’homoncule regagne 1d4 PV.\n**==Capacité avancée :==** Le PJ peut utiliser sa capacité jusqu’à une distance de 20 mètres."
+    },
+    {
+      "nom": "Homoncule bestial (L)",
+      "desc": "Au prix d’une action limitée, l’homoncule peut se transformer en bête quadrupède de taille moyenne évoquant un chien ou un grand félin. Ses caractéristiques deviennent les suivantes (les PV restent les mêmes) :\n**==Init. 16, DEF 16, Attaque de contact (morsure et griffes) = [niv. du PJ +2], DM 1d6 + 1\nFOR +0, DEX +3, CON +4, INT -4, SAG -3, CHA -4==**\nSous cette forme, l’homoncule se déplace de 30 mètres par action de mouvement et peut réaliser une charge sur ses ennemis.\n**==Charge (L) :==** la créature se déplace en ligne de droite d’au moins 6 mètres (30 mètres au maximum) et effectue une attaque de contact avec un bonus de +2 en attaque et +1d6 DM."
+    },
+    {
+      "nom": "Apparence illusoire*",
+      "desc": "Le PJ utilise un pentacle sur son homoncule (portée 20 mètres maximum), lui conférant une apparence illusoire compatible avec sa forme actuelle (par exemple une apparence humanoïde pour l’homoncule humanoïde). L’illusion perdure tant que l’homoncule ne change pas de forme ou n’est pas touché.\nL’alchimiste peut lancer le sort sur lui-même ou un allié, mais l’illusion ne dure alors que [5 + Mod. de SAG] tours.\nLe sort ne permet pas de prendre une apparence précise à moins que l’alchimiste connaisse intimement la créature copiée."
+    },
+    {
+      "nom": "Grand homoncule (L)",
+      "desc": "Au prix d’une action limitée, l’homoncule peut se transformer en grande monture quadrupède terrestre (type cheval) ou aérienne (type dragon). Ses caractéristiques deviennent les suivantes (les PV restent les mêmes) :\n**==Init. 12, DEF 15, Attaque de contact = [niv. du PJ], DM 1d6+4\nFOR +4, DEX +1, CON +4, INT -4, SAG -3, CHA -4==**\nSous cette forme, l’homoncule peut être monté par un maximum de deux humanoïdes et parcourt 30 mètres par action de mouvement (que ce soit au sol ou en l’air)."
+    }
+  ],
+  "Voie des pierres alchimiques": [
+    {
+      "nom": "Novice",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques de novice. \n**==Capacité avancée :==** Le PJ choisit une capacité supplémentaire dans la liste des pierres alchimiques de novice."
+    },
+    {
+      "nom": "Alchimiste confirmé",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques de novice. \n**==Capacité avancée :==** Le PJ choisit une capacité supplémentaire dans la liste des pierres alchimiques de novice."
+    },
+    {
+      "nom": "Initiation aux pierres complexes",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques d’initié. "
+    },
+    {
+      "nom": "Maîtrise des pierres élémentaires",
+      "desc": "L’utilisation des pierres d’âme de novice ne nécessite plus qu’une action de mouvement."
+    },
+    {
+      "nom": "Expert",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques d’initié."
+    }
+  ],
+  "Voie des pentacles interdits": [
+    {
+      "nom": "Pétrification*",
+      "desc": "Le PJ doit réussir une attaque magique (portée 20 mètres). En cas de réussite, la cible est pétrifiée et changée en pierre pour [2d6 + Mod. de SAG] tours. Sous cette forme, elle ne ressent rien, ne peut agir et sa DEF passe à 10. Elle réduit tous les DM subis de 30 points (RD 30).\nLes créatures affectées doivent réussir un test de CON difficulté [16 + Mod. d’INT] pour réduire la durée de l’effet à 1 tour. Une créature ne peut subir ce pentacle qu’une fois par jour."
+    },
+    {
+      "nom": "Lumière transmutée*",
+      "desc": "Le PJ altère la lumière pour former des éclats d’énergie pure. Il réalise un test d’attaque magique et le compare à la DEF de toutes les cibles autour de lui sur un rayon de 6 mètres. En cas de réussite, elles subissent [2d6 + Mod. d’INT] DM magiques et sont aveuglées pendant 1 tour. En cas d’échec, les cibles ne subissent que la moitié des DM et ne sont pas aveuglées.\nL’alchimiste doit disposer d’une source de lumière. Il ne peut utiliser cette capacité dans les ténèbres complètes."
+    },
+    {
+      "nom": "Double sigle (L)",
+      "desc": "Le PJ peut former deux pentacles en même temps. Le coût de chaque sort doit être payé individuellement et ces derniers ne peuvent bénéficier de concentration."
+    },
+    {
+      "nom": "Reconstruction organique*",
+      "desc": "Une fois par jour, Le PJ touche une cible et lance un puissant pentacle qui referme toutes les blessures en régénérant les organes et membres détruits. La cible récupère tous ses PV perdus et guérit de tout poison, maladie, état préjudiciable et affaiblissement de maladie.\nMalheureusement, les organes et membres détruits et déjà cicatrisés avant l’utilisation du pentacle ne peuvent être régénérés de la sorte."
+    },
+    {
+      "nom": "Frappe d’antimatière*",
+      "desc": "Le PJ touche une cible et génère un champ d’antimatière qui détruit tout ce qu’il touche. Sur une attaque magique réussie, il inflige [3d8 + Mod. d’INT] DM magique. Cette attaque ignore la RD de la cible.\nSi l’attaque échoue mais que la cible porte une armure manufacturée ou un bouclier, alors le pentacle détruit une partie de son équipement et elle subit un malus de -2 à la DEF."
+    }
+  ],
+  "Voie des pierres supérieures": [
+    {
+      "nom": "Professeur",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques de maître."
+    },
+    {
+      "nom": "Déferlement alchimique (L)",
+      "desc": "Au prix d’une action limitée, le PJ peut utiliser deux pierres alchimiques d’initié et/ou de maître ou trois pierres alchimiques de novice."
+    },
+    {
+      "nom": "Maître",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres alchimiques de maître."
+    },
+    {
+      "nom": "Pierre divine (L)",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres d’âme divines. Il peut utiliser chaque jour une pierre d’âme divine. Les pierres divines nécessitent toujours une action limitée pour être utilisées."
+    },
+    {
+      "nom": "Etoile jumelle (L)",
+      "desc": "Le PJ choisit une capacité dans la liste des pierres d’âme divines. Il ne peut toujours utiliser qu’une seule pierre divine par jour. Les pierres divines nécessitent toujours une action limitée pour être utilisées."
+    }
+  ],
+  "Voie de la mort": [
+    {
+      "nom": "Terreur*",
+      "desc": "Le PJ effectue un test d’attaque magique contre une cible (portée : 20 m). En cas de réussite, il tourmente sa cible avec les voix hurlantes des esprits défunts, la terrorisant et la forçant à fuir pendant [1 + Mod. de SAG] tours (minimum 1 tour).\nCe sort est inefficace sur les cibles dépourvues d’esprit (tels que les mort-vivants ou les créatures artificielles).\n**==Capacité avancée :==** Au terme du sort, la cible subit un malus de -2 à ses tests d’attaque pendant [1 + Mod. de SAG] tours (minimum 1 tours)"
+    },
+    {
+      "nom": "Animation de cadavres*",
+      "desc": "Le PJ anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’une heure (portée : 20 m). Le revenant comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ».\nRevenant : Init 8, DEF 10, PV 12, Attaque [Niv. du PJ], DM [1d6 + Mod. d’INT], se déplace à 50% de sa vitesse normale. Le revenant se dégrade et perd 1 PV par minute et il ne peut pas être soigné.\nLe PJ peut contrôler un revenant par rang atteint dans la voie.\n**==Capacité avancée : ==**au prix d’une action limitée et en dépensant 3 PM supplémentaires, le PJ peut animer deux cadavres durant le même tour. Il peut contrôler un total de [rang atteint dans la voie] x 2 revenants."
+    },
+    {
+      "nom": " Putréfaction*",
+      "desc": "En réussissant un test d’attaque magique (portée 10 m), le PJ fait pourrir les chairs de sa victime, infligeant [2d6 + Mod. d’INT] DM. La victime subit un malus de -2 à tous ses tests pour le reste du combat (cumulatif avec d’autres sorts de putréfaction) à moins de réussir un test de CON difficulté [13 + Mod. d’INT]. La réussite d’un test annule tous les malus de putréfaction cumulés jusqu’alors."
+    },
+    {
+      "nom": "Masque mortuaire*",
+      "desc": "Pendant [5 + Mod. de SAG] tours, les traits du PJ prennent l’apparence de ceux d’un cadavre. Son cœur cesse de battre et il ne respire plus, devenant ainsi insensible pendant la durée du sort aux effets d’asphyxie, de poison, de saignements ou aux maladies. De plus, il retranche 2 points à tous les DM physiques et divise par 2 les DM de froid.\nSous cette forme, il ne peut plus être soigné."
+    },
+    {
+      "nom": "Armée des morts*",
+      "desc": "Le PJ désigne une zone de 20 m de diamètre (portée : 50 m) et fait jaillir du sol une armée de squelettes qui agressent immédiatement les ennemis présents pendant [5 + Mod. de SAG] tours. L’armée inflige automatiquement [3d6 + Mod. d’INT] DM par tour à moins que les ennemies n’utilisent une action limitée (L) pour s’opposer aux morts (auquel cas ils ne subissent que 1d6 DM). Les déplacements dans la zone sont divisés par deux (même pour les alliés).\nL’armée peut se déplacer de 10 mètres chaque tour tant qu’elle reste dans la zone de portée du sort.\nLe sort nécessite toute la concentration du PJ : tant qu’il le maintient, il ne peut réaliser qu’une seule action par tour (mouvement ou attaque - il ne peut plus faire d’action limitée).\nChaque fois qu’il subit des DM, il doit réussir un test d’INT dont la difficulté est égale au montant des DM subis sous peine de mettre un terme immédiatement au sort.\n"
+    }
+  ],
+  "Voie de la vie": [
+    {
+      "nom": "Saignements*",
+      "desc": "Le PJ doit réussir un test d’attaque magique (portée : 10 m). Du sang s’écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit 1d6 DM par tour pendant [rang atteint dans la voie] tours. Ce sort ignore la RD d’une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades). Les DM passent à 1d8 au rang 4 atteint dans cette voie.\n**==Capacité avancée :==** la durée du sort devient [rang atteint dans la voie + Mod. SAG] tours."
+    },
+    {
+      "nom": "Siphon des âmes*",
+      "desc": "Une fois par tour, lorsqu’une créature humanoïde meurt à moins de 20 mètres du PJ, ce dernier peut lancer ce sort au prix d’une action gratuite et immédiate pour regagner 1d6 PV (dans la limite de ses PV max). Ce sort ne peut bénéficier de concentration.\n**==Capacité avancée :==** Le gain passe à 1d8 PV."
+    },
+    {
+      "nom": "Transfert vital*",
+      "desc": "Le nécromancien désigne une cible (portée : 50 m) et effectue un test d’attaque magique. En cas de réussite, il lui inflige [1d8 + Mod. d’INT] DM et récupère autant de PV (sans dépasser son score max de PV). Alternativement, il peut transférer cette énergie vitale à une cible alliée qu’il doit toucher : elle récupère la moitié des DM infligées (arrondis au supérieur)."
+    },
+    {
+      "nom": "Hémorragie*",
+      "desc": "Si le PJ réussit un test d’attaque magique (portée : 10 m), la victime saigne à la moindre blessure. Tous les DM des attaques sanglantes infligées à la cible (arme blanche, griffe, saignement, etc.) augmentent de 1d6 pendant [5 + Mod. de SAG] tours. Ce sort ignore la RD d’une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades)."
+    },
+    {
+      "nom": "Lien vital*",
+      "desc": "En réussissant un test d’attaque magique (portée : 20 m), le PJ tisse un lien avec sa victime. Pendant [5 + Mod. de SAG] tours, la moitié des DM reçus par le PJ sont également subis par la cible et le PJ peut lui lancer un sort sans la voir."
+    }
+  ],
+  "Voie de la sombre magie": [
+    {
+      "nom": "Ténèbres*",
+      "desc": "Le PJ invoque une zone sphérique fixe de ténèbres magiques, de 10 mètres de diamètre pour une durée de [5 + Mod. de SAG] tours. Même les créatures capables de voir dans le noir sont aveuglées dans cette zone.\n**==Capacité avancée :==** Le PJ n’est pas complètement aveuglé dans la zone, qui n’est qu’une forte pénombre pour lui (-5 aux attaques à distance)."
+    },
+    {
+      "nom": "Malédiction*",
+      "desc": "Le PJ effectue un test d’attaque magique contre une cible à moins de 20 mètres. En cas de succès, la victime réalise tous ses tests avec deux d20 et garde le résultat le plus faible. Le sort prend fin dès qu’elle aura raté trois tests – sans limite de temps. Si la victime possède une capacité lui permettant de lancer deux d20 et de garder le meilleur, elle n’en lance plus qu’un seul.\nUne victime ne peut pas subir plus d’une malédiction par jour. \n**==Capacité avancée :==** Le PJ peut maudire en même temps un total de [1 + Mod. d’INT] cibles (minimum 1)."
+    },
+    {
+      "nom": "Stigmates salvatrices*",
+      "desc": "Par une action gratuite, le PJ sacrifie 1d4 PV et gagne immédiatement +3 sur un jet de d20 de son choix ou en DEF contre une attaque. A partir du rang 5 atteint dans cette voie, il peut sacrifier 2d4 PV pour faire passer ce bonus a +5.\nCe sort ne peut bénéficier de concentration."
+    },
+    {
+      "nom": "Cœur brisé*",
+      "desc": "Le PJ désigne une cible à moins de 20 mètres et fait mine de broyer son cœur dans sa main. Sur un test d’attaque magique réussi, la victime subit immédiatement [4d6 + Mod. d’INT] DM – le sort ignore la RD.\nElle peut réussir un test de CON difficulté 14 pour diviser les DM par 2."
+    },
+    {
+      "nom": "Intelligence héroïque",
+      "desc": "Le PJ augmente sa valeur d’INT de +2. Il peut désormais lancer deux d20 à chaque fois qu’un test d’INT lui est demandé et conserver le meilleur résultat."
+    }
+  ],
+  "Voie des pactes": [
+    {
+      "nom": "Premier cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 1.\n**==Capacité avancée :==** Convoquer un pacte de rang 1 ne coûte aucun PM."
+    },
+    {
+      "nom": "Deuxième cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 2.\nCapacité avancée : Convoquer un pacte de rang 2 ne coûte que 1 PM."
+    },
+    {
+      "nom": "Troisième cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 3."
+    },
+    {
+      "nom": "Quatrième cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 4."
+    },
+    {
+      "nom": "Cinquième cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 5."
+    }
+  ],
+  "Voie de la non-mort": [
+    {
+      "nom": "Libération spirituelle*",
+      "desc": "Le PJ cible le cadavre d’une créature humanoïde à moins de 30 mètres et morte depuis moins d’une heure. Il libère violemment l’esprit résiduel de la dépouille qui s’en échappe en hurlant, provoquant l’explosion du corps. La déflagration spirituelle qui en résulte inflige [2d6 par rang atteint dans la voie + Mod. d’INT] DM dans une zone de 10 mètres de diamètre centrée sur la dépouille. Les victimes doivent réussir un test de CHA difficulté [10 + Mod. d’INT] pour diviser les DM par deux – les alliés réussissent automatiquement ce test."
+    },
+    {
+      "nom": "Communion mortuaire",
+      "desc": "Pour chaque cadavre de créature humanoïde à moins de 20 mètres du PJ et morte depuis moins d’une heure, ce dernier bénéficie d’un bonus de +1 à tous ses tests d’attaques et à ses DM.\nLes dépouilles altérées par la* libération spirituelle* n’apportent aucun bonus."
+    },
+    {
+      "nom": "Réanimation",
+      "desc": "Une fois par jour, et au prix d’un rituel de 10 minutes, le PJ peut ramener à la vie une créature humanoïde décédée depuis moins d’un jour. Il doit connaître la personne décédée et sacrifier en échange une autre créature humanoïde pour réaliser le rituel.\nLa créature réanimée entre dans un état de non-mort, une forme de stase durant laquelle elle ne vieillit plus. Elle a cependant toujours besoin d’assurer les besoins vitaux minimum de son corps (respirer, manger, boire) mais son métabolisme est ralenti : elle ne subit plus que la moitié des DM de poison et de froid ; elle est insensible aux maladies. En contrepartie, elle devient insensible aux capacités de soins et seuls l’utilisation de PR lui permet de se guérir.\nSi elle venait à mourir de nouveau, son corps tomberait en poussière rendant toute nouvelle réanimation impossible. Le PJ peut révoquer la réanimation quand il le souhaite.\nLe PJ peut maintenir jusqu’à [Mod. d’INT - 1] (minimum 1) créatures en état de réanimation."
+    },
+    {
+      "nom": "Aura de bannissement*",
+      "desc": "Le PJ crée un dôme de 6 mètres de diamètre (portée : 20 m) qui offre un bonus de +4 à la DEF et à tous les tests visant à résister aux attaques ou capacités des créatures mort-vivantes, issues d’autres plans d’existence, aux fantômes ou aux démons ainsi qu’aux sorts de nécromancie. Le dôme reste actif pendant [5 + Mod. de SAG] tours."
+    },
+    {
+      "nom": "Désincarnation*",
+      "desc": "Sur la réussite d’un test d’attaque magique sur une créature humanoïde (portée : 20 m), le PJ force l’âme à s’extraire du corps et inflige [2d6 + Mod. d’INT] DM par tour. A son tour, la victime doit réussir un test de FOR opposé à l’INT du nécromancien : en cas d’échec, elle ne peut agir du tour. Si la victime meurt alors qu’elle est soumise au sort, le PJ peut lancer immédiatement un sort de Libération spirituelle s’il le désire (le sort ne consomme pas d’action et ne peut bénéficier de concentration).\nLe PJ peut maintenir les effets d’un sort de désincarnation chaque tour, au prix d’une action limitée (L)."
+    }
+  ],
+  "Voie des pactes impies": [
+    {
+      "nom": "Sixième cercle (L)*",
+      "desc": "Le PJ choisit une créature dans la liste des pactes. Il peut convoquer des pactes de rang 6."
+    },
+    {
+      "nom": " Convocation rapide",
+      "desc": "Convoquer une créature ne demande plus qu’une action d’attaque au lieu d’une action limitée, qui ne peut toujours pas bénéficier de concentration.\nAu rang 4 atteint dans la voie, convoquer une créature ne demande plus qu’une action de mouvement. Il n’est pas possible de convoquer plus d’une créature par tour, mais le PJ peut utiliser son action d’attaque pour réaliser une autre action (telle que lancer un sort par exemple)."
+    },
+    {
+      "nom": "Septième cercle * - Renonciation",
+      "desc": "Le PJ peut remplacer un pacte appris par un autre pacte de la liste. De plus, il peut convoquer des pactes de rang 7."
+    },
+    {
+      "nom": "Grâce du voile",
+      "desc": "Il n’y a plus de limite au nombre de fois qu’une créature peut être convoquée par jour, même si elle a dû fuir ou si elle est tuée (à l’exception des créatures qui ont des limites établies telles que Virrath ou Ukmaak)."
+    },
+    {
+      "nom": "Huitième cercle * - Faille temporelle",
+      "desc": "Un pacte peut être convoqué deux fois en même temps (mais sur deux tours différents). De plus, le nécromancien peut convoquer des pactes de rang 8."
+    }
+  ],
+  "Voie de la gravure": [
+    {
+      "nom": "Bâton du runiste",
+      "desc": "Le runiste grave une série de runes sur un bâton. Avec cette arme magique à deux mains, il gagne un bonus de +1 aux tests d’attaque au contact et inflige [1d4 + Mod. d’INT] DM magiques. A partir du rang 3, il inflige [2d4 + Mod. d’INT] DM magiques. A partir du rang 5, il inflige [4d4 + Mod. d’INT] DM magiques.\nLe runiste est le seul à pouvoir bénéficier des effets magiques de cette arme. Si le bâton est perdu ou brisé, le runiste peut graver des runes sur une autre arme au prix d’une journée de travail. Les armes traditionnelles ou légendaires ne peuvent être gravées de la sorte.\n**==Capacité avancée : ==**Le runiste peut utiliser son score d’attaque magique pour porter des attaques de contact avec ce bâton."
+    },
+    {
+      "nom": "Runes de protection",
+      "desc": "A l’issue d’une semaine de labeur, le runiste personnalise son armure ou ses vêtements avec une série de runes qu’il grave sur le cuir ou des pièces métalliques. Il gagne une RD de 1. Au rang 4 atteint dans la voie, la RD passe à 2.\nLe runiste est le seul à pouvoir bénéficier des effets magiques de son armure et il ne peut enchanter de la sorte qu’une seule armure à la fois : enchanter une nouvelle armure épuise l’efficacité des runes précédemment gravées.\n**==Capacité avancée :==** L’armure bénéficie d’un bonus de DEF supplémentaire de +1."
+    },
+    {
+      "nom": "Coffre distant",
+      "desc": "Le runiste possède un petit coffret dont l’ouverture est parsemée de runes gravées, donnant accès via un portail dimensionnel à un coffre bien plus grand, dans un autre lieu (au domicile du PJ par exemple).\nIl peut entreposer jusqu’à 10 kg par rang atteint dans la voie de matériel tandis que le poids du coffret reste stable à 1 kg environ. Le runiste peut ainsi sortir du coffret tout objet préalablement entreposé dans le coffre – concrètement tout objet non périssable, de 10 kg maximum et d’une circonférence de 25 cm au plus.\n\n*Le coffre distant en cours de partie\nLes objets entreposés dans le coffre appartiennent au PJ, c’est-à-dire qu’ils ont dû au préalable y être déposés. En pratique – et à moins que le PJ ne se serve du coffret distant pour cacher puis utiliser un objet acquis durant la partie – et plutôt que de lister tous les objets que pourraient avoir prévu par avance le PJ, il est plus simple de faire apparaître ce dont il a besoin au moment où il en a besoin.\nCependant, la valeur marchande des objets est à déduire directement des économies du PJ pour simuler le fait qu’avant d’avoir été entreposé dans le coffre, l’objet a dû être acheté.*"
+    },
+    {
+      "nom": "Frappe des arcanes (L)",
+      "desc": "Le runiste frappe le sol de son bâton et provoque une onde dévastatrice dans un rayon de 10 mètres autour de lui. Toutes les créatures dans la zone subissent automatiquement [2d6 + Mod. d’INT] DM et doivent réussir un test de FOR difficulté [10 + Mod. d’INT] pour ne pas tomber au sol et être renversées."
+    },
+    {
+      "nom": "Portail runique",
+      "desc": "Le runiste a créé en un lieu sécurisé et connu de lui seul une grande arche de pierre gravée de runes complexes. Une fois par jour, et à l’issu d’un rituel d’une heure environ, il peut tracer un cercle runique à même le sol ou sur un mur pour créer un portail de téléportation lui permettant de retourner à l’emplacement de l’arche de pierre – et ce quelle que soit la distance qui le sépare de l’arche.\nL’ancre reste stable une poignée de secondes, assez longtemps pour permettre à d’autres créatures – tels que les alliés du PJ – d’emprunter le portail."
+    }
+  ],
+  "Voie de la calligraphie": [
+    {
+      "nom": "Parchemin instable*",
+      "desc": "Chaque jour, le runiste peut inscrire sur [rang atteint dans la voie x 2] parchemins des runes instables qui restent actives 24 heures. En froissant le parchemin, il peut provoquer son embrasement immédiat ou différé de maximum une heure (à définir au moment de la manipulation). Toute cible au contact du parchemin enflammé subit [1d6 + Mod. d’INT] DM de feu.\nLes parchemins infligent [2d6 + Mod. d’INT] DM de feu au rang 4 atteint dans la voie.\nEn combat, le runiste peut appliquer un parchemin sur une cible au contact avec une attaque de contact, ou jeter un parchemin froissé en boule à l’aide d’une attaque à distance jusqu’à une portée de 6 m.\n**==Capacité avancée :==** les parchemins instables ne coûtent aucun PM."
+    },
+    {
+      "nom": "Runes d’énergie*",
+      "desc": "A l’issue d’un rituel de 5 minutes, le runiste applique sur la peau d’une cible (ou de lui-même) une rune complexe, active pour 24 h – dans la limite d’une seule par créature. Celle-ci permet de relancer un d20 une fois par combat sur un test d’attaque, de FOR, DEX ou CON. \n**==Capacité avancée :==** la magie de la rune d’énergie peut être consommée au prix d’une action gratuite pour regagner instantanément [1d4 + Rang] PV. Un personnage ne peut bénéficier des effets d’une nouvelle rune d’énergie avant 24h."
+    },
+    {
+      "nom": "Runes de protection*",
+      "desc": "En réalisant un rituel de cinq minutes, le runiste applique une suite de runes sur une armure, actives pour 24 h. Celles-ci permettent d’ignorer les DM d’une attaque une fois par combat. "
+    },
+    {
+      "nom": "Rune de puissance*",
+      "desc": "En réalisant un rituel de cinq minutes, le runiste applique une rune sur une arme, active pour 24 h. Celle-ci permet d’infliger des DM maximaux, donc sans avoir à jeter le dé, une fois par combat. "
+    },
+    {
+      "nom": " Rune de garde*",
+      "desc": "Le runiste dessine sur le sol une rune lumineuse (visible pour la durée du sort) et piège une zone allant de 2 à 10 m de diamètre. Toute créature (de taille au moins très petite) qui entre dans la zone déclenche un effet choisi parmi trois (à définir au moment où le sort est lancé) :\n●\t**==Alarme :==** un puissant gong retentit.\n●\t**==Feu :==** [3d6 + Mod. d’INT] DM de feu.\n●\t**==Peur :==** test de SAG difficulté [15 + Mod. d’INT] ou fuir pendant 2d6 tours.\nA chaque fois qu’une créature entre à nouveau dans la zone, elle subit les effets. Le sort a une durée de 1d6 minutes mais peut être prolongé jusqu’à 12 heures par un rituel de 10 minutes. Les créatures présentes dans la zone pendant le rituel sont immunisées aux effets.\nDe plus, si ce sort est lancé alors qu’une autre rune de garde est encore active quelque part, l’ancienne prend fin immédiatement."
+    }
+  ],
+  "Voie éthérée": [
+    {
+      "nom": " Apprenti runiste*",
+      "desc": "Le runiste gagne la maîtrise d’un glyphe « attribut » d’apprenti.\n**==Capacité avancée :==** le runiste gagne un bonus de +2 aux tests d’attaque magique des sorts éthérés de contact."
+    },
+    {
+      "nom": "Tirage chaotique",
+      "desc": "Le runiste tire aléatoirement les runes de son sac pour créer un sort en suivant la méthode suivante : il lance 1d10 pour les éléments et de 1 à 4 d12 pour les attributs au choix du PJ – en cas de double, le dé est relancé.\nIl compare ensuite les résultats obtenus à la table des glyphes et tente de créer un sort avec les attributs tirés – qui sont tous considérés comme maîtrisés (même le glyphe « élément ») – un sort chaotique ne coûte donc aucun PM.\nS’il obtient un 0 sur le tirage de l’élément, le runiste tire une rune blanche qui lui permet de désigner l’élément de son choix.\nS’il ne parvient pas à créer de sort ou que le tirage ne le satisfait pas, la tentative est un échec et le PJ a perdu son tour en subissant un contrecoup lui faisant perdre [2 PV / glyphe « attribut » tiré]. Au lieu d’une perte de PV, le MJ peut décider d’appliquer un effet chaotique au sort échappant au contrôle du runiste en rapport avec l’élément tiré ou choisi.\n**==Capacité avancée :==** en cas de contrecoup, le PJ subit une perte de [1 PV / glyphe « attribut » tiré]."
+    },
+    {
+      "nom": "Runiste initié*",
+      "desc": "Le runiste gagne la maîtrise d’un glyphe « attribut » d’initié."
+    },
+    {
+      "nom": "Chant runique*",
+      "desc": "Le PJ peut énoncer des glyphes et parvient ainsi à créer des sorts sans son sac de runes ou sans avoir les mains libres. Cependant, il ne peut appliquer que 2 glyphes attributs maximum avec cette méthode."
+    },
+    {
+      "nom": "Runiste adepte*",
+      "desc": "Le runiste gagne la maîtrise d’un glyphe « attribut » d’adepte."
+    }
+  ],
+  "Voie des runes divines": [
+    {
+      "nom": "Runes divines",
+      "desc": "Le runiste peut maintenant utiliser des glyphes divins. Chaque sort ne peut contenir qu’un seul glyphe divin, quel que soit son rang.\n**[Sort]** = 1 Glyphe **[Elément]** + 1-3 Glyphe(s) **[Attributs] **+ (1 Glyphe **[Divin]** - optionnel)\n\nNote : les glyphes divins n’étant pas des glyphes attributs, ils ne peuvent être améliorés par le glyphe catalyseur."
+    },
+    {
+      "nom": "Glyphes élémentaires supérieurs",
+      "desc": "Le runiste peut augmenter les DM élémentaires d’une catégorie s’il le souhaite (d4 -> d6 -> d8 -> d10)."
+    },
+    {
+      "nom": "Expert runiste",
+      "desc": "Le runiste gagne la maîtrise d’un glyphe supplémentaire, à choisir parmi les glyphes éléments, attributs ou divins.\nDe plus, il peut créer des sorts de rang 6."
+    },
+    {
+      "nom": "Sorts rapides",
+      "desc": "Le runiste peut maintenant créer des sorts éthérés au prix d’une action d’attaque au lieu d’une action limitée mais ne peut toujours pas appliquer les effets d’une concentration."
+    },
+    {
+      "nom": "Maître runiste",
+      "desc": "Le runiste gagne la maîtrise d’un glyphe supplémentaire, à choisir parmi les glyphes éléments, attributs ou divins.\nDe plus, il peut créer des sorts de rang 7 et peut ajouter un glyphe attribut supplémentaire à ses sorts.\n**[Sort] **= **1** Glyphe **[Elément]** + **1-4** Glyphe(s) **[Attributs]** + (1 Glyphe **[Divin]** - optionnel)"
+    }
+  ],
+  "Voie des pierres esprits": [
+    {
+      "nom": "Pierre-esprit commune",
+      "desc": "Le runiste est initié à l’art secret – et parfois controversé – de la création des pierre-esprits, ces gemmes mystérieuses capables d’aspirer l’âme d’une créature défunte. La gemme peut ensuite être enchâssée dans un golem de guerre lui conférant une certaine intelligence et un comportement dépendant de l’esprit.\nLes scores d’INT, de SAG et de CHA du golem passent à -1 et il est maintenant capable de suivre des ordres simples consistant en une phrase courte (attaque tous les humains portant du rouge, attends l’aube puis rejoins-moi au château, empêche quiconque d’entrer dans la maison sauf moi et mes compagnons)\nPour charger un esprit dans une pierre, le runiste doit peindre un glyphe sur le front d’une créature à l’aide d’un rituel durant une minute environ. A la mort de la créature, son esprit gagne immédiatement la pierre. Le runiste ne peut maintenir ainsi qu’un seul esprit enfermé dans une pierre.\nLa destruction du golem de guerre (PV = 0) entraîne la destruction de la pierre esprit. Confectionner une pierre est un processus complexe nécessitant une heure de travail."
+    },
+    {
+      "nom": "Collecteur",
+      "desc": "Le runiste peut capturer et conserver jusqu’à deux esprits. Il peut changer la pierre esprit de son golem au prix d’une opération rapide mais délicate nécessitant dix minutes de travail."
+    },
+    {
+      "nom": "Pierre esprit supérieure",
+      "desc": "La structure de la pierre est plus complexe et parvient à mieux retranscrire l’esprit de la créature. Le golem de guerre gagne la capacité de base de la pierre."
+    },
+    {
+      "nom": "Loyauté inébranlable",
+      "desc": "Le golem gagne en autonomie et peut prendre les initiatives qui lui semble juste dans l'intérêt du runiste. Si les PV du runiste tombent à 0, la pierre esprit explose et transfère immédiatement le reste des PV du golem au runiste (dans la limite des PV max du PJ).\nLe runiste peut capturer et conserver jusqu’à trois esprits."
+    },
+    {
+      "nom": "Pierre-esprit parfaite",
+      "desc": "Rang 5 : Pierre-esprit parfaite\nLe runiste est parvenue à créer des pierres-esprits parfaites. Le golem de guerre gagne la capacité avancée de la pierre en plus de la capacité de base."
+    }
   ]
 }

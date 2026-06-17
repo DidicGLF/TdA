@@ -115,6 +115,7 @@ type Grant =
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
+  | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; minRang?: number; avancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 type TraitEntry = { nom: string; desc: string }
 type Culture = {
@@ -345,7 +346,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string; voie?: string; rang?: number; voies?: string[]; rangMax?: number; nom?: string; noms?: string[]; remplace?: string; minRang?: number | null; avancee?: boolean | null }) => {
+  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string | number; voie?: string; rang?: number; voies?: string[]; rangMax?: number; nom?: string; noms?: string[]; remplace?: string; stats?: string[]; formula?: string; rangMultiplier?: boolean; minRang?: number | null; avancee?: boolean | null }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
@@ -370,7 +371,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               ? { type: 'VOIE_RANG_CHOIX', voies: [], rangMax: 2, ...av }
               : patch.type === 'COMPAGNON'
               ? { type: 'COMPAGNON', nom: compagnons[0]?.nom ?? '', ...av }
-              : { type: 'COMPAGNON_CHOIX', noms: [], ...av }
+              : patch.type === 'COMPAGNON_CHOIX'
+              ? { type: 'COMPAGNON_CHOIX', noms: [], ...av }
+              : { type: 'EFFECT_CHOIX', stats: [], value: 1, ...av }
       } else {
         grants[gIdx] = { ...current, ...patch } as Grant
       }
@@ -555,6 +558,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
   const setVoieFamille = (nom: string, famille: string) => {
     setVoies(prev => prev.map(v => v.nom === nom ? { ...v, famille } : v))
+  }
+
+  const setVoieCategorie = (nom: string, categorie: 'profil' | 'prestige') => {
+    setVoies(prev => prev.map(v => v.nom === nom ? { ...v, categorie } : v))
+    setExported(false)
   }
 
   // Fonctions peuples
@@ -1461,7 +1469,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s', whiteSpace: 'nowrap',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
                   }}>
-                    <span style={{ flex: 1, opacity: hiddenVoies.includes(voie) ? 0.4 : 1 }}>{voie}</span>
+                    <span style={{ flex: 1, opacity: hiddenVoies.includes(voie) ? 0.4 : 1 }}>
+                      {voie}
+                      {voies.find(v => v.nom === voie)?.categorie === 'prestige' && (
+                        <span style={{ color: 'rgba(210,170,255,0.7)', marginLeft: 5, fontSize: 13 }}>★</span>
+                      )}
+                    </span>
                     {hiddenVoies.includes(voie) && (
                       <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                         {t('descEditor.masquee')}
@@ -1573,6 +1586,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 const peupleVoieNoms = new Set(peuples.flatMap(p => p.cultures.flatMap(c => [c.voiePeuple, c.voieCulturelle].filter(Boolean))))
                 const isBundle = VOIES_BUNDLE_NOMS.has(selected) || peupleVoieNoms.has(selected)
                 const famille = voies.find(v => v.nom === selected)?.famille ?? ''
+                const categorie = voies.find(v => v.nom === selected)?.categorie ?? 'profil'
+                const isPrestige = categorie === 'prestige'
                 const FAMILLE_LABELS_T: Record<string, string> = {
                   combattants: t('descEditor.familleCombattants'),
                   aventuriers: t('descEditor.familleAventuriers'),
@@ -1583,25 +1598,32 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>
                       {t('descEditor.famille')}
                     </span>
-                    {isBundle ? (
-                      <span style={{ fontSize: 14, color: S.parchment, opacity: 0.7, fontStyle: 'italic' }}>
-                        {FAMILLE_LABELS_T[famille] ?? t('descEditor.familleAucune')}
-                      </span>
-                    ) : (
-                      <select
-                        value={famille}
-                        onChange={e => setVoieFamille(selected, e.target.value)}
-                        style={{
-                          background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
-                          color: S.parchment, fontSize: 14, padding: '3px 8px', outline: 'none', cursor: 'pointer',
-                        }}
-                      >
-                        <option value="">{t('descEditor.familleAucune')}</option>
-                        <option value="combattants">{t('descEditor.familleCombattants')}</option>
-                        <option value="aventuriers">{t('descEditor.familleAventuriers')}</option>
-                        <option value="mystiques">{t('descEditor.familleMystiques')}</option>
-                      </select>
-                    )}
+                    <select
+                      value={famille}
+                      onChange={e => setVoieFamille(selected, e.target.value)}
+                      style={{
+                        background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4,
+                        color: S.parchment, fontSize: 14, padding: '3px 8px', outline: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">{t('descEditor.familleAucune')}</option>
+                      <option value="combattants">{t('descEditor.familleCombattants')}</option>
+                      <option value="aventuriers">{t('descEditor.familleAventuriers')}</option>
+                      <option value="mystiques">{t('descEditor.familleMystiques')}</option>
+                    </select>
+                    <button
+                      onClick={() => setVoieCategorie(selected, isPrestige ? 'profil' : 'prestige')}
+                      title={isPrestige ? t('descEditor.categoriePrestige') : t('descEditor.categorieProfil')}
+                      style={{
+                        padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                        border: `1px solid ${isPrestige ? 'rgba(180,130,255,0.5)' : 'rgba(201,168,76,0.2)'}`,
+                        background: isPrestige ? 'rgba(180,130,255,0.12)' : 'transparent',
+                        color: isPrestige ? 'rgba(210,170,255,0.9)' : 'rgba(245,236,215,0.35)',
+                        fontFamily: "'Cinzel', serif", letterSpacing: '0.06em', flexShrink: 0,
+                      }}
+                    >
+                      {t('descEditor.categoriePrestige')} ★
+                    </button>
                     <button
                       onClick={() => setHiddenVoies(prev =>
                         prev.includes(selected) ? prev.filter(v => v !== selected) : [...prev, selected]
@@ -1900,6 +1922,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <option value="VOIE_RANG_CHOIX">{t('descEditor.grantVoieRangChoix')}</option>
                             <option value="COMPAGNON">{t('descEditor.grantCompagnonFixe')}</option>
                             <option value="COMPAGNON_CHOIX">{t('descEditor.grantCompagnonChoix')}</option>
+                            <option value="EFFECT_CHOIX">{t('descEditor.grantEffectChoix')}</option>
                           </select>
 
                           {grant.type === 'FORMATION' && (
@@ -1988,6 +2011,71 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 <option value="">{t('descEditor.ajouterCompagnonPlus')}</option>
                                 {compagnons.filter(c => !grant.noms.includes(c.nom)).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
                               </select>
+                            </div>
+                          )}
+
+                          {grant.type === 'EFFECT_CHOIX' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>{t('descEditor.effectChoixStats')}</span>
+                                {grant.stats.map((s, si) => (
+                                  <span key={si} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(201,168,76,0.12)', border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 6px', fontSize: 12, color: S.gold }}>
+                                    {s}
+                                    <button
+                                      onClick={() => updateGrant(selected, i, gi, { stats: grant.stats.filter((_, j) => j !== si) })}
+                                      style={{ background: 'none', border: 'none', color: '#e05555', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1 }}
+                                    >✕</button>
+                                  </span>
+                                ))}
+                                <select
+                                  value=""
+                                  onChange={e => {
+                                    if (!e.target.value || grant.stats.includes(e.target.value)) return
+                                    updateGrant(selected, i, gi, { stats: [...grant.stats, e.target.value] })
+                                  }}
+                                  style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                                >
+                                  <option value="">+ stat</option>
+                                  {STATS.filter(s => !grant.stats.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>{t('descEditor.effectChoixValeur')}</span>
+                                {grant.formula !== undefined ? (
+                                  <select
+                                    value={grant.formula ?? ''}
+                                    onChange={e => updateGrant(selected, i, gi, { formula: e.target.value })}
+                                    style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.parchment, outline: 'none', cursor: 'pointer' }}
+                                  >
+                                    {FORMULAS.map(f => <option key={f} value={f}>{f}</option>)}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    value={grant.value ?? 1}
+                                    onChange={e => updateGrant(selected, i, gi, { value: parseInt(e.target.value) || 1 })}
+                                    style={{ width: 48, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.gold, outline: 'none', textAlign: 'center' }}
+                                  />
+                                )}
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={grant.formula !== undefined}
+                                    onChange={e => updateGrant(selected, i, gi, e.target.checked ? { formula: FORMULAS[0], value: undefined } : { formula: undefined, value: 1 })}
+                                    style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                  />
+                                  {t('descEditor.formulaire')}
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!grant.rangMultiplier}
+                                    onChange={e => updateGrant(selected, i, gi, { rangMultiplier: e.target.checked || undefined })}
+                                    style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                  />
+                                  ×rang
+                                </label>
+                              </div>
                             </div>
                           )}
 

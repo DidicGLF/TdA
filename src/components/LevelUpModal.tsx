@@ -10,6 +10,7 @@ import {
 import type { VoieKey } from '../utils/levelUp'
 import VoieCombobox from './VoieCombobox'
 import { computeEffects, sumStat } from '../utils/computeEffects'
+import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
 import { useGameData } from '../context/GameDataContext'
 
 interface Props {
@@ -51,6 +52,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const [formationsAchetées, setFormationsAchetées] = useState<string[]>([])
   const [prestigeNom, setPrestigeNom] = useState((character.voiePrestige as VoiePersonnage).nom)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [pendingEffectsChoix, setPendingEffectsChoix] = useState<Record<string, string>>({})
 
   // Per-level conMod: ranks from selections are allocated greedily (2 pts/level),
   // and any CON bonus gained mid-batch applies to subsequent levels.
@@ -97,6 +99,25 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   if (newGolemRang >= 1 && character.niveau < 9  && newNiveau >= 9)  golemNotifs.push(t('levelUp.golemNiveau9'))
   if (newGolemRang >= 1 && character.niveau < 13 && newNiveau >= 13) golemNotifs.push(t('levelUp.golemNiveau13'))
   if (newGolemRang >= 1 && character.niveau < 17 && newNiveau >= 17) golemNotifs.push(t('levelUp.golemNiveau17'))
+
+  const ethereeVoieKey = VOIE_KEYS.find(k => (character[k] as VoiePersonnage).nom === 'Voie éthérée')
+  const currentEthereeRang = ethereeVoieKey ? (character[ethereeVoieKey] as VoiePersonnage).rangs.filter(Boolean).length : 0
+  const newEthereeRang = currentEthereeRang + (ethereeVoieKey ? (selections[ethereeVoieKey] ?? 0) : 0)
+  const runesNotifs: string[] = []
+  if (currentEthereeRang < 1 && newEthereeRang >= 1) runesNotifs.push(t('levelUp.ethereeRang1'))
+  if (currentEthereeRang < 2 && newEthereeRang >= 2) runesNotifs.push(t('levelUp.ethereeRang2'))
+  if (currentEthereeRang < 3 && newEthereeRang >= 3) runesNotifs.push(t('levelUp.ethereeRang3'))
+  if (currentEthereeRang < 4 && newEthereeRang >= 4) runesNotifs.push(t('levelUp.ethereeRang4'))
+  if (currentEthereeRang < 5 && newEthereeRang >= 5) runesNotifs.push(t('levelUp.ethereeRang5'))
+
+  const divinesVoieKey = VOIE_KEYS.find(k => (character[k] as VoiePersonnage).nom === 'Voie des runes divines')
+  const currentDivinesRang = divinesVoieKey ? (character[divinesVoieKey] as VoiePersonnage).rangs.filter(Boolean).length : 0
+  const newDivinesRang = currentDivinesRang + (divinesVoieKey ? (selections[divinesVoieKey] ?? 0) : 0)
+  if (currentDivinesRang < 1 && newDivinesRang >= 1) runesNotifs.push(t('levelUp.divinesRang1'))
+  if (currentDivinesRang < 2 && newDivinesRang >= 2) runesNotifs.push(t('levelUp.divinesRang2'))
+  if (currentDivinesRang < 3 && newDivinesRang >= 3) runesNotifs.push(t('levelUp.divinesRang3'))
+  if (currentDivinesRang < 4 && newDivinesRang >= 4) runesNotifs.push(t('levelUp.divinesRang4'))
+  if (currentDivinesRang < 5 && newDivinesRang >= 5) runesNotifs.push(t('levelUp.divinesRang5'))
   const ptsTotal = 2 * levelsGained
   const pmGain = pmGainParNiveau * levelsGained
 
@@ -219,6 +240,9 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       conMod: conModPerLevel[i],
       total: jet! + conModPerLevel[i],
     }))
+    const mergedEffectsChoix = Object.keys(pendingEffectsChoix).length > 0
+      ? { ...(character.effectsChoix ?? {}), ...pendingEffectsChoix }
+      : character.effectsChoix
     onConfirm({
       niveau: newNiveau,
       pvTotal: character.pvTotal + pvGagnes!,
@@ -229,6 +253,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       ...(formationsAchetées.length > 0 ? { formationsMartiales: [...character.formationsMartiales, ...formationsAchetées] } : {}),
       ...niveau1BasePatch,
       pvHistorique: [...(character.pvHistorique ?? []), ...nouvellesEntrees],
+      ...(mergedEffectsChoix !== undefined ? { effectsChoix: mergedEffectsChoix } : {}),
     })
     onClose()
   }
@@ -631,6 +656,66 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
             )}
           </section>
 
+          {/* ── Choix d'effets ── */}
+          {(() => {
+            // Simuler le personnage après level-up pour trouver les nouveaux grants EFFECT_CHOIX
+            const virtualVoies: Partial<Character> = {}
+            for (const key of VOIE_KEYS) {
+              const count = selections[key]
+              if (!count) continue
+              const voie = character[key] as VoiePersonnage
+              const firstNext = prochainRang(voie) ?? voie.rangs.length
+              const newRangs = [...voie.rangs]
+              for (let i = 0; i < count; i++) newRangs[firstNext + i] = true
+              virtualVoies[key] = { ...voie, rangs: newRangs }
+            }
+            const virtualCharacter = { ...character, ...virtualVoies, effectsChoix: { ...(character.effectsChoix ?? {}), ...pendingEffectsChoix } }
+            const effectGrants = getEffectChoixGrants(virtualCharacter, data)
+            if (effectGrants.length === 0) return null
+            const pending = effectGrants.filter(g => !g.choixFait)
+            const done = effectGrants.filter(g => !!g.choixFait)
+            return (
+              <section style={{ border: '1px solid rgba(120,180,255,0.35)', borderRadius: 8, padding: '14px 16px', background: 'rgba(120,180,255,0.05)' }}>
+                <div style={{ ...SECTION_LABEL, color: 'rgba(120,180,255,0.85)', marginBottom: 10 }}>
+                  {t('levelUp.bonusAuChoix')}
+                </div>
+                {pending.map(({ grant, grantKey }) => (
+                  <div key={grantKey} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(200,220,255,0.75)', marginBottom: 6 }}>
+                      {t('wizard.step3.choisirStat', { bonus: grant.value !== undefined ? (grant.value > 0 ? `+${grant.value}` : String(grant.value)) : grant.formula ?? '' })}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {grant.stats.map(stat => (
+                        <button key={stat}
+                          onClick={() => setPendingEffectsChoix(prev => ({ ...prev, [grantKey]: stat }))}
+                          style={{ padding: '5px 14px', borderRadius: 4, border: '1px solid rgba(120,180,255,0.5)', background: 'transparent', color: 'rgba(200,220,255,0.9)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {stat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {done.map(({ grant, grantKey, choixFait }) => (
+                  <div key={grantKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: 'rgba(200,220,255,0.6)' }}>
+                      {grant.value !== undefined ? (grant.value > 0 ? `+${grant.value}` : String(grant.value)) : grant.formula ?? ''} →
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(200,220,255,0.9)' }}>{choixFait}</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {grant.stats.filter(s => s !== choixFait).map(stat => (
+                        <button key={stat}
+                          onClick={() => setPendingEffectsChoix(prev => ({ ...prev, [grantKey]: stat }))}
+                          style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(120,180,255,0.3)', background: 'transparent', color: 'rgba(200,220,255,0.45)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {stat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )
+          })()}
+
           {/* ── Notifications Golem ── */}
           {golemNotifs.length > 0 && (
             <section style={{
@@ -645,6 +730,27 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                 {golemNotifs.map((msg, i) => (
                   <div key={i} style={{ fontSize: 14, color: 'rgba(185,235,220,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     <span style={{ color: 'rgba(130,200,180,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
+                    {msg}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Notifications Runes ── */}
+          {runesNotifs.length > 0 && (
+            <section style={{
+              border: '1px solid rgba(201,168,76,0.35)',
+              borderRadius: 8, padding: '14px 16px',
+              background: 'rgba(201,168,76,0.05)',
+            }}>
+              <div style={{ ...SECTION_LABEL, color: 'rgba(201,168,76,0.85)', marginBottom: 10 }}>
+                {t('levelUp.runesMaj')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {runesNotifs.map((msg, i) => (
+                  <div key={i} style={{ fontSize: 14, color: 'rgba(245,225,175,0.85)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ color: 'rgba(201,168,76,0.7)', flexShrink: 0, marginTop: 1 }}>▸</span>
                     {msg}
                   </div>
                 ))}

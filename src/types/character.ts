@@ -136,6 +136,7 @@ export interface Character {
   // Compagnons
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
+  effectsChoix?: Record<string, string>  // grantKey → stat choisie par grant EFFECT_CHOIX
   compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
@@ -155,6 +156,11 @@ export function getGolemVoieRang(character: Character): number {
   const voies = [character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele]
   const v = voies.find(v => v.nom === 'Voie des golems')
   return v ? v.rangs.filter(Boolean).length : 0
+}
+
+export function hasVoieEtheree(character: Character): boolean {
+  const voies = [character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele]
+  return voies.some(v => v.nom === 'Voie éthérée' && v.rangs.some(Boolean))
 }
 
 export const defaultCharacter = (): Character => ({
