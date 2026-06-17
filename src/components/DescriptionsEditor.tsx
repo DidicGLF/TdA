@@ -8,7 +8,6 @@ import { useGameData } from '../context/GameDataContext'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
 
-const VOIES_BUNDLE_NOMS = new Set(VOIES_BUNDLE.map(v => v.nom))
 // descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
 const _descUnwrapped: Record<string, unknown[]> = (
   DESCRIPTIONS_RAW && '_type' in (DESCRIPTIONS_RAW as object) && 'data' in (DESCRIPTIONS_RAW as object)
@@ -1583,7 +1582,6 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
               />
               {(() => {
-                const peupleVoieNoms = new Set(peuples.flatMap(p => p.cultures.flatMap(c => [c.voiePeuple, c.voieCulturelle].filter(Boolean))))
                 const famille = voies.find(v => v.nom === selected)?.famille ?? ''
                 const categorie = voies.find(v => v.nom === selected)?.categorie ?? 'profil'
                 const isPrestige = categorie === 'prestige'
