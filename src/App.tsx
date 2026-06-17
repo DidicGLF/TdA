@@ -416,6 +416,46 @@ function AppContent() {
   )
 
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
+  const mobileToolbarButtons = (
+    <>
+      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
+        <button key={p} onClick={() => setSheetPage(p)} style={{
+          flexShrink: 0,
+          padding: '6px 14px', borderRadius: '4px 4px 0 0',
+          border: '1px solid rgba(201,168,76,0.4)',
+          borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
+          background: sheetPage === p ? 'rgba(201,168,76,0.1)' : 'transparent',
+          color: sheetPage === p ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+          cursor: 'pointer', fontSize: 15,
+          fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+        }}>
+          {t(`fiche.${p}`)}
+        </button>
+      ))}
+      <button onClick={() => setShowSave(true)} style={{
+        flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+        border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+        color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+      }}>{t('toolbar.personnages')}</button>
+      <button onClick={() => setShowLevelUp(true)} style={{
+        flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+        border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
+        color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+      }}>{t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}</button>
+      <div ref={mobileGestionRef} style={{ flexShrink: 0 }}>
+        <button onClick={() => setShowMobileGestion(g => !g)} style={{
+          padding: '6px 12px', borderRadius: 4, whiteSpace: 'nowrap',
+          border: `1px solid ${showMobileGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
+          background: showMobileGestion ? 'rgba(201,168,76,0.1)' : 'transparent',
+          color: showMobileGestion ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
+          cursor: 'pointer', fontSize: 13,
+        }}>
+          {t('toolbar.gestion')}
+        </button>
+      </div>
+    </>
+  )
+
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
@@ -425,64 +465,42 @@ function AppContent() {
         <div style={{ flex: 1, overflow: 'hidden' }}>
 
           {mobileTab === 'fiche' ? (
-            <div style={{ height: '100%', overflowY: 'auto', background: '#111' }}>
-              {/* Toolbar compact */}
-              <div style={{
-                display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
-                position: 'sticky', top: 0, zIndex: 35, background: '#111',
-                borderBottom: '1px solid rgba(201,168,76,0.15)',
-                overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-              }}>
-                {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
-                  <button key={p} onClick={() => setSheetPage(p)} style={{
-                    flexShrink: 0,
-                    padding: '6px 14px', borderRadius: '4px 4px 0 0',
-                    border: '1px solid rgba(201,168,76,0.4)',
-                    borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
-                    background: sheetPage === p ? 'rgba(201,168,76,0.1)' : 'transparent',
-                    color: sheetPage === p ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                    cursor: 'pointer', fontSize: 15,
-                    fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
-                  }}>
-                    {t(`fiche.${p}`)}
-                  </button>
-                ))}
-                <button onClick={() => setShowSave(true)} style={{
-                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
-                  border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
-                  color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>{t('toolbar.personnages')}</button>
-                <button onClick={() => setShowLevelUp(true)} style={{
-                  flexShrink: 0, padding: '6px 12px', borderRadius: 4,
-                  border: '1px solid rgba(201,168,76,0.5)', background: 'transparent',
-                  color: 'rgba(245,236,215,0.85)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-                }}>{t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}</button>
-                <div ref={mobileGestionRef} style={{ flexShrink: 0 }}>
-                  <button onClick={() => setShowMobileGestion(g => !g)} style={{
-                    padding: '6px 12px', borderRadius: 4, whiteSpace: 'nowrap',
-                    border: `1px solid ${showMobileGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
-                    background: showMobileGestion ? 'rgba(201,168,76,0.1)' : 'transparent',
-                    color: showMobileGestion ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
-                    cursor: 'pointer', fontSize: 13,
-                  }}>
-                    {t('toolbar.gestion')}
-                  </button>
+            sheetPage === 'runes' ? (
+              /* Runes : toolbar fixe + composant 3 zones */
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#111', overflow: 'hidden' }}>
+                <div style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
+                  zIndex: 35, background: '#111', borderBottom: '1px solid rgba(201,168,76,0.15)',
+                  overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
+                }}>
+                  {mobileToolbarButtons}
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile />
                 </div>
               </div>
-              {/* Feuille scrollable */}
-              <div style={{ padding: '0 4px 80px' }}>
-                {sheetPage === 'recto' ? (
-                  <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
-                ) : sheetPage === 'verso' ? (
-                  <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
-                ) : sheetPage === 'runes' ? (
-                  <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
-                ) : (
-                  <CharacterSheetGolem character={character} onChange={onChange} />
-                )}
+            ) : (
+              /* Autres pages : toolbar sticky + scroll classique */
+              <div style={{ height: '100%', overflowY: 'auto', background: '#111' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
+                  position: 'sticky', top: 0, zIndex: 35, background: '#111',
+                  borderBottom: '1px solid rgba(201,168,76,0.15)',
+                  overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
+                }}>
+                  {mobileToolbarButtons}
+                </div>
+                <div style={{ padding: '0 4px 80px' }}>
+                  {sheetPage === 'recto' ? (
+                    <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
+                  ) : sheetPage === 'verso' ? (
+                    <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                  ) : (
+                    <CharacterSheetGolem character={character} onChange={onChange} />
+                  )}
+                </div>
               </div>
-            </div>
-
+            )
           ) : (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(20,16,10,0.98)' }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>

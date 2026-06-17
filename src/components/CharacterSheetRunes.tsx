@@ -79,11 +79,9 @@ function TileVide({ count = 1 }: { count?: number }) {
   )
 }
 
-const allElements = data.groupes.flatMap(g =>
-  g.elements.map(e => ({ ...e, effetElement: g.effetElement }))
-)
+// module-level pour lookups et tirage desktop
+const allElements = data.groupes.flatMap(g => g.elements.map(e => ({ ...e, effetElement: g.effetElement })))
 const allAttributs = data.groupes.flatMap(g => g.attributs)
-
 
 // TILE total: 48(svg) + 2×6(padding H) + 2×2(border) = 64 wide ; 60(svg) + 2×12(padding V) + 2×2(border) = 88 tall
 function SlotVide({ color }: { color: string }) {
@@ -127,14 +125,17 @@ function parseDesc(text: string, intMod: number, sagMod: number, rang: number): 
   return <>{chunks.map((c, i) => <React.Fragment key={i}>{c}</React.Fragment>)}</>
 }
 
+// Rang requis pour débloquer chaque groupe (index = index dans data.groupes)
+const GROUPE_RANG_REQUIS = [1, 3, 5] as const
 
 interface Props {
   character: Character
   divin: string | null
   onDivinChange: (nom: string | null) => void
+  mobile?: boolean
 }
 
-export default function CharacterSheetRunes({ character, divin, onDivinChange }: Props) {
+export default function CharacterSheetRunes({ character, divin, onDivinChange, mobile = false }: Props) {
   const [element, setElement]       = useState<string | null>(null)
   const [attributs, setAttributs]   = useState<string[]>([])
   const [rangChoisi, setRangChoisi] = useState<1 | 3 | 5 | 7 | null>(null)
@@ -152,6 +153,16 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange }:
   const maxAttributs = rangPrestige >= 5 ? 4 : 3
   const rangsDisponibles = (maxAttributs >= 4 ? [1, 3, 5, 7] : [1, 3, 5]) as (1 | 3 | 5 | 7)[]
 
+  // Mobile : groupes filtrés par rang. Desktop : tous les groupes toujours visibles.
+  const groupesDisponibles = data.groupes.filter((_, i) => GROUPE_RANG_REQUIS[i] <= rangVoie)
+  const groupesAffiches = mobile ? groupesDisponibles : data.groupes
+  const tirageElements = mobile
+    ? groupesDisponibles.flatMap(g => g.elements.map(e => ({ ...e, effetElement: g.effetElement })))
+    : allElements
+  const tirageAttributs = mobile
+    ? groupesDisponibles.flatMap(g => g.attributs)
+    : allAttributs
+
   const elementData = element ? allElements.find(e => e.nom === element) : null
   const rang = attributs.length > 0 ? (attributs.length * 2 - 1 + (divin ? 1 : 0)) : null
 
@@ -167,12 +178,11 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange }:
     })
   }
 
-
   function tirerAuSort() {
     if (!rangChoisi) return
     const count = rangChoisi === 1 ? 1 : rangChoisi === 3 ? 2 : rangChoisi === 5 ? 3 : 4
-    const el = allElements[Math.floor(Math.random() * allElements.length)]
-    const shuffled = [...allAttributs].sort(() => Math.random() - 0.5)
+    const el = tirageElements[Math.floor(Math.random() * tirageElements.length)]
+    const shuffled = [...tirageAttributs].sort(() => Math.random() - 0.5)
     setElement(el.nom)
     setAttributs(shuffled.slice(0, count).map(a => a.nom))
     if (divineUnlocked) {
@@ -193,373 +203,410 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange }:
 
   const selectedAttrData = attributs.map(nom => allAttributs.find(a => a.nom === nom)!)
 
-  return (
-    <div style={{ padding: '16px 12px', color: 'rgba(245,236,215,0.9)' }}>
-
-      {/* ── Règle de composition ── */}
-      <div style={{
+  // ── Règle de composition ────────────────────────────────────────────────
+  const regleSection = (
+    <div style={{
+      fontSize: mobile ? 13 : 17,
+      background: 'rgba(0,0,0,0.2)',
+      ...(mobile ? {
+        borderBottom: BORDER,
+        padding: '8px 12px',
+      } : {
         marginBottom: 18,
-        fontSize: 17,
-        background: 'rgba(0,0,0,0.2)',
         border: BORDER,
         borderRadius: 8,
         padding: '12px 16px',
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: maxAttributs >= 4
-            ? 'auto auto auto auto auto auto auto auto 1fr'
-            : 'auto auto auto auto auto auto 1fr',
-          columnGap: 8,
-          rowGap: 6,
-          alignItems: 'center',
-        }}>
-          <span>
-            <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
-            {' = '}
-            <TileVide count={1} />
-            {' Glyphe '}
-            <span style={{ color: GOLD }}>Élément</span>
-            {' +'}
-          </span>
-          <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
-          <span style={{ opacity: 0.5 }}>,</span>
-          <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={2} /></div>
-          <span style={{ opacity: 0.6 }}>ou</span>
-          <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={3} /></div>
-          {maxAttributs >= 4 ? (
-            <>
-              <span style={{ opacity: 0.6 }}>ou</span>
-              <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={4} /></div>
-            </>
-          ) : null}
-          <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
-
-          <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
-          <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
-          <span />
-          <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>3</span>
-          <span />
-          <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>5</span>
-          {maxAttributs >= 4 ? (
-            <>
-              <span />
-              <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>7</span>
-            </>
-          ) : null}
-          <span />
-        </div>
-
-        {divineUnlocked && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-            marginTop: 8, paddingTop: 8,
-            borderTop: '1px solid rgba(201,160,220,0.2)',
-            fontSize: 15,
-          }}>
-            <span style={{ opacity: 0.7 }}>+</span>
-            <TileVide count={1} />
-            <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
-            <span style={{ color: DIVINE, fontWeight: 700, marginLeft: 8 }}>Rang +1</span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Tableau principal 3 colonnes ── */}
+      }),
+    }}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'auto repeat(3, 1fr)',
-        border: BORDER,
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginBottom: 20,
+        gridTemplateColumns: maxAttributs >= 4
+          ? 'auto auto auto auto auto auto auto auto auto auto auto auto auto'
+          : 'auto auto auto auto auto auto auto auto auto auto auto',
+        columnGap: mobile ? 5 : 8,
+        rowGap: mobile ? 4 : 6,
+        alignItems: 'center',
       }}>
+        <span>
+          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
+          {' = '}
+          <TileVide count={1} />
+          {' Glyphe '}
+          <span style={{ color: GOLD }}>Élément</span>
+          {' +'}
+        </span>
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
+        <span style={{ opacity: 0.5 }}>,</span>
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={2} /></div>
+        <span style={{ opacity: 0.6 }}>ou</span>
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={3} /></div>
+        {maxAttributs >= 4 ? (
+          <>
+            <span style={{ opacity: 0.6 }}>ou</span>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={4} /></div>
+          </>
+        ) : null}
+        <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
 
-        {/* Coin vide en-tête */}
-        <div style={{
-          background: 'rgba(201,168,76,0.08)',
-        }} />
+        {divineUnlocked && (
+          <>
+            <span style={{ opacity: 0.5 }}>+</span>
+            <TileVide count={1} />
+            <span style={{ opacity: 0.5 }}>,</span>
+            <span style={{ gridColumn: 'span 3', color: DIVINE, fontWeight: 600, fontSize: mobile ? 12 : 14 }}>
+              Glyphe Divin (optionnel) <span style={{ fontWeight: 700 }}>Rang +1</span>
+            </span>
+            {maxAttributs >= 4 ? <span style={{ gridColumn: 'span 2' }} /> : null}
+            <span />
+          </>
+        )}
 
-        {/* En-têtes */}
-        {data.groupes.map((g, i) => (
-          <div key={g.niveau} style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: 14,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase' as const,
-            color: GOLD,
-            padding: '10px 14px',
-            background: 'rgba(201,168,76,0.08)',
-            borderBottom: BORDER,
-            borderRight: i < 2 ? BORDER : undefined,
-            textAlign: 'center' as const,
-          }}>
-            Glyphes de l'{g.niveau}
-          </div>
-        ))}
+        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
+        <span />
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>3</span>
+        <span />
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>5</span>
+        {maxAttributs >= 4 ? (
+          <>
+            <span />
+            <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>7</span>
+          </>
+        ) : null}
+        {divineUnlocked ? <span style={{ color: DIVINE, fontWeight: 700 }}>+1 si Divin</span> : <span />}
+      </div>
+    </div>
+  )
 
-        {/* En-tête de ligne — Élément */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderLeft: BORDER,
-          padding: '0 10px',
-          writingMode: 'vertical-rl' as const,
-          transform: 'rotate(180deg)',
+  // ── Tableau principal ───────────────────────────────────────────────────
+  const tableauSection = (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `auto repeat(${groupesAffiches.length}, 1fr)`,
+      border: BORDER,
+      borderRadius: 8,
+      overflow: 'hidden',
+      ...(mobile ? {} : { marginBottom: 20 }),
+    }}>
+
+      {/* Coin vide en-tête */}
+      <div style={{ background: 'rgba(201,168,76,0.08)' }} />
+
+      {/* En-têtes */}
+      {groupesAffiches.map((g, i) => (
+        <div key={g.niveau} style={{
           fontFamily: "'Cinzel', serif",
-          fontSize: 14,
-          letterSpacing: '0.12em',
+          fontSize: mobile ? 12 : 14,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase' as const,
           color: GOLD,
+          padding: mobile ? '8px 10px' : '10px 14px',
           background: 'rgba(201,168,76,0.08)',
+          borderBottom: BORDER,
+          borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
+          textAlign: 'center' as const,
         }}>
-          Élément
+          Glyphes de l'{g.niveau}
         </div>
+      ))}
 
-        {/* Ligne éléments */}
-        {data.groupes.map((g, i) => (
-          <div key={g.niveau} style={{
-            display: 'flex',
-            borderRight: i < 2 ? BORDER : undefined,
-          }}>
-            <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 10px' }}>
-              {g.elements.map(e => {
-                const selected = element === e.nom
-                const disabled = !selected && element !== null
-                return (
-                  <div
-                    key={e.nom}
-                    onClick={() => !disabled && handleElementClick(e.nom)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
-                  >
-                    {selected
-                      ? <SlotVide color="rgba(201,168,76,0.35)" />
-                      : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}>
-                          <Rune nom={e.nom} width={48} height={60} color="#7a3a00" />
-                        </div>
-                    }
-                    <div style={{ opacity: selected ? 0.3 : 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: GOLD, fontFamily: "'Cinzel', serif" }}>{e.nom}</div>
-                      <div style={{ fontSize: 13, opacity: 0.6, marginTop: 2 }}>{e.texte}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+      {/* En-tête de ligne — Élément */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderLeft: BORDER,
+        padding: '0 8px',
+        writingMode: 'vertical-rl' as const,
+        transform: 'rotate(180deg)',
+        fontFamily: "'Cinzel', serif",
+        fontSize: mobile ? 12 : 14,
+        letterSpacing: '0.12em',
+        color: GOLD,
+        background: 'rgba(201,168,76,0.08)',
+      }}>
+        Élément
+      </div>
 
-            <div style={{
-              flex: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '10px 12px',
-              borderLeft: '1px solid rgba(201,168,76,0.2)',
-              textAlign: 'center' as const,
-            }}>
-              <span style={{ color: GOLD, fontWeight: 700, fontSize: 15 }}>{parseDesc(g.effetElement, intMod, sagMod, rangVoie)}</span>
-            </div>
-          </div>
-        ))}
-
-        {/* Séparateur pleine largeur entre Élément et Attribut */}
-        <div style={{ gridColumn: '1 / -1', borderTop: BORDER, margin: 0, padding: 0 }} />
-
-        {/* En-tête de ligne — Attribut */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderLeft: BORDER,
-          padding: '0 10px',
-          writingMode: 'vertical-rl' as const,
-          transform: 'rotate(180deg)',
-          fontFamily: "'Cinzel', serif",
-          fontSize: 14,
-          letterSpacing: '0.12em',
-          color: GOLD,
-          background: 'rgba(201,168,76,0.08)',
+      {/* Ligne éléments */}
+      {groupesAffiches.map((g, i) => (
+        <div key={g.niveau} style={{
+          display: 'flex',
+          borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
         }}>
-          Attribut
-        </div>
-
-        {/* Ligne attributs */}
-        {data.groupes.map((g, i) => (
-          <div key={g.niveau} style={{
-            display: 'flex', flexDirection: 'column', gap: 8,
-            padding: '10px 10px',
-            borderRight: i < 2 ? BORDER : undefined,
-          }}>
-            {g.attributs.map(a => {
-              const selected = attributs.includes(a.nom)
-              const disabled = !selected && attributs.length >= maxAttributs
+          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 8, padding: mobile ? '8px 8px' : '10px 10px' }}>
+            {g.elements.map(e => {
+              const selected = element === e.nom
+              const disabled = !selected && element !== null
               return (
                 <div
-                  key={a.nom}
-                  onClick={() => !disabled && handleAttributClick(a.nom)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
+                  key={e.nom}
+                  onClick={() => !disabled && handleElementClick(e.nom)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
                 >
                   {selected
-                    ? <SlotVide color="rgba(138,180,248,0.35)" />
+                    ? <SlotVide color="rgba(201,168,76,0.35)" />
                     : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}>
-                        <Rune nom={a.nom} width={48} height={60} color="#1a2a5a" />
+                        <Rune nom={e.nom} width={48} height={60} color="#7a3a00" />
                       </div>
                   }
                   <div style={{ opacity: selected ? 0.3 : 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: SILVER, fontFamily: "'Cinzel', serif" }}>{a.nom}</div>
-                    <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2, lineHeight: 1.4 }}>{parseDesc(a.effet, intMod, sagMod, rangVoie)}</div>
+                    <div style={{ fontSize: mobile ? 12 : 13, fontWeight: 600, color: GOLD, fontFamily: "'Cinzel', serif" }}>{e.nom}</div>
+                    <div style={{ fontSize: mobile ? 11 : 13, opacity: 0.6, marginTop: 2 }}>{e.texte}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-        ))}
+
+          <div style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: mobile ? '8px 8px' : '10px 12px',
+            borderLeft: '1px solid rgba(201,168,76,0.2)',
+            textAlign: 'center' as const,
+          }}>
+            <span style={{ color: GOLD, fontWeight: 700, fontSize: mobile ? 13 : 15 }}>{parseDesc(g.effetElement, intMod, sagMod, rangVoie)}</span>
+          </div>
+        </div>
+      ))}
+
+      {/* Séparateur pleine largeur */}
+      <div style={{ gridColumn: '1 / -1', borderTop: BORDER, margin: 0, padding: 0 }} />
+
+      {/* En-tête de ligne — Attribut */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderLeft: BORDER,
+        padding: '0 8px',
+        writingMode: 'vertical-rl' as const,
+        transform: 'rotate(180deg)',
+        fontFamily: "'Cinzel', serif",
+        fontSize: mobile ? 12 : 14,
+        letterSpacing: '0.12em',
+        color: GOLD,
+        background: 'rgba(201,168,76,0.08)',
+      }}>
+        Attribut
       </div>
 
-      {/* ── Barre de sort ── */}
-      <div style={{
-        background: 'rgba(0,0,0,0.25)',
+      {/* Ligne attributs */}
+      {groupesAffiches.map((g, i) => (
+        <div key={g.niveau} style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: mobile ? '8px 8px' : '10px 10px',
+          borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
+        }}>
+          {g.attributs.map(a => {
+            const selected = attributs.includes(a.nom)
+            const disabled = !selected && attributs.length >= maxAttributs
+            return (
+              <div
+                key={a.nom}
+                onClick={() => !disabled && handleAttributClick(a.nom)}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}
+              >
+                {selected
+                  ? <SlotVide color="rgba(138,180,248,0.35)" />
+                  : <div style={{ ...TILE, transition: 'box-shadow 0.15s' }}>
+                      <Rune nom={a.nom} width={48} height={60} color="#1a2a5a" />
+                    </div>
+                }
+                <div style={{ opacity: selected ? 0.3 : 1 }}>
+                  <div style={{ fontSize: mobile ? 12 : 13, fontWeight: 600, color: SILVER, fontFamily: "'Cinzel', serif" }}>{a.nom}</div>
+                  <div style={{ fontSize: mobile ? 11 : 13, opacity: 0.7, marginTop: 2, lineHeight: 1.4 }}>{parseDesc(a.effet, intMod, sagMod, rangVoie)}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+
+  // ── Barre de sort ───────────────────────────────────────────────────────
+  const barreSection = (
+    <div style={{
+      background: 'rgba(0,0,0,0.25)',
+      ...(mobile ? {
+        borderTop: BORDER,
+        padding: '10px 12px 12px',
+      } : {
         border: BORDER,
         borderRadius: 10,
         padding: '14px 16px',
         marginBottom: 28,
-      }}>
-        {/* En-tête barre */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          <span style={{ fontFamily: "'Cinzel', serif", fontSize: 14, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Sort composé
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Sélecteur de rang */}
-            <span style={{ fontSize: 13, opacity: 0.6, marginRight: 2 }}>Rang</span>
-            {rangsDisponibles.map(r => (
-              <button key={r} onClick={() => setRangChoisi(prev => prev === r ? null : r)} style={{
-                background: rangChoisi === r ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.08)',
-                border: rangChoisi === r ? '1px solid #ffd700' : BORDER,
-                borderRadius: 6,
-                color: rangChoisi === r ? '#ffd700' : GOLD,
-                fontFamily: "'Cinzel', serif",
-                fontSize: 13,
-                fontWeight: rangChoisi === r ? 700 : 400,
-                padding: '3px 10px',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}>
-                {r}
-              </button>
-            ))}
-            <div style={{ width: 1, height: 20, background: 'rgba(201,168,76,0.25)', margin: '0 4px' }} />
-            <button onClick={tirerAuSort} disabled={!rangChoisi} style={{
-              background: rangChoisi ? 'rgba(201,168,76,0.15)' : 'rgba(201,168,76,0.05)',
-              border: BORDER, borderRadius: 6,
-              color: rangChoisi ? GOLD : 'rgba(201,168,76,0.3)',
-              fontFamily: "'Cinzel', serif", fontSize: 12, padding: '4px 12px',
-              cursor: rangChoisi ? 'pointer' : 'not-allowed', letterSpacing: '0.08em',
+      }),
+    }}>
+      {/* En-tête barre */}
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: mobile ? 8 : 16, marginBottom: mobile ? 8 : 12, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: "'Cinzel', serif", fontSize: mobile ? 13 : 14, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Sort composé
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 5 : 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <span style={{ fontSize: mobile ? 12 : 13, opacity: 0.6, marginRight: 2 }}>Rang</span>
+          {rangsDisponibles.map(r => (
+            <button key={r} onClick={() => setRangChoisi(prev => prev === r ? null : r)} style={{
+              background: rangChoisi === r ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.08)',
+              border: rangChoisi === r ? '1px solid #ffd700' : BORDER,
+              borderRadius: 6,
+              color: rangChoisi === r ? '#ffd700' : GOLD,
+              fontFamily: "'Cinzel', serif",
+              fontSize: mobile ? 12 : 13,
+              fontWeight: rangChoisi === r ? 700 : 400,
+              padding: mobile ? '3px 8px' : '3px 10px',
+              cursor: 'pointer',
               transition: 'all 0.15s',
             }}>
-              Tirage chaotique
+              {r}
             </button>
-            <button onClick={effacer} style={{
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-              color: 'rgba(245,236,215,0.5)', fontSize: 12, padding: '4px 12px',
-              cursor: 'pointer',
-            }}>
-              Effacer
-            </button>
-          </div>
-        </div>
-
-        {/* Slots */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-
-          {/* Slot élément */}
-          {element ? (
-            <TileTooltip label={element} onClick={() => setElement(null)}>
-              <div style={{
-                ...TILE,
-                border: '2px solid #ffd700',
-                boxShadow: '0 0 14px rgba(255,215,0,0.6), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
-              }}>
-                <Rune nom={element} width={48} height={60} color="#a04800" />
-              </div>
-            </TileTooltip>
-          ) : (
-            <SlotVide color="rgba(201,168,76,0.35)" />
-          )}
-
-          <span style={{ fontSize: 20, opacity: 0.4 }}>+</span>
-
-          {/* Slots attributs */}
-          {Array.from({ length: maxAttributs }, (_, i) => {
-            const nom = attributs[i]
-            return nom ? (
-              <TileTooltip key={i} label={nom} onClick={() => handleAttributClick(nom)}>
-                <div style={{
-                  ...TILE,
-                  border: '2px solid #8ab4f8',
-                  boxShadow: '0 0 14px rgba(100,160,255,0.55), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
-                }}>
-                  <Rune nom={nom} width={48} height={60} color="#2a4aaa" />
-                </div>
-              </TileTooltip>
-            ) : (
-              <SlotVide key={i} color="rgba(180,180,220,0.25)" />
-            )
-          })}
-
-          {/* Slot divin (optionnel, si voie des runes divines déverrouillée) */}
-          {divineUnlocked && (
-            <>
-              <span style={{ fontSize: 15, opacity: 0.5 }}>+</span>
-              {divin ? (() => {
-                const C = RUNES_DIVINES[divin]
-                return (
-                  <TileTooltip label={divin} onClick={() => onDivinChange(null)}>
-                    <div style={{
-                      ...TILE,
-                      border: '2px solid #c9a0dc',
-                      boxShadow: '0 0 14px rgba(201,160,220,0.6), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
-                    }}>
-                      {C && <C width={48} height={60} color="#4a1060" />}
-                    </div>
-                  </TileTooltip>
-                )
-              })() : (
-                <SlotVide color="rgba(201,160,220,0.25)" />
-              )}
-            </>
-          )}
-
-          {/* Résultat */}
-          {rang !== null && elementData && (
-            <>
-              <span style={{ fontSize: 20, opacity: 0.4 }}>=</span>
-              <div style={{
-                flex: 1, minWidth: 180,
-                background: 'rgba(0,0,0,0.2)', border: BORDER, borderRadius: 8,
-                padding: '10px 14px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontSize: 20, fontWeight: 700 }}>
-                    Rang {rang}
-                  </span>
-                  <span style={{ color: GOLD, opacity: 0.8, fontSize: 16 }}>{parseDesc(elementData.effetElement, intMod, sagMod, rangVoie)}</span>
-                </div>
-                <div style={{ fontSize: 15, opacity: 0.75, marginBottom: 4 }}>
-                  <span style={{ color: GOLD }}>Élément — </span>{elementData.texte}
-                </div>
-                {selectedAttrData.map(a => (
-                  <div key={a.nom} style={{ fontSize: 15, opacity: 0.75, marginTop: 4 }}>
-                    <span style={{ color: SILVER }}>{a.nom} — </span>{parseDesc(a.effet, intMod, sagMod, rangVoie)}
-                  </div>
-                ))}
-                {divin && (() => {
-                  const d = data.divines.find(x => x.nom === divin)
-                  return d ? (
-                    <div style={{ fontSize: 15, opacity: 0.75, marginTop: 4 }}>
-                      <span style={{ color: DIVINE }}>{d.nom} — </span>{parseDesc(d.effet, intMod, sagMod, rangVoie)}
-                    </div>
-                  ) : null
-                })()}
-              </div>
-            </>
-          )}
+          ))}
+          <div style={{ width: 1, height: 20, background: 'rgba(201,168,76,0.25)', margin: '0 2px' }} />
+          <button onClick={tirerAuSort} disabled={!rangChoisi} style={{
+            background: rangChoisi ? 'rgba(201,168,76,0.15)' : 'rgba(201,168,76,0.05)',
+            border: BORDER, borderRadius: 6,
+            color: rangChoisi ? GOLD : 'rgba(201,168,76,0.3)',
+            fontFamily: "'Cinzel', serif", fontSize: mobile ? 11 : 12, padding: mobile ? '3px 8px' : '4px 12px',
+            cursor: rangChoisi ? 'pointer' : 'not-allowed', letterSpacing: '0.08em',
+            transition: 'all 0.15s',
+          }}>
+            Tirage chaotique
+          </button>
+          <button onClick={effacer} style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+            color: 'rgba(245,236,215,0.5)', fontSize: mobile ? 11 : 12, padding: mobile ? '3px 8px' : '4px 12px',
+            cursor: 'pointer',
+          }}>
+            Effacer
+          </button>
         </div>
       </div>
 
+      {/* Slots */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 6 : 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+
+        {/* Slot élément */}
+        {element ? (
+          <TileTooltip label={element} onClick={() => setElement(null)}>
+            <div style={{
+              ...TILE,
+              border: '2px solid #ffd700',
+              boxShadow: '0 0 14px rgba(255,215,0,0.6), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
+            }}>
+              <Rune nom={element} width={48} height={60} color="#a04800" />
+            </div>
+          </TileTooltip>
+        ) : (
+          <SlotVide color="rgba(201,168,76,0.35)" />
+        )}
+
+        <span style={{ fontSize: 20, opacity: 0.4 }}>+</span>
+
+        {/* Slots attributs */}
+        {Array.from({ length: maxAttributs }, (_, i) => {
+          const nom = attributs[i]
+          return nom ? (
+            <TileTooltip key={i} label={nom} onClick={() => handleAttributClick(nom)}>
+              <div style={{
+                ...TILE,
+                border: '2px solid #8ab4f8',
+                boxShadow: '0 0 14px rgba(100,160,255,0.55), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
+              }}>
+                <Rune nom={nom} width={48} height={60} color="#2a4aaa" />
+              </div>
+            </TileTooltip>
+          ) : (
+            <SlotVide key={i} color="rgba(180,180,220,0.25)" />
+          )
+        })}
+
+        {/* Slot divin optionnel */}
+        {divineUnlocked && (
+          <>
+            <span style={{ fontSize: 15, opacity: 0.5 }}>+</span>
+            {divin ? (() => {
+              const C = RUNES_DIVINES[divin]
+              return (
+                <TileTooltip label={divin} onClick={() => onDivinChange(null)}>
+                  <div style={{
+                    ...TILE,
+                    border: '2px solid #c9a0dc',
+                    boxShadow: '0 0 14px rgba(201,160,220,0.6), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
+                  }}>
+                    {C && <C width={48} height={60} color="#4a1060" />}
+                  </div>
+                </TileTooltip>
+              )
+            })() : (
+              <SlotVide color="rgba(201,160,220,0.25)" />
+            )}
+          </>
+        )}
+
+        {/* Résultat */}
+        {rang !== null && elementData && (
+          <>
+            <span style={{ fontSize: 20, opacity: 0.4 }}>=</span>
+            <div style={{
+              flex: 1, minWidth: mobile ? 140 : 180,
+              background: 'rgba(0,0,0,0.2)', border: BORDER, borderRadius: 8,
+              padding: '10px 14px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontSize: mobile ? 17 : 20, fontWeight: 700 }}>
+                  Rang {rang}
+                </span>
+                <span style={{ color: GOLD, opacity: 0.8, fontSize: mobile ? 14 : 16 }}>{parseDesc(elementData.effetElement, intMod, sagMod, rangVoie)}</span>
+              </div>
+              <div style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginBottom: 4 }}>
+                <span style={{ color: GOLD }}>Élément — </span>{elementData.texte}
+              </div>
+              {selectedAttrData.map(a => (
+                <div key={a.nom} style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginTop: 4 }}>
+                  <span style={{ color: SILVER }}>{a.nom} — </span>{parseDesc(a.effet, intMod, sagMod, rangVoie)}
+                </div>
+              ))}
+              {divin && (() => {
+                const d = data.divines.find(x => x.nom === divin)
+                return d ? (
+                  <div style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginTop: 4 }}>
+                    <span style={{ color: DIVINE }}>{d.nom} — </span>{parseDesc(d.effet, intMod, sagMod, rangVoie)}
+                  </div>
+                ) : null
+              })()}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
+  // ── Layout mobile : 3 zones fixes/scrollable ────────────────────────────
+  if (mobile) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', color: 'rgba(245,236,215,0.9)' }}>
+        {/* Zone haute fixe : règle de composition */}
+        <div style={{ flexShrink: 0, overflowX: 'auto' }}>
+          {regleSection}
+        </div>
+
+        {/* Zone centrale scrollable : tableau des glyphes */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: '10px 8px 0' }}>
+          {tableauSection}
+        </div>
+
+        {/* Zone basse fixe : sort composé */}
+        <div style={{ flexShrink: 0, overflowX: 'auto' }}>
+          {barreSection}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Layout desktop : scroll naturel ────────────────────────────────────
+  return (
+    <div style={{ padding: '16px 12px', color: 'rgba(245,236,215,0.9)' }}>
+      {regleSection}
+      {tableauSection}
+      {barreSection}
     </div>
   )
 }
