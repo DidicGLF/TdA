@@ -133,9 +133,10 @@ interface Props {
   divin: string | null
   onDivinChange: (nom: string | null) => void
   mobile?: boolean
+  screenWidth?: number
 }
 
-export default function CharacterSheetRunes({ character, divin, onDivinChange, mobile = false }: Props) {
+export default function CharacterSheetRunes({ character, divin, onDivinChange, mobile = false, screenWidth }: Props) {
   const [element, setElement]       = useState<string | null>(null)
   const [attributs, setAttributs]   = useState<string[]>([])
   const [rangChoisi, setRangChoisi] = useState<1 | 3 | 5 | 7 | null>(null)
@@ -210,12 +211,13 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
       marginBottom: 18, fontSize: 17,
       background: 'rgba(0,0,0,0.2)',
       border: BORDER, borderRadius: 8, padding: '12px 16px',
+      display: 'flex', justifyContent: 'center',
     }}>
       <div style={{
-        display: 'grid',
+        display: 'inline-grid',
         gridTemplateColumns: maxAttributs >= 4
-          ? 'auto auto auto auto auto auto auto auto 1fr'
-          : 'auto auto auto auto auto auto 1fr',
+          ? 'auto auto auto auto auto auto auto auto auto'
+          : 'auto auto auto auto auto auto auto',
         columnGap: 8, rowGap: 6, alignItems: 'center',
       }}>
         <span>
@@ -270,13 +272,29 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
     </div>
   )
 
-  // Mobile : layout flex simple qui wrap naturellement
-  const regleSectionMobile = (
+  // Largeur naturelle estimée du grid de règle (tuiles 28px + texte + gaps)
+  const REGLE_NATURAL_WIDTH = divineUnlocked
+    ? (maxAttributs >= 4 ? 1060 : 900)
+    : (maxAttributs >= 4 ? 780 : 620)
+  const regleScale = mobile && screenWidth
+    ? Math.min(1, Math.max(0.4, (screenWidth - 16) / REGLE_NATURAL_WIDTH))
+    : 1
+
+  const regleSection = mobile ? (
     <div style={{
-      fontSize: 13, background: 'rgba(0,0,0,0.2)',
+      fontSize: 14, background: 'rgba(0,0,0,0.2)',
       borderBottom: BORDER, padding: '8px 12px',
+      display: 'flex', justifyContent: 'center',
     }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, rowGap: 3 }}>
+      <div style={{
+        display: 'inline-grid',
+        gridTemplateColumns: divineUnlocked
+          ? (maxAttributs >= 4 ? 'auto auto auto auto auto auto auto auto auto auto auto auto auto' : 'auto auto auto auto auto auto auto auto auto auto auto')
+          : (maxAttributs >= 4 ? 'auto auto auto auto auto auto auto auto auto' : 'auto auto auto auto auto auto auto'),
+        columnGap: 6, rowGap: 4, alignItems: 'center',
+        ...(regleScale < 1 ? { zoom: regleScale } as React.CSSProperties : {}),
+      }}>
+        {/* Ligne 1 : formule + divine inline */}
         <span>
           <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
           {' = '}
@@ -285,38 +303,40 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           <span style={{ color: GOLD }}>Élément</span>
           {' +'}
         </span>
-        <TileVide count={1} />
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
         <span style={{ opacity: 0.5 }}>,</span>
-        <TileVide count={2} />
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={2} /></div>
         <span style={{ opacity: 0.6 }}>ou</span>
-        <TileVide count={3} />
-        {maxAttributs >= 4 ? (
-          <><span style={{ opacity: 0.6 }}>ou</span><TileVide count={4} /></>
-        ) : null}
-        <span>glyphes <span style={{ color: SILVER }}>Attribut</span></span>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5, fontSize: 12 }}>
-        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
-        {rangsDisponibles.map(r => (
-          <span key={r} style={{ color: GOLD, fontWeight: 700 }}>{r}</span>
-        ))}
-        {divineUnlocked && (
-          <span style={{ color: DIVINE, fontWeight: 700 }}>+1 si Divin</span>
+        <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={3} /></div>
+        {maxAttributs >= 4 && (
+          <>
+            <span style={{ opacity: 0.6 }}>ou</span>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={4} /></div>
+          </>
         )}
+        <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
+        {divineUnlocked && (
+          <>
+            <span style={{ opacity: 0.4 }}>+</span>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
+            <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
+            <span style={{ color: DIVINE, fontWeight: 700 }}>Rang +1</span>
+          </>
+        )}
+
+        {/* Ligne 2 : rangs alignés sous les tuiles */}
+        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
+        <span />
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>3</span>
+        <span />
+        <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>5</span>
+        {maxAttributs >= 4 && <><span /><span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>7</span></>}
+        <span />
+        {divineUnlocked && <><span /><span /><span style={{ color: DIVINE, fontWeight: 600, fontSize: 13 }}>+1 si Divin</span></>}
       </div>
-
-      {divineUnlocked && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, fontSize: 12 }}>
-          <span style={{ opacity: 0.6 }}>+</span>
-          <TileVide count={1} />
-          <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
-        </div>
-      )}
     </div>
-  )
-
-  const regleSection = mobile ? regleSectionMobile : regleSectionDesktop
+  ) : regleSectionDesktop
 
   // ── Tableau principal (desktop) ────────────────────────────────────────
   const tableauSectionDesktop = (
@@ -517,7 +537,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
   // ── Barre de sort ───────────────────────────────────────────────────────
   const barreSection = (
     <div style={{
-      background: 'rgba(0,0,0,0.25)',
+      background: 'var(--tdr-dark)',
       ...(mobile ? {
         borderTop: BORDER,
         padding: '10px 12px 12px',

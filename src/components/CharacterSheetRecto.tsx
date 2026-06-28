@@ -154,8 +154,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   )
   type TooltipLine = { label: string; value: string | number; neg?: boolean }
   type TooltipData =
-    | { nom: string; desc: string; rang?: number; lines?: never; total?: never; x: number; y: number }
-    | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; x: number; y: number }
+    | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; x: number; y: number }
+    | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; avanceeOwned?: never; x: number; y: number }
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [hoveredRangInfo, setHoveredRangInfo] = useState<{ voie: VoieKey; rang: number; x: number; y: number } | null>(null)
   const toggleVoieRang = (voie: VoieKey, rang: number) => {
@@ -844,6 +844,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const nomCap = data[nomVoie]?.[rang]?.nom || ''
         const desc = data[nomVoie]?.[rang]?.desc ?? ''
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
+        const voieData = character[voie] as VoiePersonnage
+        const hasAvancee = rang <= 1 && desc.includes('Capacité avancée')
+        const avanceeOwned = hasAvancee ? (voieData.rangsAvances?.[rang] === true) : undefined
         return (
           <React.Fragment key={`${id}-cap`}>
             {f({ label: `${id} nom`, top: pos.top, left: pos.left, width: pos.width, height: 2.0, value: nomCap, onChange: () => {}, readOnly: locked, active: activeStep === 3 })}
@@ -859,7 +862,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                 }}
                 onMouseEnter={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
-                  setTooltip({ nom: nomCap, desc, rang: rang + 1, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  setTooltip({ nom: nomCap, desc, rang: rang + 1, avanceeOwned, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
                 }}
                 onMouseMove={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
@@ -895,7 +898,23 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
           <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
-          {activeTooltip.desc && <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data, activeTooltip.rang)}</div>}
+          {activeTooltip.desc && (
+            <>
+              <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data, activeTooltip.rang)}</div>
+              {activeTooltip.avanceeOwned !== undefined && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  marginTop: 8, paddingTop: 8,
+                  borderTop: '1px solid rgba(201,168,76,0.2)',
+                  color: activeTooltip.avanceeOwned ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.35)',
+                  fontSize: '0.9em',
+                }}>
+                  <span style={{ fontSize: '1.1em' }}>{activeTooltip.avanceeOwned ? '✓' : '○'}</span>
+                  <span>Capacité avancée{!activeTooltip.avanceeOwned ? ' (non acquise)' : ''}</span>
+                </div>
+              )}
+            </>
+          )}
           {activeTooltip.lines && (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <tbody>

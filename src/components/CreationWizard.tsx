@@ -88,10 +88,9 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
 
   const acquired = voie.rangs.filter(Boolean).length
 
-  const avanceesDispo = capsDesc ? [0, 1].filter(ri =>
+  const avanceesRangs = capsDesc ? [0, 1].filter(ri =>
     voie.rangs[ri] &&
-    capsDesc[ri]?.desc?.includes('Capacité avancée') &&
-    !(voie.rangsAvances?.[ri])
+    capsDesc[ri]?.desc?.includes('Capacité avancée')
   ) : []
 
   return (
@@ -137,8 +136,10 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
           }}
         >+</button>
       </div>
-      {avanceesDispo.map(ri => {
+      {avanceesRangs.map(ri => {
+        const taken = voie.rangsAvances?.[ri] === true
         const canAfford = disponibles >= 2
+        const disabled = !taken && !canAfford
         const toggle = () => {
           if (!onAvanceeChange) return
           const ra = [...(voie.rangsAvances ?? [false, false, false, false, false])]
@@ -148,22 +149,29 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
         return (
           <button
             key={ri}
-            disabled={!canAfford}
+            disabled={disabled}
             onClick={toggle}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
-              background: 'none', border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
+              background: 'none', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
               padding: 0, fontFamily: 'inherit',
             }}
           >
             <div style={{
               width: 13, height: 13, borderRadius: 3, flexShrink: 0,
-              border: `1px solid ${canAfford ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.18)'}`,
-              background: 'transparent',
-            }} />
-            <span style={{ fontSize: 11, color: canAfford ? 'rgba(245,236,215,0.55)' : 'rgba(245,236,215,0.2)' }}>
+              border: `1px solid ${taken ? 'rgba(201,168,76,0.8)' : canAfford ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.18)'}`,
+              background: taken ? 'rgba(201,168,76,0.85)' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {taken && (
+                <svg viewBox="0 0 10 8" style={{ width: 9, height: 7 }}>
+                  <polyline points="1,4 4,7 9,1" fill="none" stroke="#1a1510" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span style={{ fontSize: 11, color: taken ? 'var(--tdr-gold)' : canAfford ? 'rgba(245,236,215,0.55)' : 'rgba(245,236,215,0.2)' }}>
               {t('levelUp.capaciteAvancee', { rang: ri + 1 })}
-              <span style={{ opacity: 0.5, marginLeft: 4 }}>· 2 pts</span>
+              {!taken && <span style={{ opacity: 0.5, marginLeft: 4 }}>· 2 pts</span>}
             </span>
           </button>
         )
@@ -1293,6 +1301,16 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
             ▤
           </button>
         </div>
+        {nomPrestige && (
+          <VoieRangBar
+            voie={character.voiePrestige}
+            voieKey="voiePrestige"
+            disponibles={disponibles}
+            onChange={rangs => onChange({ voiePrestige: { ...character.voiePrestige, rangs } })}
+            capsDesc={dynamicDescriptions[nomPrestige]}
+            onAvanceeChange={ra => onChange({ voiePrestige: { ...character.voiePrestige, rangsAvances: ra } })}
+          />
+        )}
       </div>
 
       {/* ── Choix d'effets ── */}

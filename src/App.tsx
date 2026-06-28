@@ -45,7 +45,7 @@ function AppContent() {
   const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes'>('recto')
   const [runesDivin, setRunesDivin] = useState<string | null>(null)
   const runesDivinesUnlocked = character.voiePrestige.nom === 'Voie des runes divines' && character.voiePrestige.rangs.some(Boolean)
-  const showFullRunes = sheetPage === 'runes' && runesDivinesUnlocked
+  const RUNES_FULL_MIN_WIDTH = 1740
   const showGolemTab = getGolemVoieRang(character) >= 2
   const showRunesTab = hasVoieEtheree(character)
   useEffect(() => {
@@ -79,6 +79,8 @@ function AppContent() {
   const sheetRef = useRef<HTMLDivElement>(null)
 
   const [screenWidth, setScreenWidth] = useState(() => window.innerWidth)
+  // showFullRunes = conteneur plein écran : runes divines large OU runes étroites (mobile layout)
+  const showFullRunes = sheetPage === 'runes' && (runesDivinesUnlocked || screenWidth < RUNES_FULL_MIN_WIDTH)
   const [mobileTab, setMobileTab] = useState<'fiche' | 'creation'>('fiche')
 
   const onChange = (patch: Partial<Character>) =>
@@ -476,7 +478,7 @@ function AppContent() {
                   {mobileToolbarButtons}
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile />
+                  <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
                 </div>
               </div>
             ) : (
@@ -551,184 +553,203 @@ function AppContent() {
 
       {printContainer}
 
-      {/* === FEUILLE (gauche, ou plein écran si runes full) === */}
-      <div className="no-print" style={{ width: showFullRunes ? '100%' : `${zoom}%`, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
+      {import.meta.env.DEV && (
+        <div style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 9999, background: 'rgba(0,0,0,0.75)', color: 'rgba(201,168,76,0.9)', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 4, pointerEvents: 'none' }}>
+          {screenWidth}px · {sheetPage === 'runes' ? (runesDivinesUnlocked && screenWidth >= RUNES_FULL_MIN_WIDTH ? 'RunesFull' : `RunesMobile (<${RUNES_FULL_MIN_WIDTH})`) : sheetPage}
+        </div>
+      )}
 
-        {/* Toolbar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
+      {/* === FEUILLE (gauche, ou plein écran si runes full) === */}
+      <div className="no-print" style={{ width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
+
+        {/* Toolbar — outer sticky shell (contenant block pour le dropdown Gestion) */}
+        <div ref={gestionRef} style={{
           position: 'sticky', top: 0, zIndex: 35, background: '#111',
         }}>
-          {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
-            <button key={p} onClick={() => setSheetPage(p)} style={{
-              padding: '4px 16px', borderRadius: '4px 4px 0 0',
-              border: '1px solid rgba(201,168,76,0.4)',
-              borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
-              background: sheetPage === p ? 'rgba(201,168,76,0.1)' : 'transparent',
-              color: sheetPage === p ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-              cursor: 'pointer', fontSize: 15,
-              fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
-            }}>
-              {t(`fiche.${p}`)}
+          {/* Inner scrollable */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
+            overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
+          }}>
+            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
+              <button key={p} onClick={() => setSheetPage(p)} style={{
+                padding: '4px 16px', borderRadius: '4px 4px 0 0',
+                border: '1px solid rgba(201,168,76,0.4)',
+                borderBottom: sheetPage === p ? '2px solid var(--tdr-gold)' : '1px solid transparent',
+                background: sheetPage === p ? 'rgba(201,168,76,0.1)' : 'transparent',
+                color: sheetPage === p ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                cursor: 'pointer', fontSize: 15, flexShrink: 0,
+                fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+                whiteSpace: 'nowrap',
+              }}>
+                {t(`fiche.${p}`)}
+              </button>
+            ))}
+
+            <div style={{ flex: 1, minWidth: 16 }} />
+
+            {/* Imprimer */}
+            <button
+              onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(201,168,76,0.3)',
+                background: 'transparent',
+                color: 'rgba(245,236,215,0.65)',
+                cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {t('toolbar.imprimer')}
             </button>
-          ))}
 
-          <div style={{ flex: 1 }} />
+            {/* Sauvegarde */}
+            <button
+              onClick={() => setShowSave(true)}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(201,168,76,0.4)',
+                background: 'transparent',
+                color: 'rgba(245,236,215,0.7)',
+                cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {t('toolbar.personnages')}
+            </button>
 
-          {/* Imprimer */}
-          <button
-            onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
-            style={{
-              marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.3)',
-              background: 'transparent',
-              color: 'rgba(245,236,215,0.65)',
-              cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
-            }}
-          >
-            {t('toolbar.imprimer')}
-          </button>
+            {/* Niveau */}
+            <button
+              onClick={() => setShowLevelUp(true)}
+              title={character.niveau >= 20 ? t('toolbar.niveauMax') : t('toolbar.niveauSuivant', { suivant: character.niveau + 1 })}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(201,168,76,0.5)',
+                background: 'transparent',
+                color: 'rgba(245,236,215,0.85)',
+                cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}
+            </button>
 
-          {/* Sauvegarde */}
-          <button
-            onClick={() => setShowSave(true)}
-            style={{
-              marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.4)',
-              background: 'transparent',
-              color: 'rgba(245,236,215,0.7)',
-              cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
-            }}
-          >
-            {t('toolbar.personnages')}
-          </button>
+            {/* Zoom */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 4, flexShrink: 0 }}>
+              <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
+                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>−</button>
+              <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
+              <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
+                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
+            </div>
 
-          {/* Niveau */}
-          <button
-            onClick={() => setShowLevelUp(true)}
-            title={character.niveau >= 20 ? t('toolbar.niveauMax') : t('toolbar.niveauSuivant', { suivant: character.niveau + 1 })}
-            style={{
-              marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.5)',
-              background: 'transparent',
-              color: 'rgba(245,236,215,0.85)',
-              cursor: 'pointer',
-              letterSpacing: '0.03em', fontSize: 14,
-            }}
-          >
-            {t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}
-          </button>
-
-          {/* Zoom */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 4 }}>
-            <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-              style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>−</button>
-            <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
-            <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-              style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
-          </div>
-
-          {/* Menu Gestion */}
-          <div ref={gestionRef} style={{ position: 'relative', marginBottom: 4 }}>
+            {/* Bouton Gestion (dans le scroll) */}
             <button
               onClick={() => setShowGestion(g => !g)}
               style={{
-                padding: '3px 12px', borderRadius: 4,
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
                 border: `1px solid ${showGestion ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.4)'}`,
                 background: showGestion ? 'rgba(201,168,76,0.1)' : 'transparent',
                 color: showGestion ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.7)',
                 cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
               }}
             >
               {t('toolbar.gestion')}
             </button>
-            {showGestion && (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
-                background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.3)',
-                borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
-                minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              }}>
-                {/* Données du jeu */}
-                <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
-                  padding: '10px 16px', background: 'transparent', border: 'none',
-                  borderBottom: '1px solid rgba(201,168,76,0.1)',
-                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                }}>
-                  {t('menuGestion.donneesJeu')}
-                </button>
-
-                {/* Déverrouiller la fiche */}
-                <button onClick={() => {
-                  if (ficheLocked) { setShowUnlockConfirm(true); setShowGestion(false) }
-                  else { setFicheLocked(true); setShowGestion(false) }
-                }} style={{
-                  padding: '10px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
-                  border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
-                  color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
-                  cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                }}>
-                  {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
-                </button>
-
-                {/* Langue */}
-                <div style={{
-                  padding: '8px 16px', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                  {(['fr', 'en'] as const).map(lang => (
-                    <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
-                      padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                      border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                      background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
-                      color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                    }}>{lang.toUpperCase()}</button>
-                  ))}
-                </div>
-
-                {/* Feuilles personnalisées */}
-                <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                    {t('menuGestion.feuilles')}
-                  </span>
-                  {(['recto', 'verso'] as const).map(side => (
-                    <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button onClick={() => (side === 'recto' ? rectoInputRef : versoInputRef).current?.click()} style={{
-                        flex: 1, padding: '5px 8px', background: 'transparent',
-                        border: '1px solid rgba(201,168,76,0.25)', borderRadius: 3,
-                        color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
-                      }}>
-                        {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
-                      </button>
-                      {sheetImages[side] && (
-                        <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
-                          padding: '4px 6px', background: 'transparent',
-                          border: '1px solid rgba(255,80,80,0.3)', borderRadius: 3,
-                          color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 11,
-                        }}>✕</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Calibrage */}
-                <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
-                  padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
-                  border: 'none',
-                  color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
-                  cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                }}>
-                  {calibrate ? t('menuGestion.calibrageOn') : t('menuGestion.calibrage')}
-                </button>
-              </div>
-            )}
           </div>
+
+          {/* Dropdown Gestion — hors du scroll, positionné par rapport au sticky shell */}
+          {showGestion && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
+              background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.3)',
+              borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+              minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            }}>
+              {/* Données du jeu */}
+              <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
+                padding: '10px 16px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+              }}>
+                {t('menuGestion.donneesJeu')}
+              </button>
+
+              {/* Déverrouiller la fiche */}
+              <button onClick={() => {
+                if (ficheLocked) { setShowUnlockConfirm(true); setShowGestion(false) }
+                else { setFicheLocked(true); setShowGestion(false) }
+              }} style={{
+                padding: '10px 16px', background: ficheLocked ? 'transparent' : 'rgba(255,160,50,0.1)',
+                border: 'none', borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: ficheLocked ? 'rgba(245,236,215,0.8)' : 'rgba(255,180,60,0.95)',
+                cursor: 'pointer', textAlign: 'left', fontSize: 14,
+              }}>
+                {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
+              </button>
+
+              {/* Langue */}
+              <div style={{
+                padding: '8px 16px', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
+                {(['fr', 'en'] as const).map(lang => (
+                  <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                    padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                    border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
+                    color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                  }}>{lang.toUpperCase()}</button>
+                ))}
+              </div>
+
+              {/* Feuilles personnalisées */}
+              <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {t('menuGestion.feuilles')}
+                </span>
+                {(['recto', 'verso'] as const).map(side => (
+                  <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={() => (side === 'recto' ? rectoInputRef : versoInputRef).current?.click()} style={{
+                      flex: 1, padding: '5px 8px', background: 'transparent',
+                      border: '1px solid rgba(201,168,76,0.25)', borderRadius: 3,
+                      color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                    }}>
+                      {sheetImages[side] ? t('menuGestion.feuillePersonnalisee', { side: side.toUpperCase() }) : t('menuGestion.importerFeuille', { side: side.toUpperCase() })}
+                    </button>
+                    {sheetImages[side] && (
+                      <button onClick={() => setSheetImages(prev => ({ ...prev, [side]: '' }))} title={t('menuGestion.reinitFeuille')} style={{
+                        padding: '4px 6px', background: 'transparent',
+                        border: '1px solid rgba(255,80,80,0.3)', borderRadius: 3,
+                        color: 'rgba(255,110,110,0.7)', cursor: 'pointer', fontSize: 11,
+                      }}>✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calibrage */}
+              <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
+                padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
+                border: 'none',
+                color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
+                cursor: 'pointer', textAlign: 'left', fontSize: 14,
+              }}>
+                {calibrate ? t('menuGestion.calibrageOn') : t('menuGestion.calibrage')}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Feuille + overlay calibrage */}
         {showFullRunes ? (
-          <CharacterSheetRunesFull character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
+          runesDivinesUnlocked && screenWidth >= RUNES_FULL_MIN_WIDTH
+            ? <CharacterSheetRunesFull character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
+            : <div style={{ flex: 1, overflow: 'hidden' }}>
+                <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
+              </div>
         ) : (
         <div style={{ padding: '0 8px 16px' }}>
           <div
