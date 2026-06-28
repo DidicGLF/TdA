@@ -94,7 +94,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
   ) : []
 
   return (
-    <div style={{ marginTop: 5 }}>
+    <div style={{ marginTop: 6, marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ display: 'flex', gap: 3 }}>
           {voie.rangs.slice(0, maxRangs).map((acquis, i) => (
@@ -152,7 +152,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
             disabled={disabled}
             onClick={toggle}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
+              display: 'flex', alignItems: 'center', gap: 6, marginTop: 8,
               background: 'none', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
               padding: 0, fontFamily: 'inherit',
             }}
@@ -1161,7 +1161,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
           .map(k => character[k].nom)
           .filter(Boolean)
         return (
-          <div key={v}>
+          <div key={v} style={{ marginBottom: 12 }}>
             <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
               {t('wizard.step3.voie_n', { n: i + 1 })}
             </label>

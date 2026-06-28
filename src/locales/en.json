@@ -76,6 +76,32 @@
     "modCHA": "Mod.CHA",
     "valDEX": "DEX value"
   },
+  "runes": {
+    "sort": "Spell",
+    "glyphe": "Glyph",
+    "element": "Element",
+    "attribut": "Attribute",
+    "divin": "Divine",
+    "ou": "or",
+    "glyphes": "glyphs",
+    "differents": "different",
+    "rangDuSort": "Spell rank:",
+    "glypheDivinOptionnel": "Divine Glyph (optional)",
+    "rangPlusUn": "Rank +1",
+    "plusUnSiDivin": "+1 if Divine",
+    "glyphesNiveau": "{{niveau}} Glyphs",
+    "glyphesDivins": "Divine Glyphs",
+    "effet": "Effect",
+    "sortCompose": "Composed Spell",
+    "rang": "Rank",
+    "tirageChao": "Chaotic Draw",
+    "effacer": "Clear",
+    "rangResult": "Rank {{rang}}",
+    "elementTiret": "Element — ",
+    "maitreRuniste": "Master Runist",
+    "expertRuniste": "Expert Runist",
+    "voieRunesDivines": "Path of Divine Runes"
+  },
   "fiche": {
     "recto": "Front",
     "verso": "Back",
@@ -448,8 +474,6 @@
     "accesVoiesMasqueesDesc": "These paths are hidden from all users. Enter the password to access them.",
     "motDePasse": "Password…",
     "motDePasseIncorrect": "Incorrect password",
-    "annuler": "Cancel",
-    "confirmer": "Confirm",
     "sectionVoies": "Paths",
     "sectionTraits": "Magical Talents",
     "sectionTraitsRaciaux": "Racial Traits",
@@ -698,5 +722,61 @@
       "puissant": "+2 to STR Mod.",
       "tailleSuperieure": "+10 HP and +1 STR Mod."
     }
+  },
+  "runesData": {
+    "groupes": [
+      {
+        "niveau": "Apprentice",
+        "effetElement": "1D4 Dmg + Mod.INT",
+        "elements": [
+          { "nom": "Lumière",  "label": "Light",    "glyphe": "ᚲ", "texte": "Light, magic, heat" },
+          { "nom": "Air",      "label": "Air",      "glyphe": "ᛖ", "texte": "Air, wind, sound" },
+          { "nom": "Eau",      "label": "Water",    "glyphe": "ᛚ", "texte": "Water, fluids, liquids" }
+        ],
+        "attributs": [
+          { "nom": "Manipulation", "label": "Manipulation", "glyphe": "ᚱ", "effet": "Move up to [rang] m³ of matter within the spell's range" },
+          { "nom": "Résistance",   "label": "Resistance",   "glyphe": "ᛉ", "effet": "Increase an element's resistance – granting a bonus or penalty" },
+          { "nom": "Détection",    "label": "Detection",    "glyphe": "ᛗ", "effet": "Investigate the quality of an element, or detect it" },
+          { "nom": "Portée",       "label": "Range",        "glyphe": "ᚢ", "effet": "Increase the spell's range to 20 meters" }
+        ]
+      },
+      {
+        "niveau": "Initiate",
+        "effetElement": "1D6 Dmg + Mod.INT",
+        "elements": [
+          { "nom": "Obscurité", "label": "Darkness", "glyphe": "ᚺ", "texte": "Darkness, shadows, cold" },
+          { "nom": "Terre",     "label": "Earth",    "glyphe": "ᛃ", "texte": "Earth, stone, rock" },
+          { "nom": "Bois",      "label": "Wood",     "glyphe": "ᛒ", "texte": "Wood, bark, vine" }
+        ],
+        "attributs": [
+          { "nom": "Etendue",     "label": "Area",        "glyphe": "ᚷ", "effet": "Apply an area effect of 6 meters diameter or a 3 × 3 meter cone" },
+          { "nom": "Création",   "label": "Creation",    "glyphe": "ᚠ", "effet": "Create up to [rang] m³ of matter for the spell's duration" },
+          { "nom": "Entropie",   "label": "Entropy",     "glyphe": "ᛇ", "effet": "Accelerate an element's degradation – granting a bonus or penalty" },
+          { "nom": "Persistance","label": "Persistence", "glyphe": "ᛟ", "effet": "Increase the spell duration to [1 tour + Mod. de SAG] rounds" }
+        ]
+      },
+      {
+        "niveau": "Adept",
+        "effetElement": "1D8 Dmg + Mod.INT",
+        "elements": [
+          { "nom": "Feu",    "label": "Fire",      "glyphe": "ᛊ", "texte": "Air + Light + Wood" },
+          { "nom": "Glace",  "label": "Ice",       "glyphe": "ᛁ", "texte": "Water + Darkness" },
+          { "nom": "Foudre", "label": "Lightning", "glyphe": "ᛞ", "texte": "Air + Earth + Light" }
+        ],
+        "attributs": [
+          { "nom": "Annihilation", "label": "Annihilation", "glyphe": "ᛏ", "effet": "Apply a disappearance or cancellation effect. Halves DR." },
+          { "nom": "Puissance",    "label": "Power",        "glyphe": "ᛈ", "effet": "Increase a spell's power, granting a bonus of +2 dice" },
+          { "nom": "Adversité",    "label": "Adversity",    "glyphe": "ᚾ", "effet": "Apply a detrimental condition or penalty in addition to any other effects" },
+          { "nom": "Catalyseur",   "label": "Catalyst",     "glyphe": "ᚨ", "effet": "Double the effects of an 'attribute' glyph" }
+        ]
+      }
+    ],
+    "divines": [
+      { "nom": "Immortalité", "label": "Immortality", "code": "Hoj",  "effet": "Applies a DR 5 effect, or DR 10 specific to a damage source (e.g. fire, slashing damage, etc.)" },
+      { "nom": "Omniscience", "label": "Omniscience", "code": "Yr",   "effet": "Multiplies the spell's range by 10, increases detection quality (allows obtaining any desired information)" },
+      { "nom": "Infinitude",  "label": "Infinitude",  "code": "Kaz",  "effet": "Increases spell damage by 2 dice or extends spell duration to [5 + Mod. de SAG] rounds" },
+      { "nom": "Néant",       "label": "Void",        "code": "Lydr", "effet": "Allows applying the spell's effects to up to [rang / 2] targets within range" },
+      { "nom": "Fatalité",    "label": "Fatality",    "code": "Qi",   "effet": "Increases the spell resistance check difficulty by +3" }
+    ]
   }
 }

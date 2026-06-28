@@ -76,6 +76,32 @@
     "modCHA": "Mod.CHA",
     "valDEX": "Valeur DEX"
   },
+  "runes": {
+    "sort": "Sort",
+    "glyphe": "Glyphe",
+    "element": "Élément",
+    "attribut": "Attribut",
+    "divin": "Divin",
+    "ou": "ou",
+    "glyphes": "glyphes",
+    "differents": "différents",
+    "rangDuSort": "Rang du sort :",
+    "glypheDivinOptionnel": "Glyphe Divin (optionnel)",
+    "rangPlusUn": "Rang +1",
+    "plusUnSiDivin": "+1 si Divin",
+    "glyphesNiveau": "Glyphes de l'{{niveau}}",
+    "glyphesDivins": "Glyphes divins",
+    "effet": "Effet",
+    "sortCompose": "Sort composé",
+    "rang": "Rang",
+    "tirageChao": "Tirage chaotique",
+    "effacer": "Effacer",
+    "rangResult": "Rang {{rang}}",
+    "elementTiret": "Élément — ",
+    "maitreRuniste": "Maître runiste",
+    "expertRuniste": "Expert runiste",
+    "voieRunesDivines": "Voie des runes divines"
+  },
   "fiche": {
     "recto": "Recto",
     "verso": "Verso",
@@ -448,8 +474,6 @@
     "accesVoiesMasqueesDesc": "Ces voies sont masquées pour tous les utilisateurs. Entrez le mot de passe pour y accéder.",
     "motDePasse": "Mot de passe…",
     "motDePasseIncorrect": "Mot de passe incorrect",
-    "annuler": "Annuler",
-    "confirmer": "Confirmer",
     "sectionVoies": "Voies",
     "sectionTraits": "Traits magiques",
     "sectionTraitsRaciaux": "Traits raciaux",
@@ -698,6 +722,62 @@
       "puissant": "+2 au Mod. de FOR",
       "tailleSuperieure": "+10 PV et +1 Mod. de FOR"
     }
+  },
+  "runesData": {
+    "groupes": [
+      {
+        "niveau": "Apprenti",
+        "effetElement": "1D4 DM + Mod.INT",
+        "elements": [
+          { "nom": "Lumière",  "label": "Lumière",  "glyphe": "ᚲ", "texte": "Lumière, magie, chaleur" },
+          { "nom": "Air",      "label": "Air",      "glyphe": "ᛖ", "texte": "Air, vent, son" },
+          { "nom": "Eau",      "label": "Eau",      "glyphe": "ᛚ", "texte": "Eau, fluides, liquides" }
+        ],
+        "attributs": [
+          { "nom": "Manipulation", "label": "Manipulation", "glyphe": "ᚱ", "effet": "Déplacer jusqu'à [rang] m³ matière dans la limite de la portée du sort" },
+          { "nom": "Résistance",   "label": "Résistance",   "glyphe": "ᛉ", "effet": "Augmenter la résistance d'un élément – conférant un bonus ou un malus" },
+          { "nom": "Détection",    "label": "Détection",    "glyphe": "ᛗ", "effet": "Investiguer la qualité d'un élément, ou le détecter" },
+          { "nom": "Portée",       "label": "Portée",       "glyphe": "ᚢ", "effet": "Augmenter la portée du sort jusqu'à 20 mètres" }
+        ]
+      },
+      {
+        "niveau": "Initié",
+        "effetElement": "1D6 DM + Mod.INT",
+        "elements": [
+          { "nom": "Obscurité", "label": "Obscurité", "glyphe": "ᚺ", "texte": "Obscurité, ténèbres, froid" },
+          { "nom": "Terre",     "label": "Terre",     "glyphe": "ᛃ", "texte": "Terre, pierre, roche" },
+          { "nom": "Bois",      "label": "Bois",      "glyphe": "ᛒ", "texte": "Bois, écorce, liane" }
+        ],
+        "attributs": [
+          { "nom": "Etendue",     "label": "Etendue",     "glyphe": "ᚷ", "effet": "Appliquer un effet de zone de 6 mètres de diamètre ou un cône de 3 × 3 mètres" },
+          { "nom": "Création",   "label": "Création",   "glyphe": "ᚠ", "effet": "Créer jusqu'à [rang] m³ matière pendant la limite de la durée du sort" },
+          { "nom": "Entropie",   "label": "Entropie",   "glyphe": "ᛇ", "effet": "Accélérer la dégradation d'un élément – conférant un bonus ou un malus" },
+          { "nom": "Persistance","label": "Persistance","glyphe": "ᛟ", "effet": "Augmenter la durée du sort à [1 tour + Mod. de SAG] tours" }
+        ]
+      },
+      {
+        "niveau": "Adepte",
+        "effetElement": "1D8 DM + Mod.INT",
+        "elements": [
+          { "nom": "Feu",    "label": "Feu",    "glyphe": "ᛊ", "texte": "Air + Lumière + Bois" },
+          { "nom": "Glace",  "label": "Glace",  "glyphe": "ᛁ", "texte": "Eau + Obscurité" },
+          { "nom": "Foudre", "label": "Foudre", "glyphe": "ᛞ", "texte": "Air + Terre + Lumière" }
+        ],
+        "attributs": [
+          { "nom": "Annihilation", "label": "Annihilation", "glyphe": "ᛏ", "effet": "Appliquer un effet de disparition ou d'annulation. Divise la RD par 2." },
+          { "nom": "Puissance",    "label": "Puissance",    "glyphe": "ᛈ", "effet": "Augmenter la puissance d'un sort conférant un bonus de +2 dés" },
+          { "nom": "Adversité",    "label": "Adversité",    "glyphe": "ᚾ", "effet": "Appliquer un état préjudiciable ou un malus en plus des effets éventuels" },
+          { "nom": "Catalyseur",   "label": "Catalyseur",   "glyphe": "ᚨ", "effet": "Doubler les effets d'un gl. « attribut »" }
+        ]
+      }
+    ],
+    "divines": [
+      { "nom": "Immortalité", "label": "Immortalité", "code": "Hoj",  "effet": "Applique un effet de RD 5, ou de RD 10 spécifique à une source de DM (par ex. feu, DM tranchant, etc.)" },
+      { "nom": "Omniscience", "label": "Omniscience", "code": "Yr",   "effet": "Multiplie par 10 la portée du sort, augmente la qualité de la détection (permet d'obtenir toutes les informations voulues)" },
+      { "nom": "Infinitude",  "label": "Infinitude",  "code": "Kaz",  "effet": "Augmente les DM du sort de 2 dés ou porte la durée du sort à [5 + Mod. de SAG] tours" },
+      { "nom": "Néant",       "label": "Néant",       "code": "Lydr", "effet": "Permet d'appliquer les effets du sort jusqu'à [rang / 2] cibles dans la limite de portée du sort" },
+      { "nom": "Fatalité",    "label": "Fatalité",    "code": "Qi",   "effet": "Augmente la difficulté du test de résistance au sort de +3" }
+    ]
   }
 }
 

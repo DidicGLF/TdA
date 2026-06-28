@@ -259,7 +259,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       }
     } : {}
     const nouvellesEntrees = jets.map((jet, i) => ({
-      niveauDe: character.niveau + 1 + i,
+      niveauDe: character.niveau + i,
       niveauA: character.niveau + 1 + i,
       jet: jet!,
       conMod: conModPerLevel[i],

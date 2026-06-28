@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import data from '../data/runesEtherees.json'
+import { useTranslation } from 'react-i18next'
 import Rune, { RUNES_DIVINES } from './Runes'
 import type { Character } from '../types/character'
 import { getMod } from '../types/character'
@@ -79,9 +79,11 @@ function TileVide({ count = 1 }: { count?: number }) {
   )
 }
 
-// module-level pour lookups et tirage desktop
-const allElements = data.groupes.flatMap(g => g.elements.map(e => ({ ...e, effetElement: g.effetElement })))
-const allAttributs = data.groupes.flatMap(g => g.attributs)
+interface RunesElement { nom: string; label: string; glyphe: string; texte: string }
+interface RunesAttribut { nom: string; label: string; glyphe: string; effet: string }
+interface RunesGroupe { niveau: string; effetElement: string; elements: RunesElement[]; attributs: RunesAttribut[] }
+interface RunesDivine { nom: string; label: string; code: string; effet: string }
+interface RunesData { groupes: RunesGroupe[]; divines: RunesDivine[] }
 
 // TILE total: 48(svg) + 2×6(padding H) + 2×2(border) = 64 wide ; 60(svg) + 2×12(padding V) + 2×2(border) = 88 tall
 function SlotVide({ color }: { color: string }) {
@@ -137,6 +139,10 @@ interface Props {
 }
 
 export default function CharacterSheetRunes({ character, divin, onDivinChange, mobile = false, screenWidth }: Props) {
+  const { t } = useTranslation()
+  const data = t('runesData', { returnObjects: true }) as RunesData
+  const allElements = data.groupes.flatMap(g => g.elements.map(e => ({ ...e, effetElement: g.effetElement })))
+  const allAttributs = data.groupes.flatMap(g => g.attributs)
   const [element, setElement]       = useState<string | null>(null)
   const [attributs, setAttributs]   = useState<string[]>([])
   const [rangChoisi, setRangChoisi] = useState<1 | 3 | 5 | 7 | null>(null)
@@ -221,27 +227,27 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         columnGap: 8, rowGap: 6, alignItems: 'center',
       }}>
         <span>
-          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
+          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>{t('runes.sort')}</span>
           {' = '}
           <TileVide count={1} />
-          {' Glyphe '}
-          <span style={{ color: GOLD }}>Élément</span>
+          {' '}{t('runes.glyphe')}{' '}
+          <span style={{ color: GOLD }}>{t('runes.element')}</span>
           {' +'}
         </span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
         <span style={{ opacity: 0.5 }}>,</span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={2} /></div>
-        <span style={{ opacity: 0.6 }}>ou</span>
+        <span style={{ opacity: 0.6 }}>{t('runes.ou')}</span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={3} /></div>
         {maxAttributs >= 4 ? (
           <>
-            <span style={{ opacity: 0.6 }}>ou</span>
+            <span style={{ opacity: 0.6 }}>{t('runes.ou')}</span>
             <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={4} /></div>
           </>
         ) : null}
-        <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
+        <span>{t('runes.glyphes')} <span style={{ color: SILVER }}>{t('runes.attribut')}</span> {t('runes.differents')}</span>
 
-        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
+        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>{t('runes.rangDuSort')}</span>
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
         <span />
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>3</span>
@@ -265,8 +271,8 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         }}>
           <span style={{ opacity: 0.7 }}>+</span>
           <TileVide count={1} />
-          <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
-          <span style={{ color: DIVINE, fontWeight: 700, marginLeft: 8 }}>Rang +1</span>
+          <span>{t('runes.glyphe')} <span style={{ color: DIVINE, fontWeight: 600 }}>{t('runes.divin')}</span> (optionnel)</span>
+          <span style={{ color: DIVINE, fontWeight: 700, marginLeft: 8 }}>{t('runes.rangPlusUn')}</span>
         </div>
       )}
     </div>
@@ -296,36 +302,36 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
       }}>
         {/* Ligne 1 : formule + divine inline */}
         <span>
-          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>Sort</span>
+          <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontWeight: 600 }}>{t('runes.sort')}</span>
           {' = '}
           <TileVide count={1} />
-          {' Glyphe '}
-          <span style={{ color: GOLD }}>Élément</span>
+          {' '}{t('runes.glyphe')}{' '}
+          <span style={{ color: GOLD }}>{t('runes.element')}</span>
           {' +'}
         </span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
         <span style={{ opacity: 0.5 }}>,</span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={2} /></div>
-        <span style={{ opacity: 0.6 }}>ou</span>
+        <span style={{ opacity: 0.6 }}>{t('runes.ou')}</span>
         <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={3} /></div>
         {maxAttributs >= 4 && (
           <>
-            <span style={{ opacity: 0.6 }}>ou</span>
+            <span style={{ opacity: 0.6 }}>{t('runes.ou')}</span>
             <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={4} /></div>
           </>
         )}
-        <span>glyphes <span style={{ color: SILVER }}>Attribut</span> différents</span>
+        <span>{t('runes.glyphes')} <span style={{ color: SILVER }}>{t('runes.attribut')}</span> {t('runes.differents')}</span>
         {divineUnlocked && (
           <>
             <span style={{ opacity: 0.4 }}>+</span>
             <div style={{ display: 'flex', justifyContent: 'center' }}><TileVide count={1} /></div>
-            <span>Glyphe <span style={{ color: DIVINE, fontWeight: 600 }}>Divin</span> (optionnel)</span>
-            <span style={{ color: DIVINE, fontWeight: 700 }}>Rang +1</span>
+            <span>{t('runes.glyphe')} <span style={{ color: DIVINE, fontWeight: 600 }}>{t('runes.divin')}</span> (optionnel)</span>
+            <span style={{ color: DIVINE, fontWeight: 700 }}>{t('runes.rangPlusUn')}</span>
           </>
         )}
 
         {/* Ligne 2 : rangs alignés sous les tuiles */}
-        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>Rang du sort :</span>
+        <span style={{ color: GOLD, opacity: 0.8, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>{t('runes.rangDuSort')}</span>
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>1</span>
         <span />
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>3</span>
@@ -333,7 +339,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         <span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>5</span>
         {maxAttributs >= 4 && <><span /><span style={{ textAlign: 'center', color: GOLD, fontWeight: 700 }}>7</span></>}
         <span />
-        {divineUnlocked && <><span /><span /><span style={{ color: DIVINE, fontWeight: 600, fontSize: 13 }}>+1 si Divin</span></>}
+        {divineUnlocked && <><span /><span /><span style={{ color: DIVINE, fontWeight: 600, fontSize: 13 }}>{t('runes.plusUnSiDivin')}</span></>}
       </div>
     </div>
   ) : regleSectionDesktop
@@ -354,7 +360,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined,
           textAlign: 'center' as const,
         }}>
-          Glyphes de l'{g.niveau}
+          {t('runes.glyphesNiveau', { niveau: g.niveau })}
         </div>
       ))}
 
@@ -364,7 +370,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         writingMode: 'vertical-rl' as const, transform: 'rotate(180deg)',
         fontFamily: "'Cinzel', serif", fontSize: 14, letterSpacing: '0.12em',
         color: GOLD, background: 'rgba(201,168,76,0.08)',
-      }}>Élément</div>
+      }}>{t('runes.element')}</div>
 
       {groupesAffiches.map((g, i) => (
         <div key={g.niveau} style={{ display: 'flex', borderRight: i < groupesAffiches.length - 1 ? BORDER : undefined }}>
@@ -400,7 +406,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         writingMode: 'vertical-rl' as const, transform: 'rotate(180deg)',
         fontFamily: "'Cinzel', serif", fontSize: 14, letterSpacing: '0.12em',
         color: GOLD, background: 'rgba(201,168,76,0.08)',
-      }}>Attribut</div>
+      }}>{t('runes.attribut')}</div>
 
       {groupesAffiches.map((g, i) => (
         <div key={g.niveau} style={{
@@ -439,13 +445,13 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
             textTransform: 'uppercase' as const, color: GOLD, textAlign: 'center' as const,
             padding: '7px 12px', background: 'rgba(201,168,76,0.08)', borderBottom: BORDER,
           }}>
-            Glyphes de l'{g.niveau}
+            {t('runes.glyphesNiveau', { niveau: g.niveau })}
           </div>
 
           {/* Éléments */}
           <div style={{ padding: '8px 10px', borderBottom: BORDER }}>
             <div style={{ fontSize: 11, color: GOLD, opacity: 0.7, fontFamily: "'Cinzel', serif", letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
-              Élément
+              {t('runes.element')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {g.elements.map(e => {
@@ -471,7 +477,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           {/* Attributs */}
           <div style={{ padding: '8px 10px' }}>
             <div style={{ fontSize: 11, color: SILVER, opacity: 0.7, fontFamily: "'Cinzel', serif", letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
-              Attribut
+              {t('runes.attribut')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {g.attributs.map(a => {
@@ -503,7 +509,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
             textTransform: 'uppercase' as const, color: DIVINE, textAlign: 'center' as const,
             padding: '7px 12px', background: 'rgba(201,160,220,0.08)', borderBottom: `1px solid rgba(201,160,220,0.4)`,
           }}>
-            Glyphes divins
+            {t('runes.glyphesDivins')}
           </div>
           <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.divines.map(d => {
@@ -520,7 +526,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
                     <img src={`/${d.code}.png`} style={{ width: '100%', height: '100%', objectFit: 'cover' as const }} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: DIVINE, fontFamily: "'Cinzel', serif" }}>{d.nom}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: DIVINE, fontFamily: "'Cinzel', serif" }}>{d.label}</div>
                     <div style={{ fontSize: 12, opacity: 0.7, marginTop: 1, lineHeight: 1.4 }}>{parseDesc(d.effet, intMod, sagMod, rangVoie)}</div>
                   </div>
                 </div>
@@ -551,10 +557,10 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
       {/* En-tête barre */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: mobile ? 8 : 16, marginBottom: mobile ? 8 : 12, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: "'Cinzel', serif", fontSize: mobile ? 13 : 14, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          Sort composé
+          {t('runes.sortCompose')}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 5 : 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <span style={{ fontSize: mobile ? 12 : 13, opacity: 0.6, marginRight: 2 }}>Rang</span>
+          <span style={{ fontSize: mobile ? 12 : 13, opacity: 0.6, marginRight: 2 }}>{t('runes.rang')}</span>
           {rangsDisponibles.map(r => (
             <button key={r} onClick={() => setRangChoisi(prev => prev === r ? null : r)} style={{
               background: rangChoisi === r ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.08)',
@@ -580,14 +586,14 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
             cursor: rangChoisi ? 'pointer' : 'not-allowed', letterSpacing: '0.08em',
             transition: 'all 0.15s',
           }}>
-            Tirage chaotique
+            {t('runes.tirageChao')}
           </button>
           <button onClick={effacer} style={{
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
             color: 'rgba(245,236,215,0.5)', fontSize: mobile ? 11 : 12, padding: mobile ? '3px 8px' : '4px 12px',
             cursor: 'pointer',
           }}>
-            Effacer
+            {t('runes.effacer')}
           </button>
         </div>
       </div>
@@ -597,7 +603,7 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
 
         {/* Slot élément */}
         {element ? (
-          <TileTooltip label={element} onClick={() => setElement(null)}>
+          <TileTooltip label={elementData?.label ?? element ?? ''} onClick={() => setElement(null)}>
             <div style={{
               ...TILE,
               border: '2px solid #ffd700',
@@ -615,8 +621,9 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
         {/* Slots attributs */}
         {Array.from({ length: maxAttributs }, (_, i) => {
           const nom = attributs[i]
+          const attrLabel = nom ? (allAttributs.find(a => a.nom === nom)?.label ?? nom) : ''
           return nom ? (
-            <TileTooltip key={i} label={nom} onClick={() => handleAttributClick(nom)}>
+            <TileTooltip key={i} label={attrLabel} onClick={() => handleAttributClick(nom)}>
               <div style={{
                 ...TILE,
                 border: '2px solid #8ab4f8',
@@ -635,9 +642,10 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           <>
             <span style={{ fontSize: 15, opacity: 0.5 }}>+</span>
             {divin ? (() => {
-              const code = data.divines.find(d => d.nom === divin)?.code
+              const divineData = data.divines.find(d => d.nom === divin)
+              const code = divineData?.code
               return (
-                <TileTooltip label={divin} onClick={() => onDivinChange(null)}>
+                <TileTooltip label={divineData?.label ?? divin ?? ''} onClick={() => onDivinChange(null)}>
                   <div style={{
                     padding: 0, width: 64, height: 88, boxSizing: 'border-box' as const, overflow: 'hidden', flexShrink: 0,
                     ...TILE,
@@ -665,23 +673,23 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
             }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontFamily: "'Cinzel', serif", color: GOLD, fontSize: mobile ? 17 : 20, fontWeight: 700 }}>
-                  Rang {rang}
+                  {t('runes.rangResult', { rang })}
                 </span>
                 <span style={{ color: GOLD, opacity: 0.8, fontSize: mobile ? 14 : 16 }}>{parseDesc(elementData.effetElement, intMod, sagMod, rangVoie)}</span>
               </div>
               <div style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginBottom: 4 }}>
-                <span style={{ color: GOLD }}>Élément — </span>{elementData.texte}
+                <span style={{ color: GOLD }}>{t('runes.elementTiret')}</span>{elementData.texte}
               </div>
               {selectedAttrData.map(a => (
                 <div key={a.nom} style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginTop: 4 }}>
-                  <span style={{ color: SILVER }}>{a.nom} — </span>{parseDesc(a.effet, intMod, sagMod, rangVoie)}
+                  <span style={{ color: SILVER }}>{a.label} — </span>{parseDesc(a.effet, intMod, sagMod, rangVoie)}
                 </div>
               ))}
               {divin && (() => {
                 const d = data.divines.find(x => x.nom === divin)
                 return d ? (
                   <div style={{ fontSize: mobile ? 13 : 15, opacity: 0.75, marginTop: 4 }}>
-                    <span style={{ color: DIVINE }}>{d.nom} — </span>{parseDesc(d.effet, intMod, sagMod, rangVoie)}
+                    <span style={{ color: DIVINE }}>{d.label} — </span>{parseDesc(d.effet, intMod, sagMod, rangVoie)}
                   </div>
                 ) : null
               })()}
