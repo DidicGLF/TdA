@@ -163,13 +163,20 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     const v = character[voie] as VoiePersonnage
     if (!v.nom) return
     const estCoché = v.rangs[rang]
-    if (!estCoché) {
-      if (rang > 0 && !v.rangs[rang - 1]) return
-      const { disponibles } = calcPointsCapacite(character)
-      if (disponibles < coutRangPourVoie(voie, rang)) return
-    }
     const newRangs = [...v.rangs]
-    newRangs[rang] = !newRangs[rang]
+    if (estCoché) {
+      for (let i = rang; i < newRangs.length; i++) newRangs[i] = false
+    } else {
+      let { disponibles } = calcPointsCapacite(character)
+      for (let i = 0; i <= rang; i++) {
+        if (newRangs[i]) continue
+        const cout = coutRangPourVoie(voie, i)
+        if (cout > disponibles) break
+        newRangs[i] = true
+        disponibles -= cout
+      }
+      if (!newRangs[rang]) return
+    }
 
     const patch: Partial<Character> = { [voie]: { ...v, rangs: newRangs } }
 
@@ -922,15 +929,16 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const voieData = character[voie] as VoiePersonnage
         const acquis = voieData.rangs[rang]
         const disabled = !voieData.nom
+        const sangMeleLimite = character.peuple === 'Sang-mêlé' && voie === 'voiePeuple' && rang >= 3
         const cout = coutRangPourVoie(voie, rang)
         const sequentialBlocked = !acquis && rang > 0 && !voieData.rangs[rang - 1]
         const pointsBlocked = !acquis && !sequentialBlocked && ptsDisponibles < cout
-        const blocked = sequentialBlocked || pointsBlocked
-        const showRangTooltip = !calibrate && !disabled && (blocked || ptsDisponibles !== 0)
+        const blocked = sequentialBlocked || pointsBlocked || sangMeleLimite
+        const showRangTooltip = !calibrate && !disabled && !sangMeleLimite && (blocked || ptsDisponibles !== 0)
         return (
           <div key={id}>
             <div
-              onClick={() => toggleVoieRang(voie, rang)}
+              onClick={() => !sangMeleLimite && toggleVoieRang(voie, rang)}
               {...(showRangTooltip && {
                 onMouseEnter: e => {
                   const rect = containerRef.current?.getBoundingClientRect()
@@ -947,8 +955,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               style={{
               position: 'absolute', top: `${top}%`, left: `${left}%`,
               width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
-              cursor: calibrate || disabled ? 'default' : 'pointer',
+              cursor: calibrate || disabled || sangMeleLimite ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: sangMeleLimite ? 0.25 : 1,
+              background: sangMeleLimite ? 'rgba(80,70,60,0.5)' : undefined,
+              borderRadius: sangMeleLimite ? 2 : undefined,
             }}>
               {acquis && (
                 <svg viewBox="0 0 14 11" style={{ width: '100%', height: '100%' }} overflow="visible">

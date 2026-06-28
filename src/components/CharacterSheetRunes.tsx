@@ -615,15 +615,16 @@ export default function CharacterSheetRunes({ character, divin, onDivinChange, m
           <>
             <span style={{ fontSize: 15, opacity: 0.5 }}>+</span>
             {divin ? (() => {
-              const C = RUNES_DIVINES[divin]
+              const code = data.divines.find(d => d.nom === divin)?.code
               return (
                 <TileTooltip label={divin} onClick={() => onDivinChange(null)}>
                   <div style={{
+                    padding: 0, width: 64, height: 88, boxSizing: 'border-box' as const, overflow: 'hidden', flexShrink: 0,
                     ...TILE,
                     border: '2px solid #c9a0dc',
-                    boxShadow: '0 0 14px rgba(201,160,220,0.6), 3px 5px 10px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.8)',
+                    boxShadow: '0 0 14px rgba(201,160,220,0.6), 3px 5px 10px rgba(0,0,0,0.55)',
                   }}>
-                    {C && <C width={48} height={60} color="#4a1060" />}
+                    {code && <img src={`/${code}.png`} style={{ width: '100%', height: '100%', objectFit: 'cover' as const }} />}
                   </div>
                 </TileTooltip>
               )

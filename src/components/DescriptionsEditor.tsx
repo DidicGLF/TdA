@@ -1640,24 +1640,22 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onClick={cloneVoie}
                       title={t('descEditor.cloneVoieTitle')}
                       style={{
-                        padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15,
                         cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`,
                         background: 'transparent', color: 'rgba(201,168,76,0.7)',
                         flexShrink: 0,
                       }}
-                    >{t('descEditor.cloner')}</button>
+                    >⎘</button>
                     <button
                       onClick={() => setPrintPreviewNom(selected)}
                       title={t('descEditor.imprimerTitle')}
                       style={{
-                        padding: '4px 12px', borderRadius: 4, fontSize: 13,
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15,
                         cursor: 'pointer', border: `1px solid ${S.border}`,
                         background: 'transparent', color: 'rgba(245,236,215,0.55)',
                         flexShrink: 0,
                       }}
-                    >
-                      {t('descEditor.imprimerBtn')}
-                    </button>
+                    >🖨</button>
                   </div>
                 )
               })()}
@@ -1899,8 +1897,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     const grantsAvances = grants.map((g, idx) => ({ g, idx })).filter(({ g }) => !!g.avancee)
 
                     const renderGrant = (grant: Grant, gi: number) => (
-                      <div key={gi} style={{ marginBottom: 6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div key={gi} style={{ marginBottom: 6, border: '1px solid rgba(201,168,76,0.18)', borderRadius: 4, padding: '6px 8px', background: 'rgba(201,168,76,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <select
                             value={grant.type}
                             onChange={e => updateGrant(selected, i, gi, { type: e.target.value as Grant['type'] })}
@@ -2099,7 +2097,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           <button
                             onClick={() => removeGrant(selected, i, gi)}
                             title={t('descEditor.supprimerAccesTitle')}
-                            style={{ padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555' }}
+                            style={{ padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555', marginLeft: 'auto' }}
                           >🗑</button>
                         </div>
 
@@ -2364,17 +2362,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <button
                     onClick={cloneTrait}
                     title={t('descEditor.cloneTraitTitle')}
-                    style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
-                  >{t('descEditor.cloner')}</button>
+                    style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
+                  >⎘</button>
                   <button
                     onClick={() => askConfirm(t('descEditor.confirmSupprimerTrait', { nom: traits[selectedTrait]?.nom }), () => removeTrait(selectedTrait))}
                     title={t('descEditor.supprimer')}
                     style={{
-                      padding: '4px 10px', borderRadius: 4, fontSize: 17, cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent',
                       color: '#e05555', flexShrink: 0,
                     }}
-                  >{t('descEditor.supprimer')}</button>
+                  >🗑</button>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {[
@@ -2520,12 +2518,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   <button
                     onClick={cloneTraitRacial}
                     title={t('descEditor.cloneTraitRacialTitle')}
-                    style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
-                  >{t('descEditor.cloner')}</button>
+                    style={{ padding: '5px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
+                  >⎘</button>
                   <button
                     onClick={() => askConfirm(t('descEditor.confirmSupprimerTraitRacial', { nom: traitsRaciaux[selectedTraitRacial]?.nom }), () => removeTraitRacial(selectedTraitRacial))}
-                    style={{ padding: '5px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
-                  >{t('descEditor.supprimer')}</button>
+                    style={{ padding: '5px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
+                  >🗑</button>
                 </div>
                 <textarea
                   ref={traitRacialDescRef}
@@ -2703,9 +2701,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       )}
                     </button>
                     <button onClick={() => askConfirm(t('descEditor.confirmSupprimerPeuple', { nom: peuple.label }), () => removePeuple(selectedPeuple))} style={{
-                      padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                       border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
-                    }}>{t('descEditor.supprimer')}</button>
+                    }}>🗑</button>
                   </div>
 
                   {/* Cultures */}
@@ -3095,12 +3093,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       )}
                     </button>
                     <button onClick={cloneCompagnon} title={t('descEditor.cloneCompagnonTitle')}
-                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
-                      {t('descEditor.cloner')}
+                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
+                      ⎘
                     </button>
                     <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCompagnon', { nom: c.nom }), () => removeCompagnon(selectedCompagnon))}
-                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
-                      {t('descEditor.supprimer')}
+                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
+                      🗑
                     </button>
                   </div>
 

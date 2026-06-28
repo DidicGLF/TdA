@@ -61,18 +61,21 @@ const BTN_RANG: React.CSSProperties = {
   fontFamily: 'inherit', cursor: 'pointer', transition: 'background 0.15s',
 }
 
-function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
+function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvanceeChange, maxRangs = 5 }: {
   voie: VoiePersonnage
   voieKey: VoieKey
   disponibles: number
   onChange: (newRangs: boolean[]) => void
+  capsDesc?: { desc?: string }[]
+  onAvanceeChange?: (newRangsAvances: boolean[]) => void
+  maxRangs?: number
 }) {
   const { t } = useTranslation()
   const firstNext = prochainRang(voie)
-  const maxed = firstNext === null
-  const costNext = firstNext !== null ? coutRangPourVoie(voieKey, firstNext) : 0
+  const maxed = firstNext === null || firstNext >= maxRangs
+  const costNext = !maxed && firstNext !== null ? coutRangPourVoie(voieKey, firstNext) : 0
   const canAdd = !maxed && costNext <= disponibles
-  const canRemove = firstNext !== null && firstNext > 0
+  const canRemove = firstNext !== null && firstNext > 0 && firstNext <= maxRangs
 
   const add = () => {
     if (!canAdd || firstNext === null) return
@@ -85,47 +88,86 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange }: {
 
   const acquired = voie.rangs.filter(Boolean).length
 
+  const avanceesDispo = capsDesc ? [0, 1].filter(ri =>
+    voie.rangs[ri] &&
+    capsDesc[ri]?.desc?.includes('Capacité avancée') &&
+    !(voie.rangsAvances?.[ri])
+  ) : []
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
-      <div style={{ display: 'flex', gap: 3 }}>
-        {voie.rangs.map((acquis, i) => (
-          <div key={i} style={{
-            width: 12, height: 12, borderRadius: 3,
-            background: acquis ? 'var(--tdr-gold)' : 'rgba(255,255,255,0.06)',
-            border: acquis
-              ? '1px solid rgba(201,168,76,0.8)'
-              : i === firstNext
-                ? '1px solid rgba(201,168,76,0.35)'
-                : '1px solid rgba(255,255,255,0.1)',
-            transition: 'background 0.15s',
-          }} />
-        ))}
+    <div style={{ marginTop: 5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 3 }}>
+          {voie.rangs.slice(0, maxRangs).map((acquis, i) => (
+            <div key={i} style={{
+              width: 12, height: 12, borderRadius: 3,
+              background: acquis ? 'var(--tdr-gold)' : 'rgba(255,255,255,0.06)',
+              border: acquis
+                ? '1px solid rgba(201,168,76,0.8)'
+                : i === firstNext
+                  ? '1px solid rgba(201,168,76,0.35)'
+                  : '1px solid rgba(255,255,255,0.1)',
+              transition: 'background 0.15s',
+            }} />
+          ))}
+        </div>
+        <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', flex: 1 }}>
+          {maxed
+            ? t('wizard.voieRangBar.tousAcquis')
+            : acquired === 0
+              ? t('wizard.voieRangBar.rang1', { count: costNext })
+              : t('wizard.voieRangBar.rangAcquis', { acquired, count: costNext })}
+        </span>
+        <button
+          onClick={remove} disabled={!canRemove}
+          style={{
+            ...BTN_RANG,
+            border: `1px solid ${canRemove ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.12)'}`,
+            background: canRemove ? 'rgba(201,168,76,0.1)' : 'transparent',
+            color: canRemove ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
+          }}
+        >−</button>
+        <button
+          onClick={add} disabled={!canAdd}
+          style={{
+            ...BTN_RANG,
+            border: `1px solid ${canAdd ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.12)'}`,
+            background: canAdd ? 'rgba(201,168,76,0.12)' : 'transparent',
+            color: canAdd ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
+          }}
+        >+</button>
       </div>
-      <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', flex: 1 }}>
-        {maxed
-          ? t('wizard.voieRangBar.tousAcquis')
-          : acquired === 0
-            ? t('wizard.voieRangBar.rang1', { count: costNext })
-            : t('wizard.voieRangBar.rangAcquis', { acquired, count: costNext })}
-      </span>
-      <button
-        onClick={remove} disabled={!canRemove}
-        style={{
-          ...BTN_RANG,
-          border: `1px solid ${canRemove ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.12)'}`,
-          background: canRemove ? 'rgba(201,168,76,0.1)' : 'transparent',
-          color: canRemove ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
-        }}
-      >−</button>
-      <button
-        onClick={add} disabled={!canAdd}
-        style={{
-          ...BTN_RANG,
-          border: `1px solid ${canAdd ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.12)'}`,
-          background: canAdd ? 'rgba(201,168,76,0.12)' : 'transparent',
-          color: canAdd ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.2)',
-        }}
-      >+</button>
+      {avanceesDispo.map(ri => {
+        const canAfford = disponibles >= 2
+        const toggle = () => {
+          if (!onAvanceeChange) return
+          const ra = [...(voie.rangsAvances ?? [false, false, false, false, false])]
+          ra[ri] = !ra[ri]
+          onAvanceeChange(ra)
+        }
+        return (
+          <button
+            key={ri}
+            disabled={!canAfford}
+            onClick={toggle}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
+              background: 'none', border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
+              padding: 0, fontFamily: 'inherit',
+            }}
+          >
+            <div style={{
+              width: 13, height: 13, borderRadius: 3, flexShrink: 0,
+              border: `1px solid ${canAfford ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.18)'}`,
+              background: 'transparent',
+            }} />
+            <span style={{ fontSize: 11, color: canAfford ? 'rgba(245,236,215,0.55)' : 'rgba(245,236,215,0.2)' }}>
+              {t('levelUp.capaciteAvancee', { rang: ri + 1 })}
+              <span style={{ opacity: 0.5, marginLeft: 4 }}>· 2 pts</span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -225,11 +267,14 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const peuple = peuples.find(p => p.label === peupleLabel)
     const firstCulture = peuple?.cultures[0]
     const trait = firstCulture ? findTrait(peuples, peupleLabel, firstCulture.label) : null
+    const isSangMele = peupleLabel === 'Sang-mêlé'
+    const emptyRangs: [boolean,boolean,boolean,boolean,boolean] = [false,false,false,false,false]
     onChange({
       peuple: peupleLabel,
       culture: firstCulture?.label ?? '',
-      voiePeuple: { ...character.voiePeuple, nom: firstCulture?.voiePeuple ?? '' },
-      voieCulturelle: { ...character.voieCulturelle, nom: firstCulture?.voieCulturelle ?? '' },
+      voiePeuple: isSangMele ? { nom: '', rangs: emptyRangs } : { ...character.voiePeuple, nom: firstCulture?.voiePeuple ?? '' },
+      voieCulturelle: isSangMele ? { nom: '', rangs: emptyRangs } : { ...character.voieCulturelle, nom: firstCulture?.voieCulturelle ?? '' },
+      voieSangMele: isSangMele ? { nom: '', rangs: emptyRangs } : character.voieSangMele,
       traitPeuple: trait?.nom ?? '',
       traitPeupleDesc: trait?.desc ?? '',
     })
@@ -304,8 +349,9 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
       {(() => {
         const trait = findTrait(peuples, character.peuple, character.culture)
+        const sansTrait = character.peuple === 'Humain' || character.peuple === 'Sang-mêlé'
         return (
-          <div>
+          <div style={{ opacity: sansTrait ? 0.35 : 1, pointerEvents: sansTrait ? 'none' : 'auto' }}>
             <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
               {t('wizard.step1.traitPeuple')}
             </label>
@@ -766,6 +812,19 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   })()
 
   const profilActuel = PROFILS_FLAT.find(p => p.nom === character.profil) ?? null
+  const isSangMele = character.peuple === 'Sang-mêlé'
+  const voiesDePeuple = isSangMele
+    ? [...new Set(peuples.filter(p => p.label !== 'Sang-mêlé').flatMap(p => p.cultures.map(c => c.voiePeuple).filter((v): v is string => !!v)))]
+    : []
+  const voiesCulturellesSangMele = isSangMele
+    ? [...new Set(
+        peuples.filter(p => p.label !== 'Sang-mêlé')
+          .flatMap(p => p.cultures)
+          .filter(c => c.voiePeuple === character.voiePeuple.nom || c.voiePeuple === character.voieSangMele.nom)
+          .map(c => c.voieCulturelle)
+          .filter((v): v is string => !!v)
+      )]
+    : []
 
   const applyPeupleRecommandé = (peuplePrivilégie: string) => {
     const rec = peuplePrivilégie.toLowerCase()
@@ -941,25 +1000,66 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       {/* ── Voies de peuple & culturelle ── */}
       <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.04)' }}>
         <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(201,168,76,0.5)', marginBottom: 8 }}>
-          {t('wizard.step3.voiesPeuplesCulture')}
+          {isSangMele ? t('wizard.step3.voiesDePeupleSangMele') : t('wizard.step3.voiesPeuplesCulture')}
         </div>
-        {(['voiePeuple', 'voieCulturelle'] as const).map(field => {
-          const label = field === 'voiePeuple' ? t('wizard.step3.voiePeuple') : t('wizard.step3.voieCulturelle')
-          const nom = character[field].nom
+        {isSangMele && (
+          <p style={{ fontSize: 12, color: 'rgba(245,236,215,0.45)', fontStyle: 'italic', marginBottom: 8, lineHeight: 1.5 }}>
+            {t('wizard.step3.sangMeleInfo')}
+          </p>
+        )}
+        {(isSangMele
+          ? (['voiePeuple', 'voieSangMele'] as const)
+          : (['voiePeuple', 'voieCulturelle'] as const)
+        ).map((field, fi) => {
+          const label = isSangMele
+            ? t('wizard.step3.voieDePeuple_n', { n: fi + 1 })
+            : field === 'voiePeuple' ? t('wizard.step3.voiePeuple') : t('wizard.step3.voieCulturelle')
+          const nom = (character[field] as VoiePersonnage).nom
           const hasDesc = !!nom && !!dynamicDescriptions[nom]
+          const autreField = field === 'voiePeuple' ? 'voieSangMele' : 'voiePeuple'
+          const autreNom = isSangMele ? (character[autreField] as VoiePersonnage).nom : ''
           return (
             <div key={field} style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--tdr-gold)', marginBottom: 4 }}>
                 {label}
               </label>
               <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                <input
-                  className="flex-1 border rounded px-3 py-1.5 text-base"
-                  style={{ ...INPUT_STYLE, opacity: 0.75 }}
-                  value={nom}
-                  readOnly
-                  title={t('wizard.step3.determinePeupleEtape')}
-                />
+                {isSangMele ? (
+                  <select
+                    className="flex-1 border rounded px-3 py-1.5 text-base"
+                    style={{ ...INPUT_STYLE, cursor: 'pointer' }}
+                    value={nom}
+                    onChange={e => {
+                      const newNom = e.target.value
+                      const autreVoieNom = field === 'voiePeuple' ? character.voieSangMele.nom : character.voiePeuple.nom
+                      const newCults = [...new Set(
+                        peuples.filter(p => p.label !== 'Sang-mêlé')
+                          .flatMap(p => p.cultures)
+                          .filter(c => c.voiePeuple === newNom || c.voiePeuple === autreVoieNom)
+                          .map(c => c.voieCulturelle)
+                          .filter((v): v is string => !!v)
+                      )]
+                      const patch: Partial<Character> = { [field]: { nom: newNom, rangs: [false,false,false,false,false] } }
+                      if (character.voieCulturelle.nom && !newCults.includes(character.voieCulturelle.nom)) {
+                        patch.voieCulturelle = { nom: '', rangs: [false,false,false,false,false] }
+                      }
+                      onChange(patch)
+                    }}
+                  >
+                    <option value="">{t('wizard.step3.choisirVoiePeuple')}</option>
+                    {voiesDePeuple.map(v => (
+                      <option key={v} value={v} disabled={v === autreNom}>{v}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="flex-1 border rounded px-3 py-1.5 text-base"
+                    style={{ ...INPUT_STYLE, opacity: 0.75 }}
+                    value={nom}
+                    readOnly
+                    title={t('wizard.step3.determinePeupleEtape')}
+                  />
+                )}
                 <button
                   onClick={() => hasDesc && setPreviewVoie(nom)}
                   disabled={!hasDesc}
@@ -976,15 +1076,68 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               </div>
               {nom && (
                 <VoieRangBar
-                  voie={character[field]}
-                  voieKey={field}
+                  voie={character[field] as VoiePersonnage}
+                  voieKey={field as VoieKey}
                   disponibles={disponibles}
-                  onChange={rangs => onChange({ [field]: { ...character[field], rangs } })}
+                  onChange={rangs => onChange({ [field]: { ...(character[field] as VoiePersonnage), rangs } })}
+                  capsDesc={dynamicDescriptions[nom]}
+                  onAvanceeChange={ra => onChange({ [field]: { ...(character[field] as VoiePersonnage), rangsAvances: ra } })}
+                  maxRangs={isSangMele ? 3 : 5}
                 />
               )}
             </div>
           )
         })}
+
+        {isSangMele && (() => {
+          const nomCult = character.voieCulturelle.nom
+          const hasDescCult = !!nomCult && !!dynamicDescriptions[nomCult]
+          return (
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--tdr-gold)', marginBottom: 4 }}>
+                {t('wizard.step3.voieCulturelle')}
+              </label>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <select
+                  className="flex-1 border rounded px-3 py-1.5 text-base"
+                  style={{ ...INPUT_STYLE, cursor: voiesCulturellesSangMele.length ? 'pointer' : 'not-allowed', opacity: voiesCulturellesSangMele.length ? 1 : 0.5 }}
+                  value={nomCult}
+                  disabled={voiesCulturellesSangMele.length === 0}
+                  onChange={e => onChange({ voieCulturelle: { nom: e.target.value, rangs: [false,false,false,false,false] } })}
+                >
+                  <option value="">{t('wizard.step3.choisirVoieCulturelle')}</option>
+                  {voiesCulturellesSangMele.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => hasDescCult && setPreviewVoie(nomCult)}
+                  disabled={!hasDescCult}
+                  title={hasDescCult ? t('wizard.step3.voirVoie', { nom: nomCult }) : t('wizard.step3.selectionnerPeuple')}
+                  style={{
+                    padding: '6px 10px', borderRadius: 4,
+                    border: '1px solid rgba(201,168,76,0.4)',
+                    background: hasDescCult ? 'rgba(201,168,76,0.1)' : 'transparent',
+                    color: hasDescCult ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+                    cursor: hasDescCult ? 'pointer' : 'default',
+                    fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  }}
+                >▤</button>
+              </div>
+              {nomCult && (
+                <VoieRangBar
+                  voie={character.voieCulturelle}
+                  voieKey="voieCulturelle"
+                  disponibles={disponibles}
+                  onChange={rangs => onChange({ voieCulturelle: { ...character.voieCulturelle, rangs } })}
+                  capsDesc={dynamicDescriptions[nomCult]}
+                  onAvanceeChange={ra => onChange({ voieCulturelle: { ...character.voieCulturelle, rangsAvances: ra } })}
+                  maxRangs={5}
+                />
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Voies de profil ── */}
@@ -1060,6 +1213,8 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 voieKey={v}
                 disponibles={disponibles}
                 onChange={rangs => onChange({ [v]: { ...character[v], rangs } })}
+                capsDesc={dynamicDescriptions[nomVoie]}
+                onAvanceeChange={ra => onChange({ [v]: { ...character[v], rangsAvances: ra } })}
               />
             )}
           </div>

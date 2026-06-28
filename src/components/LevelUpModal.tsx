@@ -50,6 +50,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const [jets, setJets] = useState<(number | null)[]>([null])
   const [selections, setSelections] = useState<Partial<Record<VoieKey, number>>>({})
   const [formationsAchetées, setFormationsAchetées] = useState<string[]>([])
+  const [avancesAchetées, setAvancesAchetées] = useState<Partial<Record<VoieKey, number[]>>>({})
   const [prestigeNom, setPrestigeNom] = useState((character.voiePrestige as VoiePersonnage).nom)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [pendingEffectsChoix, setPendingEffectsChoix] = useState<Record<string, string>>({})
@@ -125,6 +126,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     setJets(Array(levelsGained).fill(null))
     setSelections({})
     setFormationsAchetées([])
+    setAvancesAchetées({})
   }, [levelsGained])
 
   // Si les sélections changent après un lancer, remettre les dés à zéro
@@ -145,6 +147,19 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const allRolled = jets.every(j => j !== null)
   const pvGagnes = allRolled ? jets.reduce<number>((sum, jet, i) => sum + jet! + conModPerLevel[i], 0) : null
 
+  const hasCapaciteAvancee = (nomVoie: string, rangIdx: number) =>
+    data[nomVoie]?.[rangIdx]?.desc?.includes('Capacité avancée') ?? false
+
+  const toggleAvancee = (key: VoieKey, rangIdx: number) => {
+    setAvancesAchetées(prev => {
+      const current = prev[key] ?? []
+      const has = current.includes(rangIdx)
+      const next = has ? current.filter(i => i !== rangIdx) : [...current, rangIdx]
+      if (next.length === 0) { const c = { ...prev }; delete c[key]; return c }
+      return { ...prev, [key]: next }
+    })
+  }
+
   // Calcul des points dépensés en tenant compte des rangs multiples par voie
   const ptsDépensés = (Object.entries(selections) as [VoieKey, number][]).reduce((sum, [key, count]) => {
     if (!count) return sum
@@ -154,6 +169,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     for (let i = 0; i < count; i++) cost += coutRangPourVoie(key, firstNext + i)
     return sum + cost
   }, 0) + formationsAchetées.length
+    + Object.values(avancesAchetées).reduce((sum, idxs) => sum + (idxs?.length ?? 0) * 2, 0)
   const ptsRestants = ptsTotal - ptsDépensés
   const canRoll = ptsRestants === 0
 
@@ -180,6 +196,10 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     })
   }
 
+  const isSangMele = character.peuple === 'Sang-mêlé'
+  const maxRangForKey = (key: VoieKey) =>
+    isSangMele && (key === 'voiePeuple' || key === 'voieSangMele') ? 3 : 5
+
   const voiesActives = VOIE_KEYS.filter(k => {
     if (k === 'voiePrestige') return newNiveau >= 8 && (!!(character.voiePrestige as VoiePersonnage).nom || !!prestigeNom)
     return !!(character[k] as VoiePersonnage).nom
@@ -191,7 +211,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const handleReset = () => {
     const emptyRangs: [boolean, boolean, boolean, boolean, boolean] = [false, false, false, false, false]
     const voiesPatch = Object.fromEntries(
-      VOIE_KEYS.map(k => [k, { ...(character[k] as VoiePersonnage), rangs: [...emptyRangs] }])
+      VOIE_KEYS.map(k => [k, { ...(character[k] as VoiePersonnage), rangs: [...emptyRangs], rangsAvances: [...emptyRangs] }])
     )
     onConfirm({
       niveau: 1,
@@ -212,13 +232,18 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     const voiesPatch: Partial<Character> = {}
     for (const key of VOIE_KEYS) {
       const count = selections[key]
-      if (!count) continue
+      const avances = avancesAchetées[key]
+      if (!count && (!avances || avances.length === 0)) continue
       const voie = character[key] as VoiePersonnage
       const nom = key === 'voiePrestige' ? prestigeNom : voie.nom
-      const firstNext = prochainRang(voie)!
       const newRangs = [...voie.rangs]
-      for (let i = 0; i < count; i++) newRangs[firstNext + i] = true
-      voiesPatch[key] = { ...voie, nom, rangs: newRangs }
+      if (count) {
+        const firstNext = prochainRang(voie)!
+        for (let i = 0; i < count; i++) newRangs[firstNext + i] = true
+      }
+      const newRangsAvances = [...(voie.rangsAvances ?? [false, false, false, false, false])]
+      for (const idx of avances ?? []) newRangsAvances[idx] = true
+      voiesPatch[key] = { ...voie, nom, rangs: newRangs, rangsAvances: newRangsAvances }
     }
     if (prestigeNom && !(character.voiePrestige as VoiePersonnage).nom && !selections.voiePrestige) {
       voiesPatch.voiePrestige = { ...(character.voiePrestige as VoiePersonnage), nom: prestigeNom }
@@ -431,31 +456,40 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {voiesActives.map(key => {
                 const voie = character[key] as VoiePersonnage
+                const maxRangs = maxRangForKey(key)
                 const firstNext = prochainRang(voie)
                 const bought = selections[key] ?? 0
-                const maxed = firstNext === null
-                const nextIdx = firstNext !== null ? firstNext + bought : null
-                const canAdd = nextIdx !== null && nextIdx < voie.rangs.length && coutRangPourVoie(key, nextIdx) <= ptsRestants
+                const maxed = firstNext === null || firstNext >= maxRangs
+                const nextIdx = !maxed && firstNext !== null ? firstNext + bought : null
+                const canAdd = nextIdx !== null && nextIdx < maxRangs && nextIdx < voie.rangs.length && coutRangPourVoie(key, nextIdx) <= ptsRestants
                 const costNext = nextIdx !== null ? coutRangPourVoie(key, nextIdx) : 0
 
-                // Rangs affichés : acquis + sélectionnés
-                const rangsDisplay = voie.rangs.map((acquis, i) => {
+                // Rangs affichés : acquis + sélectionnés (limités à maxRangs)
+                const rangsDisplay = voie.rangs.slice(0, maxRangs).map((acquis, i) => {
                   if (acquis) return 'acquis'
                   if (firstNext !== null && i >= firstNext && i < firstNext + bought) return 'nouveau'
-                  if (firstNext !== null && i === firstNext + bought) return 'prochain'
+                  if (firstNext !== null && i === firstNext + bought && i < maxRangs) return 'prochain'
                   return 'vide'
                 })
 
+                const nomVoie = key === 'voiePrestige' ? (prestigeNom || voie.nom) : voie.nom
+                const avancesDisponibles = nomVoie ? [0, 1].filter(ri => {
+                  if (!hasCapaciteAvancee(nomVoie, ri)) return false
+                  if (voie.rangsAvances?.[ri]) return false
+                  const rangAcquis = voie.rangs[ri] || (firstNext !== null && ri >= firstNext && ri < firstNext + bought)
+                  return rangAcquis
+                }) : []
+
                 return (
                   <div key={key} style={{
-                    border: `1px solid ${bought > 0 ? 'rgba(201,168,76,0.55)' : 'rgba(201,168,76,0.15)'}`,
+                    border: `1px solid ${bought > 0 || (avancesAchetées[key]?.length ?? 0) > 0 ? 'rgba(201,168,76,0.55)' : 'rgba(201,168,76,0.15)'}`,
                     borderRadius: 6, padding: '10px 14px',
-                    background: bought > 0 ? 'rgba(201,168,76,0.07)' : 'transparent',
-                    opacity: maxed && bought === 0 ? 0.4 : 1,
+                    background: bought > 0 || (avancesAchetées[key]?.length ?? 0) > 0 ? 'rgba(201,168,76,0.07)' : 'transparent',
+                    opacity: maxed && bought === 0 && avancesDisponibles.length === 0 ? 0.4 : 1,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <div>
-                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)', fontWeight: 500 }}>{key === 'voiePrestige' ? (prestigeNom || voie.nom) : voie.nom}</div>
+                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)', fontWeight: 500 }}>{nomVoie}</div>
                         <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', marginTop: 3 }}>
                           {maxed && bought === 0
                             ? t('levelUp.tousRangsAcquis')
@@ -512,6 +546,38 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                         )}
                       </div>
                     </div>
+
+                    {/* Capacités avancées disponibles */}
+                    {avancesDisponibles.map(ri => {
+                      const isSelected = avancesAchetées[key]?.includes(ri) ?? false
+                      const canAfford = isSelected || ptsRestants >= 2
+                      return (
+                        <div key={ri} style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(201,168,76,0.12)' }}>
+                          <button
+                            disabled={!canAfford}
+                            onClick={() => toggleAvancee(key, ri)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8, background: 'none',
+                              border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
+                              padding: 0, width: '100%', textAlign: 'left', fontFamily: 'inherit',
+                            }}
+                          >
+                            <div style={{
+                              width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+                              border: `1px solid ${isSelected ? 'rgba(120,210,120,0.7)' : canAfford ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.2)'}`,
+                              background: isSelected ? 'rgba(120,210,120,0.25)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {isSelected && <span style={{ fontSize: 10, color: 'rgba(120,210,120,0.9)', lineHeight: 1 }}>✓</span>}
+                            </div>
+                            <span style={{ fontSize: 12, color: isSelected ? 'rgba(120,210,120,0.9)' : canAfford ? 'rgba(245,236,215,0.65)' : 'rgba(245,236,215,0.25)' }}>
+                              {t('levelUp.capaciteAvancee', { rang: ri + 1 })}
+                              <span style={{ opacity: 0.5, marginLeft: 5 }}>· 2 pts</span>
+                            </span>
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}

@@ -34,6 +34,7 @@ export interface VoieRang {
 export interface VoiePersonnage {
   nom: string
   rangs: boolean[] // index 0 = rang 1, ..., index 4 = rang 5
+  rangsAvances?: boolean[] // index 0 = cap. avancée rang 1, index 1 = cap. avancée rang 2
 }
 
 export interface TraitMagique {

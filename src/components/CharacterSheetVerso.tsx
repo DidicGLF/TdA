@@ -8,6 +8,7 @@ import DraggableImageField from './DraggableImageField'
 import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions } from '../context/GameDataContext'
 import { resolveCompagnon } from '../utils/compagnons'
+import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
 
 interface Props {
   character: Character
@@ -31,6 +32,19 @@ const VOIE_PRESTIGE_RANG_CHECKBOXES = PRESTIGE_RANG_TOPS.map((top, rang) => ({
 
 const VOIE_PRESTIGE_RANG_NOM_POS = PRESTIGE_RANG_TOPS.map((top, rang) => ({
   id: `prestige-${rang}`, top, left: PRESTIGE_NOM_LEFT, width: PRESTIGE_NOM_WIDTH,
+}))
+
+const SANG_MELE_RANG_TOPS = [83.0, 87.0, 91.0]
+const SANG_MELE_CB_LEFT = 58.5
+const SANG_MELE_NOM_LEFT = 65.0
+const SANG_MELE_NOM_WIDTH = 19.0
+
+const VOIE_SANG_MELE_RANG_CHECKBOXES = SANG_MELE_RANG_TOPS.map((top, rang) => ({
+  id: `sangmele-${rang}`, rang, top, left: SANG_MELE_CB_LEFT,
+}))
+
+const VOIE_SANG_MELE_RANG_NOM_POS = SANG_MELE_RANG_TOPS.map((top, rang) => ({
+  id: `sangmele-${rang}`, top, left: SANG_MELE_NOM_LEFT, width: SANG_MELE_NOM_WIDTH,
 }))
 
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
@@ -61,12 +75,16 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
   const [prestigeRangPos, setPrestigeRangPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }]))
   )
+  const [sangMeleRangPos, setSangMeleRangPos] = useState<Record<string, { top: number; left: number }>>(
+    Object.fromEntries(VOIE_SANG_MELE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }]))
+  )
   const [tooltip, setTooltip] = useState<{ nom: string; desc: string; rang?: number; x: number; y: number } | null>(null)
   const [togglePos, setTogglePos] = useState(fieldPositions?.['Toggle image/description'] ?? { top: 17.5, left: 3.3 })
 
   React.useEffect(() => {
     setCbPos(Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }])))
     setPrestigeRangPos(Object.fromEntries(VOIE_PRESTIGE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }])))
+    setSangMeleRangPos(Object.fromEntries(VOIE_SANG_MELE_RANG_CHECKBOXES.map(c => [c.id, fieldPositions?.[c.id] ?? { top: c.top, left: c.left }])))
     if (fieldPositions?.['Toggle image/description']) setTogglePos(fieldPositions['Toggle image/description'])
   }, [fieldPositions])
 
@@ -97,9 +115,67 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
   const togglePrestigeRang = (rang: number) => {
     if (calibrate) return
     const v = character.voiePrestige as VoiePersonnage
+    const estCoché = v.rangs[rang]
     const newRangs = [...v.rangs]
-    newRangs[rang] = !newRangs[rang]
+    if (estCoché) {
+      for (let i = rang; i < newRangs.length; i++) newRangs[i] = false
+    } else {
+      let { disponibles } = calcPointsCapacite(character)
+      for (let i = 0; i <= rang; i++) {
+        if (newRangs[i]) continue
+        const cout = coutRangPourVoie('voiePrestige', i)
+        if (cout > disponibles) break
+        newRangs[i] = true
+        disponibles -= cout
+      }
+      if (!newRangs[rang]) return
+    }
     onChange({ voiePrestige: { ...v, rangs: newRangs } })
+  }
+
+  const toggleSangMeleRang = (rang: number) => {
+    if (calibrate) return
+    const v = character.voieSangMele as VoiePersonnage
+    const estCoché = v.rangs[rang]
+    const newRangs = [...v.rangs]
+    if (estCoché) {
+      for (let i = rang; i < newRangs.length; i++) newRangs[i] = false
+    } else {
+      let { disponibles } = calcPointsCapacite(character)
+      for (let i = 0; i <= rang; i++) {
+        if (newRangs[i]) continue
+        const cout = coutRangPourVoie('voieSangMele', i)
+        if (cout > disponibles) break
+        newRangs[i] = true
+        disponibles -= cout
+      }
+      if (!newRangs[rang]) return
+    }
+    onChange({ voieSangMele: { ...v, rangs: newRangs } })
+  }
+
+  const startSangMeleRangDrag = (id: string, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    const startX = e.clientX, startY = e.clientY
+    const { top: startTop, left: startLeft } = sangMeleRangPos[id]
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      setSangMeleRangPos(prev => ({ ...prev, [id]: {
+        top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
+        left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
+      }}))
+    }
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      setSangMeleRangPos(prev => ({ ...prev, [id]: { top: newTop, left: newLeft } }))
+      cb(id, newTop, newLeft)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   }
 
   const startPrestigeRangDrag = (id: string, e: React.MouseEvent) => {
@@ -369,6 +445,89 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
         const nomCap = data[nomVoie]?.[idx]?.nom || ''
         const desc = data[nomVoie]?.[idx]?.desc ?? ''
         const label = `prestige-cap-${idx}`
+        const efp = fp(label, top, left, width, 2.0)
+        return (
+          <React.Fragment key={`${id}-cap`}>
+            <DraggableField
+              label={label}
+              {...efp}
+              value={nomCap}
+              onChange={() => {}}
+              calibrate={calibrate}
+              containerRef={containerRef}
+              onMoved={cb}
+            />
+            {desc && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${efp.top}%`, left: `${efp.left}%`,
+                  width: `${efp.width}%`, height: '2%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 20,
+                  cursor: 'help',
+                }}
+                onMouseEnter={e => {
+                  const rect = containerRef.current!.getBoundingClientRect()
+                  setTooltip({ nom: nomCap, desc, rang: idx + 1, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                }}
+                onMouseMove={e => {
+                  const rect = containerRef.current!.getBoundingClientRect()
+                  setTooltip(prev => prev ? { ...prev, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 } : null)
+                }}
+                onMouseLeave={() => setTooltip(null)}
+              />
+            )}
+          </React.Fragment>
+        )
+      })}
+
+      {/* === VOIE SANG-MÊLÉ : RANGS (COCHES) === */}
+      {VOIE_SANG_MELE_RANG_CHECKBOXES.map(({ id, rang }) => {
+        const { top, left } = sangMeleRangPos[id]
+        const acquis = character.voieSangMele.rangs[rang]
+        return (
+          <div key={id}>
+            <div
+              data-voie="true"
+              onClick={() => toggleSangMeleRang(rang)}
+              style={{
+                position: 'absolute', top: `${top}%`, left: `${left}%`,
+                width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
+                cursor: calibrate ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {acquis && (
+                <svg viewBox="0 0 14 11" style={{ width: '100%', height: '100%' }} overflow="visible">
+                  <line x1="2" y1="1" x2="12" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="1" x2="2" y2="10" stroke="#1a1510" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
+            {calibrate && (
+              <div onMouseDown={e => startSangMeleRangDrag(id, e)} style={{
+                position: 'absolute', top: `${top}%`, left: `${left}%`,
+                transform: 'translate(-50%, -50%)', cursor: 'grab',
+                background: 'rgba(201,168,76,0.92)', color: '#1a1510',
+                fontSize: 7, fontFamily: 'monospace', fontWeight: 700,
+                padding: '1px 4px', borderRadius: 2, userSelect: 'none',
+                zIndex: 40, whiteSpace: 'nowrap', lineHeight: '13px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+              }}>
+                Sang-mêlé R{rang + 1}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* === VOIE SANG-MÊLÉ : NOMS DES CAPACITÉS === */}
+      {VOIE_SANG_MELE_RANG_NOM_POS.map(({ id, top, left, width }, idx) => {
+        const nomVoie = character.voieSangMele.nom
+        const nomCap = data[nomVoie]?.[idx]?.nom || ''
+        const desc = data[nomVoie]?.[idx]?.desc ?? ''
+        const label = `sangmele-cap-${idx}`
         const efp = fp(label, top, left, width, 2.0)
         return (
           <React.Fragment key={`${id}-cap`}>

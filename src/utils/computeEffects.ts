@@ -81,7 +81,7 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
 
       // Effets normaux
       for (const effect of rangData.effects ?? []) {
-        if (effect.avancee) continue
+        if (effect.avancee && !(voie.rangsAvances?.[i])) continue
         if (!effect.value && !effect.formula) continue
 
         if (effect.minRang !== undefined && !voie.rangs[effect.minRang - 1]) continue
@@ -116,7 +116,7 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
       for (let gi = 0; gi < (rangData.grants ?? []).length; gi++) {
         const grant = rangData.grants![gi]
         if (grant.type !== 'EFFECT_CHOIX') continue
-        if (grant.avancee) continue
+        if (grant.avancee && !(voie.rangsAvances?.[i])) continue
         if (grant.minRang !== undefined && !voie.rangs[grant.minRang - 1]) continue
         if (grant.condition && !evaluateCondition(grant.condition as Condition, character)) continue
 
@@ -168,7 +168,7 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
       if (!rangData?.effects?.length) continue
 
       for (const effect of rangData.effects) {
-        if (effect.avancee) continue
+        if (effect.avancee && !(voie.rangsAvances?.[i])) continue
         if (!effect.diceStr) continue
         if (effect.minRang !== undefined && !voie.rangs[effect.minRang - 1]) continue
         if (effect.condition && !evaluateCondition(effect.condition, character)) continue

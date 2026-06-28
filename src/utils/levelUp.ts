@@ -33,6 +33,7 @@ export function calcPointsCapacite(character: Character) {
   for (const key of VOIE_KEYS) {
     const voie = character[key] as VoiePersonnage
     voie.rangs.forEach((acquis, i) => { if (acquis) depenses += coutRangPourVoie(key, i) })
+    ;(voie.rangsAvances ?? []).forEach(acquis => { if (acquis) depenses += 2 })
   }
   return { total, depenses, disponibles: total - depenses }
 }
