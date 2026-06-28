@@ -1722,8 +1722,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     const avances = effects.map((e, idx) => ({ e, idx })).filter(({ e }) => !!e.avancee)
 
                     const renderLigne = (eff: Effect, ei: number) => (
-                      <div key={ei}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                      <div key={ei} style={{ marginBottom: 6, border: '1px solid rgba(201,168,76,0.18)', borderRadius: 4, padding: '6px 8px', background: 'rgba(201,168,76,0.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <select
                           value={eff.stat}
                           onChange={e => updateEffect(selected, i, ei, { stat: e.target.value })}
@@ -1857,7 +1857,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           title={t('descEditor.supprimerEffetTitle')}
                           style={{
                             padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
-                            border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
+                            border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555', marginLeft: 'auto',
                           }}
                         >🗑</button>
                       </div>
@@ -1865,7 +1865,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                         const cond = eff.condition as { type: 'hasArme'; armes: string[] }
                         return (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginLeft: 16, marginBottom: 4 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 6 }}>
                             {cond.armes.map((a, ai) => (
                               <span key={ai} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(100,180,255,0.1)', border: '1px solid rgba(100,180,255,0.3)', borderRadius: 3, padding: '1px 6px', fontSize: 12, color: 'rgba(100,180,255,0.85)' }}>
                                 {a}
