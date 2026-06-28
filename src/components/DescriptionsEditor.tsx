@@ -1586,7 +1586,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 const categorie = voies.find(v => v.nom === selected)?.categorie ?? 'profil'
                 const isPrestige = categorie === 'prestige'
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>
                       {t('descEditor.famille')}
                     </span>
@@ -1622,7 +1622,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       )}
                       title={hiddenVoies.includes(selected) ? t('descEditor.rendreVisible') : t('descEditor.masquer')}
                       style={{
-                        marginLeft: 'auto', padding: '4px 10px', borderRadius: 4, fontSize: 15,
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15,
                         cursor: 'pointer',
                         border: '1px solid rgba(201,168,76,0.25)',
                         background: 'transparent',
@@ -2721,7 +2721,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     )
                     return (
                     <div key={ci} style={{ border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('descEditor.culture')}</span>
                         <input
                           type="text"
@@ -3018,11 +3018,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <span style={{ fontSize: 12, color: S.gold, letterSpacing: '0.06em' }}>{label}</span>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <input
                         placeholder={t('descEditor.attNomPlaceholder')} value={att?.nom ?? ''}
                         onChange={e => updateCompagnon(selectedCompagnon, { [attField]: { nom: e.target.value, bonus: att?.bonus ?? '+0', dm: att?.dm ?? '1d6' } })}
-                        style={{ flex: 2, ...inStyle }}
+                        style={{ flex: 2, minWidth: 0, ...inStyle }}
                         onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                         onBlur={e => (e.target.style.borderColor = S.border)}
                       />
@@ -3067,11 +3067,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               return (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {/* Nom + supprimer */}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                       value={c.nom}
                       onChange={e => updateCompagnon(selectedCompagnon, { nom: e.target.value })}
-                      style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 10px', fontSize: 17, color: S.gold, fontWeight: 700, outline: 'none', fontFamily: "'Cinzel', serif" }}
+                      style={{ flex: 1, minWidth: 0, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 4, padding: '5px 10px', fontSize: 17, color: S.gold, fontWeight: 700, outline: 'none', fontFamily: "'Cinzel', serif" }}
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />

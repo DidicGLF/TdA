@@ -447,6 +447,7 @@ export default function CharacterSheetRunesFull({ character, divin, onDivinChang
       {/* ── Barre de sort ── */}
       <div style={{
         position: 'sticky', bottom: 0,
+        background: 'var(--tdr-dark)',
         marginTop: 20,
         borderTop: BORDER,
         padding: '28px 20px 12px',
