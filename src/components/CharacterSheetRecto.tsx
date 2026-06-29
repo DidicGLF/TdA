@@ -501,8 +501,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
         const attContactVoies  = sumStat(effects['ATT_CONTACT'] ?? [])
         const attContactTotal  = character.attaqueContact  - malusEquip - malusArmesContact + attContactVoies
-        const attDistTotal     = character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist
-        const attMagTotal      = character.attaqueMagique  - armorDef - malusEquip - malusArmesMag
+        const attDistTotal     = character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? [])
+        const attMagTotal      = character.attaqueMagique  - armorDef - malusEquip - malusArmesMag + sumStat(effects['ATT_MAGIQUE'] ?? [])
 
         const dmArmeBonusContribs = (nomArme: string) => {
           const key = normalizeArmeName(nomArme)
@@ -679,6 +679,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               { label: t('recto.tlEncombrement2'), value: malusAtkDist > 0 ? `-${malusAtkDist}` : '0', neg: malusAtkDist > 0 },
               ...(malusEquip     > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`,     neg: true }] : []),
               ...(malusArmesDist > 0 ? [{ label: t('recto.tlArmeSansForm'), value: `-${malusArmesDist}`, neg: true }] : []),
+              ...groupContribs(effects['ATT_DISTANCE'] ?? []),
             ], total: fmt(attDistTotal) } })}
 
           {/* ATT magique */}
@@ -694,6 +695,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               { label: t('recto.tlEncombrement'), value: armorDef > 0 ? `-${armorDef}` : '0', neg: armorDef > 0 },
               ...(malusEquip    > 0 ? [{ label: t('recto.tlEquipSansForm'), value: `-${malusEquip}`,    neg: true }] : []),
               ...(malusArmesMag > 0 ? [{ label: t('recto.tlArmeSansForm'), value: `-${malusArmesMag}`, neg: true }] : []),
+              ...groupContribs(effects['ATT_MAGIQUE'] ?? []),
             ], total: fmt(attMagTotal) } })}
 
           {/* Armes */}
@@ -913,13 +915,14 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           ...(activeTooltip.y > 72
             ? { bottom: `${100 - activeTooltip.y + 1.5}%` }
             : { top: `${activeTooltip.y + 1.5}%` }),
-          maxWidth: '28%',
+          width: 220,
+          maxWidth: 'min(220px, 80%)',
           background: 'rgba(20,15,8,0.97)',
           color: '#e8dfc0',
           border: '1px solid #c9a84c',
           borderRadius: 4,
           padding: '8px 10px',
-          fontSize: '1em',
+          fontSize: 13,
           lineHeight: 1.5,
           zIndex: 100,
           pointerEvents: 'none',

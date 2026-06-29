@@ -59,7 +59,7 @@ function CristalCard({
         border: BORDER,
         borderRadius: 10,
         padding: '10px 10px 8px',
-        background: 'rgba(0,0,0,0.2)',
+        background: 'rgba(10,5,8,0.6)',
         opacity: dimmed ? 0.3 : 1,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         cursor: clickable ? 'pointer' : 'default',
@@ -106,6 +106,14 @@ function CristalCard({
 interface Props {
   character: Character
   onChange: (patch: Partial<Character>) => void
+}
+
+const FAB_BG: React.CSSProperties = {
+  background: 'rgba(78,13,22,0.97)',
+  border: '1px solid rgba(201,168,76,0.3)',
+  boxShadow: 'inset 0 0 18px rgba(0,0,0,0.75)',
+  borderRadius: 8,
+  padding: '12px 10px',
 }
 
 export default function CharacterSheetCristaux({ character, onChange }: Props) {
@@ -212,7 +220,6 @@ export default function CharacterSheetCristaux({ character, onChange }: Props) {
               {slots.map(({ x, y, angle, cristal }, i) => {
                 const cos = Math.cos(angle)
                 const sin = Math.sin(angle)
-                // Position du label : à l'extérieur du cristal dans la direction radiale
                 const tR = R + ch / 2 + 12
                 const tX = ocx + tR * cos
                 const tY = ocy + tR * sin
@@ -221,7 +228,6 @@ export default function CharacterSheetCristaux({ character, onChange }: Props) {
                 const tAlign: React.CSSProperties['textAlign'] = cos > 0.25 ? 'left' : cos < -0.25 ? 'right' : 'center'
                 return (
                   <React.Fragment key={i}>
-                    {/* Cristal ou emplacement vide */}
                     <div
                       onClick={cristal ? () => deactivateCristal(cristal.nom) : undefined}
                       title={cristal ? t('cristaux.desactiver') : undefined}
@@ -249,7 +255,6 @@ export default function CharacterSheetCristaux({ character, onChange }: Props) {
                         </div>
                       )}
                     </div>
-                    {/* Label radial (uniquement si cristal équipé) */}
                     {cristal && (
                       <div style={{
                         position: 'absolute',
@@ -260,7 +265,7 @@ export default function CharacterSheetCristaux({ character, onChange }: Props) {
                         pointerEvents: 'none',
                         lineHeight: 1.25,
                       }}>
-                        <div style={{ fontSize: 14, color: cristal.couleur1, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 14, color: cristal.couleur1, fontWeight: 600 }}>
                           {cristal.nom}
                         </div>
                         <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.55)' }}>
@@ -287,29 +292,31 @@ export default function CharacterSheetCristaux({ character, onChange }: Props) {
         }}>
           <Trans i18nKey="cristaux.coutFabrication" components={{ bold: <strong style={{ color: 'rgba(245,236,215,0.75)' }} /> }} />
         </p>
-        {apprisCristaux.length === 0 ? (
-          <div style={{ fontSize: 16, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic', paddingLeft: 4 }}>
-            {t('cristaux.aucunFabrique')}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
-            {apprisCristaux.map(cristal => {
-              const actifCount = actifs.filter(n => n === cristal.nom).length
-              const positionAmongSameName = apprisCristaux.filter(c => c.nom === cristal.nom && c._idx < cristal._idx).length
-              const estEquipe = positionAmongSameName < actifCount
-              return (
-                <CristalCard
-                  key={cristal._idx}
-                  cristal={cristal}
-                  dimmed={estEquipe}
-                  clickable={!estEquipe && canActivateMore(cristal.nom)}
-                  onClick={() => activateCristal(cristal.nom)}
-                  onForget={() => unlearnCristal(cristal._idx)}
-                />
-              )
-            })}
-          </div>
-        )}
+        <div style={{ ...FAB_BG }}>
+          {apprisCristaux.length === 0 ? (
+            <div style={{ fontSize: 16, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic', paddingLeft: 4 }}>
+              {t('cristaux.aucunFabrique')}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+              {apprisCristaux.map(cristal => {
+                const actifCount = actifs.filter(n => n === cristal.nom).length
+                const positionAmongSameName = apprisCristaux.filter(c => c.nom === cristal.nom && c._idx < cristal._idx).length
+                const estEquipe = positionAmongSameName < actifCount
+                return (
+                  <CristalCard
+                    key={cristal._idx}
+                    cristal={cristal}
+                    dimmed={estEquipe}
+                    clickable={!estEquipe && canActivateMore(cristal.nom)}
+                    onClick={() => activateCristal(cristal.nom)}
+                    onForget={() => unlearnCristal(cristal._idx)}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Section Catalogue ── */}
