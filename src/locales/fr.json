@@ -107,6 +107,7 @@
     "verso": "Verso",
     "golem": "Golem",
     "runes": "Runes",
+    "cristaux": "Cristaux",
     "total": "Total",
     "deblocableNiveau": "Déblocable au niveau {{n}}",
     "modeTexte": "✎ Texte",
@@ -722,6 +723,24 @@
       "puissant": "+2 au Mod. de FOR",
       "tailleSuperieure": "+10 PV et +1 Mod. de FOR"
     }
+  },
+  "cristaux": {
+    "titre": "Voie des cristaux",
+    "rang": "Rang {{rang}}",
+    "appris": "Appris",
+    "actifs": "Actifs",
+    "apprendre": "Apprendre ce cristal",
+    "oublier": "Oublier ce cristal",
+    "activer": "Activer",
+    "desactiver": "Désactiver",
+    "duplicatAutorise": "Un cristal en double autorisé",
+    "bonusCristaux": "Bonus cristaux",
+    "catalogue": "Catalogue",
+    "fabrique": "Fabriqués",
+    "equipe": "Équipés",
+    "aucunFabrique": "Aucun cristal fabriqué — apprenez-en depuis le catalogue.",
+    "aucunEquipe": "Aucun cristal équipé.",
+    "coutFabrication": "La fabrication d'un cristal coûte <bold>200 pièces d'argent</bold>."
   },
   "runesData": {
     "groupes": [

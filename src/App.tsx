@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
-import { defaultCharacter, getGolemVoieRang, hasVoieEtheree } from './types/character'
+import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
 import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
+import CharacterSheetCristaux from './components/CharacterSheetCristaux'
 import CreationWizard from './components/CreationWizard'
 import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
@@ -42,16 +43,18 @@ function AppContent() {
 
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes' | 'cristaux'>('recto')
   const [runesDivin, setRunesDivin] = useState<string | null>(null)
   const runesDivinesUnlocked = character.voiePrestige.nom === 'Voie des runes divines' && character.voiePrestige.rangs.some(Boolean)
   const RUNES_FULL_MIN_WIDTH = 1740
   const showGolemTab = getGolemVoieRang(character) >= 2
   const showRunesTab = hasVoieEtheree(character)
+  const showCristauxTab = hasCristauxVoie(character)
   useEffect(() => {
     if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
     if (!showRunesTab && sheetPage === 'runes') setSheetPage('recto')
-  }, [showGolemTab, showRunesTab])
+    if (!showCristauxTab && sheetPage === 'cristaux') setSheetPage('recto')
+  }, [showGolemTab, showRunesTab, showCristauxTab])
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -420,7 +423,7 @@ function AppContent() {
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
-      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
+      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : [])] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
           padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -497,6 +500,8 @@ function AppContent() {
                     <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
                   ) : sheetPage === 'verso' ? (
                     <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                  ) : sheetPage === 'cristaux' ? (
+                    <CharacterSheetCristaux character={character} onChange={onChange} />
                   ) : (
                     <CharacterSheetGolem character={character} onChange={onChange} />
                   )}
@@ -571,7 +576,7 @@ function AppContent() {
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
-            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : [])] as ('recto' | 'verso' | 'golem' | 'runes')[]).map(p => (
+            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : [])] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux')[]).map(p => (
               <button key={p} onClick={() => setSheetPage(p)} style={{
                 padding: '4px 16px', borderRadius: '4px 4px 0 0',
                 border: '1px solid rgba(201,168,76,0.4)',
@@ -773,6 +778,8 @@ function AppContent() {
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : sheetPage === 'runes' ? (
               <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
+            ) : sheetPage === 'cristaux' ? (
+              <CharacterSheetCristaux character={character} onChange={onChange} />
             ) : (
               <CharacterSheetGolem character={character} onChange={onChange} />
             )}

@@ -1259,59 +1259,75 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
       </div>
 
       {/* ── Voie de prestige ── */}
-      <div>
-        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          {t('wizard.step3.voiePrestige')}
-        </label>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <VoieCombobox
-              value={nomPrestige}
-              onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
-              options={voiesPrestige}
-              placeholder={t('wizard.step3.rechercherPrestige')}
-            />
+      {character.niveau >= 8 ? (
+        <div>
+          <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+            {t('wizard.step3.voiePrestige')}
+          </label>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <VoieCombobox
+                value={nomPrestige}
+                onChange={nom => onChange({ voiePrestige: { ...character.voiePrestige, nom } })}
+                options={voiesPrestige}
+                placeholder={t('wizard.step3.rechercherPrestige')}
+              />
+            </div>
+            <button
+              onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
+              disabled={!nomPrestige}
+              title={t('wizard.step3.effacerVoie')}
+              style={{
+                padding: '6px 10px', borderRadius: 4,
+                border: '1px solid rgba(180,60,60,0.35)',
+                background: nomPrestige ? 'rgba(180,60,60,0.1)' : 'transparent',
+                color: nomPrestige ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
+                cursor: nomPrestige ? 'pointer' : 'default',
+                fontSize: 16, lineHeight: 1, flexShrink: 0,
+              }}
+            >×</button>
+            <button
+              onClick={() => hasPrestigeDesc && setPreviewVoie(nomPrestige)}
+              disabled={!hasPrestigeDesc}
+              title={hasPrestigeDesc ? t('wizard.step3.voirVoie', { nom: nomPrestige }) : t('wizard.step3.selectionnerVoie')}
+              style={{
+                padding: '6px 10px', borderRadius: 4,
+                border: '1px solid rgba(201,168,76,0.4)',
+                background: hasPrestigeDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
+                color: hasPrestigeDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
+                cursor: hasPrestigeDesc ? 'pointer' : 'default',
+                fontSize: 16, lineHeight: 1, flexShrink: 0,
+              }}
+            >
+              ▤
+            </button>
           </div>
-          <button
-            onClick={() => nomPrestige && onChange({ voiePrestige: { nom: '', rangs: [false, false, false, false, false] } })}
-            disabled={!nomPrestige}
-            title={t('wizard.step3.effacerVoie')}
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(180,60,60,0.35)',
-              background: nomPrestige ? 'rgba(180,60,60,0.1)' : 'transparent',
-              color: nomPrestige ? 'rgba(200,80,80,0.9)' : 'rgba(180,60,60,0.2)',
-              cursor: nomPrestige ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >×</button>
-          <button
-            onClick={() => hasPrestigeDesc && setPreviewVoie(nomPrestige)}
-            disabled={!hasPrestigeDesc}
-            title={hasPrestigeDesc ? t('wizard.step3.voirVoie', { nom: nomPrestige }) : t('wizard.step3.selectionnerVoie')}
-            style={{
-              padding: '6px 10px', borderRadius: 4,
-              border: '1px solid rgba(201,168,76,0.4)',
-              background: hasPrestigeDesc ? 'rgba(201,168,76,0.1)' : 'transparent',
-              color: hasPrestigeDesc ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.25)',
-              cursor: hasPrestigeDesc ? 'pointer' : 'default',
-              fontSize: 16, lineHeight: 1, flexShrink: 0,
-            }}
-          >
-            ▤
-          </button>
+          {nomPrestige && (
+            <VoieRangBar
+              voie={character.voiePrestige}
+              voieKey="voiePrestige"
+              disponibles={disponibles}
+              onChange={rangs => onChange({ voiePrestige: { ...character.voiePrestige, rangs } })}
+              capsDesc={dynamicDescriptions[nomPrestige]}
+              onAvanceeChange={ra => onChange({ voiePrestige: { ...character.voiePrestige, rangsAvances: ra } })}
+            />
+          )}
         </div>
-        {nomPrestige && (
-          <VoieRangBar
-            voie={character.voiePrestige}
-            voieKey="voiePrestige"
-            disponibles={disponibles}
-            onChange={rangs => onChange({ voiePrestige: { ...character.voiePrestige, rangs } })}
-            capsDesc={dynamicDescriptions[nomPrestige]}
-            onAvanceeChange={ra => onChange({ voiePrestige: { ...character.voiePrestige, rangsAvances: ra } })}
-          />
-        )}
-      </div>
+      ) : (
+        <div>
+          <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'rgba(201,168,76,0.3)' }}>
+            {t('wizard.step3.voiePrestige')}
+          </label>
+          <p style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(201,168,76,0.12)',
+            borderRadius: 4, padding: '8px 12px',
+            fontSize: 13, color: 'rgba(245,236,215,0.35)', fontStyle: 'italic',
+          }}>
+            🔒 {t('levelUp.prestigeVerrouille')}
+          </p>
+        </div>
+      )}
 
       {/* ── Choix d'effets ── */}
       {(() => {

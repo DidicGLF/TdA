@@ -107,6 +107,7 @@
     "verso": "Back",
     "golem": "Golem",
     "runes": "Runes",
+    "cristaux": "Crystals",
     "total": "Total",
     "deblocableNiveau": "Unlockable at level {{n}}",
     "modeTexte": "✎ Text",
@@ -722,6 +723,24 @@
       "puissant": "+2 to STR Mod.",
       "tailleSuperieure": "+10 HP and +1 STR Mod."
     }
+  },
+  "cristaux": {
+    "titre": "Path of Crystals",
+    "rang": "Rank {{rang}}",
+    "appris": "Learned",
+    "actifs": "Active",
+    "apprendre": "Learn this crystal",
+    "oublier": "Forget this crystal",
+    "activer": "Activate",
+    "desactiver": "Deactivate",
+    "duplicatAutorise": "One duplicate crystal allowed",
+    "bonusCristaux": "Crystal bonus",
+    "catalogue": "Catalogue",
+    "fabrique": "Crafted",
+    "equipe": "Equipped",
+    "aucunFabrique": "No crafted crystals — learn some from the catalogue.",
+    "aucunEquipe": "No equipped crystals.",
+    "coutFabrication": "Crafting a crystal costs <bold>200 silver pieces</bold>."
   },
   "runesData": {
     "groupes": [

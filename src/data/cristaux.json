@@ -1,0 +1,128 @@
+[
+  {
+    "nom": "Blanc laiteux",
+    "forme": "fuseau",
+    "couleur1": "#f5f0ea",
+    "couleur2": "#c8c0b8",
+    "effet": "Régénération (1 PV/heure)",
+    "note": "Ne guérit que les PV perdus pendant que le cristal est porté.",
+    "bonus": null
+  },
+  {
+    "nom": "Bleu incandescent",
+    "forme": "sphere",
+    "couleur1": "#5090ff",
+    "couleur2": "#0a30c0",
+    "effet": "+2 SAG",
+    "note": null,
+    "bonus": { "stat": "SAG", "valeur": 2 }
+  },
+  {
+    "nom": "Bleu nuit",
+    "forme": "rhombe",
+    "couleur1": "#2a3a9e",
+    "couleur2": "#0d1250",
+    "effet": "+5 Init.",
+    "note": null,
+    "bonus": { "stat": "initiative", "valeur": 5 }
+  },
+  {
+    "nom": "Bleu pâle",
+    "forme": "rhombe",
+    "couleur1": "#90c8f0",
+    "couleur2": "#4880c0",
+    "effet": "+2 FOR",
+    "note": null,
+    "bonus": { "stat": "FOR", "valeur": 2 }
+  },
+  {
+    "nom": "Irisé",
+    "forme": "fuseau",
+    "couleur1": "#ff9de2",
+    "couleur2": "#8cffed",
+    "effet": "Sans respirer",
+    "note": null,
+    "bonus": null
+  },
+  {
+    "nom": "Noir fumé",
+    "forme": "prisme",
+    "couleur1": "#4a4a5a",
+    "couleur2": "#1a1a28",
+    "effet": "Résistance feu et froid 10 pts",
+    "note": null,
+    "bonus": null
+  },
+  {
+    "nom": "Orange",
+    "forme": "fuseau",
+    "couleur1": "#ffaa30",
+    "couleur2": "#cc5500",
+    "effet": "Résistance acide et électricité 10 pts",
+    "note": null,
+    "bonus": null
+  },
+  {
+    "nom": "Rose et vert",
+    "forme": "sphere",
+    "couleur1": "#ff70b0",
+    "couleur2": "#50d090",
+    "effet": "+2 CHA",
+    "note": null,
+    "bonus": { "stat": "CHA", "valeur": 2 }
+  },
+  {
+    "nom": "Rose laiteux",
+    "forme": "prisme",
+    "couleur1": "#ffc8d6",
+    "couleur2": "#e890a8",
+    "effet": "+2 DEF (prémonition)",
+    "note": null,
+    "bonus": { "stat": "defense", "valeur": 2 }
+  },
+  {
+    "nom": "Rose vif",
+    "forme": "rhombe",
+    "couleur1": "#ff3d7f",
+    "couleur2": "#aa0050",
+    "effet": "+2 CON",
+    "note": null,
+    "bonus": { "stat": "CON", "valeur": 2 }
+  },
+  {
+    "nom": "Rouge et bleu",
+    "forme": "sphere",
+    "couleur1": "#e03030",
+    "couleur2": "#1e60e0",
+    "effet": "+2 INT",
+    "note": null,
+    "bonus": { "stat": "INT", "valeur": 2 }
+  },
+  {
+    "nom": "Rouge sang",
+    "forme": "sphere",
+    "couleur1": "#cc2020",
+    "couleur2": "#600000",
+    "effet": "+2 DEX",
+    "note": null,
+    "bonus": { "stat": "DEX", "valeur": 2 }
+  },
+  {
+    "nom": "Translucide",
+    "forme": "fuseau",
+    "couleur1": "#d0eeff",
+    "couleur2": "#80b8e0",
+    "effet": "Sans boire ni manger",
+    "note": null,
+    "bonus": null
+  },
+  {
+    "nom": "Vert pâle",
+    "forme": "prisme",
+    "couleur1": "#90d6a0",
+    "couleur2": "#409060",
+    "effet": "+1 attaque (toutes)",
+    "note": null,
+    "bonus": { "stat": "attaques", "valeur": 1 }
+  }
+]

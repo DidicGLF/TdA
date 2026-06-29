@@ -1,3 +1,5 @@
+import cristauxData from '../data/cristaux.json'
+
 export type Famille = 'combattants' | 'aventuriers' | 'mystiques'
 
 export type GolemRole = 'soldat' | 'gardien' | 'gladiateur'
@@ -134,6 +136,10 @@ export interface Character {
   // Golem
   golem?: GolemState
 
+  // Cristaux
+  cristauxAppris?: string[]
+  cristauxActifs?: string[]
+
   // Compagnons
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
@@ -157,6 +163,29 @@ export function getGolemVoieRang(character: Character): number {
   const voies = [character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele]
   const v = voies.find(v => v.nom === 'Voie des golems')
   return v ? v.rangs.filter(Boolean).length : 0
+}
+
+export function hasCristauxVoie(character: Character): boolean {
+  return character.voiePrestige.nom === 'Voie des cristaux' && character.voiePrestige.rangs.some(Boolean)
+}
+
+export function getCristauxRang(character: Character): number {
+  if (character.voiePrestige.nom !== 'Voie des cristaux') return 0
+  return character.voiePrestige.rangs.filter(Boolean).length
+}
+
+export function getCristalBonuses(character: Character): Record<string, number> {
+  const actifs = character.cristauxActifs ?? []
+  if (actifs.length === 0) return {}
+  const bonuses: Record<string, number> = {}
+  for (const nom of actifs) {
+    const cristal = cristauxData.find(c => c.nom === nom)
+    if (cristal?.bonus) {
+      const { stat, valeur } = cristal.bonus
+      bonuses[stat] = (bonuses[stat] ?? 0) + valeur
+    }
+  }
+  return bonuses
 }
 
 export function hasVoieEtheree(character: Character): boolean {

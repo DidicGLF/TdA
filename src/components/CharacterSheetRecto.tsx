@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
+import cristauxData from '../data/cristaux.json'
+import CristalSvg from './CristalSvg'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import type { ArmesData, ArmuresData, FieldPositions } from '../context/GameDataContext'
@@ -152,7 +154,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const [voieRangPos, setVoieRangPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(VOIE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
   )
-  type TooltipLine = { label: string; value: string | number; neg?: boolean }
+  type TooltipLine = { label: string; value: string | number; neg?: boolean; cristal?: typeof cristauxData[0] }
   type TooltipData =
     | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; x: number; y: number }
     | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; avanceeOwned?: never; x: number; y: number }
@@ -332,7 +334,25 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     </React.Fragment>
   )}
 
-  const effects = computeEffects(character, data)
+  const baseEffects = computeEffects(character, data)
+  const effects = (() => {
+    const actifsCristaux = (character.cristauxActifs ?? [])
+      .map(nom => cristauxData.find(c => c.nom === nom))
+      .filter((c): c is typeof cristauxData[0] => Boolean(c?.bonus))
+    if (actifsCristaux.length === 0) return baseEffects
+    const result = { ...baseEffects }
+    const addContrib = (key: string, value: number, nom: string) => {
+      result[key] = [...(result[key] ?? []), { stat: key, value, nom, rang: -1, triggerRang: -1, voie: 'cristaux' }]
+    }
+    for (const cristal of actifsCristaux) {
+      const { stat, valeur } = cristal.bonus!
+      if (stat === 'initiative') { addContrib('INIT', valeur, cristal.nom) }
+      else if (stat === 'defense') { addContrib('DEF', valeur, cristal.nom) }
+      else if (stat === 'attaques') { addContrib('ATT_CONTACT', valeur, cristal.nom); addContrib('ATT_DISTANCE', valeur, cristal.nom); addContrib('ATT_MAGIQUE', valeur, cristal.nom) }
+      else { addContrib(stat, valeur, cristal.nom) }
+    }
+    return result
+  })()
   const diceEffects = computeDiceEffects(character, data)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
 
@@ -358,16 +378,24 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
   const SUP: Record<number, string> = { 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵' }
   const groupContribs = (contribs: { nom: string; rang: number; triggerRang: number; value: number; voie: string }[]) => {
-    const map = new Map<string, { nom: string; rang: number; maxTrigger: number; total: number }>()
-    for (const c of contribs) {
-      const key = `${c.voie}||${c.nom}||${c.rang}`
+    const map = new Map<string, { nom: string; rang: number; maxTrigger: number; total: number; voie: string }>()
+    for (let ci = 0; ci < contribs.length; ci++) {
+      const c = contribs[ci]
+      const key = c.voie === 'cristaux'
+        ? `${c.voie}||${c.nom}||${c.rang}||${ci}`
+        : `${c.voie}||${c.nom}||${c.rang}`
       const entry = map.get(key)
       if (entry) { entry.total += c.value; entry.maxTrigger = Math.max(entry.maxTrigger, c.triggerRang) }
-      else map.set(key, { nom: c.nom, rang: c.rang, maxTrigger: c.triggerRang, total: c.value })
+      else map.set(key, { nom: c.nom, rang: c.rang, maxTrigger: c.triggerRang, total: c.value, voie: c.voie })
     }
     return [...map.values()].map(g => ({
-      label: g.maxTrigger === g.rang ? `${g.nom} ${t('recto.rangLabel', { n: g.rang })}` : `${g.nom} ${t('recto.rangLabel', { n: g.rang })}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
+      label: g.rang < 0
+        ? g.nom
+        : g.maxTrigger === g.rang
+          ? `${g.nom} ${t('recto.rangLabel', { n: g.rang })}`
+          : `${g.nom} ${t('recto.rangLabel', { n: g.rang })}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
       value: `+${g.total}`,
+      cristal: g.voie === 'cristaux' ? cristauxData.find(c => c.nom === g.nom) : undefined,
     }))
   }
 
@@ -925,7 +953,14 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                   const color = isNeg ? '#c97a4c' : isPos ? '#7fb87f' : 'rgba(232,223,192,0.75)'
                   return (
                     <tr key={i}>
-                      <td style={{ paddingRight: 14, paddingBottom: 3, color: 'rgba(232,223,192,0.6)', fontSize: '0.95em' }}>{line.label}</td>
+                      <td style={{ paddingRight: 14, paddingBottom: 3, color: 'rgba(232,223,192,0.6)', fontSize: '0.95em' }}>
+                        {line.cristal ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle' }}>
+                            {line.label}
+                            <CristalSvg cristal={line.cristal} size={13} actif />
+                          </span>
+                        ) : line.label}
+                      </td>
                       <td style={{ textAlign: 'right', paddingBottom: 3, color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{val}</td>
                     </tr>
                   )
