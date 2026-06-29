@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import i18n from '../i18n'
 import { initLocaleDir, localeFileExists, readLocaleFile, writeLocaleFile, listLocaleDir } from '../utils/localeFs'
 
@@ -44,6 +45,7 @@ interface LocaleContextValue {
   contentMaps: ContentMaps
   uiMaps: ContentMaps
   languages: Language[]
+  localeDir: string
   saveContentFile: (filename: string, data: Record<string, unknown>) => Promise<void>
   saveUIFile: (filename: string, data: Record<string, unknown>) => Promise<void>
   saveLanguages: (langs: Language[]) => Promise<void>
@@ -54,6 +56,7 @@ const LocaleContext = createContext<LocaleContextValue>({
   contentMaps: buildBundledContentMaps(),
   uiMaps: buildBundledUIMaps(),
   languages: BUNDLED_LANGS,
+  localeDir: '',
   saveContentFile: async () => {},
   saveUIFile: async () => {},
   saveLanguages: async () => {},
@@ -70,10 +73,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [contentMaps, setContentMaps] = useState<ContentMaps>(buildBundledContentMaps)
   const [uiMaps, setUIMaps] = useState<ContentMaps>(buildBundledUIMaps)
   const [languages, setLanguages] = useState<Language[]>(BUNDLED_LANGS)
+  const [localeDir, setLocaleDir] = useState('')
 
   const reloadLocales = useCallback(async () => {
     try {
-      await initLocaleDir()
+      const dir = await initLocaleDir()
+      setLocaleDir(dir)
 
       // ── 1. Seed missing bundled files into user dir ────────────────────────
 
@@ -184,7 +189,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <LocaleContext.Provider value={{ contentMaps, uiMaps, languages, saveContentFile, saveUIFile, saveLanguages, reloadLocales }}>
+    <LocaleContext.Provider value={{ contentMaps, uiMaps, languages, localeDir, saveContentFile, saveUIFile, saveLanguages, reloadLocales }}>
       {children}
     </LocaleContext.Provider>
   )
