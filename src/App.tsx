@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
+import { useLocaleContext } from './context/LocaleContext'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
 import type { Character } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
@@ -13,6 +14,7 @@ import CharacterSheetCristaux from './components/CharacterSheetCristaux'
 import CreationWizard from './components/CreationWizard'
 import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
+import TranslationEditor from './components/TranslationEditor'
 import LevelUpModal from './components/LevelUpModal'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
@@ -25,6 +27,7 @@ export default function App() {
 
 function AppContent() {
   const { t, i18n } = useTranslation()
+  const { languages } = useLocaleContext()
   const { data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
@@ -62,6 +65,8 @@ function AppContent() {
   const [calibrate, setCalibrate] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [showDescEditor, setShowDescEditor] = useState(false)
+  const [showTranslationEditor, setShowTranslationEditor] = useState(false)
+  const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [ficheLocked, setFicheLocked] = useState(true)
   const [showUnlockConfirm, setShowUnlockConfirm] = useState(false)
@@ -306,6 +311,15 @@ function AppContent() {
               }}>
                 {t('menuGestion.donneesJeu')}
               </button>
+              {!isAndroid && (
+                <button onClick={() => { setShowTranslationEditor(true); setShowMobileGestion(false) }} style={{
+                  padding: '14px 20px', background: 'transparent', border: 'none',
+                  borderBottom: '1px solid rgba(201,168,76,0.1)',
+                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
+                }}>
+                  {t('menuGestion.traductions', 'Traductions')}
+                </button>
+              )}
               <button onClick={() => {
                 if (ficheLocked) { setShowUnlockConfirm(true); setShowMobileGestion(false) }
                 else { setFicheLocked(true); setShowMobileGestion(false) }
@@ -319,13 +333,13 @@ function AppContent() {
               </button>
               <div style={{ padding: '12px 20px', borderBottom: '1px solid rgba(201,168,76,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                {(['fr', 'en'] as const).map(lang => (
-                  <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                {languages.map(({ code, label }) => (
+                  <button key={code} onClick={() => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }} style={{
                     padding: '4px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontWeight: 600,
-                    border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                    background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
-                    color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                  }}>{lang.toUpperCase()}</button>
+                    border: `1px solid ${i18n.language === code ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    background: i18n.language === code ? 'rgba(201,168,76,0.15)' : 'transparent',
+                    color: i18n.language === code ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                  }}>{label}</button>
                 ))}
               </div>
               <div style={{ padding: '10px 20px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -356,6 +370,7 @@ function AppContent() {
         </>
       )}
       {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
+      {showTranslationEditor && !isAndroid && <TranslationEditor onClose={() => setShowTranslationEditor(false)} />}
 
       {showUnlockConfirm && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.7)',
@@ -681,6 +696,17 @@ function AppContent() {
                 {t('menuGestion.donneesJeu')}
               </button>
 
+              {/* Traductions — desktop seulement */}
+              {!isAndroid && (
+                <button onClick={() => { setShowTranslationEditor(true); setShowGestion(false) }} style={{
+                  padding: '10px 16px', background: 'transparent', border: 'none',
+                  borderBottom: '1px solid rgba(201,168,76,0.1)',
+                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                }}>
+                  {t('menuGestion.traductions', 'Traductions')}
+                </button>
+              )}
+
               {/* Déverrouiller la fiche */}
               <button onClick={() => {
                 if (ficheLocked) { setShowUnlockConfirm(true); setShowGestion(false) }
@@ -696,17 +722,17 @@ function AppContent() {
 
               {/* Langue */}
               <div style={{
-                padding: '8px 16px', borderBottom: import.meta.env.DEV ? '1px solid rgba(201,168,76,0.1)' : 'none',
+                padding: '8px 16px', borderBottom: '1px solid rgba(201,168,76,0.1)',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                {(['fr', 'en'] as const).map(lang => (
-                  <button key={lang} onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('tda-lang', lang) }} style={{
+                {languages.map(({ code, label }) => (
+                  <button key={code} onClick={() => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }} style={{
                     padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                    border: `1px solid ${i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                    background: i18n.language === lang ? 'rgba(201,168,76,0.15)' : 'transparent',
-                    color: i18n.language === lang ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                  }}>{lang.toUpperCase()}</button>
+                    border: `1px solid ${i18n.language === code ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
+                    background: i18n.language === code ? 'rgba(201,168,76,0.15)' : 'transparent',
+                    color: i18n.language === code ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
+                  }}>{label}</button>
                 ))}
               </div>
 

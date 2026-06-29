@@ -1,0 +1,11 @@
+{
+  "Détection de la magie": "For an attack action, the mystic concentrates and detects the presence of any inscription, aura, or magical object located in the room they are in (or within 15 meters around them).",
+  "Flamme": "As a free action and for as long as they wish, the mystic causes a small flame to appear in the palm of their hand, barely bright enough to illuminate an area within a 5-meter radius. They can use it to set fire to flammable materials or make a contact attack — for an attack action — against an opponent using their magical attack score and inflicting 1d6 DM.",
+  "Inspiration": "At the cost of an attack action, the mystic designates an ally within 10 meters and grants them a +1 bonus to all their tests for [2 + WIS Mod.] turns. They can launch an inspiration each turn but cannot maintain more than [1 + INT Mod.] inspirations at once (minimum 1).",
+  "Lumières dansantes": "At the cost of a movement action, the mystic causes three small spheres of light of their chosen color to appear, levitating around their body. They illuminate an area within a 20-meter radius and persist as long as the mystic wishes. The slightest damage taken breaks concentration and causes them to disappear.",
+  "Projectile de force": "For an attack action, the mystic chooses a visible target within 50 meters and projects a shockwave that hits them automatically, inflicting 1d4 DM. The force bolt is almost invisible and makes no sound as it flies through the air.",
+  "Endurant": "The character's maximum PR is 6 — not 5 as for other races.",
+  "Instinct de survie": "When an attack would reduce the character to 0 HP, the damage it inflicts is halved (minimum 1).",
+  "Lumière des étoiles": "For the character, the darkness of the night under the light of the stars is only twilight, where only small details escape them.",
+  "Vision dans le noir": "In total darkness, the character sees as in dim light up to 30 m."
+}

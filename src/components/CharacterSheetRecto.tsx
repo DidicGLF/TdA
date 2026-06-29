@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
+import { useVoieName, usePeupleName } from '../hooks/useContentTranslation'
 import cristauxData from '../data/cristaux.json'
 import CristalSvg from './CristalSvg'
 import DraggableField from './DraggableField'
@@ -154,6 +155,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const [voieRangPos, setVoieRangPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(VOIE_RANG_CHECKBOXES.map(c => [c.id, { top: c.top, left: c.left }]))
   )
+  const voieName = useVoieName()
+  const peupleName = usePeupleName()
   type TooltipLine = { label: string; value: string | number; neg?: boolean; cristal?: typeof cristauxData[0] }
   type TooltipData =
     | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; x: number; y: number }
@@ -390,10 +393,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     }
     return [...map.values()].map(g => ({
       label: g.rang < 0
-        ? g.nom
+        ? voieName(g.nom)
         : g.maxTrigger === g.rang
-          ? `${g.nom} ${t('recto.rangLabel', { n: g.rang })}`
-          : `${g.nom} ${t('recto.rangLabel', { n: g.rang })}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
+          ? `${voieName(g.nom)} ${t('recto.rangLabel', { n: g.rang })}`
+          : `${voieName(g.nom)} ${t('recto.rangLabel', { n: g.rang })}${SUP[g.maxTrigger] ?? String(g.maxTrigger)}`,
       value: `+${g.total}`,
       cristal: g.voie === 'cristaux' ? cristauxData.find(c => c.nom === g.nom) : undefined,
     }))
@@ -411,10 +414,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : '', onChange: locked ? () => {} : v => onChange({ famille: v as any }), active: activeStep === 3, readOnly: locked })}
       {f({ label: "Âge",         top: 12.2, left: 92.1, width: 6.4,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
       {f({ label: "Nom perso",   top: 14.4, left: 51.9, width: 20.7, height: 2.0, value: character.nomPersonnage,  onChange: v => onChange({ nomPersonnage: v }),                   active: activeStep === 0 })}
-      {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: character.peuple,        onChange: locked ? () => {} : v => onChange({ peuple: v }),      active: activeStep === 1, readOnly: locked })}
+      {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: locked ? peupleName(character.peuple) : character.peuple,   onChange: locked ? () => {} : v => onChange({ peuple: v }),      active: activeStep === 1, readOnly: locked })}
       {f({ label: "Taille",      top: 14.3, left: 91.7, width: 5.7,  height: 2.0, value: character.taille,        onChange: v => onChange({ taille: v }),                           active: activeStep === 0 })}
       {f({ label: "Niveau",      top: 16.5, left: 41.8, width: 4.9,  height: 2.0, value: character.niveau,        onChange: () => {}, readOnly: locked, align: "center" })}
-      {f({ label: "Culture",     top: 16.5, left: 76.3, width: 16.6, height: 2.0, value: character.culture,       onChange: locked ? () => {} : v => onChange({ culture: v }),     active: activeStep === 1, readOnly: locked })}
+      {f({ label: "Culture",     top: 16.5, left: 76.3, width: 16.6, height: 2.0, value: locked ? peupleName(character.culture) : character.culture,  onChange: locked ? () => {} : v => onChange({ culture: v }),     active: activeStep === 1, readOnly: locked })}
       {f({ label: "Poids",       top: 16.5, left: 91.6, width: 5.4,  height: 2.0, value: character.poids,         onChange: v => onChange({ poids: v }),                            active: activeStep === 0 })}
 
       {/* === CARACTÉRISTIQUES === */}
@@ -428,7 +431,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           const effectiveVal = baseVal + voieBonus
           const effectiveMod = getMod(effectiveVal)
           const lines: TooltipLine[] = [{ label: t('recto.tlBase'), value: baseVal - racialMod }]
-          if (racialMod !== 0) lines.push({ label: character.peuple, value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
+          if (racialMod !== 0) lines.push({ label: peupleName(character.peuple), value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
           if (voieBonus !== 0) lines.push(...groupContribs(voieContribs))
           const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
           return (

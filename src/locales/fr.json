@@ -133,6 +133,7 @@
     "calibrage": "⊹ Calibrage",
     "calibrageOn": "✕ Calibrage ON",
     "modeDev": "Mode développeur",
+    "traductions": "🌐 Traductions",
     "langue": "🌐 Langue",
     "feuilles": "Feuilles",
     "importerFeuille": "↑ Importer {{side}}",
@@ -344,6 +345,9 @@
       }
     }
   },
+  "currency": {
+    "pa": "pa"
+  },
   "equipement": {
     "armes": "Armes",
     "armures": "Armures",
@@ -351,6 +355,7 @@
     "equipe": "Équipé",
     "colArme": "Arme",
     "colArmure": "Armure",
+    "colMod": "Mod",
     "colPortee": "Portée",
     "colPrix": "Prix",
     "colAjouter": "Ajouter",

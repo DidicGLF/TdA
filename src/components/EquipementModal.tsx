@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import type { Character } from '../types/character'
 import { useGameData } from '../context/GameDataContext'
 import { useModalBackButton } from '../hooks/useModalBackButton'
+import { useEquipementName } from '../hooks/useContentTranslation'
 
 type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string }
 type EntreeArmure = { nom: string; def: number; prix: string }
@@ -65,6 +66,8 @@ type DragSrc =
 
 export default function EquipementModal({ character, onChange, onClose }: Props) {
   const { t } = useTranslation()
+  const eqName = useEquipementName()
+  const fmtPrix = (prix: string) => prix.replace(/\bpa\b/g, t('currency.pa'))
   const [section,      setSection]      = useState<'armes' | 'armures'>('armes')
   const [editMode,     setEditMode]     = useState(false)
   const [exported,     setExported]     = useState(false)
@@ -358,13 +361,13 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
           {cat.entrees.map((e, ei) => (
             <tr key={ei}>
               <td style={cell}>
-                {editMode ? <input value={e.nom} onChange={ev => updateArme(gi, ci, ei, { nom: ev.target.value })} style={inputStyle} /> : e.nom}
+                {editMode ? <input value={e.nom} onChange={ev => updateArme(gi, ci, ei, { nom: ev.target.value })} style={inputStyle} /> : eqName(e.nom)}
               </td>
               <td style={{ ...cell, textAlign: 'center' }}>
                 {editMode ? <input value={e.dm} onChange={ev => updateArme(gi, ci, ei, { dm: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : e.dm}
               </td>
               <td style={{ ...cell, textAlign: 'center', color: S.gold }}>
-                {editMode ? <input value={e.mod} onChange={ev => updateArme(gi, ci, ei, { mod: ev.target.value })} style={{ ...inputStyle, textAlign: 'center', color: S.gold }} /> : e.mod}
+                {editMode ? <input value={e.mod} onChange={ev => updateArme(gi, ci, ei, { mod: ev.target.value })} style={{ ...inputStyle, textAlign: 'center', color: S.gold }} /> : t(`stats.${e.mod}`, e.mod)}
               </td>
               {withPortee && (
                 <td style={{ ...cell, textAlign: 'center' }}>
@@ -372,7 +375,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 </td>
               )}
               <td style={{ ...cell, textAlign: 'center', opacity: editMode ? 1 : 0.6 }}>
-                {editMode ? <input value={e.prix} onChange={ev => updateArme(gi, ci, ei, { prix: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : e.prix}
+                {editMode ? <input value={e.prix} onChange={ev => updateArme(gi, ci, ei, { prix: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : fmtPrix(e.prix)}
               </td>
               <td style={{ ...cell, textAlign: 'center' }}>
                 {editMode
@@ -414,13 +417,13 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         {cat.entrees.map((e, ei) => (
           <tr key={ei}>
             <td style={cell}>
-              {editMode ? <input value={e.nom} onChange={ev => updateArmure(ci, ei, { nom: ev.target.value })} style={inputStyle} /> : e.nom}
+              {editMode ? <input value={e.nom} onChange={ev => updateArmure(ci, ei, { nom: ev.target.value })} style={inputStyle} /> : eqName(e.nom)}
             </td>
             <td style={{ ...cell, textAlign: 'center', color: S.gold }}>
               {editMode ? <input type="number" value={e.def} onChange={ev => updateArmure(ci, ei, { def: parseInt(ev.target.value) || 0 })} style={{ ...inputStyle, textAlign: 'center', color: S.gold, width: 60 }} /> : `+${e.def}`}
             </td>
             <td style={{ ...cell, textAlign: 'center', opacity: editMode ? 1 : 0.6 }}>
-              {editMode ? <input value={e.prix} onChange={ev => updateArmure(ci, ei, { prix: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : e.prix}
+              {editMode ? <input value={e.prix} onChange={ev => updateArmure(ci, ei, { prix: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : fmtPrix(e.prix)}
             </td>
             <td style={{ ...cell, textAlign: 'center' }}>
               {editMode
@@ -460,9 +463,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     // Liste plate des catégories armes
     const mobileCatsArmes: { key: string; label: string; gi: number; ci: number }[] = []
     groupes.forEach((g, gi) => g.categories.forEach((c, ci) => {
-      mobileCatsArmes.push({ key: `${gi}-${ci}`, label: `${g.groupe} — ${c.categorie}`, gi, ci })
+      mobileCatsArmes.push({ key: `${gi}-${ci}`, label: `${eqName(g.groupe)} — ${eqName(c.categorie)}`, gi, ci })
     }))
-    const mobileCatsArmures = armures.map((c, ci) => ({ key: `${ci}`, label: c.categorie, ci }))
+    const mobileCatsArmures = armures.map((c, ci) => ({ key: `${ci}`, label: eqName(c.categorie), ci }))
 
     const [mgi, mci] = mobileCatKey.split('-').map(Number)
     const mobileCatArme  = section === 'armes'   ? groupes[mgi]?.categories[mci]   : null
@@ -525,10 +528,10 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                  <div style={{ fontSize: 16, color: S.parchment }}>{eqName(e.nom)}</div>
                   <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
                     {e.dm}{e.mod ? ` + ${e.mod}` : ''}{withPortee && e.portee ? ` · ${e.portee}` : ''}
-                    {e.prix ? ` · ${e.prix}` : ''}
+                    {e.prix ? ` · ${fmtPrix(e.prix)}` : ''}
                   </div>
                 </div>
                 <button onClick={() => addArme(e)} style={{
@@ -542,9 +545,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 16px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, color: S.parchment }}>{e.nom}</div>
+                  <div style={{ fontSize: 16, color: S.parchment }}>{eqName(e.nom)}</div>
                   <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
-                    DEF +{e.def}{e.prix ? ` · ${e.prix}` : ''}
+                    DEF +{e.def}{e.prix ? ` · ${fmtPrix(e.prix)}` : ''}
                   </div>
                 </div>
                 <button onClick={() => addArmure(e)} style={{
@@ -573,7 +576,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                         border: `1px solid ${slot ? 'rgba(100,160,255,0.3)' : S.border}`,
                         color: slot ? 'rgba(100,160,255,0.9)' : S.parchment }}>
                         {slot && <span style={{ fontSize: 11, opacity: 0.7 }}>E{slot} · </span>}
-                        {a.nom} <span style={{ opacity: 0.5 }}>{a.dm}</span>
+                        {eqName(a.nom)} <span style={{ opacity: 0.5 }}>{a.dm}</span>
                         <button onClick={() => removeArme(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0, lineHeight: 1 }}>✕</button>
                       </span>
                     )
@@ -603,7 +606,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                                 checked={isCurrent} disabled={takenByOther}
                                 onChange={() => equipeArmeSlot(a.nom, slot)}
                                 style={{ accentColor: color, width: 18, height: 18 }} />
-                              {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
+                              {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
                             </label>
                           )
                         })}
@@ -627,7 +630,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
                       color: armurePortee === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
                       <input type="radio" name="armure-portee" checked={armurePortee === a.nom} onChange={() => equipeArmure(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
-                      {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
+                      {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
                       <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0 }}>✕</button>
                     </label>
                   ))}
@@ -648,7 +651,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
                       color: bouclierPorte === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
                       <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
-                      {a.nom} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
+                      {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
                       <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0 }}>✕</button>
                     </label>
                   ))}
@@ -759,7 +762,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                       }}
                     >
                       {editMode && <span style={handleStyle}>⠿</span>}
-                      {g.groupe}
+                      {editMode ? g.groupe : eqName(g.groupe)}
                     </div>
                     {g.categories.map((c, ci) => {
                       const fi = flatIndex[gi][ci]
@@ -787,7 +790,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                           }}
                         >
                           {editMode && <span style={handleStyle}>⠿</span>}
-                          {c.categorie}
+                          {editMode ? c.categorie : eqName(c.categorie)}
                         </div>
                       )
                     })}
@@ -809,7 +812,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     borderLeft: activeKey === `${ci}` ? `3px solid ${S.gold}` : '3px solid transparent',
                     transition: 'all 0.1s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                    {c.categorie}
+                    {eqName(c.categorie)}
                   </div>
                 ))
               }
@@ -846,7 +849,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     {editMode
                       ? <input value={g.groupe} onChange={e => renameGroupe(gi, e.target.value)}
                           style={{ ...inputStyle, fontSize: 16, color: S.gold, fontFamily: "'Cinzel', serif", fontWeight: 700, flex: 1 }} />
-                      : <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: S.gold, fontWeight: 700, flex: 1 }}>{g.groupe}</div>
+                      : <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: S.gold, fontWeight: 700, flex: 1 }}>{eqName(g.groupe)}</div>
                     }
                     {editMode && (
                       <button onClick={() => removeGroupe(gi)}
@@ -869,7 +872,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                             ? <input value={cat.categorie} onChange={e => renameCatArme(gi, ci, e.target.value)}
                                 style={{ ...inputStyle, fontSize: 14, color: S.gold, flex: 1 }} />
                             : <div style={{ fontSize: 14, color: S.gold, fontStyle: 'italic', flex: 1 }}>
-                                {cat.categorie}
+                                {eqName(cat.categorie)}
                               </div>
                           }
                           {editMode && (
@@ -909,7 +912,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                       ? <input value={cat.categorie} onChange={e => renameCatArmure(ci, e.target.value)}
                           style={{ ...inputStyle, fontSize: 15, color: S.gold, fontFamily: "'Cinzel', serif", fontWeight: 700, flex: 1 }} />
                       : <div style={{ fontFamily: "'Cinzel', serif", fontSize: 15, color: S.gold, flex: 1 }}>
-                          {cat.categorie}
+                          {eqName(cat.categorie)}
                         </div>
                     }
                     {editMode && (

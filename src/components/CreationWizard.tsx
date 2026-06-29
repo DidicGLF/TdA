@@ -22,6 +22,7 @@ import type { VoieKey } from '../utils/levelUp'
 import { parseDesc } from '../utils/parseDesc'
 import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
 import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
+import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName } from '../hooks/useContentTranslation'
 
 type TraitEntry = { nom: string; desc: string }
 
@@ -265,6 +266,9 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
 function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
+  const peupleName = usePeupleName()
+  const traitName = useTraitName()
+  const traitDesc = useTraitDesc()
   const { peuples, hiddenPeuples, hiddenCultures, showHidden } = useGameData()
   const cultureKey = (pl: string, cl: string) => `${pl}::${cl}`
   const visiblePeuples = peuples.filter(p => showHidden || !hiddenPeuples.includes(p.label))
@@ -302,7 +306,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
   const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
   const modText = Object.entries(modCaracs)
-    .map(([k, v]) => `${k} ${(v as number) >= 0 ? '+' : ''}${v}`)
+    .map(([k, v]) => `${t(`stats.${k}`, k)} ${(v as number) >= 0 ? '+' : ''}${v}`)
     .join(', ')
 
   return (
@@ -322,7 +326,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           onChange={e => onPeupleChange(e.target.value)}
         >
           <option value="">{t('wizard.step1.choisir')}</option>
-          {visiblePeuples.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+          {visiblePeuples.map(p => <option key={p.label} value={p.label}>{peupleName(p.label)}</option>)}
         </select>
       </div>
 
@@ -338,7 +342,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             onChange={e => onCultureChange(e.target.value)}
           >
             <option value="">{t('wizard.step1.choisir')}</option>
-            {cultures.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
+            {cultures.map(c => <option key={c.label} value={c.label}>{peupleName(c.label)}</option>)}
           </select>
         </div>
       )}
@@ -365,8 +369,8 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             </label>
             {trait ? (
               <div style={{ padding: '10px 14px', borderRadius: 6, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--tdr-gold)', marginBottom: 5 }}>{trait.nom}</div>
-                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.6, fontStyle: 'italic' }}>{trait.desc}</div>
+                <div style={{ fontWeight: 600, color: 'var(--tdr-gold)', marginBottom: 5 }}>{traitName(trait.nom)}</div>
+                <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.6, fontStyle: 'italic' }}>{traitDesc(trait.nom)}</div>
               </div>
             ) : (
               <input
@@ -386,6 +390,7 @@ function Step1({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
 function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
+  const peupleName = usePeupleName()
   const { peuples } = useGameData()
   const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
 
@@ -491,12 +496,12 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               const peupleData = peuples.find(p => p.label === character.peuple)
               const modStrings = peupleData?.cultures.map(c => JSON.stringify(c.modCaracs ?? {})) ?? []
               const cultureVarie = new Set(modStrings).size > 1
-              return character.peuple + (cultureVarie && character.culture ? ` · ${character.culture}` : '') + ' :'
+              return peupleName(character.peuple) + (cultureVarie && character.culture ? ` · ${peupleName(character.culture)}` : '') + ' :'
             })()}
           </span>
           {Object.entries(modCaracs).map(([k, v]) => (
             <span key={k} style={{ marginRight: 8, fontWeight: 700, color: (v as number) > 0 ? 'rgba(120,210,120,0.9)' : 'rgba(220,100,80,0.9)' }}>
-              {k} {(v as number) > 0 ? '+' : ''}{v as number}
+              {t(`stats.${k}`, k)} {(v as number) > 0 ? '+' : ''}{v as number}
             </span>
           ))}
         </div>
@@ -641,12 +646,13 @@ function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () 
 
 function TraitCombobox({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const { t } = useTranslation()
+  const traitName = useTraitName()
   const { traits } = useGameData()
   const [open, setOpen] = React.useState(false)
-  const [query, setQuery] = React.useState(value)
+  const [query, setQuery] = React.useState(value ? traitName(value) : '')
   const ref = React.useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => { setQuery(value) }, [value])
+  React.useEffect(() => { setQuery(value ? traitName(value) : '') }, [value, traitName])
 
   React.useEffect(() => {
     if (!open) return
@@ -657,7 +663,7 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const filtered = traits.filter(t => t.nom.toLowerCase().includes(query.toLowerCase()))
+  const filtered = traits.filter(t => traitName(t.nom).toLowerCase().includes(query.toLowerCase()))
 
   return (
     <div ref={ref} style={{ position: 'relative', flex: 1 }}>
@@ -667,7 +673,7 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
         placeholder={open && !query && value ? value : t('wizard.step5.rechercherTrait')}
         onFocus={() => { setQuery(''); setOpen(true) }}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onBlur={() => setTimeout(() => { setOpen(false); setQuery(value) }, 150)}
+        onBlur={() => setTimeout(() => { setOpen(false); setQuery(value ? traitName(value) : '') }, 150)}
         className="w-full border rounded px-3 py-1.5 text-base"
         style={{
           background: 'rgba(15,12,8,0.92)',
@@ -692,6 +698,7 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
 }
 
 function TraitOption({ entry, onSelect }: { entry: TraitEntry; onSelect: (nom: string) => void }) {
+  const traitName = useTraitName()
   const [hovered, setHovered] = React.useState(false)
   return (
     <div
@@ -703,7 +710,7 @@ function TraitOption({ entry, onSelect }: { entry: TraitEntry; onSelect: (nom: s
         color: 'var(--tdr-parchment)',
         background: hovered ? 'rgba(201,168,76,0.12)' : 'transparent',
       }}
-    >{entry.nom}</div>
+    >{traitName(entry.nom)}</div>
   )
 }
 
@@ -1584,6 +1591,8 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     setMobileCompagnonPicker(null)
   }
   const { t } = useTranslation()
+  const compagnonName = useCompagnonName()
+  const equipementName = useEquipementName()
   const [showEquipement, setShowEquipement] = React.useState(false)
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
   const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
@@ -1682,7 +1691,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 onChange={() => toggle(f)}
                 className="accent-yellow-500"
               />
-              <span className="text-base">{f}</span>
+              <span className="text-base">{equipementName(f)}</span>
             </label>
           )
         })}
@@ -1758,7 +1767,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         {items.map((item, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, opacity: item.ghost ? 0.35 : 1 }}>
                             <div>
-                              <div style={{ fontSize: 12, color: 'var(--tdr-parchment)', fontStyle: item.ghost ? 'italic' : 'normal' }}>{item.nom}</div>
+                              <div style={{ fontSize: 12, color: 'var(--tdr-parchment)', fontStyle: item.ghost ? 'italic' : 'normal' }}>{equipementName(item.nom)}</div>
                               {item.sub && <div style={{ fontSize: 10, opacity: 0.5 }}>{item.sub}</div>}
                             </div>
                             {!item.ghost && (
@@ -1783,7 +1792,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     <span key={i}
                       draggable
                       onDragStart={e => handleDragStart(e, 'arme', a.nom)}
-                      onMouseEnter={e => showTip([a.nom, `DM : ${a.dm}`, ...(a.attaque ? [`Mod : ${a.attaque}`] : []), ...(a.portee ? [`Portée : ${a.portee}`] : []), ...(a.special ? [a.special] : [])], e)}
+                      onMouseEnter={e => showTip([equipementName(a.nom), `DM : ${a.dm}`, ...(a.attaque ? [`${t('equipement.colMod', 'Mod')} : ${t(`stats.${a.attaque}`, a.attaque)}`] : []), ...(a.portee ? [`${t('equipement.colPortee')} : ${a.portee}`] : []), ...(a.special ? [a.special] : [])], e)}
                       onMouseMove={moveTip}
                       onMouseLeave={() => setEqTip(null)}
                       style={{
@@ -1791,7 +1800,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)',
                         color: 'var(--tdr-parchment)', userSelect: 'none',
                         opacity: (a.nom === character.arme1 || a.nom === character.arme2) ? 0.4 : 1,
-                      }}>{a.nom}</span>
+                      }}>{equipementName(a.nom)}</span>
                   ))}
                 </div>
               </>
@@ -1804,7 +1813,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     <span key={i}
                       draggable
                       onDragStart={e => handleDragStart(e, 'armure', a.nom)}
-                      onMouseEnter={e => showTip([a.nom, `DEF : +${a.def}`, ...(a.prix ? [`Prix : ${a.prix}`] : [])], e)}
+                      onMouseEnter={e => showTip([equipementName(a.nom), `DEF : +${a.def}`, ...(a.prix ? [`${t('equipement.colPrix')} : ${a.prix.replace(/\bpa\b/g, t('currency.pa'))}`] : [])], e)}
                       onMouseMove={moveTip}
                       onMouseLeave={() => setEqTip(null)}
                       style={{
@@ -1812,7 +1821,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         background: 'rgba(100,160,255,0.1)', border: '1px solid rgba(100,160,255,0.25)',
                         color: 'var(--tdr-parchment)', userSelect: 'none',
                         opacity: a.equipe ? 0.4 : 1,
-                      }}>{a.nom}</span>
+                      }}>{equipementName(a.nom)}</span>
                   ))}
                 </div>
               </>
@@ -1856,7 +1865,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                       <input type="radio" readOnly checked={isCurrent}
                         style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
                       <div>
-                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{nom}</div>
+                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{compagnonName(nom)}</div>
                         {inOtherSlot && !isCurrent && (
                           <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>
                             {t('wizard.step5.seraDeplace', { slot: mobileCompagnonPicker === 0 ? 2 : 1 })}
@@ -1986,7 +1995,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                       color: 'var(--tdr-parchment)', fontFamily: 'inherit',
                     }}
                   >
-                    {nom}
+                    {compagnonName(nom)}
                   </button>
                 ))}
               </div>
@@ -1997,7 +2006,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           {choixGrants.filter(({ choixFait }) => !!choixFait).map(({ grant, choixFait }, idx) => (
             <div key={idx} style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 5, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,168,76,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>{t('wizard.step5.compagnonChoisi')}</span>
-              <span style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600 }}>{choixFait}</span>
+              <span style={{ fontSize: 13, color: 'var(--tdr-parchment)', fontWeight: 600 }}>{compagnonName(choixFait!)}</span>
               <span style={{ fontSize: 11, color: 'rgba(201,168,76,0.4)', marginLeft: 'auto' }}>{t('wizard.step5.changer')}</span>
               {grant.noms.filter(n => n !== choixFait).map(nom => (
                 <button
@@ -2009,7 +2018,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
                   }}
                 >
-                  {nom}
+                  {compagnonName(nom)}
                 </button>
               ))}
             </div>
@@ -2046,7 +2055,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                           border: '1px solid rgba(201,168,76,0.3)',
                         }}
                       >
-                        {nom}
+                        {compagnonName(nom)}
                       </span>
                       <button
                         onClick={e => { e.stopPropagation(); clearCompagnonSlot(slotIdx) }}
@@ -2078,7 +2087,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     userSelect: 'none',
                   }}
                 >
-                  {nom}
+                  {compagnonName(nom)}
                 </span>
               ))}
             </div>

@@ -133,6 +133,7 @@
     "calibrage": "⊹ Calibrate",
     "calibrageOn": "✕ Calibrate ON",
     "modeDev": "Developer mode",
+    "traductions": "🌐 Translations",
     "langue": "🌐 Language",
     "feuilles": "Sheets",
     "importerFeuille": "↑ Import {{side}}",
@@ -344,6 +345,9 @@
       }
     }
   },
+  "currency": {
+    "pa": "sp"
+  },
   "equipement": {
     "armes": "Weapons",
     "armures": "Armor",
@@ -351,6 +355,7 @@
     "equipe": "Equipped",
     "colArme": "Weapon",
     "colArmure": "Armor",
+    "colMod": "Mod",
     "colPortee": "Range",
     "colPrix": "Price",
     "colAjouter": "Add",

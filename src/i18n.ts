@@ -1,15 +1,19 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import fr from './locales/fr.json'
-import en from './locales/en.json'
+
+// Auto-discover all UI translation files (2-letter lang codes only, not languages.json or content/)
+const uiModules = import.meta.glob('./locales/[a-z][a-z].json', { eager: true }) as Record<string, { default: Record<string, unknown> }>
+
+const resources: Record<string, { translation: unknown }> = {}
+for (const [path, mod] of Object.entries(uiModules)) {
+  const code = path.replace('./locales/', '').replace('.json', '')
+  resources[code] = { translation: mod.default }
+}
 
 i18n
   .use(initReactI18next)
   .init({
-    resources: {
-      fr: { translation: fr },
-      en: { translation: en },
-    },
+    resources,
     lng: localStorage.getItem('tda-lang') ?? 'fr',
     fallbackLng: 'fr',
     interpolation: { escapeValue: false },

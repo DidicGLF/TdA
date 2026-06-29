@@ -9,6 +9,7 @@ import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions } from '../context/GameDataContext'
 import { resolveCompagnon } from '../utils/compagnons'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
+import { useCompagnonName } from '../hooks/useContentTranslation'
 
 interface Props {
   character: Character
@@ -62,6 +63,7 @@ const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
 
 export default function CharacterSheetVerso({ character, onChange, activeStep, calibrate = false, locked = true, onFieldMoved, fieldPositions, sheetImage }: Props) {
   const { t } = useTranslation()
+  const compagnonName = useCompagnonName()
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
   const fp = (label: string, t: number, l: number, w: number, h: number) => {
@@ -767,7 +769,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           )
           return (
             <React.Fragment key={slot}>
-              {fRO(Q.nom,      'nom', c?.nom ?? '',               'nom')}
+              {fRO(Q.nom,      'nom', c ? compagnonName(c.nom) : '',  'nom')}
               {f(Q.for,       'for', c ? fmtMod(c.for)  : '',   t('stats.FOR'),  'center')}
               {f(Q.dex,       'dex', c ? fmtMod(c.dex)  : '',   t('stats.DEX'),  'center')}
               {f(Q.con,       'con', c ? fmtMod(c.con)  : '',   t('stats.CON'),  'center')}
