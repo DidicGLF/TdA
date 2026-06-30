@@ -22,7 +22,7 @@ import type { VoieKey } from '../utils/levelUp'
 import { parseDesc } from '../utils/parseDesc'
 import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
 import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
-import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName } from '../hooks/useContentTranslation'
+import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName, useVoieName, useTranslatedDescriptions, useProfilName } from '../hooks/useContentTranslation'
 
 type TraitEntry = { nom: string; desc: string }
 
@@ -567,7 +567,9 @@ function renderDesc(text: string, character?: Character): React.ReactNode {
 
 function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () => void; character?: Character }) {
   const { t } = useTranslation()
-  const { data } = useGameData()
+  const { data: rawData } = useGameData()
+  const data = useTranslatedDescriptions(rawData)
+  const voieName = useVoieName()
   const capacites = data[nom] ?? data[nom.toLowerCase()] ?? []
 
   React.useEffect(() => {
@@ -605,7 +607,7 @@ function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () 
           <h2 style={{
             margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '0.04em',
             color: 'var(--tdr-gold)',
-          }}>{nom}</h2>
+          }}>{voieName(nom)}</h2>
           <button
             onClick={onClose}
             style={{
@@ -803,7 +805,10 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
   const { t } = useTranslation()
   const [previewVoie, setPreviewVoie] = React.useState<string | null>(null)
   const { disponibles } = calcPointsCapacite(character)
-  const { data: dynamicDescriptions, peuples, voies, hiddenVoies, showHidden } = useGameData()
+  const { data: rawDescriptions, peuples, voies, hiddenVoies, showHidden } = useGameData()
+  const dynamicDescriptions = useTranslatedDescriptions(rawDescriptions)
+  const voieName = useVoieName()
+  const profilName = useProfilName()
 
   const voiesPrestige = voies.filter(v => v.categorie === 'prestige' && (showHidden || !hiddenVoies.includes(v.nom)))
   const nomPrestige = character.voiePrestige.nom
@@ -967,9 +972,9 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
             >
               <option value="">{t('wizard.step3.choisirProfil')}</option>
               {PROFILS_GROUPED.map(group => (
-                <optgroup key={group.famille} label={group.famille}>
+                <optgroup key={group.famille} label={profilName(group.famille)}>
                   {group.profils.map(p => (
-                    <option key={p.nom} value={p.nom}>{p.nom}</option>
+                    <option key={p.nom} value={p.nom}>{profilName(p.nom)}</option>
                   ))}
                 </optgroup>
               ))}
@@ -1063,14 +1068,14 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                   >
                     <option value="">{t('wizard.step3.choisirVoiePeuple')}</option>
                     {voiesDePeuple.map(v => (
-                      <option key={v} value={v} disabled={v === autreNom}>{v}</option>
+                      <option key={v} value={v} disabled={v === autreNom}>{voieName(v)}</option>
                     ))}
                   </select>
                 ) : (
                   <input
                     className="flex-1 border rounded px-3 py-1.5 text-base"
                     style={{ ...INPUT_STYLE, opacity: 0.75 }}
-                    value={nom}
+                    value={voieName(nom)}
                     readOnly
                     title={t('wizard.step3.determinePeupleEtape')}
                   />
@@ -1078,7 +1083,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 <button
                   onClick={() => hasDesc && setPreviewVoie(nom)}
                   disabled={!hasDesc}
-                  title={hasDesc ? t('wizard.step3.voirVoie', { nom }) : t('wizard.step3.selectionnerPeuple')}
+                  title={hasDesc ? t('wizard.step3.voirVoie', { nom: voieName(nom) }) : t('wizard.step3.selectionnerPeuple')}
                   style={{
                     padding: '6px 10px', borderRadius: 4,
                     border: '1px solid rgba(201,168,76,0.4)',
@@ -1122,13 +1127,13 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 >
                   <option value="">{t('wizard.step3.choisirVoieCulturelle')}</option>
                   {voiesCulturellesSangMele.map(v => (
-                    <option key={v} value={v}>{v}</option>
+                    <option key={v} value={v}>{voieName(v)}</option>
                   ))}
                 </select>
                 <button
                   onClick={() => hasDescCult && setPreviewVoie(nomCult)}
                   disabled={!hasDescCult}
-                  title={hasDescCult ? t('wizard.step3.voirVoie', { nom: nomCult }) : t('wizard.step3.selectionnerPeuple')}
+                  title={hasDescCult ? t('wizard.step3.voirVoie', { nom: voieName(nomCult) }) : t('wizard.step3.selectionnerPeuple')}
                   style={{
                     padding: '6px 10px', borderRadius: 4,
                     border: '1px solid rgba(201,168,76,0.4)',
@@ -1177,7 +1182,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                 <input
                   className="flex-1 border rounded px-3 py-1.5 text-base"
                   style={{ ...INPUT_STYLE, opacity: 0.75 }}
-                  value={nomVoie}
+                  value={voieName(nomVoie)}
                   readOnly
                   title={t('wizard.step3.fixeeParProfil')}
                 />
@@ -1210,7 +1215,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
               <button
                 onClick={() => hasDesc && setPreviewVoie(nomVoie)}
                 disabled={!hasDesc}
-                title={hasDesc ? t('wizard.step3.voirVoie', { nom: nomVoie }) : t('wizard.step3.selectionnerVoie')}
+                title={hasDesc ? t('wizard.step3.voirVoie', { nom: voieName(nomVoie) }) : t('wizard.step3.selectionnerVoie')}
                 style={{
                   padding: '6px 10px', borderRadius: 4,
                   border: '1px solid rgba(201,168,76,0.4)',
@@ -1296,7 +1301,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
             <button
               onClick={() => hasPrestigeDesc && setPreviewVoie(nomPrestige)}
               disabled={!hasPrestigeDesc}
-              title={hasPrestigeDesc ? t('wizard.step3.voirVoie', { nom: nomPrestige }) : t('wizard.step3.selectionnerVoie')}
+              title={hasPrestigeDesc ? t('wizard.step3.voirVoie', { nom: voieName(nomPrestige) }) : t('wizard.step3.selectionnerVoie')}
               style={{
                 padding: '6px 10px', borderRadius: 4,
                 border: '1px solid rgba(201,168,76,0.4)',

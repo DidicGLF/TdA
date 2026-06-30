@@ -111,7 +111,21 @@
     "total": "Total",
     "deblocableNiveau": "Déblocable au niveau {{n}}",
     "modeTexte": "✎ Texte",
-    "modeImage": "🖼 Image"
+    "modeImage": "🖼 Image",
+    "portrait": {
+      "ajouter": "Ajouter\nune image",
+      "cliquerChanger": "Cliquer pour changer",
+      "figeLegend": "Portrait figé · Cliquer « Figé » pour modifier le cadrage",
+      "glisserLegend": "Glisser pour cadrer · Molette pour zoomer",
+      "moletteLegend": "Molette pour zoomer · Image entière visible",
+      "figer": "Figer",
+      "fige": "Figé",
+      "titleDefiger": "Défiger (autoriser le déplacement)",
+      "titleFiger": "Figer (empêcher le déplacement accidentel)",
+      "titleImageEntiere": "Afficher l'image entière",
+      "titleRecadrer": "Recadrer (remplir le cadre)",
+      "titleReset": "Réinitialiser le cadrage"
+    }
   },
   "mobile": {
     "ongletFiche": "Fiche",
@@ -597,6 +611,18 @@
     "condArme": "manie une arme",
     "condSansArme": "sans arme",
     "ajouterArme": "+ Arme…",
+    "formationNames": {
+      "Armes de duel": "Armes de duel",
+      "Armes de guerre": "Armes de guerre",
+      "Armes de guerre lourdes": "Armes de guerre lourdes",
+      "Armes de jet": "Armes de jet",
+      "Armes de tir": "Armes de tir",
+      "Armes de trait": "Armes de trait",
+      "Armes d'hast": "Armes d'hast",
+      "Armes de paysan (gratuit)": "Armes de paysan (gratuit)",
+      "Armures légères": "Armures légères",
+      "Armures lourdes": "Armures lourdes"
+    },
     "grantFormation": "Formation",
     "grantVoieRangFixe": "Voie (rang fixe)",
     "grantVoieRangChoix": "Voie (rang au choix)",
@@ -676,7 +702,12 @@
     "compAideCapacitesLabel": "Capacités",
     "attNomPlaceholder": "Nom",
     "attDmPlaceholder": "DM",
-    "attCapacitesPlaceholder": "Ruade, Vol, Morsure venimeuse…"
+    "attCapacitesPlaceholder": "Ruade, Vol, Morsure venimeuse…",
+    "langNotice": {
+      "titre": "Données source en français",
+      "corps": "Les données de jeu (noms, descriptions, voies, traits…) sont stockées en français, la langue originale du jeu. Les champs d'édition affichent toujours le texte source français. Les listes de navigation et l'interface sont traduits. Pour gérer les traductions, utilisez l'Éditeur de traduction.",
+      "bouton": "Compris"
+    }
   },
   "golem": {
     "titre": "Golem",
@@ -802,6 +833,11 @@
       { "nom": "Néant",       "label": "Néant",       "code": "Lydr", "effet": "Permet d'appliquer les effets du sort jusqu'à [rang / 2] cibles dans la limite de portée du sort" },
       { "nom": "Fatalité",    "label": "Fatalité",    "code": "Qi",   "effet": "Augmente la difficulté du test de résistance au sort de +3" }
     ]
+  },
+  "voieCombobox": {
+    "profil": "Voies de profil",
+    "prestige": "Voies de prestige",
+    "dejaChoisie": "déjà choisie"
   }
 }
 

@@ -1,0 +1,10 @@
+{
+  "Endurant": "Resilient",
+  "Endurant|desc": "The character's maximum RP is 6 instead of 5 like other races.",
+  "Instinct de survie": "Survival Instinct",
+  "Instinct de survie|desc": "When an attack would bring the character to 0 HP, the DMG it deals is halved (minimum 1).",
+  "Lumière des étoiles": "Starlight",
+  "Lumière des étoiles|desc": "For the character, the darkness of night under starlight is only dim light, where only fine details escape them.",
+  "Vision dans le noir": "Darkvision",
+  "Vision dans le noir|desc": "In total darkness, the character sees as in dim light up to 30 m."
+}

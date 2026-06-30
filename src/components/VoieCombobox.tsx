@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { VoieEntry } from '../data/voies'
+import { useVoieName } from '../hooks/useContentTranslation'
 
 interface Props {
   value: string
@@ -13,9 +15,11 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
+  const voieName = useVoieName()
 
-  // Keep query in sync when value changes externally
-  useEffect(() => { setQuery(value) }, [value])
+  // Keep query in sync when value changes externally (show translated name)
+  useEffect(() => { setQuery(value ? voieName(value) : '') }, [value])
 
   // Close on outside click
   useEffect(() => {
@@ -28,6 +32,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
   }, [open])
 
   const filtered = options.filter(v =>
+    voieName(v.nom).toLowerCase().includes(query.toLowerCase()) ||
     v.nom.toLowerCase().includes(query.toLowerCase()),
   )
 
@@ -36,7 +41,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
 
   const select = (nom: string) => {
     onChange(nom)
-    setQuery(nom)
+    setQuery(voieName(nom))
     setOpen(false)
   }
 
@@ -45,7 +50,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
       <input
         type="text"
         value={query}
-        placeholder={open && !query && value ? value : placeholder}
+        placeholder={open && !query && value ? voieName(value) : placeholder}
         onFocus={() => {
           setQuery('')
           setOpen(true)
@@ -57,7 +62,7 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
         onBlur={() => {
           setTimeout(() => {
             setOpen(false)
-            setQuery(value)
+            setQuery(value ? voieName(value) : '')
           }, 150)
         }}
         className="w-full border rounded px-3 py-1.5 text-base"
@@ -94,10 +99,10 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
                 color: 'rgba(201,168,76,0.5)',
                 borderBottom: '1px solid rgba(201,168,76,0.1)',
               }}>
-                Voies de profil
+                {t('voieCombobox.profil')}
               </div>
               {profil.map(v => (
-                <OptionRow key={v.nom} entry={v} chosen={alreadyChosen.includes(v.nom)} onSelect={select} />
+                <OptionRow key={v.nom} entry={v} chosen={alreadyChosen.includes(v.nom)} onSelect={select} voieName={voieName} />
               ))}
             </>
           )}
@@ -112,10 +117,10 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
                 borderBottom: '1px solid rgba(201,168,76,0.1)',
                 borderTop: profil.length > 0 ? '1px solid rgba(201,168,76,0.1)' : undefined,
               }}>
-                Voies de prestige
+                {t('voieCombobox.prestige')}
               </div>
               {prestige.map(v => (
-                <OptionRow key={v.nom} entry={v} chosen={alreadyChosen.includes(v.nom)} onSelect={select} />
+                <OptionRow key={v.nom} entry={v} chosen={alreadyChosen.includes(v.nom)} onSelect={select} voieName={voieName} />
               ))}
             </>
           )}
@@ -125,8 +130,9 @@ export default function VoieCombobox({ value, onChange, options, alreadyChosen =
   )
 }
 
-function OptionRow({ entry, chosen, onSelect }: { entry: VoieEntry; chosen: boolean; onSelect: (n: string) => void }) {
+function OptionRow({ entry, chosen, onSelect, voieName }: { entry: VoieEntry; chosen: boolean; onSelect: (n: string) => void; voieName: (n: string) => string }) {
   const [hovered, setHovered] = useState(false)
+  const { t } = useTranslation()
   return (
     <div
       onMouseDown={() => { if (!chosen) onSelect(entry.nom) }}
@@ -144,9 +150,9 @@ function OptionRow({ entry, chosen, onSelect }: { entry: VoieEntry; chosen: bool
         gap: 8,
       }}
     >
-      <span>{entry.nom}</span>
+      <span>{voieName(entry.nom)}</span>
       {chosen && (
-        <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>déjà choisie</span>
+        <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.5)', flexShrink: 0 }}>{t('voieCombobox.dejaChoisie')}</span>
       )}
     </div>
   )

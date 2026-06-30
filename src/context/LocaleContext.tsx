@@ -112,6 +112,25 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
           } catch {
             await writeLocaleFile(dest, JSON.stringify(mod.default, null, 2))
           }
+        } else {
+          // For non-FR translation files: fill in empty values from bundled (preserves user customizations)
+          try {
+            const existing = JSON.parse(await readLocaleFile(dest))
+            const bundled = mod.default as Record<string, string>
+            let changed = false
+            const merged: Record<string, string> = { ...existing }
+            for (const [k, v] of Object.entries(bundled)) {
+              if (!merged[k] && v) {
+                merged[k] = v
+                changed = true
+              }
+            }
+            if (changed) {
+              await writeLocaleFile(dest, JSON.stringify(merged, null, 2))
+            }
+          } catch {
+            await writeLocaleFile(dest, JSON.stringify(mod.default, null, 2))
+          }
         }
       }
 

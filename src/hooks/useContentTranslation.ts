@@ -67,3 +67,16 @@ export function useCompagnonName(): (nomFR: string) => string {
 export function useEquipementName(): (nomFR: string) => string {
   return makeLookup(useContentMap('equipement'))
 }
+
+export function useProfilName(): (nomFR: string) => string {
+  return makeLookup(useContentMap('profils'))
+}
+
+export function useTraitRacialName(): (nomFR: string) => string {
+  return makeLookup(useContentMap('traits-raciaux'))
+}
+
+export function useTraitRacialDesc(): (nomFR: string, frDesc: string) => string {
+  const map = useContentMap('traits-raciaux')
+  return (nomFR: string, frDesc: string) => map[`${nomFR}|desc`] || frDesc
+}

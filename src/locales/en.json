@@ -111,7 +111,21 @@
     "total": "Total",
     "deblocableNiveau": "Unlockable at level {{n}}",
     "modeTexte": "✎ Text",
-    "modeImage": "🖼 Image"
+    "modeImage": "🖼 Image",
+    "portrait": {
+      "ajouter": "Add\na photo",
+      "cliquerChanger": "Click to change",
+      "figeLegend": "Portrait locked · Click \"Locked\" to adjust framing",
+      "glisserLegend": "Drag to frame · Scroll to zoom",
+      "moletteLegend": "Scroll to zoom · Full image visible",
+      "figer": "Lock",
+      "fige": "Locked",
+      "titleDefiger": "Unlock (allow repositioning)",
+      "titleFiger": "Lock (prevent accidental repositioning)",
+      "titleImageEntiere": "Show full image",
+      "titleRecadrer": "Crop (fill frame)",
+      "titleReset": "Reset framing"
+    }
   },
   "mobile": {
     "ongletFiche": "Sheet",
@@ -597,6 +611,18 @@
     "condArme": "wielding a weapon",
     "condSansArme": "unarmed",
     "ajouterArme": "+ Weapon…",
+    "formationNames": {
+      "Armes de duel": "Dueling Weapons",
+      "Armes de guerre": "War Weapons",
+      "Armes de guerre lourdes": "Heavy War Weapons",
+      "Armes de jet": "Thrown Weapons",
+      "Armes de tir": "Ranged Weapons",
+      "Armes de trait": "Crossbows",
+      "Armes d'hast": "Polearms",
+      "Armes de paysan (gratuit)": "Peasant Weapons (free)",
+      "Armures légères": "Light Armor",
+      "Armures lourdes": "Heavy Armor"
+    },
     "grantFormation": "Training",
     "grantVoieRangFixe": "Path (fixed rank)",
     "grantVoieRangChoix": "Path (chosen rank)",
@@ -676,7 +702,12 @@
     "compAideCapacitesLabel": "Abilities",
     "attNomPlaceholder": "Name",
     "attDmPlaceholder": "Dmg",
-    "attCapacitesPlaceholder": "Kick, Flight, Venomous bite…"
+    "attCapacitesPlaceholder": "Kick, Flight, Venomous bite…",
+    "langNotice": {
+      "titre": "Source data in French",
+      "corps": "Game data (names, descriptions, paths, traits…) is stored in French, the original language of the game. Editing fields always display the French source text. Navigation lists and interface labels are translated. To manage translations, use the Translation Editor.",
+      "bouton": "Understood"
+    }
   },
   "golem": {
     "titre": "Golem",
@@ -802,5 +833,10 @@
       { "nom": "Néant",       "label": "Void",        "code": "Lydr", "effet": "Allows applying the spell's effects to up to [rang / 2] targets within range" },
       { "nom": "Fatalité",    "label": "Fatality",    "code": "Qi",   "effet": "Increases the spell resistance check difficulty by +3" }
     ]
+  },
+  "voieCombobox": {
+    "profil": "Profile Paths",
+    "prestige": "Prestige Paths",
+    "dejaChoisie": "already chosen"
   }
 }

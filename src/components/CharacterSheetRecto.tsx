@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
-import { useVoieName, usePeupleName } from '../hooks/useContentTranslation'
+import { useVoieName, usePeupleName, useProfilName, useTranslatedDescriptions, useTraitRacialName, useTraitRacialDesc } from '../hooks/useContentTranslation'
 import cristauxData from '../data/cristaux.json'
 import CristalSvg from './CristalSvg'
 import DraggableField from './DraggableField'
@@ -147,7 +147,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const cb = onFieldMoved ?? (() => {})
-  const { peuples, data, armes, armures } = useGameData()
+  const { peuples, data: rawData, armes, armures } = useGameData()
+  const data = useTranslatedDescriptions(rawData)
 
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(PR_CHECKBOXES.map(f => [f.nom, { top: f.top, left: f.left }]))
@@ -157,6 +158,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   )
   const voieName = useVoieName()
   const peupleName = usePeupleName()
+  const profilName = useProfilName()
+  const traitRacialName = useTraitRacialName()
+  const traitRacialDesc = useTraitRacialDesc()
   type TooltipLine = { label: string; value: string | number; neg?: boolean; cristal?: typeof cristauxData[0] }
   type TooltipData =
     | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; x: number; y: number }
@@ -409,9 +413,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
 
       {/* === IDENTITÉ === */}
       {f({ label: "Nom joueur",  top: 10.1, left: 52.8, width: 18.3, height: 2.0, value: character.nomJoueur,     onChange: v => onChange({ nomJoueur: v }),                        active: activeStep === 0 })}
-      {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: character.profil,        onChange: locked ? () => {} : v => onChange({ profil: v }),      active: activeStep === 3, readOnly: locked })}
+      {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: profilName(character.profil),        onChange: locked ? () => {} : v => onChange({ profil: v }),      active: activeStep === 3, readOnly: locked })}
       {f({ label: "Genre",       top: 10.1, left: 92.3, width: 6.7,  height: 2.0, value: character.genre,         onChange: v => onChange({ genre: v }),                            active: activeStep === 0 })}
-      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : '', onChange: locked ? () => {} : v => onChange({ famille: v as any }), active: activeStep === 3, readOnly: locked })}
+      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: profilName(character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : ''), onChange: locked ? () => {} : v => onChange({ famille: v as any }), active: activeStep === 3, readOnly: locked })}
       {f({ label: "Âge",         top: 12.2, left: 92.1, width: 6.4,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
       {f({ label: "Nom perso",   top: 14.4, left: 51.9, width: 20.7, height: 2.0, value: character.nomPersonnage,  onChange: v => onChange({ nomPersonnage: v }),                   active: activeStep === 0 })}
       {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: locked ? peupleName(character.peuple) : character.peuple,   onChange: locked ? () => {} : v => onChange({ peuple: v }),      active: activeStep === 1, readOnly: locked })}
@@ -840,10 +844,10 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       })}
 
       {/* Trait de peuple */}
-      {f({ label: "Trait peuple", top: 61.1, left: 25.7, width: 16.5, height: 2.0, value: character.traitPeuple, onChange: v => onChange({ traitPeuple: v }), active: activeStep === 1 })}
+      {f({ label: "Trait peuple", top: 61.1, left: 25.7, width: 16.5, height: 2.0, value: traitRacialName(character.traitPeuple), onChange: v => onChange({ traitPeuple: v }), active: activeStep === 1 })}
       <DraggableTextarea
         top={65.2} left={19.3} width={29.3} height={5.6}
-        value={character.traitPeupleDesc}
+        value={traitRacialDesc(character.traitPeuple, character.traitPeupleDesc)}
         onChange={v => onChange({ traitPeupleDesc: v })}
         calibrate={calibrate} label="Trait peuple desc"
         containerRef={containerRef} onMoved={cb}
@@ -859,7 +863,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             onMouseEnter={e => {
               const rect = containerRef.current?.getBoundingClientRect()
               if (!rect) return
-              setTooltip({ nom: trait.nom, desc: trait.desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+              setTooltip({ nom: traitRacialName(trait.nom), desc: traitRacialDesc(trait.nom, trait.desc), x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
             }}
             onMouseMove={e => {
               const rect = containerRef.current?.getBoundingClientRect()
@@ -1046,11 +1050,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       })}
 
       {/* === VOIES === */}
-      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: character.peuple,   onChange: () => {}, readOnly: locked, active: activeStep === 1 })}
-      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: character.culture, onChange: () => {}, readOnly: locked, active: activeStep === 1 })}
-      {f({ label: "Voie 1", top: 70.2, left: 22.2, width: 23.3, height: 2.0, value: character.voie1.nom, onChange: locked ? () => {} : v => onChange({ voie1: { ...character.voie1, nom: v } }), readOnly: locked, active: activeStep === 3 })}
-      {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: character.voie2.nom, onChange: locked ? () => {} : v => onChange({ voie2: { ...character.voie2, nom: v } }), readOnly: locked, active: activeStep === 3 })}
-      {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: character.voie3.nom, onChange: locked ? () => {} : v => onChange({ voie3: { ...character.voie3, nom: v } }), readOnly: locked, active: activeStep === 3 })}
+      {f({ label: "Voie peuple", top: 45.7, left: 56.2, width: 17.3, height: 2.0, value: peupleName(character.peuple),   onChange: () => {}, readOnly: locked, active: activeStep === 1 })}
+      {f({ label: "Voie cult.",  top: 45.7, left: 87.7, width: 16.3, height: 2.0, value: peupleName(character.culture), onChange: () => {}, readOnly: locked, active: activeStep === 1 })}
+      {f({ label: "Voie 1", top: 70.2, left: 22.2, width: 23.3, height: 2.0, value: voieName(character.voie1.nom), onChange: locked ? () => {} : v => onChange({ voie1: { ...character.voie1, nom: v } }), readOnly: locked, active: activeStep === 3 })}
+      {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: voieName(character.voie2.nom), onChange: locked ? () => {} : v => onChange({ voie2: { ...character.voie2, nom: v } }), readOnly: locked, active: activeStep === 3 })}
+      {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: voieName(character.voie3.nom), onChange: locked ? () => {} : v => onChange({ voie3: { ...character.voie3, nom: v } }), readOnly: locked, active: activeStep === 3 })}
 
     </div>
   )

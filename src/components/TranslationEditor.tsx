@@ -4,13 +4,20 @@ import { useLocaleContext } from '../context/LocaleContext'
 import type { Language } from '../context/LocaleContext'
 
 const CONTENT_TYPES = [
-  { key: 'voies',        label: 'Voies' },
-  { key: 'traits',       label: 'Traits (noms)' },
-  { key: 'traits-descs', label: 'Traits (descriptions)' },
-  { key: 'peuples',      label: 'Peuples & Cultures' },
-  { key: 'compagnons',   label: 'Compagnons' },
-  { key: 'equipement',   label: 'Équipement' },
+  { key: 'voies',          label: 'Voies' },
+  { key: 'profils',        label: 'Profils' },
+  { key: 'traits-raciaux', label: 'Traits raciaux' },
+  { key: 'talents',        label: 'Talents magiques' },
+  { key: 'peuples',        label: 'Peuples & Cultures' },
+  { key: 'compagnons',     label: 'Compagnons' },
+  { key: 'equipement',     label: 'Équipement' },
 ]
+
+// Actual content files to create when adding a new language (talents is virtual)
+const CONTENT_FILES = ['voies', 'profils', 'traits-raciaux', 'traits', 'traits-descs', 'peuples', 'compagnons', 'equipement']
+
+// Types rendered with grouped chevron: name row + description row (no rangs)
+const GROUPED_SIMPLE = new Set(['traits-raciaux', 'talents'])
 
 const UI_TYPE = 'ui'
 
@@ -38,7 +45,27 @@ function unflattenObj(flat: Record<string, string>): Record<string, unknown> {
   return out
 }
 
-const LONG_TEXT_TYPES = new Set(['traits-descs'])
+const LONG_TEXT_TYPES = new Set<string>([])
+
+function mergeTalentsMaps(
+  namesMap: Record<string, string>,
+  descsMap: Record<string, string>,
+): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const [k, v] of Object.entries(namesMap)) result[k] = v
+  for (const [k, v] of Object.entries(descsMap)) result[`${k}|desc`] = v
+  return result
+}
+
+function splitTalentsEdits(edits: Record<string, string>): { names: Record<string, string>; descs: Record<string, string> } {
+  const names: Record<string, string> = {}
+  const descs: Record<string, string> = {}
+  for (const [k, v] of Object.entries(edits)) {
+    if (k.endsWith('|desc')) descs[k.slice(0, -5)] = v
+    else names[k] = v
+  }
+  return { names, descs }
+}
 
 const ALL_LANGUAGES: { code: string; label: string }[] = [
   { code: 'af', label: 'Afrikaans' },
@@ -127,16 +154,28 @@ export default function TranslationEditor({ onClose }: Props) {
   const selectRef = useRef<HTMLSelectElement>(null)
 
   const isUI = activeType === UI_TYPE
+  const isTalents = activeType === 'talents'
+  const isGroupedSimple = GROUPED_SIMPLE.has(activeType)
 
   // frMap = always FR flat, used for key enumeration (source of truth)
   const frMap: Record<string, string> = isUI
     ? flattenObj(uiMaps['fr'] as Record<string, unknown> ?? {})
-    : (contentMaps[`${activeType}.fr`] ?? {}) as Record<string, string>
+    : isTalents
+      ? mergeTalentsMaps(
+          (contentMaps['traits.fr'] ?? {}) as Record<string, string>,
+          (contentMaps['traits-descs.fr'] ?? {}) as Record<string, string>,
+        )
+      : (contentMaps[`${activeType}.fr`] ?? {}) as Record<string, string>
 
   // refMap = chosen reference language for display; falls back to FR value
   const refMap: Record<string, string> = isUI
     ? flattenObj(uiMaps[refLang] as Record<string, unknown> ?? {})
-    : (contentMaps[`${activeType}.${refLang}`] ?? {}) as Record<string, string>
+    : isTalents
+      ? mergeTalentsMaps(
+          (contentMaps[`traits.${refLang}`] ?? contentMaps['traits.fr'] ?? {}) as Record<string, string>,
+          (contentMaps[`traits-descs.${refLang}`] ?? contentMaps['traits-descs.fr'] ?? {}) as Record<string, string>,
+        )
+      : (contentMaps[`${activeType}.${refLang}`] ?? {}) as Record<string, string>
 
   const refText = (key: string): string => refMap[key] || frMap[key] || key
 
@@ -157,8 +196,23 @@ export default function TranslationEditor({ onClose }: Props) {
       })
     : voieNames
 
+  // For grouped-simple types (traits-raciaux, talents): name + |desc per entry
+  const groupedSimpleNames = isGroupedSimple
+    ? Object.keys(frMap).filter(k => !k.includes('|')).sort((a, b) => a.localeCompare(b, 'fr'))
+    : []
+
+  const filteredGroupedSimpleNames = filter
+    ? groupedSimpleNames.filter(name => {
+        const term = filter.toLowerCase()
+        return (
+          refText(name).toLowerCase().includes(term) ||
+          refText(`${name}|desc`).toLowerCase().includes(term)
+        )
+      })
+    : groupedSimpleNames
+
   // For flat types
-  const allFlatKeys = activeType !== 'voies' ? Object.keys(frMap) : []
+  const allFlatKeys = !isGroupedSimple && activeType !== 'voies' ? Object.keys(frMap) : []
   const filteredFlatKeys = filter
     ? allFlatKeys.filter(k => refText(k).toLowerCase().includes(filter.toLowerCase()))
     : allFlatKeys
@@ -167,7 +221,12 @@ export default function TranslationEditor({ onClose }: Props) {
     if (!activeLang) return
     const targetMap: Record<string, string> = isUI
       ? flattenObj(uiMaps[activeLang] as Record<string, unknown> ?? {})
-      : (contentMaps[`${activeType}.${activeLang}`] ?? {}) as Record<string, string>
+      : isTalents
+        ? mergeTalentsMaps(
+            (contentMaps[`traits.${activeLang}`] ?? {}) as Record<string, string>,
+            (contentMaps[`traits-descs.${activeLang}`] ?? {}) as Record<string, string>,
+          )
+        : (contentMaps[`${activeType}.${activeLang}`] ?? {}) as Record<string, string>
     const initial = Object.fromEntries(Object.keys(frMap).map(k => [k, targetMap[k] ?? '']))
     setEdits(initial)
     setDirty(false)
@@ -192,6 +251,10 @@ export default function TranslationEditor({ onClose }: Props) {
     try {
       if (isUI) {
         await saveUIFile(`${activeLang}.json`, unflattenObj(edits))
+      } else if (isTalents) {
+        const { names, descs } = splitTalentsEdits(edits)
+        await saveContentFile(`traits.${activeLang}.json`, names)
+        await saveContentFile(`traits-descs.${activeLang}.json`, descs)
       } else {
         await saveContentFile(`${activeType}.${activeLang}.json`, edits)
       }
@@ -207,9 +270,9 @@ export default function TranslationEditor({ onClose }: Props) {
     if (!found) return
     const newLangs: Language[] = [...languages, { code: found.code, label: found.label }]
     await saveLanguages(newLangs)
-    for (const ct of CONTENT_TYPES) {
-      const frBase = contentMaps[`${ct.key}.fr`] ?? {}
-      await saveContentFile(`${ct.key}.${found.code}.json`, Object.fromEntries(Object.keys(frBase).map(k => [k, ''])))
+    for (const fileKey of CONTENT_FILES) {
+      const frBase = contentMaps[`${fileKey}.fr`] ?? {}
+      await saveContentFile(`${fileKey}.${found.code}.json`, Object.fromEntries(Object.keys(frBase).map(k => [k, ''])))
     }
     setShowAddLang(false)
     setNewCode('')
@@ -418,6 +481,67 @@ export default function TranslationEditor({ onClose }: Props) {
                           </div>
                         )
                       })}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : isGroupedSimple ? (
+              /* ── Grouped simple view (traits-raciaux, talents): name + desc ── */
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', position: 'sticky', top: 0, background: '#1a1410', zIndex: 2, borderBottom: '2px solid rgba(201,168,76,0.3)' }}>
+                  <div style={{ padding: '8px 14px', fontSize: 12, color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', borderRight: '1px solid rgba(201,168,76,0.15)' }}>
+                    {refLangLabel} (référence)
+                  </div>
+                  <div style={{ padding: '8px 14px', fontSize: 12, color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {activeLangLabel} (traduction)
+                  </div>
+                </div>
+
+                {filteredGroupedSimpleNames.length === 0 && (
+                  <div style={{ padding: '24px 16px', color: 'rgba(245,236,215,0.3)', fontSize: 13, textAlign: 'center' }}>Aucun résultat</div>
+                )}
+
+                {filteredGroupedSimpleNames.map(baseName => {
+                  const expanded = expandedVoies.has(baseName)
+                  const descKey = `${baseName}|desc`
+                  return (
+                    <div key={baseName} style={{ borderBottom: '1px solid rgba(201,168,76,0.12)' }}>
+                      {/* Name header row */}
+                      <div
+                        onClick={() => toggleVoie(baseName)}
+                        style={{ display: 'grid', gridTemplateColumns: '24px 1fr 1fr', alignItems: 'center', background: 'rgba(201,168,76,0.08)', cursor: 'pointer', borderBottom: expanded ? '1px solid rgba(201,168,76,0.12)' : 'none' }}
+                      >
+                        <span style={{ padding: '8px 4px 8px 10px', fontSize: 11, color: 'rgba(201,168,76,0.5)', userSelect: 'none' }}>{expanded ? '▼' : '▶'}</span>
+                        <span style={{ padding: '8px 14px', fontSize: 15, fontWeight: 600, color: 'rgba(245,236,215,0.7)', borderRight: '1px solid rgba(201,168,76,0.15)' }}>{refText(baseName)}</span>
+                        <div style={{ padding: '6px 10px' }} onClick={e => e.stopPropagation()}>
+                          <input
+                            value={edits[baseName] ?? ''}
+                            onChange={e => handleEdit(baseName, e.target.value)}
+                            style={INPUT_STYLE}
+                            placeholder={baseName}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Description row when expanded */}
+                      {expanded && (
+                        <div style={{ background: 'rgba(0,0,0,0.18)', borderTop: '1px solid rgba(201,168,76,0.06)', paddingBottom: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', paddingLeft: 20 }}>
+                            <div style={{ padding: '8px 14px', fontSize: 13, color: 'rgba(245,236,215,0.5)', borderRight: '1px solid rgba(201,168,76,0.1)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <span style={{ fontSize: 10, fontStyle: 'normal', background: 'rgba(100,140,201,0.15)', color: 'rgba(150,180,230,0.7)', borderRadius: 3, padding: '1px 5px', flexShrink: 0, marginTop: 1 }}>Desc</span>
+                              <span>{refText(descKey)}</span>
+                            </div>
+                            <div style={{ padding: '6px 10px' }}>
+                              <textarea
+                                value={edits[descKey] ?? ''}
+                                onChange={e => handleEdit(descKey, e.target.value)}
+                                style={TEXTAREA_STYLE}
+                                placeholder={refText(descKey)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

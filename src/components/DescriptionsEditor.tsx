@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
+import { useVoieName, useCompagnonName, useTraitName, useTraitRacialName, usePeupleName } from '../hooks/useContentTranslation'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
@@ -134,7 +135,17 @@ type PendingItem =
   | { id: string; type: 'compagnon'; data: CompanionEntry; expanded: boolean }
 
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [showLangNotice, setShowLangNotice] = useState(() => {
+    const lang = i18n.language.split('-')[0]
+    if (lang === 'fr') return false
+    return !sessionStorage.getItem(`descEditor_langNotice_${lang}`)
+  })
+  const voieName = useVoieName()
+  const compagnonName = useCompagnonName()
+  const traitName = useTraitName()
+  const traitRacialName = useTraitRacialName()
+  const peupleName = usePeupleName()
   const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, showHidden, setShowHidden, openDataDir } = useGameData()
 
   const cultureKey = (peupleLabel: string, cultureLabel: string) => `${peupleLabel}::${cultureLabel}`
@@ -812,7 +823,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {stats.map(([label, val]) => (
             <span key={label} style={{ fontSize: 13, color: S.parchment }}>
-              <span style={{ color: S.gold, fontWeight: 600, marginRight: 3 }}>{label}</span>{val}
+              <span style={{ color: S.gold, fontWeight: 600, marginRight: 3 }}>{t(`stats.${label}`, label)}</span>{val}
             </span>
           ))}
         </div>
@@ -908,26 +919,26 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         const modStr = Object.entries(c.modCaracs ?? {})
           .filter(([, v]) => v !== 0)
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`)
+          .map(([k, v]) => `${t(`stats.${k}`, k)} ${v > 0 ? '+' : ''}${v}`)
           .join('  ')
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {c.voiePeuple && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.voieDuPeuple')}</span>
-                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.voiePeuple}</span>
+                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{voieName(c.voiePeuple)}</span>
               </div>
             )}
             {c.voieCulturelle && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.voieCulturelle')}</span>
-                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.voieCulturelle}</span>
+                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{voieName(c.voieCulturelle)}</span>
               </div>
             )}
             {c.trait?.nom && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)', minWidth: 110, flexShrink: 0 }}>{t('descEditor.traitRacial')}</span>
-                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{c.trait.nom}</span>
+                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>{traitRacialName(c.trait.nom)}</span>
               </div>
             )}
             {modStr && (
@@ -947,7 +958,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {p.cultures.map((c, ci) => (
             <div key={ci} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid rgba(201,168,76,0.2)`, borderRadius: 4, padding: '8px 10px' }}>
-              <div style={{ fontSize: 14, color: S.gold, fontWeight: 600, marginBottom: 6 }}>{c.label}</div>
+              <div style={{ fontSize: 14, color: S.gold, fontWeight: 600, marginBottom: 6 }}>{peupleName(c.label)}</div>
               {renderCultureCard(c)}
             </div>
           ))}
@@ -1082,7 +1093,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               )}
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 14, color: S.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  {c.label}
+                                  {peupleName(c.label)}
                                   {isDiff && <span style={{ fontSize: 10, background: 'rgba(100,210,130,0.15)', color: 'rgba(100,210,130,0.8)', border: '1px solid rgba(100,210,130,0.3)', borderRadius: 3, padding: '1px 5px' }}>{exC ? t('descEditor.modifiee') : t('descEditor.nouvelleItem')}</span>}
                                 </div>
                                 <div style={{ marginTop: 4 }}>
@@ -1269,6 +1280,24 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 color: 'rgba(240,120,120,0.95)', fontFamily: 'inherit',
               }}
             >{confirmDialog.label ?? t('descEditor.supprimer')}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showLangNotice && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'rgba(18,14,9,0.99)', border: '1px solid rgba(201,168,76,0.5)', borderRadius: 8, padding: '24px 28px', maxWidth: 440, width: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tdr-gold)', fontFamily: "'Cinzel', serif" }}>
+            ℹ️ {t('descEditor.langNotice.titre')}
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)', lineHeight: 1.7 }}>
+            {t('descEditor.langNotice.corps')}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => { sessionStorage.setItem(`descEditor_langNotice_${i18n.language.split('-')[0]}`, '1'); setShowLangNotice(false) }}
+              style={{ padding: '7px 22px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}
+            >{t('descEditor.langNotice.bouton')}</button>
           </div>
         </div>
       </div>
@@ -1469,7 +1498,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
                   }}>
                     <span style={{ flex: 1, opacity: hiddenVoies.includes(voie) ? 0.4 : 1 }}>
-                      {voie}
+                      {voieName(voie)}
                       {voies.find(v => v.nom === voie)?.categorie === 'prestige' && (
                         <span style={{ color: 'rgba(210,170,255,0.7)', marginLeft: 5, fontSize: 13 }}>★</span>
                       )}
@@ -1924,7 +1953,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', cursor: 'pointer',
                               }}
                             >
-                              {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                              {FORMATIONS.map(f => <option key={f} value={f}>{t(`descEditor.formationNames.${f}`, f)}</option>)}
                             </select>
                           )}
 
@@ -1938,7 +1967,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                   padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', cursor: 'pointer', maxWidth: 200,
                                 }}
                               >
-                                {voiesList.map(v => <option key={v} value={v}>{v}</option>)}
+                                {voiesList.map(v => <option key={v} value={v}>{voieName(v)}</option>)}
                               </select>
                               <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.rangLabel')}</span>
                               <input
@@ -1966,7 +1995,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: e.target.value })}
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', cursor: 'pointer', maxWidth: 200 }}
                             >
-                              {compagnons.map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                              {compagnons.map(c => <option key={c.nom} value={c.nom}>{compagnonName(c.nom)}</option>)}
                             </select>
                             <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>{t('descEditor.remplacePar')}</span>
                             <select
@@ -1975,7 +2004,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: grant.remplace ? S.parchment : 'rgba(245,236,215,0.3)', outline: 'none', cursor: 'pointer', maxWidth: 160 }}
                             >
                               <option value="">{t('descEditor.aucunRemplace')}</option>
-                              {compagnons.filter(c => c.nom !== grant.nom).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                              {compagnons.filter(c => c.nom !== grant.nom).map(c => <option key={c.nom} value={c.nom}>{compagnonName(c.nom)}</option>)}
                             </select>
                           </>)}
 
@@ -1983,7 +2012,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                               {grant.noms.map((n, ni) => (
                                 <span key={ni} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(201,168,76,0.12)', border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 6px', fontSize: 12, color: S.parchment }}>
-                                  {n}
+                                  {compagnonName(n)}
                                   <button
                                     onClick={() => updateGrant(selected, i, gi, { type: 'COMPAGNON_CHOIX', noms: grant.noms.filter((_, j) => j !== ni) })}
                                     style={{ background: 'none', border: 'none', color: '#e05555', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1 }}
@@ -1999,7 +2028,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                               >
                                 <option value="">{t('descEditor.ajouterCompagnonPlus')}</option>
-                                {compagnons.filter(c => !grant.noms.includes(c.nom)).map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                                {compagnons.filter(c => !grant.noms.includes(c.nom)).map(c => <option key={c.nom} value={c.nom}>{compagnonName(c.nom)}</option>)}
                               </select>
                             </div>
                           )}
@@ -2063,7 +2092,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                     onChange={e => updateGrant(selected, i, gi, { rangMultiplier: e.target.checked || undefined })}
                                     style={{ accentColor: S.gold, cursor: 'pointer' }}
                                   />
-                                  ×rang
+                                  {t('descEditor.xRang')}
                                 </label>
                               </div>
                             </div>
@@ -2076,7 +2105,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               onChange={e => updateGrant(selected, i, gi, { minRang: e.target.checked ? (i + 1) : null })}
                               style={{ accentColor: S.gold, cursor: 'pointer' }}
                             />
-                            Actif seulement au rang :
+                            {t('descEditor.actifRang')}
                           </label>
                           {grant.minRang !== undefined && (
                             <input
@@ -2092,7 +2121,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               onChange={e => updateGrant(selected, i, gi, { avancee: e.target.checked ? true : null })}
                               style={{ accentColor: S.gold, cursor: 'pointer' }}
                             />
-                            Avancée
+                            {t('descEditor.avancee')}
                           </label>
                           <button
                             onClick={() => removeGrant(selected, i, gi)}
@@ -2106,7 +2135,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           <div style={{ marginTop: 4, marginLeft: 16, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                             {grant.voies.map((v, vi) => (
                               <span key={vi} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(201,168,76,0.12)', border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 6px', fontSize: 12, color: S.parchment }}>
-                                {v}
+                                {voieName(v)}
                                 <button
                                   onClick={() => updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: grant.voies.filter((_, j) => j !== vi), rangMax: grant.rangMax })}
                                   style={{ background: 'none', border: 'none', color: '#e05555', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1 }}
@@ -2122,7 +2151,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                             >
                               <option value="">{t('descEditor.ajouterVoiePlus')}</option>
-                              {VOIES_INIT.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{v}</option>)}
+                              {VOIES_INIT.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{voieName(v)}</option>)}
                             </select>
                           </div>
                         )}
@@ -2291,7 +2320,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                   }}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trait.nom}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitName(trait.nom)}</span>
                     <button
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait', data: trait }, `trait-${safeName(trait.nom)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -2452,7 +2481,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       borderLeft: selectedTraitRacial === i ? `3px solid ${S.gold}` : '3px solid transparent',
                       transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitR.nom}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitRacialName(traitR.nom)}</span>
                       <button
                         onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait-racial', data: traitR }, `trait-racial-${safeName(traitR.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -2588,7 +2617,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     transition: 'all 0.1s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                   }}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenPeuples.includes(p.label) ? 0.4 : 1 }}>{p.label}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenPeuples.includes(p.label) ? 0.4 : 1 }}>{peupleName(p.label)}</span>
                     {hiddenPeuples.includes(p.label) && (
                       <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                         {t('descEditor.masquee')}
@@ -2788,7 +2817,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           {CARACS.map(car => (
                             <label key={car} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, color: S.parchment }}>
-                              <span style={{ color: S.gold, fontWeight: 600, minWidth: 28 }}>{car}</span>
+                              <span style={{ color: S.gold, fontWeight: 600, minWidth: 28 }}>{t(`stats.${car}`)}</span>
                               <input
                                 key={`${selectedPeuple}-${ci}-${car}`}
                                 type="number"
@@ -2898,7 +2927,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       borderLeft: selectedCompagnon === i ? `3px solid ${S.gold}` : '3px solid transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenCompagnons.includes(c.nom) ? 0.4 : 1 }}>{c.nom}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: hiddenCompagnons.includes(c.nom) ? 0.4 : 1 }}>{compagnonName(c.nom)}</span>
                       {hiddenCompagnons.includes(c.nom) && (
                         <span style={{ fontSize: 10, color: 'rgba(255,160,50,0.7)', background: 'rgba(255,160,50,0.1)', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                           {t('descEditor.masquee')}

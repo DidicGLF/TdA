@@ -9,7 +9,7 @@ import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions } from '../context/GameDataContext'
 import { resolveCompagnon } from '../utils/compagnons'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
-import { useCompagnonName } from '../hooks/useContentTranslation'
+import { useCompagnonName, useTranslatedDescriptions } from '../hooks/useContentTranslation'
 
 interface Props {
   character: Character
@@ -70,7 +70,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
     const ov = fieldPositions?.[label]
     return { top: ov?.top ?? t, left: ov?.left ?? l, width: ov?.width ?? w, height: ov?.height ?? h }
   }
-  const { data, compagnons: compagnonsCatalogue } = useGameData()
+  const { data: rawData, compagnons: compagnonsCatalogue } = useGameData()
+  const data = useTranslatedDescriptions(rawData)
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }]))
   )

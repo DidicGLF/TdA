@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   top: number
@@ -35,6 +36,7 @@ export default function DraggableImageField({
   locked: initLocked = false,
   onChange, onPanZoomChange, onFitChange, onLockedChange, calibrate, label, containerRef, onMoved,
 }: Props) {
+  const { t } = useTranslation()
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
@@ -271,13 +273,13 @@ export default function DraggableImageField({
               }}
               className="portrait-hover-hint">
                 <div style={{ textAlign: 'center', lineHeight: 1.6 }}>
-                  {!locked && <><div style={{ fontSize: '1.4vw' }}>↑</div>Cliquer pour changer<br /></>}
+                  {!locked && <><div style={{ fontSize: '1.4vw' }}>↑</div>{t('fiche.portrait.cliquerChanger')}<br /></>}
                   <span style={{ fontSize: '0.65vw', opacity: 0.7 }}>
                     {locked
-                      ? 'Portrait figé · Cliquer "Figé" pour modifier le cadrage'
+                      ? t('fiche.portrait.figeLegend')
                       : fit === 'cover'
-                        ? 'Glisser pour cadrer · Molette pour zoomer'
-                        : 'Molette pour zoomer · Image entière visible'}
+                        ? t('fiche.portrait.glisserLegend')
+                        : t('fiche.portrait.moletteLegend')}
                   </span>
                 </div>
               </div>
@@ -288,9 +290,9 @@ export default function DraggableImageField({
                   style={{ ...TOOL_BTN, background: locked ? 'rgba(201,168,76,0.25)' : TOOL_BTN.background, borderColor: locked ? 'rgba(201,168,76,0.6)' : undefined }}
                   onClick={e => { e.stopPropagation(); const next = !lockedRef.current; lockedRef.current = next; setLocked(next); onLockedChange?.(next) }}
                   onMouseDown={e => e.stopPropagation()}
-                  title={locked ? 'Défiger (autoriser le déplacement)' : 'Figer (empêcher le déplacement accidentel)'}
+                  title={locked ? t('fiche.portrait.titleDefiger') : t('fiche.portrait.titleFiger')}
                 >
-                  {locked ? 'Figé' : 'Figer'}
+                  {locked ? t('fiche.portrait.fige') : t('fiche.portrait.figer')}
                 </button>
                 {/* Bascule cover ↔ contain */}
                 {!locked && (
@@ -298,7 +300,7 @@ export default function DraggableImageField({
                     style={{ ...TOOL_BTN }}
                     onClick={e => { e.stopPropagation(); onFitChange?.(fit === 'cover' ? 'contain' : 'cover') }}
                     onMouseDown={e => e.stopPropagation()}
-                    title={fit === 'cover' ? 'Afficher l\'image entière' : 'Recadrer (remplir le cadre)'}
+                    title={fit === 'cover' ? t('fiche.portrait.titleImageEntiere') : t('fiche.portrait.titleRecadrer')}
                   >
                     {fit === 'cover' ? '⊡' : '▣'}
                   </button>
@@ -309,7 +311,7 @@ export default function DraggableImageField({
                     style={{ ...TOOL_BTN }}
                     onClick={e => { e.stopPropagation(); setImgScale(1); setImgTx(0); setImgTy(0); onPanZoomChange?.(1, 0, 0) }}
                     onMouseDown={e => e.stopPropagation()}
-                    title="Réinitialiser le cadrage"
+                    title={t('fiche.portrait.titleReset')}
                   >↺</button>
                 )}
               </div>
@@ -335,7 +337,7 @@ export default function DraggableImageField({
           {!calibrate && (
             <div>
               <div style={{ fontSize: '1.2vw', marginBottom: 2 }}>+</div>
-              Ajouter<br />une image
+              <span style={{ whiteSpace: 'pre-line' }}>{t('fiche.portrait.ajouter')}</span>
             </div>
           )}
         </div>
