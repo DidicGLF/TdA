@@ -12,7 +12,7 @@
     "pv": 10,
     "attaque1": {
       "nom": "Ruade",
-      "bonus": "+5",
+      "bonus": "+0",
       "dm": "1d6+4"
     },
     "capacites": ""

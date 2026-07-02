@@ -16,6 +16,7 @@ import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
 import TranslationEditor from './components/TranslationEditor'
 import LevelUpModal from './components/LevelUpModal'
+import GameModePanel from './components/GameMode/GameModePanel'
 import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
@@ -67,6 +68,7 @@ function AppContent() {
   const [showSave, setShowSave] = useState(false)
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showTranslationEditor, setShowTranslationEditor] = useState(false)
+  const [showGameMode, setShowGameMode] = useState(false)
   const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [ficheLocked, setFicheLocked] = useState(true)
@@ -290,6 +292,7 @@ function AppContent() {
       {showLevelUp && (
         <LevelUpModal character={character} onConfirm={onChange} onClose={() => setShowLevelUp(false)} />
       )}
+
 
       {/* ── Bottom sheet Gestion (mobile) ── */}
       {showMobileGestion && (
@@ -541,6 +544,7 @@ function AppContent() {
                   onPrev={() => setStep(s => Math.max(s - 1, 0))}
                   onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                   onSave={() => setShowSave(true)}
+                  onPlay={() => setShowGameMode(true)}
                 />
               </div>
             </div>
@@ -624,6 +628,21 @@ function AppContent() {
               }}
             >
               {t('toolbar.imprimer')}
+            </button>
+
+            {/* Jouer */}
+            <button
+              onClick={() => setShowGameMode(true)}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(160,120,255,0.6)',
+                background: 'rgba(140,100,255,0.25)',
+                color: 'rgba(210,185,255,0.95)',
+                cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              Jouer
             </button>
 
             {/* Sauvegarde */}
@@ -940,7 +959,7 @@ function AppContent() {
 
       {modals}
 
-      {/* === PANNEAU DROIT (wizard) — masqué en mode runes full === */}
+      {/* === PANNEAU DROIT (wizard ou mode jeu) — masqué en mode runes full === */}
       {!showFullRunes && (
       <div className="no-print" style={{
         flex: 1, minWidth: 300,
@@ -949,7 +968,9 @@ function AppContent() {
         background: 'rgba(20,16,10,0.98)',
         overflow: 'hidden',
       }}>
-        {(false) ? null : (
+        {showGameMode ? (
+          <GameModePanel inline character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
+        ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
               <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
@@ -967,6 +988,7 @@ function AppContent() {
                 onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                 onSave={() => setShowSave(true)}
                 onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
+                onPlay={() => setShowGameMode(true)}
               />
             </div>
           </>

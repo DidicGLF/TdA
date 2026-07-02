@@ -36,6 +36,7 @@ interface Props {
   onGoTo: (step: number) => void
   onSave?: () => void
   onPrint?: () => void
+  onPlay?: () => void
 }
 
 const STEP_COUNT = 8
@@ -2205,7 +2206,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   )
 }
 
-function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void }) {
+function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void; onPlay?: () => void }) {
   const { t } = useTranslation()
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
@@ -2300,6 +2301,29 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
               </button>
             )}
           </div>
+
+          {/* Jouer */}
+          {onPlay && (
+            <div style={{
+              background: 'rgba(140,100,255,0.08)', border: '1px solid rgba(160,120,255,0.35)',
+              borderRadius: 7, padding: '14px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+            }}>
+              <div>
+                <div style={{ fontSize: 13, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>Jouer</div>
+                <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+                  Ouvrir le mode de jeu pour lancer des dés et gérer la partie.
+                </div>
+              </div>
+              <button onClick={onPlay} style={{
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)',
+                color: 'rgba(200,170,255,0.95)', fontWeight: 600, whiteSpace: 'nowrap',
+              }}>
+                Jouer
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{
@@ -2341,7 +2365,7 @@ function Step7({ character, modeVoies, onSave, onPrint }: Pick<Props, 'character
   )
 }
 
-export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint }: Props) {
+export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint, onPlay }: Props) {
   const { t } = useTranslation()
   const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('libre')
   const ptsDisp = calcPointsCapacite(character).disponibles
@@ -2372,7 +2396,7 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
     <Step4 character={character} onChange={onChange} />,
     <Step5 character={character} onChange={onChange} />,
     <Step6 character={character} onChange={onChange} />,
-    <Step7 character={character} modeVoies={modeVoies} onSave={onSave} onPrint={onPrint} />,
+    <Step7 character={character} modeVoies={modeVoies} onSave={onSave} onPrint={onPrint} onPlay={onPlay} />,
   ]
 
   return (

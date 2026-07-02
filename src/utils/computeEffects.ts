@@ -198,3 +198,71 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
 export function sumStat(contributions: Contribution[]): number {
   return contributions.reduce((acc, c) => acc + c.value, 0)
 }
+
+// ── Attaques totales (identiques à la fiche) ──────────────────────────────────
+
+type ArmeCat = { categorie: string; entrees: { nom: string }[] }
+type ArmuresData = { categories: ArmeCat[] }
+type ArmeGroupe = { categories: { categorie: string; entrees: { nom: string }[] }[] }
+type ArmesData = { groupes: ArmeGroupe[] }
+
+const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
+
+function findArmureCategorie(armures: ArmuresData, nom: string): string | null {
+  for (const cat of armures.categories)
+    if (cat.entrees.some(e => e.nom === nom)) return cat.categorie
+  return null
+}
+
+function findArmeCategorie(armes: ArmesData, nom: string): string | null {
+  const key = stripExposants(nom).toLowerCase()
+  for (const g of armes.groupes)
+    for (const cat of g.categories)
+      if (cat.entrees.some(e => stripExposants(e.nom).toLowerCase() === key)) return cat.categorie
+  return null
+}
+
+export function computeAttaquesTotaux(
+  character: Character,
+  descriptions: DescMap,
+  armes: ArmesData,
+  armures: ArmuresData,
+): { contact: number; distance: number; magique: number } {
+  const effects = computeEffects(character, descriptions)
+
+  const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+  const armorDef = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const malusAtkDist = Math.floor(armorDef / 2)
+
+  const canUseFormation = (cat: string) =>
+    character.formationsMartiales.some(f => normalizeFormation(f) === cat.trim().toLowerCase())
+
+  const MALUS = 3
+  const armureSansForm = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe)
+    .some(a => { const c = findArmureCategorie(armures, a.nom); return c !== null && !canUseFormation(c) })
+  const bouclierSansForm = character.armuresEquipees.filter(a => isBouclier(a.nom) && a.equipe)
+    .some(a => { const c = findArmureCategorie(armures, a.nom); return c !== null && !canUseFormation(c) })
+  const malusEquip = (armureSansForm ? MALUS : 0) + (bouclierSansForm ? MALUS : 0)
+
+  const getArmeAttType = (nomArme: string) => {
+    const key = stripExposants(nomArme).toLowerCase()
+    const arme = character.armes.find(a => stripExposants(a.nom).toLowerCase() === key)
+    const mod = (arme as { attaque?: string } | undefined)?.attaque?.toUpperCase()
+    return mod === 'DEX' ? 'DEX' : mod === 'INT' ? 'INT' : 'FOR'
+  }
+  const armeSansForm = (nomArme: string) => {
+    const cat = findArmeCategorie(armes, nomArme)
+    return cat !== null && !canUseFormation(cat)
+  }
+  const mal = (arme: string, type: string) => armeSansForm(arme) && getArmeAttType(arme) === type ? MALUS : 0
+  const malusArmesContact = ((character.arme1 && mal(character.arme1, 'FOR')) || (character.arme2 && mal(character.arme2, 'FOR'))) ? MALUS : 0
+  const malusArmesDist    = ((character.arme1 && mal(character.arme1, 'DEX')) || (character.arme2 && mal(character.arme2, 'DEX'))) ? MALUS : 0
+  const malusArmesMag     = ((character.arme1 && mal(character.arme1, 'INT')) || (character.arme2 && mal(character.arme2, 'INT'))) ? MALUS : 0
+
+  return {
+    contact:  character.attaqueContact  - malusEquip - malusArmesContact + sumStat(effects['ATT_CONTACT']  ?? []),
+    distance: character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? []),
+    magique:  character.attaqueMagique  - armorDef    - malusEquip - malusArmesMag   + sumStat(effects['ATT_MAGIQUE']  ?? []),
+  }
+}

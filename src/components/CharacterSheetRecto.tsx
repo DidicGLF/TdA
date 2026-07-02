@@ -772,16 +772,29 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             }
             pvLines.push(...groupContribs(pvContribs))
             const pvTotal = pvBase + pvFromVoies
-            return f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0,
-              value: locked ? pvTotal : (character.pvRestants || pvTotal),
-              onChange: locked ? () => {} : v => onChange({ pvRestants: parseInt(v) || 0 }),
-              readOnly: locked, align: "center", active: activeStep === 4,
-              formula: locked ? { lines: pvLines, total: pvTotal } : undefined })
+            const pvActuels = character.pvRestants || pvTotal
+            return <>
+              {f({ label: "pvRestants", tooltipTitle: t('recto.pvRestants'), top: 38.1, left: 22.8, width: 5.1, height: 2.0,
+                value: pvActuels,
+                onChange: v => onChange({ pvRestants: parseInt(v) || 0 }),
+                type: "number", align: "center", active: activeStep === 4 })}
+              {f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0,
+                value: locked ? pvTotal : (character.pvRestants || pvTotal),
+                onChange: locked ? () => {} : v => onChange({ pvRestants: parseInt(v) || 0 }),
+                readOnly: locked, align: "center", active: activeStep === 4,
+                formula: locked ? { lines: pvLines, total: pvTotal } : undefined })}
+            </>
           })()}
+          {f({ label: "pmRestants", tooltipTitle: t('recto.pmRestants'), top: 46.1, left: 22.8, width: 5.0, height: 2.0,
+            value: character.pmRestants || character.pm,
+            onChange: v => onChange({ pmRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
           {f({ label: "PM", tooltipTitle: t('recto.pm'), top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'mystiques'
               ? { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }, { label: t('recto.tlX2Mystiques'), value: '' }], total: pm }
               : { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }], total: pm } })}
+          {f({ label: "pcRestants", tooltipTitle: t('recto.pcRestants'), top: 50.6, left: 22.8, width: 5.2, height: 2.0,
+            value: character.pcRestants || character.pc,
+            onChange: v => onChange({ pcRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
           {f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'aventuriers'
               ? { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }, { label: t('recto.tlAventuriers'), value: '+2' }], total: CHA.mod + 4 }

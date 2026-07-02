@@ -88,7 +88,9 @@ export interface Character {
   pr: number
   prUtilises: boolean[]
   pm: number
+  pmRestants: number
   pc: number
+  pcRestants: number
   deVie: string
   encombrement: number
   malusEncombrement: number
@@ -224,7 +226,9 @@ export const defaultCharacter = (): Character => ({
   pr: 0,
   prUtilises: [false, false, false, false, false, false],
   pm: 0,
+  pmRestants: 0,
   pc: 0,
+  pcRestants: 0,
   deVie: 'd8',
   encombrement: 0,
   malusEncombrement: 0,

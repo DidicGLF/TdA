@@ -10,7 +10,18 @@
     },
     {
       "nom": "Coup de bouclier",
-      "desc": "Le PJ peut effectuer à chaque tour une attaque au bouclier avec un d12 au lieu du d20 (action gratuite) qui inflige [1d4 + Mod. de FOR] DM."
+      "desc": "Le PJ peut effectuer à chaque tour une attaque au bouclier avec un d12 au lieu du d20 (action gratuite) qui inflige [1d4 + Mod.FOR] DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Coup de bouclier",
+          "de": 12,
+          "dm": "1d4 +[Mod.FOR] ",
+          "activable": true,
+          "attType": "contact"
+        }
+      ],
+      "effects": []
     },
     {
       "nom": "Absorber un sort (L)",
@@ -56,8 +67,14 @@
         {
           "stat": "PV",
           "value": 3
+        },
+        {
+          "stat": "PV",
+          "value": 1,
+          "avancee": true
         }
-      ]
+      ],
+      "grants": []
     },
     {
       "nom": "Armure naturelle",
@@ -76,7 +93,22 @@
     },
     {
       "nom": "Prouesse",
-      "desc": "Le PJ réussit souvent des exploits physiques hors norme. Une fois par tour, vous pouvez sacrifier 1d4 PV pour obtenir +5 sur un test de Caracs (voir définition en marge) de FOR ou de DEX. Vous pouvez annoncer l'utilisation de cette capacité après avoir pris connaissance du résultat du test de caractéristique."
+      "desc": "Le PJ réussit souvent des exploits physiques hors norme. Une fois par tour, vous pouvez sacrifier 1d4 PV pour obtenir +5 sur un test de Caracs (voir définition en marge) de FOR ou de DEX. Vous pouvez annoncer l'utilisation de cette capacité après avoir pris connaissance du résultat du test de caractéristique.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Prouesse",
+          "bonus": 5,
+          "cibles": [
+            "FOR",
+            "DEX"
+          ],
+          "choix": true,
+          "post_jet": true,
+          "usage": "1",
+          "cout_pv": "1d4"
+        }
+      ]
     },
     {
       "nom": "Dernier rempart (L)",
@@ -89,6 +121,14 @@
         {
           "stat": "CON",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "CON",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -1595,7 +1635,8 @@
   "Voie culturelle de l'ordre de la Forge": [
     {
       "nom": "Artisan de la forge",
-      "desc": "Le PJ choisit un métier présent au sein de l'ordre de la Forge (alchimiste, armurier, médecin, orfèvre, mineur, etc.). Il obtient un bonus de +5 à tous les tests en rapport avec ce métier."
+      "desc": "Le PJ choisit un métier présent au sein de l'ordre de la Forge (alchimiste, armurier, médecin, orfèvre, mineur, etc.). Il obtient un bonus de +5 à tous les tests en rapport avec ce métier.",
+      "effects": []
     },
     {
       "nom": "Forgeron runique",
@@ -1781,7 +1822,70 @@
     },
     {
       "nom": "Paysan aguerri",
-      "desc": "Le PJ gagne un bonus de +1 en attaque et aux DM lorsqu'il manie une arme de paysan. De plus, il est formé au maniement de la grande hache de bûcheron (voir page 157)."
+      "desc": "Le PJ gagne un bonus de +1 en attaque et aux DM lorsqu'il manie une arme de paysan. De plus, il est formé au maniement de la grande hache de bûcheron (voir page 157).",
+      "effects": [
+        {
+          "stat": "ATT_CONTACT",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Bâton",
+              "Bâton ferré",
+              "Dague",
+              "Grande hache de bûcheron",
+              "Mains nues",
+              "Fronde"
+            ]
+          }
+        },
+        {
+          "stat": "ATT_DISTANCE",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Bâton",
+              "Bâton ferré",
+              "Dague",
+              "Grande hache de bûcheron",
+              "Mains nues",
+              "Fronde"
+            ]
+          }
+        },
+        {
+          "stat": "ATT_MAGIQUE",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Bâton",
+              "Bâton ferré",
+              "Dague",
+              "Grande hache de bûcheron",
+              "Mains nues",
+              "Fronde"
+            ]
+          }
+        },
+        {
+          "stat": "DM_ARME",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Bâton",
+              "Bâton ferré",
+              "Dague",
+              "Grande hache de bûcheron",
+              "Mains nues",
+              "Fronde"
+            ]
+          }
+        }
+      ],
+      "grants": []
     },
     {
       "nom": "Solidarité des Errants",

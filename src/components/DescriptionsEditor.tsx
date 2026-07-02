@@ -116,6 +116,8 @@ type Grant =
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
   | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; minRang?: number; avancee?: boolean }
+  | { type: 'BONUS_TEMP'; label: string; bonus: number; cibles: string[]; choix?: boolean; cout_pv?: string; usage?: string; post_jet?: boolean; minRang?: number; avancee?: boolean }
+  | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 type TraitEntry = { nom: string; desc: string }
 type Culture = {
@@ -310,6 +312,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
+  const duplicateEffect = (voie: string, rang: number, effIdx: number) => {
+    setData(prev => {
+      const voieData: RangEntry[] = prev[voie] ? [...prev[voie]] : emptyRangs()
+      const entry: RangEntry = voieData[rang] ?? { nom: getNom(voie, rang), desc: '' }
+      const effects = [...(entry.effects ?? [])]
+      const copy = { ...effects[effIdx] }
+      effects.splice(effIdx + 1, 0, copy)
+      voieData[rang] = { ...entry, effects }
+      return { ...prev, [voie]: voieData }
+    })
+    setExported(false)
+  }
+
   const updateEffect = (voie: string, rang: number, effIdx: number, patch: { stat?: string; value?: number | null; formula?: string | null; diceStr?: string | null; minRang?: number | null; avancee?: boolean; rangMultiplier?: boolean | null; condition?: EffectCondition | null }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
@@ -341,6 +356,33 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         : { type: 'FORMATION', value: FORMATIONS[0] }
 
       voieData[rang] = { ...entry, grants: [...(entry.grants ?? []), newGrant] }
+      return { ...prev, [voie]: voieData }
+    })
+    setExported(false)
+  }
+
+  const addGameplayGrant = (voie: string, rang: number, type: 'BONUS_TEMP' | 'AVANTAGE' | 'ACTION', avancee?: boolean) => {
+    setData(prev => {
+      const voieData: RangEntry[] = prev[voie] ? [...prev[voie]] : emptyRangs()
+      const entry: RangEntry = voieData[rang] ?? { nom: getNom(voie, rang), desc: '' }
+      let newGrant: Grant
+      if (type === 'BONUS_TEMP') newGrant = { type: 'BONUS_TEMP', label: '', bonus: 1, cibles: [], ...(avancee ? { avancee: true } : {}) }
+      else if (type === 'AVANTAGE') newGrant = { type: 'AVANTAGE', stat: 'CON', lancer: 2, garder: 1, ...(avancee ? { avancee: true } : {}) }
+      else newGrant = { type: 'ACTION', label: '', de: 12, dm: '1d4', ...(avancee ? { avancee: true } : {}) }
+      voieData[rang] = { ...entry, grants: [...(entry.grants ?? []), newGrant] }
+      return { ...prev, [voie]: voieData }
+    })
+    setExported(false)
+  }
+
+  const duplicateGrant = (voie: string, rang: number, gIdx: number) => {
+    setData(prev => {
+      const voieData: RangEntry[] = prev[voie] ? [...prev[voie]] : emptyRangs()
+      const entry: RangEntry = voieData[rang] ?? { nom: getNom(voie, rang), desc: '' }
+      const grants = [...(entry.grants ?? [])]
+      const copy = { ...grants[gIdx] }
+      grants.splice(gIdx + 1, 0, copy)
+      voieData[rang] = { ...entry, grants }
       return { ...prev, [voie]: voieData }
     })
     setExported(false)
@@ -383,6 +425,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               ? { type: 'COMPAGNON', nom: compagnons[0]?.nom ?? '', ...av }
               : patch.type === 'COMPAGNON_CHOIX'
               ? { type: 'COMPAGNON_CHOIX', noms: [], ...av }
+              : patch.type === 'BONUS_TEMP'
+              ? { type: 'BONUS_TEMP', label: '', bonus: 1, cibles: [], ...av }
+              : patch.type === 'AVANTAGE'
+              ? { type: 'AVANTAGE', stat: 'CON', lancer: 2, garder: 1, ...av }
+              : patch.type === 'ACTION'
+              ? { type: 'ACTION', label: '', de: 12, dm: '1d4', ...av }
               : { type: 'EFFECT_CHOIX', stats: [], value: 1, ...av }
       } else {
         grants[gIdx] = { ...current, ...patch } as Grant
@@ -1881,14 +1929,24 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <option value="noArme">{t('descEditor.condSansArme')}</option>
                           </select>
                         )}
-                        <button
-                          onClick={() => removeEffect(selected, i, ei)}
-                          title={t('descEditor.supprimerEffetTitle')}
-                          style={{
-                            padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
-                            border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555', marginLeft: 'auto',
-                          }}
-                        >🗑</button>
+                        <span style={{ marginLeft: 'auto', display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <button
+                            onClick={() => duplicateEffect(selected, i, ei)}
+                            title="Dupliquer cet effet"
+                            style={{
+                              padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
+                              border: '1px solid rgba(140,100,255,0.5)', background: 'rgba(140,100,255,0.15)', color: 'rgba(200,170,255,0.95)',
+                            }}
+                          >📋</button>
+                          <button
+                            onClick={() => removeEffect(selected, i, ei)}
+                            title={t('descEditor.supprimerEffetTitle')}
+                            style={{
+                              padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
+                              border: '1px solid rgba(220,80,80,0.35)', background: 'rgba(220,80,80,0.1)', color: '#e05555',
+                            }}
+                          >🗑</button>
+                        </span>
                       </div>
                       {eff.condition?.type === 'hasArme' && (() => {
 
@@ -1925,23 +1983,40 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     const grantsNormaux = grants.map((g, idx) => ({ g, idx })).filter(({ g }) => !g.avancee)
                     const grantsAvances = grants.map((g, idx) => ({ g, idx })).filter(({ g }) => !!g.avancee)
 
-                    const renderGrant = (grant: Grant, gi: number) => (
-                      <div key={gi} style={{ marginBottom: 6, border: '1px solid rgba(201,168,76,0.18)', borderRadius: 4, padding: '6px 8px', background: 'rgba(201,168,76,0.03)' }}>
+                    const isGameplayGrant = (g: Grant) => g.type === 'BONUS_TEMP' || g.type === 'AVANTAGE' || g.type === 'ACTION'
+                    const renderGrant = (grant: Grant, gi: number) => {
+                      const gameplay = isGameplayGrant(grant)
+                      const grantBorder = gameplay ? 'rgba(160,120,255,0.4)' : 'rgba(201,168,76,0.18)'
+                      const grantBg = gameplay ? 'rgba(140,100,255,0.07)' : 'rgba(201,168,76,0.03)'
+                      const grantSymbol = grant.type === 'BONUS_TEMP' ? '⚡' : grant.type === 'AVANTAGE' ? '🎲' : grant.type === 'ACTION' ? '⚔️' : null
+                      return (
+                      <div key={gi} style={{ marginBottom: 6, border: `1px solid ${grantBorder}`, borderRadius: 4, padding: '6px 8px', background: grantBg }}>
+                        {gameplay && (
+                          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(160,120,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {grantSymbol} Effet en jeu
+                          </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <select
                             value={grant.type}
                             onChange={e => updateGrant(selected, i, gi, { type: e.target.value as Grant['type'] })}
                             style={{
-                              background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3,
-                              padding: '2px 4px', fontSize: 13, color: S.gold, outline: 'none', cursor: 'pointer',
+                              background: S.bg, border: `1px solid ${gameplay ? 'rgba(160,120,255,0.5)' : S.border}`, borderRadius: 3,
+                              padding: '2px 4px', fontSize: 13, color: gameplay ? 'rgba(200,170,255,0.95)' : S.gold, outline: 'none', cursor: 'pointer',
                             }}
                           >
-                            <option value="FORMATION">{t('descEditor.grantFormation')}</option>
-                            <option value="VOIE_RANG">{t('descEditor.grantVoieRangFixe')}</option>
-                            <option value="VOIE_RANG_CHOIX">{t('descEditor.grantVoieRangChoix')}</option>
-                            <option value="COMPAGNON">{t('descEditor.grantCompagnonFixe')}</option>
-                            <option value="COMPAGNON_CHOIX">{t('descEditor.grantCompagnonChoix')}</option>
-                            <option value="EFFECT_CHOIX">{t('descEditor.grantEffectChoix')}</option>
+                            {gameplay ? (<>
+                              <option value="BONUS_TEMP">⚡ Bonus temporaire</option>
+                              <option value="AVANTAGE">🎲 Garder le meilleur jet</option>
+                              <option value="ACTION">⚔️ Action</option>
+                            </>) : (<>
+                              <option value="FORMATION">{t('descEditor.grantFormation')}</option>
+                              <option value="VOIE_RANG">{t('descEditor.grantVoieRangFixe')}</option>
+                              <option value="VOIE_RANG_CHOIX">{t('descEditor.grantVoieRangChoix')}</option>
+                              <option value="COMPAGNON">{t('descEditor.grantCompagnonFixe')}</option>
+                              <option value="COMPAGNON_CHOIX">{t('descEditor.grantCompagnonChoix')}</option>
+                              <option value="EFFECT_CHOIX">{t('descEditor.grantEffectChoix')}</option>
+                            </>)}
                           </select>
 
                           {grant.type === 'FORMATION' && (
@@ -2098,6 +2173,165 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             </div>
                           )}
 
+                          {grant.type === 'BONUS_TEMP' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', marginTop: 2 }}>
+                              {/* Label */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6, minWidth: 50 }}>Nom</span>
+                                <input
+                                  value={grant.label}
+                                  onChange={e => updateGrant(selected, i, gi, { label: e.target.value } as never)}
+                                  placeholder="ex: Prouesse"
+                                  style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                                />
+                              </div>
+                              {/* Bonus + cibles */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6, minWidth: 50 }}>Bonus</span>
+                                <input
+                                  type="number"
+                                  value={grant.bonus}
+                                  onChange={e => updateGrant(selected, i, gi, { bonus: parseInt(e.target.value) || 0 } as never)}
+                                  style={{ width: 48, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.gold, outline: 'none', textAlign: 'center' }}
+                                />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!grant.choix}
+                                    onChange={e => updateGrant(selected, i, gi, { choix: e.target.checked || undefined } as never)}
+                                    style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                  />
+                                  Choix
+                                </label>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>{grant.choix ? 'une parmi' : 'toutes'}</span>
+                                {grant.cibles.map((c, ci) => (
+                                  <span key={ci} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(201,168,76,0.12)', border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 6px', fontSize: 12, color: S.gold }}>
+                                    {c}
+                                    <button onClick={() => updateGrant(selected, i, gi, { cibles: grant.cibles.filter((_, j) => j !== ci) } as never)} style={{ background: 'none', border: 'none', color: '#e05555', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1 }}>✕</button>
+                                  </span>
+                                ))}
+                                <select
+                                  value=""
+                                  onChange={e => {
+                                    if (!e.target.value || grant.cibles.includes(e.target.value)) return
+                                    updateGrant(selected, i, gi, { cibles: [...grant.cibles, e.target.value] } as never)
+                                  }}
+                                  style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                                >
+                                  <option value="">+ stat</option>
+                                  {STATS.filter(s => !grant.cibles.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                              {/* Coût PV + usage + post_jet */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Coût PV</span>
+                                <input
+                                  value={grant.cout_pv ?? ''}
+                                  onChange={e => updateGrant(selected, i, gi, { cout_pv: e.target.value || undefined } as never)}
+                                  placeholder="ex: 1d4"
+                                  style={{ width: 56, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                                />
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Usage</span>
+                                <input
+                                  value={grant.usage ?? ''}
+                                  onChange={e => updateGrant(selected, i, gi, { usage: e.target.value || undefined } as never)}
+                                  placeholder="ex: 1/tour"
+                                  style={{ width: 72, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                                />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!grant.post_jet}
+                                    onChange={e => updateGrant(selected, i, gi, { post_jet: e.target.checked || undefined } as never)}
+                                    style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                  />
+                                  Après jet
+                                </label>
+                              </div>
+                            </div>
+                          )}
+
+                          {grant.type === 'AVANTAGE' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', marginTop: 2 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6, minWidth: 50 }}>Stat</span>
+                                <select
+                                  value={grant.stat}
+                                  onChange={e => updateGrant(selected, i, gi, { stat: e.target.value } as never)}
+                                  style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                                >
+                                  {STATS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Lancer</span>
+                                <input
+                                  type="number" min={2} max={10}
+                                  value={grant.lancer}
+                                  onChange={e => updateGrant(selected, i, gi, { lancer: Math.max(2, parseInt(e.target.value) || 2) } as never)}
+                                  style={{ width: 44, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.gold, outline: 'none', textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>dés, garder</span>
+                                <input
+                                  type="number" min={1} max={grant.lancer - 1}
+                                  value={grant.garder}
+                                  onChange={e => updateGrant(selected, i, gi, { garder: Math.max(1, Math.min(grant.lancer - 1, parseInt(e.target.value) || 1)) } as never)}
+                                  style={{ width: 44, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.gold, outline: 'none', textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.5, fontStyle: 'italic' }}>meilleur{grant.garder > 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {grant.type === 'ACTION' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', marginTop: 2 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6, minWidth: 50 }}>Nom</span>
+                                <input
+                                  value={grant.label}
+                                  onChange={e => updateGrant(selected, i, gi, { label: e.target.value } as never)}
+                                  placeholder="ex: Coup de bouclier"
+                                  style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Dé ATT</span>
+                                <select
+                                  value={grant.de}
+                                  onChange={e => updateGrant(selected, i, gi, { de: parseInt(e.target.value) } as never)}
+                                  style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                                >
+                                  {[4, 6, 8, 10, 12, 20].map(d => <option key={d} value={d}>d{d}</option>)}
+                                </select>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>+ Mod.</span>
+                                <select
+                                  value={grant.attType ?? ''}
+                                  onChange={e => updateGrant(selected, i, gi, { attType: e.target.value || undefined } as never)}
+                                  style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
+                                >
+                                  <option value="">Aucun</option>
+                                  <option value="contact">ATT contact</option>
+                                  <option value="distance">ATT distance</option>
+                                  <option value="magique">ATT magique</option>
+                                </select>
+                                <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Dégâts</span>
+                                <input
+                                  value={grant.dm}
+                                  onChange={e => updateGrant(selected, i, gi, { dm: e.target.value } as never)}
+                                  placeholder="ex: 1d4+[Mod. FOR]"
+                                  style={{ width: 140, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                                />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'rgba(200,170,255,0.9)', cursor: 'pointer', userSelect: 'none', marginLeft: 8 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!grant.activable}
+                                    onChange={e => updateGrant(selected, i, gi, { activable: e.target.checked || undefined } as never)}
+                                    style={{ accentColor: 'rgba(140,100,255,0.9)', cursor: 'pointer' }}
+                                  />
+                                  Bouton activable
+                                </label>
+                              </div>
+                            </div>
+                          )}
+
                           <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
                             <input
                               type="checkbox"
@@ -2123,10 +2357,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             />
                             {t('descEditor.avancee')}
                           </label>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(201,168,76,0.15)' }}>
+                          <button
+                            onClick={() => duplicateGrant(selected, i, gi)}
+                            title="Dupliquer ce grant"
+                            style={{ padding: '3px 8px', borderRadius: 4, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(140,100,255,0.5)', background: 'rgba(140,100,255,0.15)', color: 'rgba(200,170,255,0.95)' }}
+                          >📋</button>
                           <button
                             onClick={() => removeGrant(selected, i, gi)}
                             title={t('descEditor.supprimerAccesTitle')}
-                            style={{ padding: '2px 7px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555', marginLeft: 'auto' }}
+                            style={{ padding: '3px 8px', borderRadius: 4, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.5)', background: 'rgba(220,80,80,0.1)', color: '#e05555' }}
                           >🗑</button>
                         </div>
 
@@ -2157,6 +2398,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         )}
                       </div>
                     )
+                    }
 
                     return (
                       <div style={{ marginTop: 8, border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '8px 10px' }}>
@@ -2227,7 +2469,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         )}
                         {normaux.map(({ e, idx }) => renderLigne(e, idx))}
                         {grantsNormaux.map(({ g, idx }) => renderGrant(g, idx))}
-                        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                           <button
                             onClick={() => addEffect(selected, i)}
                             style={{
@@ -2242,6 +2484,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                             }}
                           >{t('descEditor.ajouterAcces')}</button>
+                          <button onClick={() => addGameplayGrant(selected, i, 'BONUS_TEMP')} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(140,100,255,0.5)', background: 'rgba(140,100,255,0.1)', color: 'rgba(200,170,255,0.95)' }}>+ Ajouter un effet de jeu</button>
                         </div>
                         <div style={{ marginTop: 10, borderRadius: 4, padding: '8px 10px', background: 'rgba(201,168,76,0.07)' }}>
                           <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.08em', marginBottom: 6, textTransform: 'uppercase' }}>
@@ -2249,7 +2492,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </div>
                           {avances.map(({ e, idx }) => renderLigne(e, idx))}
                           {grantsAvances.map(({ g, idx }) => renderGrant(g, idx))}
-                          <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                             <button
                               onClick={() => addEffect(selected, i, true)}
                               style={{
@@ -2264,6 +2507,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 border: `1px solid ${S.border}`, background: 'transparent', color: S.gold,
                               }}
                             >{t('descEditor.ajouterAccesAvance')}</button>
+                            <button onClick={() => addGameplayGrant(selected, i, 'BONUS_TEMP', true)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 13, cursor: 'pointer', border: '1px solid rgba(140,100,255,0.5)', background: 'rgba(140,100,255,0.1)', color: 'rgba(200,170,255,0.95)' }}>+ Ajouter un effet de jeu</button>
                           </div>
                         </div>
                       </div>
