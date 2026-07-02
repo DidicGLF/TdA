@@ -122,12 +122,16 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const ptsTotal = 2 * levelsGained
   const pmGain = pmGainParNiveau * levelsGained
 
-  React.useEffect(() => {
+  // Réinitialise tout quand le nombre de niveaux gagnés change (pendant le rendu,
+  // pas dans un effet, pour éviter un rendu en cascade).
+  const [prevLevelsGained, setPrevLevelsGained] = React.useState(levelsGained)
+  if (levelsGained !== prevLevelsGained) {
+    setPrevLevelsGained(levelsGained)
     setJets(Array(levelsGained).fill(null))
     setSelections({})
     setFormationsAchetées([])
     setAvancesAchetées({})
-  }, [levelsGained])
+  }
 
   // Si les sélections changent après un lancer, remettre les dés à zéro
   React.useEffect(() => {

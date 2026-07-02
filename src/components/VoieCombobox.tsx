@@ -12,14 +12,19 @@ interface Props {
 }
 
 export default function VoieCombobox({ value, onChange, options, alreadyChosen = [], placeholder }: Props) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState(value)
-  const ref = useRef<HTMLDivElement>(null)
   const { t } = useTranslation()
   const voieName = useVoieName()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState(value ? voieName(value) : '')
+  const [prevValue, setPrevValue] = useState(value)
+  const ref = useRef<HTMLDivElement>(null)
 
-  // Keep query in sync when value changes externally (show translated name)
-  useEffect(() => { setQuery(value ? voieName(value) : '') }, [value])
+  // Keep query in sync when value changes externally (show translated name).
+  // Ajustement pendant le rendu plutôt que dans un effet (évite un rendu en cascade).
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setQuery(value ? voieName(value) : '')
+  }
 
   // Close on outside click
   useEffect(() => {

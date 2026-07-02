@@ -240,14 +240,14 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   return (
     <div className="space-y-3">
       <p className="text-base opacity-70 italic">{t('wizard.step0.intro')}</p>
-      {[
+      {([
         { labelKey: 'wizard.step0.nomJoueur', field: 'nomJoueur' },
         { labelKey: 'wizard.step0.nomPersonnage', field: 'nomPersonnage' },
         { labelKey: 'wizard.step0.genre', field: 'genre' },
         { labelKey: 'wizard.step0.age', field: 'age' },
         { labelKey: 'wizard.step0.taille', field: 'taille' },
         { labelKey: 'wizard.step0.poids', field: 'poids' },
-      ].map(({ labelKey, field }) => (
+      ] as const).map(({ labelKey, field }) => (
         <div key={field}>
           <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
             {t(labelKey)}
@@ -255,7 +255,7 @@ function Step0({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           <input
             className="w-full border rounded px-3 py-1.5 text-base"
             style={INPUT_STYLE}
-            value={(character as any)[field]}
+            value={character[field]}
             onChange={e => onChange({ [field]: e.target.value })}
           />
         </div>
@@ -652,9 +652,14 @@ function TraitCombobox({ value, onChange }: { value: string; onChange: (val: str
   const { traits } = useGameData()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState(value ? traitName(value) : '')
+  const [prevValue, setPrevValue] = React.useState(value)
   const ref = React.useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => { setQuery(value ? traitName(value) : '') }, [value, traitName])
+  // Resynchronise l'affichage quand la valeur change (pendant le rendu, pas dans un effet).
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setQuery(value ? traitName(value) : '')
+  }
 
   React.useEffect(() => {
     if (!open) return

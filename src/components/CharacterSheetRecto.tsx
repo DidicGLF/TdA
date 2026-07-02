@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Character, VoiePersonnage } from '../types/character'
+import type { Character, VoiePersonnage, Famille } from '../types/character'
 import { getMod } from '../types/character'
 import { useVoieName, usePeupleName, useProfilName, useTranslatedDescriptions, useTraitRacialName, useTraitRacialDesc } from '../hooks/useContentTranslation'
 import cristauxData from '../data/cristaux.json'
@@ -415,7 +415,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {f({ label: "Nom joueur",  top: 10.1, left: 52.8, width: 18.3, height: 2.0, value: character.nomJoueur,     onChange: v => onChange({ nomJoueur: v }),                        active: activeStep === 0 })}
       {f({ label: "Profil",      top: 10.1, left: 76.3, width: 16.5, height: 2.0, value: profilName(character.profil),        onChange: locked ? () => {} : v => onChange({ profil: v }),      active: activeStep === 3, readOnly: locked })}
       {f({ label: "Genre",       top: 10.1, left: 92.3, width: 6.7,  height: 2.0, value: character.genre,         onChange: v => onChange({ genre: v }),                            active: activeStep === 0 })}
-      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: profilName(character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : ''), onChange: locked ? () => {} : v => onChange({ famille: v as any }), active: activeStep === 3, readOnly: locked })}
+      {f({ label: "Famille",     top: 12.2, left: 76.3, width: 16.6, height: 2.0, value: profilName(character.famille ? character.famille[0].toUpperCase() + character.famille.slice(1) : ''), onChange: locked ? () => {} : v => onChange({ famille: v as Famille }), active: activeStep === 3, readOnly: locked })}
       {f({ label: "Âge",         top: 12.2, left: 92.1, width: 6.4,  height: 2.0, value: character.age,           onChange: v => onChange({ age: v }),                              active: activeStep === 0 })}
       {f({ label: "Nom perso",   top: 14.4, left: 51.9, width: 20.7, height: 2.0, value: character.nomPersonnage,  onChange: v => onChange({ nomPersonnage: v }),                   active: activeStep === 0 })}
       {f({ label: "Peuple",      top: 14.4, left: 76.3, width: 16.6, height: 2.0, value: locked ? peupleName(character.peuple) : character.peuple,   onChange: locked ? () => {} : v => onChange({ peuple: v }),      active: activeStep === 1, readOnly: locked })}

@@ -733,8 +733,8 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
             const rangsData = data[voie.nom]
             if (!rangsData) continue
             const granted = rangsData.some(r => r?.grants?.some(g =>
-              (g.type === 'COMPAGNON' && (g as any).nom === nomCompagnon) ||
-              (g.type === 'COMPAGNON_CHOIX' && (g as any).noms?.includes(nomCompagnon))
+              (g.type === 'COMPAGNON' && g.nom === nomCompagnon) ||
+              (g.type === 'COMPAGNON_CHOIX' && g.noms?.includes(nomCompagnon))
             ))
             if (granted) return voie.rangs.filter(Boolean).length
           }

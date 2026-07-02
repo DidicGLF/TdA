@@ -838,6 +838,17 @@
     "profil": "Voies de profil",
     "prestige": "Voies de prestige",
     "dejaChoisie": "déjà choisie"
+  },
+  "saveStatus": {
+    "saving": "Sauvegarde…",
+    "saved": "Enregistré",
+    "error": "Échec de la sauvegarde"
+  },
+  "errorBoundary": {
+    "titre": "Une erreur est survenue",
+    "corps": "L'application a rencontré un problème inattendu. Tes données sauvegardées ne sont pas affectées. Recharge l'application pour continuer.",
+    "details": "Détails techniques",
+    "recharger": "Recharger l'application"
   }
 }
 

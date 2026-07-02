@@ -406,7 +406,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     })
   }
 
-  const exportWithPrompt = (payload: unknown, type: 'descriptions' | 'peuples' | 'traits-magiques', defaultBase: string, onDone: () => void) => {
+  const exportWithPrompt = (payload: unknown, type: 'descriptions' | 'peuples' | 'traits-magiques' | 'compagnons', defaultBase: string, onDone: () => void) => {
     setPromptValue(defaultBase)
     setPromptDialog({
       message: t('descEditor.nomFichierPrompt'),
@@ -424,7 +424,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     })
   }
 
-  const importFile = (expectedType: 'descriptions' | 'peuples' | 'traits-magiques', onImport: (parsed: unknown) => void) => {
+  const importFile = (expectedType: 'descriptions' | 'peuples' | 'traits-magiques' | 'compagnons', onImport: (parsed: unknown) => void) => {
     const input = document.createElement('input')
     input.type = 'file'; input.accept = '.json'
     input.onchange = () => {
@@ -522,7 +522,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setCompagnonsExported(false)
   }
 
-  const exportCompagnons = () => exportWithPrompt(compagnons, 'compagnons' as any, 'compagnons', () => setCompagnonsExported(true))
+  const exportCompagnons = () => exportWithPrompt(compagnons, 'compagnons', 'compagnons', () => setCompagnonsExported(true))
 
   const wrapTrait = (before: string, after: string) => {
     const ta = traitDescRef.current
@@ -1380,7 +1380,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               }}>{t('descEditor.importer')}</button>
             </>)}
             {!isMobile && section === 'traitsRaciaux' && (<>
-              <button onClick={() => exportWithPrompt(traitsRaciaux, 'traits-magiques' as any, 'traits-raciaux', () => setTraitsRaciauxExported(true))} style={{
+              <button onClick={() => exportWithPrompt(traitsRaciaux, 'traits-magiques', 'traits-raciaux', () => setTraitsRaciauxExported(true))} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.gold}`,
                 background: traitsRaciauxExported ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
@@ -1388,7 +1388,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               }}>
                 {traitsRaciauxExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
-              <button onClick={() => importFile('traits-magiques' as any, v => { setTraitsRaciaux(v as typeof traitsRaciaux); setTraitsRaciauxExported(false) })} style={{
+              <button onClick={() => importFile('traits-magiques', v => { setTraitsRaciaux(v as typeof traitsRaciaux); setTraitsRaciauxExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>{t('descEditor.importer')}</button>
@@ -1402,7 +1402,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               }}>
                 {compagnonsExported ? t('descEditor.exporte') : t('descEditor.exporter')}
               </button>
-              <button onClick={() => importFile('compagnons' as any, v => { setCompagnons(v as typeof compagnons); setCompagnonsExported(false) })} style={{
+              <button onClick={() => importFile('compagnons', v => { setCompagnons(v as typeof compagnons); setCompagnonsExported(false) })} style={{
                 padding: '5px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
                 border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
               }}>{t('descEditor.importer')}</button>
@@ -2000,7 +2000,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                             <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>{t('descEditor.remplacePar')}</span>
                             <select
                               value={grant.remplace ?? ''}
-                              onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: grant.nom, remplace: e.target.value || undefined } as any)}
+                              onChange={e => updateGrant(selected, i, gi, { type: 'COMPAGNON', nom: grant.nom, remplace: e.target.value || undefined })}
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: grant.remplace ? S.parchment : 'rgba(245,236,215,0.3)', outline: 'none', cursor: 'pointer', maxWidth: 160 }}
                             >
                               <option value="">{t('descEditor.aucunRemplace')}</option>
@@ -3483,9 +3483,14 @@ function TraitNomCombobox({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
+  const [prevValue, setPrevValue] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setQuery(value) }, [value])
+  // Resynchronise pendant le rendu (au lieu d'un effet) pour éviter un rendu en cascade.
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setQuery(value)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -3560,9 +3565,14 @@ function VoieSelectCombobox({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
+  const [prevValue, setPrevValue] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setQuery(value) }, [value])
+  // Resynchronise pendant le rendu (au lieu d'un effet) pour éviter un rendu en cascade.
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setQuery(value)
+  }
 
   useEffect(() => {
     if (!open) return

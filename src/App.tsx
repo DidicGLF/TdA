@@ -16,6 +16,7 @@ import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
 import TranslationEditor from './components/TranslationEditor'
 import LevelUpModal from './components/LevelUpModal'
+import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
@@ -570,6 +571,8 @@ function AppContent() {
   // ─── Layout desktop / tablette (>= 700px) ───────────────────────────────
   return (
     <div className="app-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
+
+      <SaveStatusIndicator />
 
       {printContainer}
 

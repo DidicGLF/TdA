@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
@@ -13,7 +13,8 @@ import HIDDEN_VOIES_RAW from '../data/hidden-voies.json'
 import HIDDEN_PEUPLES_RAW from '../data/hidden-peuples.json'
 import HIDDEN_CULTURES_RAW from '../data/hidden-cultures.json'
 import HIDDEN_COMPAGNONS_RAW from '../data/hidden-compagnons.json'
-import { loadDataFile, saveDataFile, openDataDir as openDir } from '../utils/tauriStorage'
+import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
+import { queueSave } from '../utils/saveManager'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry } from '../types/gameData'
 
 export type ArmesData = typeof ARMES_RAW
@@ -79,7 +80,7 @@ function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string,
       const next = typeof updater === 'function'
         ? (updater as (p: T) => T)(prev)
         : updater
-      saveDataFile(filename, JSON.stringify({ _type: type, data: next }, null, 2)).catch(console.error)
+      queueSave(filename, JSON.stringify({ _type: type, data: next }, null, 2))
       return next
     })
   }
@@ -171,63 +172,23 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     load()
   }, [])
 
-  // Setters avec auto-save : chaque modification écrit dans Documents/TdR/
-  const setData = useCallback(
-    makeAutoSaver<DescMap>(setDataRaw, 'descriptions.json', 'descriptions'),
-    []
-  )
-  const setTraits = useCallback(
-    makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json', 'traits-magiques'),
-    []
-  )
-  const setPeuples = useCallback(
-    makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'),
-    []
-  )
-  const setArmes = useCallback(
-    makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'),
-    []
-  )
-  const setArmures = useCallback(
-    makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'),
-    []
-  )
-  const setVoies = useCallback(
-    makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json', 'voies'),
-    []
-  )
-  const setCompagnons = useCallback(
-    makeAutoSaver<CompanionEntry[]>(setCompagnonsRaw, 'compagnons.json', 'compagnons'),
-    []
-  )
-  const setTraitsRaciaux = useCallback(
-    makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'),
-    []
-  )
-  const setFieldPositions = useCallback(
-    makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'),
-    []
-  )
-  const setSheetImages = useCallback(
-    makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'),
-    []
-  )
-  const setHiddenVoies = useCallback(
-    makeAutoSaver<string[]>(setHiddenVoiesRaw, 'hidden-voies.json', 'hidden-voies'),
-    []
-  )
-  const setHiddenPeuples = useCallback(
-    makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'),
-    []
-  )
-  const setHiddenCultures = useCallback(
-    makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'),
-    []
-  )
-  const setHiddenCompagnons = useCallback(
-    makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'),
-    []
-  )
+  // Setters avec auto-save : chaque modification écrit dans Documents/TdA/.
+  // useMemo crée le saver une seule fois (les setters useState et les chemins
+  // sont stables), ce qui préserve la stabilité référentielle.
+  const setData = useMemo(() => makeAutoSaver<DescMap>(setDataRaw, 'descriptions.json', 'descriptions'), [])
+  const setTraits = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json', 'traits-magiques'), [])
+  const setPeuples = useMemo(() => makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'), [])
+  const setArmes = useMemo(() => makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'), [])
+  const setArmures = useMemo(() => makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'), [])
+  const setVoies = useMemo(() => makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json', 'voies'), [])
+  const setCompagnons = useMemo(() => makeAutoSaver<CompanionEntry[]>(setCompagnonsRaw, 'compagnons.json', 'compagnons'), [])
+  const setTraitsRaciaux = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'), [])
+  const setFieldPositions = useMemo(() => makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'), [])
+  const setSheetImages = useMemo(() => makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'), [])
+  const setHiddenVoies = useMemo(() => makeAutoSaver<string[]>(setHiddenVoiesRaw, 'hidden-voies.json', 'hidden-voies'), [])
+  const setHiddenPeuples = useMemo(() => makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'), [])
+  const setHiddenCultures = useMemo(() => makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'), [])
+  const setHiddenCompagnons = useMemo(() => makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'), [])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 

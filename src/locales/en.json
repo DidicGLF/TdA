@@ -838,5 +838,16 @@
     "profil": "Profile Paths",
     "prestige": "Prestige Paths",
     "dejaChoisie": "already chosen"
+  },
+  "saveStatus": {
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Save failed"
+  },
+  "errorBoundary": {
+    "titre": "Something went wrong",
+    "corps": "The application encountered an unexpected problem. Your saved data is not affected. Reload the application to continue.",
+    "details": "Technical details",
+    "recharger": "Reload the application"
   }
 }
