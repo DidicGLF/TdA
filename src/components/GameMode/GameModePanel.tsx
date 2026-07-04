@@ -829,7 +829,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                           <div key={i} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(140,100,255,0.15)', border: '1px solid rgba(160,120,255,0.3)', borderRadius: 4, padding: '3px 8px' }}>
                             <span style={{ color: `rgba(245,236,215,0.85)`, fontWeight: 600 }}>{e.rangNom}</span>
                             <span style={{ color: `rgba(245,236,215,0.35)`, marginLeft: 'auto', fontSize: 11 }}>
-                              {'temporaire' in e ? t('gameMode.temporary') : t('gameMode.rangVoie', { rang: e.rangIdx + 1, voie: e.voieNom })}
+                              {'temporaire' in e ? t('gameMode.temporary') : t('gameMode.rangVoie', { rang: e.rangIdx! + 1, voie: e.voieNom })}
                             </span>
                           </div>
                         ))}

@@ -115,9 +115,10 @@ type Grant =
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
-  | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; minRang?: number; avancee?: boolean }
+  | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; condition?: EffectCondition; minRang?: number; avancee?: boolean }
   | { type: 'BONUS_TEMP'; label: string; bonus?: number; formula?: string; deDegats?: string; deDegatsParArme?: boolean; temporaire?: boolean; cibles: string[]; choix?: boolean; cout_pv?: string; cout_pm?: string; coutCaracStat?: string; coutCaracValeur?: number; usage?: string; post_jet?: boolean; precision?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
   | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
+  | { type: 'ACTION'; label: string; de: number; dm: string; attType?: 'contact' | 'distance' | 'magique'; activable?: boolean; cout_pm?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 type TraitEntry = { nom: string; desc: string }
 type Culture = {
@@ -2208,7 +2209,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                   <input
                                     type="checkbox"
                                     checked={grant.formula !== undefined}
-                                    onChange={e => updateGrant(selected, i, gi, e.target.checked ? { formula: FORMULAS[0], bonus: undefined } : { formula: undefined, bonus: 1 } as never)}
+                                    onChange={e => updateGrant(selected, i, gi, (e.target.checked ? { formula: FORMULAS[0], bonus: undefined } : { formula: undefined, bonus: 1 }) as never)}
                                     style={{ accentColor: S.gold, cursor: 'pointer' }}
                                   />
                                   {t('descEditor.formulaire')}
@@ -2269,9 +2270,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                   <input
                                     type="checkbox"
                                     checked={!!grant.temporaire}
-                                    onChange={e => updateGrant(selected, i, gi, e.target.checked
+                                    onChange={e => updateGrant(selected, i, gi, (e.target.checked
                                       ? { temporaire: true, usage: grant.usage ?? '1' }
-                                      : { temporaire: undefined, cout_pv: undefined, usage: undefined, post_jet: undefined } as never)}
+                                      : { temporaire: undefined, cout_pv: undefined, usage: undefined, post_jet: undefined }) as never)}
                                     style={{ accentColor: S.gold, cursor: 'pointer' }}
                                   />
                                   Temporaire
