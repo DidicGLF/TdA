@@ -495,10 +495,17 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     })
   }, [])
 
+  // Ces deux hooks doivent rester avant le `return` anticipé du mode minimisé ci-dessous :
+  // les appeler après romprait les Rules of Hooks (nombre de hooks différent selon `minimized`).
+  const attaques = useMemo(() => computeAttaquesTotaux(character, descriptions, armes, armures), [character, descriptions, armes, armures])
+  const effectsAll = useMemo(() => computeEffectsWithCristaux(character, descriptions), [character, descriptions])
+
   const panelStyle: React.CSSProperties = inline
     ? { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: BG }
     : isMobile
-      ? { position: 'fixed', bottom: 0, left: 0, right: 0, height: minimized ? 44 : '60vh', zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderTop: `2px solid ${GOLD}`, boxShadow: '0 -4px 24px rgba(0,0,0,0.7)', transition: 'height 0.2s' }
+      ? (minimized
+          ? { position: 'fixed', bottom: 0, left: 0, right: 0, height: 44, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderTop: `2px solid ${GOLD}`, boxShadow: '0 -4px 24px rgba(0,0,0,0.7)' }
+          : { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' })
       : { position: 'fixed', top: 0, right: 0, bottom: 0, width: minimized ? 36 : 320, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderLeft: `2px solid ${GOLD}`, boxShadow: '-4px 0 24px rgba(0,0,0,0.7)', transition: 'width 0.2s' }
 
   if (!inline && minimized) {
@@ -521,8 +528,6 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     textAlign: 'center' as const, whiteSpace: 'nowrap' as const,
   })
 
-  const attaques = useMemo(() => computeAttaquesTotaux(character, descriptions, armes, armures), [character, descriptions, armes, armures])
-  const effectsAll = useMemo(() => computeEffectsWithCristaux(character, descriptions), [character, descriptions])
   const pvFromVoies = sumStat(effectsAll['PV'] ?? [])
   // Réplique le calcul de la fiche de personnage (CharacterSheetRecto) : base niveau 1 (snapshot ou dé de vie + Mod.CON) + historique de montées de niveau
   const deVieFaces = character.famille === 'combattants' ? 10 : character.famille === 'aventuriers' ? 8 : 6
@@ -768,8 +773,8 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
             })}
           </div>
 
-          {/* 2 colonnes : [dés + résultat] | [historique] */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'stretch' }}>
+          {/* 2 colonnes : [dés + résultat] | [historique] — empilées verticalement sur mobile */}
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8, marginTop: 4, alignItems: 'stretch' }}>
 
             {/* Colonne 1 : dés (ligne 1) + résultat (ligne 2) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
