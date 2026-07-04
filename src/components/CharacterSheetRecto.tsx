@@ -11,7 +11,7 @@ import type { ArmesData, ArmuresData, FieldPositions } from '../context/GameData
 import { parseDesc } from '../utils/parseDesc'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
-import { computeEffects, computeDiceEffects, sumStat } from '../utils/computeEffects'
+import { computeEffectsWithCristaux, computeDiceEffects, sumStat } from '../utils/computeEffects'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
 
 const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
@@ -192,7 +192,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     if (estCoché && character.pvHistorique?.length) {
       const oldConBonus = sumStat(effects['CON'] ?? [])
       const oldConMod = getMod(character.caracteristiques.CON.valeur + oldConBonus)
-      const newEffects = computeEffects({ ...character, [voie]: { ...v, rangs: newRangs } } as Character, data)
+      const newEffects = computeEffectsWithCristaux({ ...character, [voie]: { ...v, rangs: newRangs } } as Character, data)
       const newConMod = getMod(character.caracteristiques.CON.valeur + sumStat(newEffects['CON'] ?? []))
       if (newConMod !== oldConMod) {
         patch.pvHistorique = character.pvHistorique.map(entry =>
@@ -341,25 +341,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     </React.Fragment>
   )}
 
-  const baseEffects = computeEffects(character, data)
-  const effects = (() => {
-    const actifsCristaux = (character.cristauxActifs ?? [])
-      .map(nom => cristauxData.find(c => c.nom === nom))
-      .filter((c): c is typeof cristauxData[0] => Boolean(c?.bonus))
-    if (actifsCristaux.length === 0) return baseEffects
-    const result = { ...baseEffects }
-    const addContrib = (key: string, value: number, nom: string) => {
-      result[key] = [...(result[key] ?? []), { stat: key, value, nom, rang: -1, triggerRang: -1, voie: 'cristaux' }]
-    }
-    for (const cristal of actifsCristaux) {
-      const { stat, valeur } = cristal.bonus!
-      if (stat === 'initiative') { addContrib('INIT', valeur, cristal.nom) }
-      else if (stat === 'defense') { addContrib('DEF', valeur, cristal.nom) }
-      else if (stat === 'attaques') { addContrib('ATT_CONTACT', valeur, cristal.nom); addContrib('ATT_DISTANCE', valeur, cristal.nom); addContrib('ATT_MAGIQUE', valeur, cristal.nom) }
-      else { addContrib(stat, valeur, cristal.nom) }
-    }
-    return result
-  })()
+  const effects = computeEffectsWithCristaux(character, data)
   const diceEffects = computeDiceEffects(character, data)
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
 
@@ -507,9 +489,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const initiativeTotal = DEX.valeur - totalEncombrement - malusEquip + initBonus
 
         const attContactVoies  = sumStat(effects['ATT_CONTACT'] ?? [])
-        const attContactTotal  = character.attaqueContact  - malusEquip - malusArmesContact + attContactVoies
-        const attDistTotal     = character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? [])
-        const attMagTotal      = character.attaqueMagique  - armorDef - malusEquip - malusArmesMag + sumStat(effects['ATT_MAGIQUE'] ?? [])
+        const attContactTotal  = character.niveau + FOR.mod + famContact - malusEquip - malusArmesContact + attContactVoies
+        const attDistTotal     = character.niveau + DEX.mod + famContact - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? [])
+        const attMagTotal      = character.niveau + INT.mod + famMagique - armorDef - malusEquip - malusArmesMag + sumStat(effects['ATT_MAGIQUE'] ?? [])
 
         const dmArmeBonusContribs = (nomArme: string) => {
           const key = normalizeArmeName(nomArme)
@@ -528,19 +510,19 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         const formulaArme = (nomArme: string) => {
           const type = getArmeAttType(nomArme)
           if (type === 'DEX') return { lines: [
-            { label: t('recto.tlAttDistance'), value: fmt(character.attaqueDistance) },
+            { label: t('recto.tlAttDistance'), value: fmt(character.niveau + DEX.mod + famContact) },
             ...(malusAtkDist      > 0 ? [{ label: t('recto.tlEncombrement2'),   value: `-${malusAtkDist}`,      neg: true }] : []),
             ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
             ...(malusArmesDist    > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesDist}`,    neg: true }] : []),
           ], total: fmt(attDistTotal) }
           if (type === 'INT') return { lines: [
-            { label: t('recto.tlAttMagique'), value: fmt(character.attaqueMagique) },
+            { label: t('recto.tlAttMagique'), value: fmt(character.niveau + INT.mod + famMagique) },
             ...(armorDef          > 0 ? [{ label: t('recto.tlEncombrement'),    value: `-${armorDef}`,          neg: true }] : []),
             ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
             ...(malusArmesMag     > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesMag}`,     neg: true }] : []),
           ], total: fmt(attMagTotal) }
           return { lines: [
-            { label: t('recto.tlAttContact'), value: fmt(character.attaqueContact) },
+            { label: t('recto.tlAttContact'), value: fmt(character.niveau + FOR.mod + famContact) },
             ...(malusEquip        > 0 ? [{ label: t('recto.tlEquipSansForm'),   value: `-${malusEquip}`,        neg: true }] : []),
             ...(malusArmesContact > 0 ? [{ label: t('recto.tlArmeSansForm'),    value: `-${malusArmesContact}`, neg: true }] : []),
           ], total: fmt(attContactTotal) }
@@ -772,23 +754,26 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             }
             pvLines.push(...groupContribs(pvContribs))
             const pvTotal = pvBase + pvFromVoies
-            const pvActuels = character.pvRestants || pvTotal
+            const pvActuels = character.pvRestants ?? pvTotal
             return <>
               {f({ label: "pvRestants", tooltipTitle: t('recto.pvRestants'), top: 38.1, left: 22.8, width: 5.1, height: 2.0,
                 value: pvActuels,
                 onChange: v => onChange({ pvRestants: parseInt(v) || 0 }),
                 type: "number", align: "center", active: activeStep === 4 })}
               {f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0,
-                value: locked ? pvTotal : (character.pvRestants || pvTotal),
+                value: locked ? pvTotal : (character.pvRestants ?? pvTotal),
                 onChange: locked ? () => {} : v => onChange({ pvRestants: parseInt(v) || 0 }),
                 readOnly: locked, align: "center", active: activeStep === 4,
                 formula: locked ? { lines: pvLines, total: pvTotal } : undefined })}
             </>
           })()}
           {f({ label: "pmRestants", tooltipTitle: t('recto.pmRestants'), top: 46.1, left: 22.8, width: 5.0, height: 2.0,
-            value: character.pmRestants || character.pm,
+            value: character.pmRestants ?? pm,
             onChange: v => onChange({ pmRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
-          {f({ label: "PM", tooltipTitle: t('recto.pm'), top: 46.1, left: 28.9, width: 5.0, height: 2.0, value: character.pm, onChange: v => onChange({ pm: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
+          {f({ label: "PM", tooltipTitle: t('recto.pm'), top: 46.1, left: 28.9, width: 5.0, height: 2.0,
+            value: locked ? pm : (character.pm || pm),
+            onChange: locked ? () => {} : v => onChange({ pm: parseInt(v) || 0 }),
+            readOnly: locked, type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'mystiques'
               ? { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }, { label: t('recto.tlX2Mystiques'), value: '' }], total: pm }
               : { lines: [{ label: t('recto.tlNiveau'), value: niv }, { label: t('stats.modSAG'), value: fmt(SAG.mod) }], total: pm } })}

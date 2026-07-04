@@ -217,6 +217,15 @@ export default function TranslationEditor({ onClose }: Props) {
     ? allFlatKeys.filter(k => refText(k).toLowerCase().includes(filter.toLowerCase()))
     : allFlatKeys
 
+  // For UI type: group flat keys by their top-level namespace (e.g. "gameMode.title" → "gameMode")
+  const namespaceOf = (key: string) => (key.includes('.') ? key.split('.')[0] : key)
+  const uiNamespaces = isUI
+    ? Array.from(new Set(allFlatKeys.map(namespaceOf))).sort((a, b) => a.localeCompare(b, 'fr'))
+    : []
+  const filteredUINamespaces = filter
+    ? uiNamespaces.filter(ns => allFlatKeys.some(k => namespaceOf(k) === ns && refText(k).toLowerCase().includes(filter.toLowerCase())))
+    : uiNamespaces
+
   useEffect(() => {
     if (!activeLang) return
     const targetMap: Record<string, string> = isUI
@@ -542,6 +551,63 @@ export default function TranslationEditor({ onClose }: Props) {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : isUI ? (
+              /* ── Grouped UI view: collapsible chevron section per namespace ── */
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', position: 'sticky', top: 0, background: '#1a1410', zIndex: 2, borderBottom: '2px solid rgba(201,168,76,0.3)' }}>
+                  <div style={{ padding: '8px 14px', fontSize: 12, color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', borderRight: '1px solid rgba(201,168,76,0.15)' }}>
+                    {refLangLabel} (référence)
+                  </div>
+                  <div style={{ padding: '8px 14px', fontSize: 12, color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {activeLangLabel} (traduction)
+                  </div>
+                </div>
+
+                {filteredUINamespaces.length === 0 && (
+                  <div style={{ padding: '24px 16px', color: 'rgba(245,236,215,0.3)', fontSize: 13, textAlign: 'center' }}>Aucun résultat</div>
+                )}
+
+                {filteredUINamespaces.map(ns => {
+                  const expanded = expandedVoies.has(ns)
+                  const keysInNs = allFlatKeys.filter(k => namespaceOf(k) === ns)
+                  const visibleKeys = filter
+                    ? keysInNs.filter(k => refText(k).toLowerCase().includes(filter.toLowerCase()))
+                    : keysInNs
+                  return (
+                    <div key={ns} style={{ borderBottom: '1px solid rgba(201,168,76,0.12)' }}>
+                      {/* Namespace header row */}
+                      <div
+                        onClick={() => toggleVoie(ns)}
+                        style={{ display: 'grid', gridTemplateColumns: '24px 1fr', alignItems: 'center', background: 'rgba(201,168,76,0.08)', cursor: 'pointer', borderBottom: expanded ? '1px solid rgba(201,168,76,0.12)' : 'none' }}
+                      >
+                        <span style={{ padding: '8px 4px 8px 10px', fontSize: 11, color: 'rgba(201,168,76,0.5)', userSelect: 'none' }}>{expanded ? '▼' : '▶'}</span>
+                        <span style={{ padding: '8px 14px', fontSize: 15, fontWeight: 600, color: 'rgba(201,168,76,0.85)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {ns}
+                          <span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(245,236,215,0.35)', textTransform: 'none', letterSpacing: 'normal', marginLeft: 8 }}>
+                            ({visibleKeys.length})
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Key rows */}
+                      {expanded && visibleKeys.map((key, i) => (
+                        <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: i % 2 === 1 ? 'rgba(0,0,0,0.2)' : 'transparent', borderTop: '1px solid rgba(201,168,76,0.06)' }}>
+                          <div style={{ padding: '8px 14px 8px 34px', fontSize: 14, color: 'rgba(245,236,215,0.7)', borderRight: '1px solid rgba(201,168,76,0.1)', wordBreak: 'break-word', alignSelf: 'center' }}>
+                            {refText(key)}
+                          </div>
+                          <div style={{ padding: '6px 10px' }}>
+                            <input
+                              value={edits[key] ?? ''}
+                              onChange={e => handleEdit(key, e.target.value)}
+                              style={INPUT_STYLE}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )
                 })}

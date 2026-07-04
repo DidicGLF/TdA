@@ -642,7 +642,7 @@ function AppContent() {
                 whiteSpace: 'nowrap', flexShrink: 0,
               }}
             >
-              Jouer
+              {t('toolbar.jouer')}
             </button>
 
             {/* Sauvegarde */}

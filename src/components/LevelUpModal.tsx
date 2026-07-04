@@ -275,7 +275,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     onConfirm({
       niveau: newNiveau,
       pvTotal: character.pvTotal + pvGagnes!,
-      pvRestants: character.pvRestants + pvGagnes!,
+      pvRestants: (character.pvRestants ?? character.pvTotal) + pvGagnes!,
       pm: character.pm + pmGain,
       ...recalcAttaques(character, newNiveau),
       ...voiesPatch,

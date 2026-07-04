@@ -187,5 +187,22 @@
       "bonus": "[NIV]+[FOR]",
       "dm": "1d8*[FOR]"
     }
+  },
+  {
+    "nom": "Dragon d'Akrähyng",
+    "for": 0,
+    "dex": 0,
+    "con": 0,
+    "int": 0,
+    "sag": 0,
+    "cha": 0,
+    "init": 15,
+    "def": 16,
+    "pv": "5*[NIV]",
+    "attaque1": {
+      "nom": "Trait de feu",
+      "bonus": "+8",
+      "dm": "1d6+4"
+    }
   }
 ]

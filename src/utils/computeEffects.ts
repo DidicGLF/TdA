@@ -1,5 +1,7 @@
 import type { Character } from '../types/character'
+import { getMod } from '../types/character'
 import type { DescMap } from '../types/gameData'
+import cristauxData from '../data/cristaux.json'
 
 type Condition =
   | { type: 'hasBouclier' }
@@ -29,7 +31,7 @@ const VOIE_KEYS: Array<keyof Pick<Character,
   'voiePeuple' | 'voieCulturelle' | 'voie1' | 'voie2' | 'voie3' | 'voiePrestige' | 'voieSangMele'
 >> = ['voiePeuple', 'voieCulturelle', 'voie1', 'voie2', 'voie3', 'voiePrestige', 'voieSangMele']
 
-function resolveFormula(formula: string, character: Character): number | null {
+export function resolveFormula(formula: string, character: Character): number | null {
   const c = character.caracteristiques
   switch (formula) {
     case 'MOD_FOR': return c.FOR.mod
@@ -151,6 +153,28 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
   return result
 }
 
+// Comme computeEffects, mais fusionne également les bonus des cristaux actifs (Voie des cristaux)
+export function computeEffectsWithCristaux(character: Character, descriptions: DescMap): EffectsResult {
+  const baseEffects = computeEffects(character, descriptions)
+  const actifsCristaux = (character.cristauxActifs ?? [])
+    .map(nom => cristauxData.find(c => c.nom === nom))
+    .filter((c): c is typeof cristauxData[0] => Boolean(c?.bonus))
+  if (actifsCristaux.length === 0) return baseEffects
+
+  const result: EffectsResult = { ...baseEffects }
+  const addContrib = (key: string, value: number, nom: string) => {
+    result[key] = [...(result[key] ?? []), { stat: key, value, nom, rang: -1, triggerRang: -1, voie: 'cristaux' }]
+  }
+  for (const cristal of actifsCristaux) {
+    const { stat, valeur } = cristal.bonus!
+    if (stat === 'initiative') addContrib('INIT', valeur, cristal.nom)
+    else if (stat === 'defense') addContrib('DEF', valeur, cristal.nom)
+    else if (stat === 'attaques') { addContrib('ATT_CONTACT', valeur, cristal.nom); addContrib('ATT_DISTANCE', valeur, cristal.nom); addContrib('ATT_MAGIQUE', valeur, cristal.nom) }
+    else addContrib(stat, valeur, cristal.nom)
+  }
+  return result
+}
+
 export function computeDiceEffects(character: Character, descriptions: DescMap): Record<string, DiceContribution> {
   const result: Record<string, DiceContribution> = {}
 
@@ -229,7 +253,7 @@ export function computeAttaquesTotaux(
   armes: ArmesData,
   armures: ArmuresData,
 ): { contact: number; distance: number; magique: number } {
-  const effects = computeEffects(character, descriptions)
+  const effects = computeEffectsWithCristaux(character, descriptions)
 
   const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
   const armorDef = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
@@ -260,9 +284,18 @@ export function computeAttaquesTotaux(
   const malusArmesDist    = ((character.arme1 && mal(character.arme1, 'DEX')) || (character.arme2 && mal(character.arme2, 'DEX'))) ? MALUS : 0
   const malusArmesMag     = ((character.arme1 && mal(character.arme1, 'INT')) || (character.arme2 && mal(character.arme2, 'INT'))) ? MALUS : 0
 
+  // Recalcule Niveau + Mod. actuel (base + bonus de voies/cristaux) + bonus de famille,
+  // au lieu de se fier à attaqueContact/attaqueDistance/attaqueMagique figés au dernier level-up
+  const effectiveMod = (stat: 'FOR' | 'DEX' | 'INT'): number => {
+    const bonus = sumStat(effects[stat] ?? [])
+    return bonus === 0 ? character.caracteristiques[stat].mod : getMod(character.caracteristiques[stat].valeur + bonus)
+  }
+  const famContact = character.famille === 'combattants' ? 2 : character.famille === 'aventuriers' ? 1 : 0
+  const famMagique = character.famille === 'mystiques' ? 2 : 0
+
   return {
-    contact:  character.attaqueContact  - malusEquip - malusArmesContact + sumStat(effects['ATT_CONTACT']  ?? []),
-    distance: character.attaqueDistance - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? []),
-    magique:  character.attaqueMagique  - armorDef    - malusEquip - malusArmesMag   + sumStat(effects['ATT_MAGIQUE']  ?? []),
+    contact:  character.niveau + effectiveMod('FOR') + famContact - malusEquip - malusArmesContact + sumStat(effects['ATT_CONTACT']  ?? []),
+    distance: character.niveau + effectiveMod('DEX') + famContact - malusAtkDist - malusEquip - malusArmesDist + sumStat(effects['ATT_DISTANCE'] ?? []),
+    magique:  character.niveau + effectiveMod('INT') + famMagique - armorDef    - malusEquip - malusArmesMag   + sumStat(effects['ATT_MAGIQUE']  ?? []),
   }
 }

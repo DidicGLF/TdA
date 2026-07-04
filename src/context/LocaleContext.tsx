@@ -39,6 +39,33 @@ const BUNDLED_LANGS: Language[] = Object.values(BUNDLED_LANGUAGES)[0]?.default ?
   { code: 'en', label: 'English' },
 ]
 
+// Recursively adds keys present in `bundled` but missing from `existing`, without touching
+// existing values (so user translations/customizations are preserved).
+function mergeMissingKeys(
+  existing: Record<string, unknown>,
+  bundled: Record<string, unknown>,
+): { merged: Record<string, unknown>; changed: boolean } {
+  const merged: Record<string, unknown> = { ...existing }
+  let changed = false
+  for (const [key, bundledVal] of Object.entries(bundled)) {
+    const existingVal = merged[key]
+    if (existingVal === undefined) {
+      merged[key] = bundledVal
+      changed = true
+    } else if (
+      typeof existingVal === 'object' && existingVal !== null && !Array.isArray(existingVal) &&
+      typeof bundledVal === 'object' && bundledVal !== null && !Array.isArray(bundledVal)
+    ) {
+      const nested = mergeMissingKeys(existingVal as Record<string, unknown>, bundledVal as Record<string, unknown>)
+      if (nested.changed) {
+        merged[key] = nested.merged
+        changed = true
+      }
+    }
+  }
+  return { merged, changed }
+}
+
 // ── Context types ────────────────────────────────────────────────────────────
 
 interface LocaleContextValue {
@@ -89,6 +116,18 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
         const exists = await localeFileExists(dest)
         if (!exists) {
           await writeLocaleFile(dest, JSON.stringify(mod.default, null, 2))
+        } else {
+          // Fill in any new keys/sections added to the bundled UI file (e.g. new features),
+          // without touching existing user translations
+          try {
+            const existing = JSON.parse(await readLocaleFile(dest))
+            const { merged, changed } = mergeMissingKeys(existing, mod.default)
+            if (changed) {
+              await writeLocaleFile(dest, JSON.stringify(merged, null, 2))
+            }
+          } catch {
+            // Malformed existing file: leave it untouched rather than overwrite user data
+          }
         }
       }
 

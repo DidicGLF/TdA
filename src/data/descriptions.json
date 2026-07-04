@@ -106,7 +106,8 @@
           "choix": true,
           "post_jet": true,
           "usage": "1",
-          "cout_pv": "1d4"
+          "cout_pv": "1d4",
+          "temporaire": true
         }
       ]
     },
@@ -220,15 +221,70 @@
     {
       "nom": "Charge (L)",
       "desc": "Le PJ se déplace en ligne droite d'au moins 5 mètres (20 mètres au maximum) et effectue une attaque au contact avec un bonus de +2 en attaque et +1d6 aux DM. \n**==Capacité avancée : ==**le PJ gagne un bonus supplémentaire de +1 en attaque et aux DM.",
-      "effects": []
+      "effects": [],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Charge (L)",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "1d6",
+          "temporaire": true,
+          "usage": "1",
+          "masqueSiAvancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Charge (L)",
+          "bonus": 3,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "1d6+1",
+          "temporaire": true,
+          "usage": "1",
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Rage du berserk (L)",
-      "desc": "Le PJ entre dans une rage de berserk pour le reste du combat, ce qui le rend particulièrement dangereux. Il obtient un bonus de +2 en attaque et +1d6 aux DM à toutes ses attaques au contact, mais perd 4 en DEF et ne peut fuir ou attaquer à distance. S'il veut stopper la rage avant d'avoir éliminé tous ses ennemis, le PJ doit réussir un test de SAG difficulté 13 (un seul essai par tour)."
+      "desc": "Le PJ entre dans une rage de berserk pour le reste du combat, ce qui le rend particulièrement dangereux. Il obtient un bonus de +2 en attaque et +1d6 aux DM à toutes ses attaques au contact, mais perd 4 en DEF et ne peut fuir ou attaquer à distance. S'il veut stopper la rage avant d'avoir éliminé tous ses ennemis, le PJ doit réussir un test de SAG difficulté 13 (un seul essai par tour).",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Rage du berserk (L)",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "1d6",
+          "temporaire": true,
+          "usage": "1",
+          "coutCaracStat": "DEF",
+          "coutCaracValeur": 4
+        }
+      ]
     },
     {
       "nom": "Même pas mal",
-      "desc": "Lorsqu'il subit un coup critique, cela a pour effet de décupler la rage du PJ. Il peut im- médiatement entrer en rage (action gratuite) et gagne un bonus de +1d6 aux DM de ses attaques au contact pour les trois prochains tours. Le joueur note les DM supplémentaires de l'attaque critique à part : le PJ ne perdra ces PV qu'à la fin de la rage."
+      "desc": "Lorsqu'il subit un coup critique, cela a pour effet de décupler la rage du PJ. Il peut immédiatement entrer en rage (action gratuite) et gagne un bonus de +1d6 aux DM de ses attaques au contact pour les trois prochains tours. Le joueur note les DM supplémentaires de l'attaque critique à part : le PJ ne perdra ces PV qu'à la fin de la rage.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Même pas mal",
+          "bonus": 1,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "deDegats": "1d6",
+          "precision": "Lorsqu'un coup critique est subit",
+          "temporaire": true,
+          "usage": "3"
+        }
+      ]
     },
     {
       "nom": "Attaque tourbillon (L)",
@@ -242,7 +298,7 @@
     },
     {
       "nom": "Désarmer (L)",
-      "desc": "Le PJ réalise une attaque au contact et sa victime doit faire un test d'attaque opposé. Si le PJ ob- tient le plus haut score, l'arme de son adversaire tombe au sol (une action de mouvement doit être employée pour la ramasser). Si le PJ réussit son test avec au moins 10 points de plus que son adversaire, il empêche celui-ci de récupérer son arme (en posant le pied dessus, en l'envoyant hors de portée, etc.). Cette capacité est évidemment sans effet sur les armes naturelles (griffes, crocs, épine dorsale, etc.). Les adversaires qui utilisent des armes à deux mains sont plus difficiles à désarmer, infligeant un malus de -5 au test.\n**==Capacité avancée : ==**la capacité peut être utilisé pour une action d’attaque au lieu d’une action limitée."
+      "desc": "Le PJ réalise une attaque au contact et sa victime doit faire un test d'attaque opposé. Si le PJ obtient le plus haut score, l'arme de son adversaire tombe au sol (une action de mouvement doit être employée pour la ramasser). Si le PJ réussit son test avec au moins 10 points de plus que son adversaire, il empêche celui-ci de récupérer son arme (en posant le pied dessus, en l'envoyant hors de portée, etc.). Cette capacité est évidemment sans effet sur les armes naturelles (griffes, crocs, épine dorsale, etc.). Les adversaires qui utilisent des armes à deux mains sont plus difficiles à désarmer, infligeant un malus de -5 au test.\n**==Capacité avancée : ==**la capacité peut être utilisé pour une action d’attaque au lieu d’une action limitée."
     },
     {
       "nom": "Double attaque (L)",
@@ -254,7 +310,18 @@
     },
     {
       "nom": "Attaque puissante",
-      "desc": "Le PJ peut choisir d'utiliser 1d12 en attaque au contact au lieu du d20 habituel (il ajoute normalement son score d'attaque). Si une telle attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Double attaque ou Attaque circulaire par exemple."
+      "desc": "Le PJ peut choisir d'utiliser 1d12 en attaque au contact au lieu du d20 habituel (il ajoute normalement son score d'attaque). Si une telle attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Double attaque ou Attaque circulaire par exemple.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "",
+          "de": 12,
+          "dm": "2d6",
+          "attType": "contact",
+          "activable": true
+        }
+      ],
+      "effects": []
     }
   ],
   "Voie de la maîtrise des armes": [
@@ -272,7 +339,24 @@
     },
     {
       "nom": "Attaque parfaite (L)",
-      "desc": "Lancez deux d20 en attaque au contact et gardez le meilleur résultat ; ajoutez +1d6 aux DM."
+      "desc": "Lancez deux d20 en attaque au contact et gardez le meilleur résultat ; ajoutez +1d6 aux DM.",
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "ATT_CONTACT",
+          "lancer": 2,
+          "garder": 1
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque parfaite (L)",
+          "bonus": 1,
+          "cibles": [],
+          "deDegats": "1d6",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Riposte",
@@ -327,15 +411,85 @@
           "formula": "MOD_FOR",
           "minRang": 4
         }
+      ],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Argument de taille",
+          "cibles": [
+            "PV",
+            "CHA"
+          ],
+          "formula": "MOD_FOR"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Argument de taille",
+          "cibles": [
+            "PV"
+          ],
+          "formula": "MOD_FOR",
+          "avancee": true,
+          "minRang": 4
+        }
       ]
     },
     {
       "nom": "Tour de force",
-      "desc": "Le PJ peut temporairement décupler ses res- sources physiques pour faire usage d'une force prodigieuse. Il peut ainsi soulever une charge incroyable, briser une épée, tordre des barreaux ou défoncer une porte d'un seul coup de poing. Il obtient un bonus de +10 à son test de FOR, mais cela lui coûte 1d4 PV. \n**==Capacité avancée : ==**une fois par combat, le PJ peut asséner un coup d'une violence incroyable. Il gagne un bonus de 2d6 DM mais cela lui coûte 2d4 PV."
+      "desc": "Le PJ peut temporairement décupler ses ressources physiques pour faire usage d'une force prodigieuse. Il peut ainsi soulever une charge incroyable, briser une épée, tordre des barreaux ou défoncer une porte d'un seul coup de poing. Il obtient un bonus de +10 à son test de FOR, mais cela lui coûte 1d4 PV. \n**==Capacité avancée : ==**une fois par combat, le PJ peut asséner un coup d'une violence incroyable. Il gagne un bonus de 2d6 DM mais cela lui coûte 2d4 PV.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Tour de force",
+          "bonus": 10,
+          "cibles": [
+            "FOR"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pv": "1d4"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Tour de force",
+          "bonus": 0,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pv": "2d4",
+          "avancee": true,
+          "deDegats": "2d6"
+        }
+      ]
     },
     {
       "nom": "Attaque brutale (L)",
-      "desc": "Le PJ réalise une attaque au contact avec une pénalité de -2 en attaque et +1d6 au DM. Au rang 5 atteint dans cette voie, il peut choisir de subir une pénalité de -5 pour obtenir +2d6 aux DM."
+      "desc": "Le PJ réalise une attaque au contact avec une pénalité de -2 en attaque et +1d6 au DM. Au rang 5 atteint dans cette voie, il peut choisir de subir une pénalité de -5 pour obtenir +2d6 aux DM.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque brutale (L)",
+          "bonus": 1,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "deDegats": "1d6",
+          "coutCaracStat": "ATT_CONTACT",
+          "coutCaracValeur": 2
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque brutale (L)",
+          "bonus": 1,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "deDegats": "2d6",
+          "coutCaracStat": "ATT_CONTACT",
+          "coutCaracValeur": 5,
+          "minRang": 5
+        }
+      ]
     },
     {
       "nom": "Briseur d'os",
@@ -349,7 +503,33 @@
   "Voie de l'acrobatie": [
     {
       "nom": "Acrobate",
-      "desc": "Le PJ obtient un bonus de +5 à tous ses tests de DEX visant à réaliser des acrobaties, conserver son équilibre, faire des sauts ou de l'escalade.\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "Le PJ obtient un bonus de +5 à tous ses tests de DEX visant à réaliser des acrobaties, conserver son équilibre, faire des sauts ou de l'escalade.\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Acrobate",
+          "bonus": 5,
+          "cibles": [
+            "DEX"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Pour réaliser des acrobaties, conserver son équilibre, faire des sauts ou de l'escalade.",
+          "masqueSiAvancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Acrobate",
+          "bonus": 10,
+          "cibles": [
+            "DEX"
+          ],
+          "avancee": true,
+          "precision": "Pour réaliser des acrobaties, conserver son équilibre, faire des sauts ou de l'escalade.",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Grâce féline",
@@ -367,7 +547,17 @@
     },
     {
       "nom": "Lanceur de couteau",
-      "desc": "Une fois par tour, en plus de ses autres actions, le PJ peut lancer un couteau ou une dague sur une cible à distance (portée maximale : 10 m) en réussissant un test d'attaque à distance. Cette attaque est une action gratuite. Elle occasionne [1d4 + Mod. de DEX] de DM."
+      "desc": "Une fois par tour, en plus de ses autres actions, le PJ peut lancer un couteau ou une dague sur une cible à distance (portée maximale : 10 m) en réussissant un test d'attaque à distance. Cette attaque est une action gratuite. Elle occasionne [1d4 + Mod. de DEX] de DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Lanceur de couteau",
+          "de": 20,
+          "dm": "1d4+Mod.DEX",
+          "attType": "distance",
+          "activable": true
+        }
+      ]
     },
     {
       "nom": "Esquive acrobatique",
@@ -375,11 +565,19 @@
     },
     {
       "nom": "Dextérité héroïque",
-      "desc": "Le PJ augmente son score de DEX de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de DEX lui est de- mandé et conserver le meilleur résultat.",
+      "desc": "Le PJ augmente son score de DEX de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de DEX lui est demandé et conserver le meilleur résultat.",
       "effects": [
         {
           "stat": "DEX",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "DEX",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -387,7 +585,7 @@
   "Voie de l'arbalètrie": [
     {
       "nom": "Joli coup !",
-      "desc": "Le PJ ignore les pénalités normalement appli- quées lorsque la cible est à couvert (générale- ment -2 à -5).\n**==Capacité avancée : ==**le PJ ajoute +1 aux DM de l’arme tant qu’il l’utilise à une portée optimale, soit qui n’outrepasse pas la portée maximale de l’arme."
+      "desc": "Le PJ ignore les pénalités normalement appliquées lorsque la cible est à couvert (générale- ment -2 à -5).\n**==Capacité avancée : ==**le PJ ajoute +1 aux DM de l’arme tant qu’il l’utilise à une portée optimale, soit qui n’outrepasse pas la portée maximale de l’arme."
     },
     {
       "nom": "Cadence de tir",
@@ -403,7 +601,17 @@
     },
     {
       "nom": "Tir mortel",
-      "desc": "Pour une attaque à distance, le PJ peut choisir d'utiliser un d12 pour son attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque). Si l'attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Tir double et As de la gâchette."
+      "desc": "Pour une attaque à distance, le PJ peut choisir d'utiliser un d12 pour son attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque). Si l'attaque est réussie, il ajoute +2d6 aux DM. Cette capacité peut être utilisée avec Tir double et As de la gâchette.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Tir mortel",
+          "de": 12,
+          "dm": "2d6",
+          "activable": true,
+          "attType": "distance"
+        }
+      ]
     }
   ],
   "Voie de l'archerie": [
@@ -415,6 +623,31 @@
           "stat": "INIT",
           "formula": "MOD_SAG",
           "avancee": true
+        },
+        {
+          "stat": "DM_ARME",
+          "formula": "MOD_SAG",
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Arc composite",
+              "Arc court",
+              "Arc long"
+            ]
+          }
+        }
+      ],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Sens affûtés",
+          "bonus": 5,
+          "cibles": [
+            "SAG"
+          ],
+          "precision": "Aux tests de SAG sollicitant la perception (vue, ouïe, vigilance, etc.).",
+          "temporaire": true,
+          "usage": "1"
         }
       ]
     },
@@ -428,17 +661,57 @@
     },
     {
       "nom": "Flèche de mort (L)",
-      "desc": "Le PJ lance deux d20 pour son attaque et conserve le meilleur résultat. Les dégâts de la flèche sont doublés."
+      "desc": "Le PJ lance deux d20 pour son attaque et conserve le meilleur résultat. Les dégâts de la flèche sont doublés.",
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "ATT_DISTANCE",
+          "lancer": 2,
+          "garder": 1
+        }
+      ]
     },
     {
       "nom": "Dans le mille",
-      "desc": "Pour une attaque à distance, le PJ peut choisir d'utiliser 1d12 en attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque à distance). Si l'attaque est réussie, il ajoute 2d6 aux DM. Cette capacité peut par exemple être utilisée avec Tir Rapide ou Flèche de mort (le bonus de 2d6 aux DM n'est pas doublé)."
+      "desc": "Pour une attaque à distance, le PJ peut choisir d'utiliser 1d12 en attaque au lieu du d20 habituel (et il ajoute normalement son score d'attaque à distance). Si l'attaque est réussie, il ajoute 2d6 aux DM. Cette capacité peut par exemple être utilisée avec Tir Rapide ou Flèche de mort (le bonus de 2d6 aux DM n'est pas doublé).",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Dans le mille",
+          "de": 12,
+          "dm": "2d6",
+          "attType": "distance",
+          "activable": true
+        }
+      ]
     }
   ],
   "Voie de l'assassinat": [
     {
       "nom": "Discrétion",
-      "desc": "Quand il essaie de passer inaperçu, le PJ bénéficie d'un bonus de +5 à son test de DEX.\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "Quand il essaie de passer inaperçu, le PJ bénéficie d'un bonus de +5 à son test de DEX.\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Discrétion",
+          "bonus": 5,
+          "cibles": [
+            "DEX"
+          ],
+          "precision": "Quand il essaie de passer inaperçu.",
+          "masqueSiAvancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Discrétion",
+          "bonus": 10,
+          "cibles": [
+            "DEX"
+          ],
+          "avancee": true,
+          "precision": "Quand il essaie de passer inaperçu."
+        }
+      ]
     },
     {
       "nom": "Attaque  (L)",
@@ -510,7 +783,8 @@
   "Voie de la chasse": [
     {
       "nom": "Proche de la nature",
-      "desc": "Le PJ obtient un bonus de +5 aux tests de survie, de discrétion ou d'observation en milieu naturel.\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "Le PJ obtient un bonus de +5 aux tests de survie, de discrétion ou d'observation en milieu naturel.\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": []
     },
     {
       "nom": "Nature nourricière",
@@ -518,7 +792,20 @@
     },
     {
       "nom": "Attaque éclair (L)",
-      "desc": "Le PJ peut effectuer une attaque au contact très percutante. Il ajoute son Mod. de DEX en attaque et aux DM pour cette offensive."
+      "desc": "Le PJ peut effectuer une attaque au contact très percutante. Il ajoute son Mod. de DEX en attaque et aux DM pour cette offensive.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque éclair (L)",
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME"
+          ],
+          "formula": "MOD_DEX",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Ennemis jurés",
@@ -531,6 +818,14 @@
         {
           "stat": "SAG",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "SAG",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -573,7 +868,7 @@
   "Voie de l'escrime": [
     {
       "nom": "Attaque en finesse",
-      "desc": "Le PJ peut utiliser son score d'attaque à distance pour porter une attaque au contact lorsqu'il utilise une arme de duel ou une dague.\n**==Capacité avancée :==** le PJ peut appliquer le bonus de DEF d’une main gauche (cf. « Équipement » page 156) contre les\nattaques à distance."
+      "desc": "Le PJ peut utiliser son score d'attaque à distance pour porter une attaque au contact lorsqu'il utilise une arme de duel ou une dague.\n**==Capacité avancée :==** le PJ peut appliquer le bonus de DEF d’une main gauche (cf. « Équipement » page 156) contre les attaques à distance."
     },
     {
       "nom": "Intelligence du combat",
@@ -587,11 +882,24 @@
           "stat": "DEF",
           "formula": "MOD_INT"
         }
+      ],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Intelligence du combat",
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "avancee": true,
+          "formula": "MOD_INT",
+          "temporaire": true,
+          "usage": "1"
+        }
       ]
     },
     {
       "nom": "Feinte (L)",
-      "desc": "Le PJ effectue une attaque fictive pour déséquili- brer son adversaire et réaliser ensuite une attaque mortelle. Faites un test d'attaque normal lors de ce tour mais n'infligez aucun DM. Au tour suivant, si vous attaquez le même adversaire, vous profiterez d'un bonus de +5 en attaque et, si votre feinte était réussie, de +2d6 aux DM. Au rang 5 atteint dans cette voie, le bonus d'attaque de la feinte passe à +10."
+      "desc": "Le PJ effectue une attaque fictive pour déséquilibrer son adversaire et réaliser ensuite une attaque mortelle. Faites un test d'attaque normal lors de ce tour mais n'infligez aucun DM. Au tour suivant, si vous attaquez le même adversaire, vous profiterez d'un bonus de +5 en attaque et, si votre feinte était réussie, de +2d6 aux DM. Au rang 5 atteint dans cette voie, le bonus d'attaque de la feinte passe à +10."
     },
     {
       "nom": "Ambidextrie",
@@ -605,7 +913,33 @@
   "Voie de la fourberie": [
     {
       "nom": "Doigts agiles",
-      "desc": "Le PJ reçoit un bonus de +5 pour tous ses tests de DEX liés à la précision : crocheter une serrure, désamorcer un piège, faire les poches de quelqu'un…\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "Le PJ reçoit un bonus de +5 pour tous ses tests de DEX liés à la précision : crocheter une serrure, désamorcer un piège, faire les poches de quelqu'un…\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Doigts agiles",
+          "bonus": 5,
+          "cibles": [
+            "DEX"
+          ],
+          "precision": "Test liés à la précision : crocheter une serrure, désamorcer un piège, faire les poches de quelqu'un…",
+          "masqueSiAvancee": true,
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Doigts agiles",
+          "bonus": 10,
+          "cibles": [
+            "DEX"
+          ],
+          "precision": "Test liés à la précision : crocheter une serrure, désamorcer un piège, faire les poches de quelqu'un…",
+          "avancee": true,
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Détecter les pièges",
@@ -729,13 +1063,39 @@
           "stat": "INT",
           "value": 2
         }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "SAG",
+          "lancer": 2,
+          "garder": 1
+        },
+        {
+          "type": "AVANTAGE",
+          "stat": "INT",
+          "lancer": 2,
+          "garder": 1
+        }
       ]
     }
   ],
   "Voie de l'envoûtement": [
     {
       "nom": "Injonction*",
-      "desc": "Le PJ donne à une cible un ordre simple (mais pas dangereux pour elle) que cette dernière doit pouvoir comprendre. Il doit réussir un test d'attaque magique opposé contre la cible (si la créature n'a pas d'attaque magique, on utilise alors son attaque au contact en appliquant un malus de -3) à une portée de 20 mètres. En cas d'échec, la cible exécutera l'ordre pendant son prochain tour. \n**==Capacité avancée : ==**le PJ bénéficie d'un bonus de +2 à son test d'attaque magique."
+      "desc": "Le PJ donne à une cible un ordre simple (mais pas dangereux pour elle) que cette dernière doit pouvoir comprendre. Il doit réussir un test d'attaque magique opposé contre la cible (si la créature n'a pas d'attaque magique, on utilise alors son attaque au contact en appliquant un malus de -3) à une portée de 20 mètres. En cas d'échec, la cible exécutera l'ordre pendant son prochain tour. \n**==Capacité avancée : ==**le PJ bénéficie d'un bonus de +2 à son test d'attaque magique.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Injonction*",
+          "bonus": 2,
+          "cibles": [
+            "ATT_MAGIQUE"
+          ],
+          "avancee": true,
+          "precision": "Bonus pour le jet d'ATT magique opposé."
+        }
+      ]
     },
     {
       "nom": "Sommeil*",
@@ -829,6 +1189,14 @@
         {
           "stat": "INT",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "INT",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -934,7 +1302,22 @@
     },
     {
       "nom": "Vent des lames",
-      "desc": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de guerre ou une arme d'hast."
+      "desc": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de guerre ou une arme d'hast.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "",
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME"
+          ],
+          "formula": "MOD_DEX",
+          "choix": true,
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Lorsqu'il utilise une arme de guerre ou une arme d'hast."
+        }
+      ]
     },
     {
       "nom": "Attaque en mouvement",
@@ -985,11 +1368,34 @@
   "Voie de l'ordre ailé": [
     {
       "nom": "Ordre de chevalerie",
-      "desc": "Le PJ rejoint un prestigieux ordre ou groupe de chevalerie avec le grade d'apprenti. Il reçoit une monture volante, des insignes ainsi qu'une arme à une main sertie des symboles de son ordre. Il fait l'acquisition du rang 5 de la voie du combat monté. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, il devient un membre gradé de son ordre et obtient un bonus de +5 pour tous les tests de persuasion et d'intimidation. Ce bonus passe à +10 s'il chevauche sa monture volante."
+      "desc": "Le PJ rejoint un prestigieux ordre ou groupe de chevalerie avec le grade d'apprenti. Il reçoit une monture volante, des insignes ainsi qu'une arme à une main sertie des symboles de son ordre. Il fait l'acquisition du rang 5 de la voie du combat monté. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, il devient un membre gradé de son ordre et obtient un bonus de +5 pour tous les tests de persuasion et d'intimidation. Ce bonus passe à +10 s'il chevauche sa monture volante.",
+      "grants": [
+        {
+          "type": "VOIE_RANG",
+          "voie": "Voie du combat monté",
+          "rang": 5
+        },
+        {
+          "type": "COMPAGNON",
+          "nom": "Monture fantastique"
+        }
+      ]
     },
     {
       "nom": "Arme élémentaire (L)",
-      "desc": "En fonction de son ordre et de la nature de sa monture, le PJ peut nimber son arme d'une aura pour [5 + Mod. de SAG] tours. Elle inflige dès lors +1d6 DM élémentaires."
+      "desc": "En fonction de son ordre et de la nature de sa monture, le PJ peut nimber son arme d'une aura pour [5 + Mod. de SAG] tours. Elle inflige dès lors +1d6 DM élémentaires.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Arme élémentaire (L)",
+          "bonus": 0,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "deDegats": "1d6",
+          "deDegatsParArme": true
+        }
+      ]
     },
     {
       "nom": "Résistance élémentaire",
@@ -1008,7 +1414,7 @@
     },
     {
       "nom": "Souffle élémentaire",
-      "desc": "La monture du PJ est désormais capable d'utili- ser un souffle élémentaire au prix de son action d'attaque. Si elle réussit un test d'attaque, elle inflige 4d6 DM élémentaires à sa cible, ainsi que 2d6 DM élémentaires à toutes les cibles à moins de 3 mètres de sa cible initiale. En cas d'échec, l'ensemble des cibles subit seulement 1d6 DM. Ce souffle a une portée de 40 m. La nature de l'élément dépend de la monture (feu pour les dragons, glace pour les guivres, etc.)."
+      "desc": "La monture du PJ est désormais capable d'utiliser un souffle élémentaire au prix de son action d'attaque. Si elle réussit un test d'attaque, elle inflige 4d6 DM élémentaires à sa cible, ainsi que 2d6 DM élémentaires à toutes les cibles à moins de 3 mètres de sa cible initiale. En cas d'échec, l'ensemble des cibles subit seulement 1d6 DM. Ce souffle a une portée de 40 m. La nature de l'élément dépend de la monture (feu pour les dragons, glace pour les guivres, etc.)."
     }
   ],
   "Voie de la purification": [
@@ -1018,11 +1424,52 @@
     },
     {
       "nom": "Combattre la corruption",
-      "desc": "Le PJ gagne un bonus de +1 en attaque et aux DM contre les morts-vivants, les démons et les animaux corrompus (ceux qui possèdent des pouvoirs paranormaux). Ce bonus passe à +2 au rang 4 de la voie."
+      "desc": "Le PJ gagne un bonus de +1 en attaque et aux DM contre les morts-vivants, les démons et les animaux corrompus (ceux qui possèdent des pouvoirs paranormaux). Ce bonus passe à +2 au rang 4 de la voie.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Combattre la corruption",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME"
+          ],
+          "precision": "Contre les morts-vivants, les démons et les animaux corrompus (ceux qui possèdent des pouvoirs paranormaux)",
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Combattre la corruption",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME"
+          ],
+          "precision": "Contre les morts-vivants, les démons et les animaux corrompus (ceux qui possèdent des pouvoirs paranormaux)",
+          "temporaire": true,
+          "usage": "1",
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Chasseur de sorcières",
-      "desc": "Le PJ gagne +2 en DEF contre toutes les attaques magiques et +2 aux DM contre les mystiques."
+      "desc": "Le PJ gagne +2 en DEF contre toutes les attaques magiques et +2 aux DM contre les mystiques.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Chasseur de sorcières",
+          "bonus": 2,
+          "cibles": [
+            "DEF",
+            "DM_ARME"
+          ],
+          "precision": "Contre les attaques magiques et contre les mystiques",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Frappe préventive",
@@ -1042,7 +1489,13 @@
       "nom": "Furie du Berserker (L)",
       "desc": "Le PJ gagne le rang 3 de la voie de la férocité. S'il possède déjà cette capacité, ou venait à l'acquérir par la suite, elle se transforme en Furie de Berserker, qui lui donne +3 en attaque et +2d6 aux DM pour une pénalité en DEF de -6. La difficulté du test de SAG pour sortir prématurément de cet état passe à 16.",
       "effects": [],
-      "grants": []
+      "grants": [
+        {
+          "type": "VOIE_RANG",
+          "voie": "Voie de la férocité",
+          "rang": 3
+        }
+      ]
     },
     {
       "nom": "Étreinte mortelle",
@@ -1104,19 +1557,79 @@
   "Voie de l'audace": [
     {
       "nom": "L'amour du risque",
-      "desc": "Lorsqu'il réalise une action dans un lieu dan- gereux (par exemple au bord d'un précipice ou d'un lac de lave), Le PJ gagne un bonus de +3 à tous ses tests au d20 (attaque, Carac., etc.). Ce bonus s'applique également aux tests réalisés pour résister à la peur."
+      "desc": "Lorsqu'il réalise une action dans un lieu dangereux (par exemple au bord d'un précipice ou d'un lac de lave), Le PJ gagne un bonus de +3 à tous ses tests au d20 (attaque, Carac., etc.). Ce bonus s'applique également aux tests réalisés pour résister à la peur.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "L'amour du risque",
+          "bonus": 3,
+          "cibles": [
+            "ATT_CONTACT",
+            "ATT_MAGIQUE",
+            "ATT_DISTANCE",
+            "FOR",
+            "DEX",
+            "CON",
+            "INT",
+            "SAG",
+            "CHA"
+          ],
+          "precision": "Lorsqu'il réalise une action dans un lieu dangereux (par exemple au bord d'un précipice ou d'un lac de lave)",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Mouche du coche",
-      "desc": "Le PJ peut choisir de sacrifier une action de mouvement à ce tour pour gagner +3 en DEF jusqu'à son prochain tour. S'il sacrifie deux actions de mouvement, il gagne +6 en DEF."
+      "desc": "Le PJ peut choisir de sacrifier une action de mouvement à ce tour pour gagner +3 en DEF jusqu'à son prochain tour. S'il sacrifie deux actions de mouvement, il gagne +6 en DEF.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Mouche du coche",
+          "bonus": 3,
+          "cibles": [
+            "DEF"
+          ],
+          "precision": "Sacrifier une action de mouvement",
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Mouche du coche",
+          "bonus": 6,
+          "cibles": [
+            "DEF"
+          ],
+          "precision": "Sacrifier deux actions de mouvement",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Ça passe ou ça casse",
-      "desc": "Lorsque le résultat d'un test de caractéristique peut avoir une issue fatale pour le PJ (chute mortelle, réveil d'un dragon, etc.), le joueur lance un d20 supplémentaire et peut conserver le résultat qu'il préfère."
+      "desc": "Lorsque le résultat d'un test de caractéristique peut avoir une issue fatale pour le PJ (chute mortelle, réveil d'un dragon, etc.), le joueur lance un d20 supplémentaire et peut conserver le résultat qu'il préfère.",
+      "grants": []
     },
     {
       "nom": "Poussée d'adrénaline",
-      "desc": "En dépensant 1d4 PV, le PJ gagne une action de mouvement supplémentaire à son tour. En combinaison avec Mouche du coche, le PJ peut ainsi sacrifier trois actions de mouvement et obtenir un bonus de +10 en DEF !"
+      "desc": "En dépensant 1d4 PV, le PJ gagne une action de mouvement supplémentaire à son tour. En combinaison avec Mouche du coche, le PJ peut ainsi sacrifier trois actions de mouvement et obtenir un bonus de +10 en DEF !",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Poussée d'adrénaline",
+          "bonus": 4,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Sacrifier une action de mouvement. Peu se combiner avec Mouche du coche",
+          "cout_pv": "1d4"
+        }
+      ]
     },
     {
       "nom": "Attaque kamikaze (L)",
@@ -1148,15 +1661,51 @@
   "Voie de la flibusterie": [
     {
       "nom": "Équilibriste",
-      "desc": "Le PJ gagne un bonus de +5 sur tous les tests de DEX réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde). Il gagne un bonus de +5 sur les tous les tests relatifs à la natation et à la navigation."
+      "desc": "Le PJ gagne un bonus de +5 sur tous les tests de DEX réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde). Il gagne un bonus de +5 sur les tous les tests relatifs à la natation et à la navigation.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Équilibriste",
+          "bonus": 5,
+          "cibles": [
+            "DEX"
+          ],
+          "precision": "Tests réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde)",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Coup de crosse",
-      "desc": "Une fois par tour, le PJ peut, au moment de son choix, accomplir une attaque gratuite avec la crosse d'une arbalète déchargée. Il utilise un d12 pour le test d'attaque et inflige [1d4 + Mod. de FOR] DM."
+      "desc": "Une fois par tour, le PJ peut, au moment de son choix, accomplir une attaque gratuite avec la crosse d'une arbalète déchargée. Il utilise un d12 pour le test d'attaque et inflige [1d4 + Mod. de FOR] DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Coup de crosse",
+          "de": 12,
+          "dm": "1d4+[Mod.FOR]",
+          "attType": "contact",
+          "activable": true
+        }
+      ]
     },
     {
       "nom": "À l'abordage !",
-      "desc": "Le PJ sait s'élancer vers ses ennemis et mettre du cœur dans sa première attaque au contact lors d'un combat. Lors de cette attaque initiale, il obtient un bonus de +5 en attaque et de +2d6 aux DM."
+      "desc": "Le PJ sait s'élancer vers ses ennemis et mettre du cœur dans sa première attaque au contact lors d'un combat. Lors de cette attaque initiale, il obtient un bonus de +5 en attaque et de +2d6 aux DM.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "À l'abordage !",
+          "bonus": 5,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "2d6",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Sabre au poing",
@@ -1164,7 +1713,20 @@
     },
     {
       "nom": "Pas de quartier",
-      "desc": "Pour le PJ, il s'agit de vaincre ou mourir. Sa férocité est légendaire : il peut tenter une action d'attaque gratuite contre toute créature à son contact qui utilise une action de mouvement dans le but de s'éloigner de lui. Pour cette attaque, il obtient un bonus de +5 en attaque et de +1d6 aux DM."
+      "desc": "Pour le PJ, il s'agit de vaincre ou mourir. Sa férocité est légendaire : il peut tenter une action d'attaque gratuite contre toute créature à son contact qui utilise une action de mouvement dans le but de s'éloigner de lui. Pour cette attaque, il obtient un bonus de +5 en attaque et de +1d6 aux DM.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Pas de quartier",
+          "bonus": 5,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "1d6",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     }
   ],
   "Voie de la lycanthropie": [
@@ -1244,7 +1806,18 @@
     },
     {
       "nom": "Foudre*",
-      "desc": "Le PJ produit un éclair sur une ligne de 10 mètres. Toutes les créatures sur la trajectoire sont soumises à un test d'attaque magique et subissent [5d6 + Mod. d'INT] DM en cas d'échec. Les victimes peuvent tenter un test de DEX difficulté [12 + Mod. d'INT] pour ne subir que la moitié des DM."
+      "desc": "Le PJ produit un éclair sur une ligne de 10 mètres. Toutes les créatures sur la trajectoire sont soumises à un test d'attaque magique et subissent [5d6 + Mod. d'INT] DM en cas d'échec. Les victimes peuvent tenter un test de DEX difficulté [12 + Mod. d'INT] pour ne subir que la moitié des DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Foudre*",
+          "de": 20,
+          "dm": "5d6+Mod.INT",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "3"
+        }
+      ]
     },
     {
       "nom": "Téléportation*",
@@ -1252,7 +1825,18 @@
     },
     {
       "nom": "Désintégration*",
-      "desc": "Le PJ projette un rayon mortel dont la portée est de 20 mètres et qui annule la cohésion de la matière, ne laissant derrière lui qu'un amas de poussière. Un test d'attaque magique réussi permet de toucher une créature et d'infliger [6d6 + Mod. d'INT] DM. Si le PJ vise un objet porté par une créature, le jet d'attaque subit un malus de -5. Les objets de tradition et légendaires sont insensibles à ce sort et les objets normaux réduits en poussière. Aucun objet de plus de 50 kg ne peut être affecté par ce sort : inutile de tenter de creuser un tunnel par ce biais. En revanche, vous pourrez ainsi désintégrer une porte (ou même une pierre dans un mur)."
+      "desc": "Le PJ projette un rayon mortel dont la portée est de 20 mètres et qui annule la cohésion de la matière, ne laissant derrière lui qu'un amas de poussière. Un test d'attaque magique réussi permet de toucher une créature et d'infliger [6d6 + Mod. d'INT] DM. Si le PJ vise un objet porté par une créature, le jet d'attaque subit un malus de -5. Les objets de tradition et légendaires sont insensibles à ce sort et les objets normaux réduits en poussière. Aucun objet de plus de 50 kg ne peut être affecté par ce sort : inutile de tenter de creuser un tunnel par ce biais. En revanche, vous pourrez ainsi désintégrer une porte (ou même une pierre dans un mur).",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Désintégration*",
+          "de": 20,
+          "dm": "6d6+Mod.INT",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "5"
+        }
+      ]
     }
   ],
   "Voie des arts primitifs": [
@@ -1439,7 +2023,44 @@
     },
     {
       "nom": "Natif d'Elsémur",
-      "desc": "Le PJ choisit une caste, religieuse ou guerrière. Traditionnellement, les individus féminins choisissent la première, les individus masculins la seconde mais la nouvelle génération fait fi de ces conventions. Le choix est donc totalement ouvert. Il gagne alors une capacité de rang 1 ou 2 de la voie de la divination ou voie du mysticisme pour la caste religieuse ou une capacité de rang 1 ou 2 de la voie de la guerre ou voie du combat à deux armes pour la caste guerrière. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 de sa caste (voie de la divination ou voie du mysticisme, voie de la guerre ou voie du combat à deux armes)."
+      "desc": "Le PJ choisit une caste, religieuse ou guerrière. Traditionnellement, les individus féminins choisissent la première, les individus masculins la seconde mais la nouvelle génération fait fi de ces conventions. Le choix est donc totalement ouvert. Il gagne alors une capacité de rang 1 ou 2 de la voie de la divination ou voie du mysticisme pour la caste religieuse ou une capacité de rang 1 ou 2 de la voie de la guerre ou voie du combat à deux armes pour la caste guerrière. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 de sa caste (voie de la divination ou voie du mysticisme, voie de la guerre ou voie du combat à deux armes).",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la divination",
+            "Voie du mysticisme"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la divination",
+            "Voie du mysticisme"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la guerre",
+            "Voie du combat à deux armes"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la guerre",
+            "Voie du combat à deux armes"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ],
+      "effects": []
     },
     {
       "nom": "Imperturbable",
@@ -1473,11 +2094,59 @@
   "Voie culturelle des Elfes sylvains": [
     {
       "nom": "Le chant de la Terre",
-      "desc": "Le PJ bénéficie d'un bonus de +5 aux tests de DEX et SAG lorsqu'il est en forêt."
+      "desc": "Le PJ bénéficie d'un bonus de +5 aux tests de DEX et SAG lorsqu'il est en forêt.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "",
+          "bonus": 5,
+          "cibles": [
+            "DEX",
+            "SAG"
+          ],
+          "precision": "Lorsque en fôret"
+        }
+      ]
     },
     {
       "nom": "Enfant de la forêt",
-      "desc": "Le PJ choisit une caste, religieuse ou guerrière. Traditionnellement, les individus féminins choisissent la première, les individus masculins la seconde mais la nouvelle génération fait fi de ces conventions. Le choix est donc totalement ouvert. L'Elfe gagne alors une capacité de rang 1 ou 2 de de la voie des arts druidiques ou voie des forêts pour la caste religieuse ou une capacité de rang 1 ou 2 de la voie de l'archerie et de la voie du compagnon animal pour la caste guerrière. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 de sa caste (voie des arts druidiques ou voie des forêts, voie de l'archerie ou de la voie du compagnon animal)."
+      "desc": "Le PJ choisit une caste, religieuse ou guerrière. Traditionnellement, les individus féminins choisissent la première, les individus masculins la seconde mais la nouvelle génération fait fi de ces conventions. Le choix est donc totalement ouvert. L'Elfe gagne alors une capacité de rang 1 ou 2 de de la voie des arts druidiques ou voie des forêts pour la caste religieuse ou une capacité de rang 1 ou 2 de la voie de l'archerie et de la voie du compagnon animal pour la caste guerrière. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 de sa caste (voie des arts druidiques ou voie des forêts, voie de l'archerie ou de la voie du compagnon animal).",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie des arts druidiques",
+            "Voie des forêts"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie des arts druidiques",
+            "Voie des forêts"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'archerie",
+            "Voie du compagnon animal"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'archerie",
+            "Voie du compagnon animal"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Archer émérite",
@@ -1519,7 +2188,20 @@
   "Voie culturelle des Elfes blancs": [
     {
       "nom": "Mémoire du monde",
-      "desc": "Le PJ bénéficie d'un bonus de +5 aux tests d'INT relatifs aux connaissances et à l'érudition."
+      "desc": "Le PJ bénéficie d'un bonus de +5 aux tests d'INT relatifs aux connaissances et à l'érudition.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Mémoire du monde",
+          "bonus": 5,
+          "cibles": [
+            "INT"
+          ],
+          "precision": "relatifs aux jets conernants les connaissances et à l'érudition.",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Prédispositions magiques",
@@ -1551,15 +2233,54 @@
   "Voie culturelle des Elfes noirs": [
     {
       "nom": "Artiste de l'ombre",
-      "desc": "Pour dissimuler leurs activités, dans la plupart des pays civilisés, les Elfes noirs se font passer pour des artistes. Ils ont recours à cette couverture pour obtenir les informations nécessaires à l'exécution de leurs contrats. Le PJ choisit un domaine (danse, théâtre, peinture, poésie) et gagne un bonus de +5 à tous les tests de CHA en rapport avec celui-ci, ainsi qu'aux tests visant à trouver ou obtenir des informations secrètes ou sensibles."
+      "desc": "Pour dissimuler leurs activités, dans la plupart des pays civilisés, les Elfes noirs se font passer pour des artistes. Ils ont recours à cette couverture pour obtenir les informations nécessaires à l'exécution de leurs contrats. Le PJ choisit un domaine (danse, théâtre, peinture, poésie) et gagne un bonus de +5 à tous les tests de CHA en rapport avec celui-ci, ainsi qu'aux tests visant à trouver ou obtenir des informations secrètes ou sensibles.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Artiste de l'ombre",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "precision": "Dans un domaine (danse, théâtre, peinture, poésie) au choix"
+        }
+      ]
     },
     {
       "nom": "Apprenti de Slurce",
-      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de de la voie de l'assassinat ou de la voie des sombres savoirs. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 dans la voie de l'assassinat ou la voie des sombres savoirs."
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de de la voie de l'assassinat ou de la voie des sombres savoirs. Au rang 4 de cette voie culturelle, il gagne une capacité supplémentaire de rang 1 ou 2 dans la voie de l'assassinat ou la voie des sombres savoirs.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'assassinat",
+            "Voie des sombres savoirs"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'assassinat",
+            "Voie des sombres savoirs"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Armes secrètes",
-      "desc": "Le PJ a appris l'art et la manière de cacher ses armes et de porter des coups mortels imparables. Il peut dissimuler jusqu'à deux armes légères (d6 maxi) et gagne un bonus de +5 à un test de DEX à opposer à un test de SAG de son adversaire. En cas de réussite, la première attaque portée par chaque arme surprend l'adversaire et inflige les DM maximaux (incluant les DM liés à des dés bonus)."
+      "desc": "Le PJ a appris l'art et la manière de cacher ses armes et de porter des coups mortels imparables. Il peut dissimuler jusqu'à deux armes légères (d6 maxi) et gagne un bonus de +5 à un test de DEX à opposer à un test de SAG de son adversaire. En cas de réussite, la première attaque portée par chaque arme surprend l'adversaire et inflige les DM maximaux (incluant les DM liés à des dés bonus).",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Armes secrètes",
+          "de": 6,
+          "dm": "6",
+          "activable": true
+        }
+      ]
     },
     {
       "nom": "Noir comme le sang",
@@ -1718,11 +2439,37 @@
   "Voie culturelle de l'ordre du Talion": [
     {
       "nom": "Plein aux as",
-      "desc": "Le PJ n'est jamais à court de liquidités et obtient pour ses dépenses courantes 25 pièces d'argent (pa) par jour pour chaque rang atteint dans cette voie. S'il n'est pas dépensé, cet argent n'est pas comptabilisé dans les économies du personnage."
+      "desc": "Le PJ n'est jamais à court de liquidités et obtient pour ses dépenses courantes 25 pièces d'argent (pa) par jour pour chaque rang atteint dans cette voie. S'il n'est pas dépensé, cet argent n'est pas comptabilisé dans les économies du personnage.",
+      "grants": [
+        {
+          "type": "FORMATION",
+          "value": "Armes de duel",
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Le sens des affaires",
-      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie du bohème ou de la voie de la fourberie. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie du bohème ou de la voie de la fourberie."
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie du bohème ou de la voie de la fourberie. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie du bohème ou de la voie de la fourberie.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du bohème",
+            "Voie de la fourberie"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du bohème",
+            "Voie de la fourberie"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Pot-de-vin",
@@ -1750,15 +2497,41 @@
   "Voie culturelle de l'ordre du Temple": [
     {
       "nom": "Grosse tête",
-      "desc": "Le PJ remplace la force brutale par la réflexion. Il peut effectuer un test d'INT au lieu d'un test de FOR (exemple : il utilise un levier pour déplacer une lourde charge). Il obtient un bonus de +5 à tous les tests de bricolage ou de science."
+      "desc": "Le PJ remplace la force brutale par la réflexion. Il peut effectuer un test d'INT au lieu d'un test de FOR (exemple : il utilise un levier pour déplacer une lourde charge). Il obtient un bonus de +5 à tous les tests de bricolage ou de science.",
+      "grants": []
     },
     {
       "nom": "Enseigne du Temple",
-      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie de la maîtrise des armes ou de la voie du mysticisme. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie de la maîtrise des armes ou de la voie du mysticisme."
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie de la maîtrise des armes ou de la voie du mysticisme. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie de la maîtrise des armes ou de la voie du mysticisme.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la maîtrise des armes",
+            "Voie du mysticisme"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de la maîtrise des armes",
+            "Voie du mysticisme"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Invention étrange",
-      "desc": "Le PJ invente ‒ ou reçoit en présent de la part d'un collègue ingénieur ‒ une arbalète à répétition. Il gagne la maîtrise des armes de tir ‒ incluant la maîtrise de cette arme."
+      "desc": "Le PJ invente ‒ ou reçoit en présent de la part d'un collègue ingénieur ‒ une arbalète à répétition. Il gagne la maîtrise des armes de tir ‒ incluant la maîtrise de cette arme.",
+      "grants": [
+        {
+          "type": "FORMATION",
+          "value": "Armes de tir"
+        }
+      ]
     },
     {
       "nom": "Rites funéraires (L)",
@@ -1782,15 +2555,44 @@
   "Voie culturelle de l'ordre du Bouclier": [
     {
       "nom": "Combat en phalange",
-      "desc": "Lorsque le PJ combat la même créature qu'un allié, il gagne +1 en attaque et en DEF par allié au contact avec lui et avec la créature."
+      "desc": "Lorsque le PJ combat la même créature qu'un allié, il gagne +1 en attaque et en DEF par allié au contact avec lui et avec la créature.",
+      "grants": []
     },
     {
       "nom": "Formation militaire",
-      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie du bastion ou de la voie du commandement. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie du bastion ou de la voie du commandement."
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie du bastion ou de la voie du commandement. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie du bastion ou de la voie du commandement.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du bastion",
+            "Voie du commandement"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du bastion",
+            "Voie du commandement"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Capitaine du Bouclier",
-      "desc": "Lorsque le PJ manie un bouclier, ce dernier confère un bonus supplémentaire de +1 en DEF. De plus, une fois par tour, le PJ peut dévier un projectile (flèche, javelot…) et par conséquent ignorer totalement une attaque à distance qui aurait normalement dû le toucher, sauf si le test d'attaque est un critique."
+      "desc": "Lorsque le PJ manie un bouclier, ce dernier confère un bonus supplémentaire de +1 en DEF. De plus, une fois par tour, le PJ peut dévier un projectile (flèche, javelot…) et par conséquent ignorer totalement une attaque à distance qui aurait normalement dû le toucher, sauf si le test d'attaque est un critique.",
+      "effects": [
+        {
+          "stat": "DEF",
+          "value": 1,
+          "condition": {
+            "type": "hasBouclier"
+          }
+        }
+      ]
     },
     {
       "nom": "Fuite interdite",
@@ -1818,7 +2620,43 @@
     },
     {
       "nom": "Passé révolu",
-      "desc": "Le PJ n'a peut-être pas toujours été extérieur à un ordre, ou bien peut-être a-t-il reçu l'enseignement d'un Nain déchu ? Il peut choisir une capacité de rang 1 de la voie de l'alchimie, de la voie de la magie runique, de la voie du bohème, de la voie de la fourberie, de la voie de la maîtrise des armes, de la voie du mysticisme, de la voie du bastion ou de la voie du commandement. Au rang 4 de cette voie il peut choisir une nouvelle capacité de rang 2 de la voie de l'alchimie, de la voie de la magie runique, de la voie du bohème, de la voie de la fourberie, de la voie de la maîtrise des armes, de la voie du mysticisme, de la voie du bastion ou de la voie du commandement. Ces capacités ne peuvent devenir des capacités supérieures."
+      "desc": "Le PJ n'a peut-être pas toujours été extérieur à un ordre, ou bien peut-être a-t-il reçu l'enseignement d'un Nain déchu ? Il peut choisir une capacité de rang 1 de la voie de l'alchimie, de la voie de la magie runique, de la voie du bohème, de la voie de la fourberie, de la voie de la maîtrise des armes, de la voie du mysticisme, de la voie du bastion ou de la voie du commandement. Au rang 4 de cette voie il peut choisir une nouvelle capacité de rang 2 de la voie de l'alchimie, de la voie de la magie runique, de la voie du bohème, de la voie de la fourberie, de la voie de la maîtrise des armes, de la voie du mysticisme, de la voie du bastion ou de la voie du commandement. Ces capacités ne peuvent devenir des capacités supérieures.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'alchimie",
+            "Voie de la magie runique",
+            "Voie du bohème",
+            "Voie de la fourberie",
+            "Voie de la maîtrise des armes",
+            "Voie du mysticisme",
+            "Voie du bastion",
+            "Voie du commandement"
+          ],
+          "rangMax": 1
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie de l'alchimie",
+            "Voie de la magie runique",
+            "Voie du bohème",
+            "Voie de la fourberie",
+            "Voie de la maîtrise des armes",
+            "Voie du mysticisme",
+            "Voie du bastion",
+            "Voie du commandement"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        },
+        {
+          "type": "FORMATION",
+          "value": "Armes de duel",
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Paysan aguerri",
@@ -1931,7 +2769,18 @@
   "Voie culturelle des ruines nordiques": [
     {
       "nom": "Pied marin",
-      "desc": "Le PJ obtient un bonus de +5 aux tests de navigation, de natation et d'équilibre."
+      "desc": "Le PJ obtient un bonus de +5 aux tests de navigation, de natation et d'équilibre.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Pied marin",
+          "bonus": 5,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Aux tests de navigation, de natation et d'équilibre."
+        }
+      ]
     },
     {
       "nom": "Barbare",
@@ -1959,7 +2808,33 @@
     {
       "nom": "Expertise des haches",
       "desc": "Le PJ gagne un bonus de +1 en attaque et aux DM lorsqu'il manie une hache. De plus, il est formé au maniement de la grande hache de bûcheron.",
-      "grants": []
+      "grants": [],
+      "effects": [
+        {
+          "stat": "DM_ARME",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Hache à une main",
+              "Hache à deux mains",
+              "Grande hache de bûcheron"
+            ]
+          }
+        },
+        {
+          "stat": "ATT_CONTACT",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Hache à une main",
+              "Hache à deux mains",
+              "Grande hache de bûcheron"
+            ]
+          }
+        }
+      ]
     },
     {
       "nom": "Homme des clans",
@@ -2015,6 +2890,21 @@
         {
           "type": "FORMATION",
           "value": "Armes de tir"
+        }
+      ],
+      "effects": [
+        {
+          "stat": "DM_ARME",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Arbalète à répétition",
+              "Arbalète de poing",
+              "Arbalète légère",
+              "Arbalète lourde"
+            ]
+          }
         }
       ]
     },
@@ -2081,7 +2971,14 @@
     },
     {
       "nom": "Prédispositions arcaniques",
-      "desc": "À force d'études et d'expérimentations, le PJ dispose de ressources arcaniques plus importantes. Il ajoute son Mod. de CHA à son total de PM (ce bonus n'est pas doublé pour la classe des mystiques)."
+      "desc": "À force d'études et d'expérimentations, le PJ dispose de ressources arcaniques plus importantes. Il ajoute son Mod. de CHA à son total de PM (ce bonus n'est pas doublé pour la classe des mystiques).",
+      "grants": [],
+      "effects": [
+        {
+          "stat": "PM",
+          "formula": "MOD_CHA"
+        }
+      ]
     },
     {
       "nom": "Mage",
@@ -2132,7 +3029,20 @@
     },
     {
       "nom": "Chevaucheur de dragons",
-      "desc": "Le PJ est féru des courses de montures volantes. Il fait l'acquisition d'un dragon d'Akrähyng dont les Caracs. sont les suivantes : Init 15, DEF 16, PV [5 × niveau du PJ], Att +8, DM 1d6+4 (trait de feu, portée 20 m). S'il possède, ou venait à acquérir par la suite, la capacité ==*Monture fantastique *(==voie du combat monté, rang 5) ou ==*Ordre de chevalerie *(==voie de prestige de l'ordre ailé, rang 1), sa monture gagnerait un bonus de +2 en DEF, attaque et DM pour chacune de ces capacités. Sa monture lui est parfaitement fidèle et il gagne un bonus de +5 aux tests de DEX pour toutes les manœuvres aériennes réalisées avec elle."
+      "desc": "Le PJ est féru des courses de montures volantes. Il fait l'acquisition d'un dragon d'Akrähyng dont les Caracs. sont les suivantes : Init 15, DEF 16, PV [5 × niveau du PJ], Att +8, DM 1d6+4 (trait de feu, portée 20 m). S'il possède, ou venait à acquérir par la suite, la capacité ==*Monture fantastique *(==voie du combat monté, rang 5) ou ==*Ordre de chevalerie *(==voie de prestige de l'ordre ailé, rang 1), sa monture gagnerait un bonus de +2 en DEF, attaque et DM pour chacune de ces capacités. Sa monture lui est parfaitement fidèle et il gagne un bonus de +5 aux tests de DEX pour toutes les manœuvres aériennes réalisées avec elle.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Chevaucheur de dragons",
+          "bonus": 5,
+          "cibles": [
+            "DEX"
+          ],
+          "precision": "Pour toutes les manœuvres aériennes réalisées avec la monture",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Expert en filouterie",
@@ -2201,7 +3111,9 @@
     },
     {
       "nom": "Attaque massive (L)",
-      "desc": "Le PJ réalise une attaque de contact de tout son poids. Il bénéficie d'un bonus au DM égal à son [Mod. de CON] et subit en retour un malus de DEF égal à son [Mod. de CON] pendant un tour."
+      "desc": "Le PJ réalise une attaque de contact de tout son poids. Il bénéficie d'un bonus au DM égal à son [Mod. de CON] et subit en retour un malus de DEF égal à son [Mod. de CON] pendant un tour.",
+      "effects": [],
+      "grants": []
     },
     {
       "nom": "Intuable",
@@ -2230,6 +3142,16 @@
         {
           "stat": "PV",
           "formula": "MOD_FOR"
+        }
+      ],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Force de la nature",
+          "bonus": 5,
+          "cibles": [
+            "FOR"
+          ]
         }
       ]
     },
@@ -2335,15 +3257,60 @@
     {
       "nom": "L'art du brassage",
       "desc": "La première chose qu’apprend un membre de l’ordre est le délicat art du brassage et la deuxième c’est d’apprécier le produit de son art. Le PJ bénéficie d'un bonus de +5 à tous les tests d'artisanat et de connaissances liés au brassage et à l’alcool de manière générale. Il bénéficie aussi d’un bonus de +5 aux tests de CON pour résister aux effets de l'alcool.",
-      "effects": []
+      "effects": [],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "L'art du brassage",
+          "bonus": 5,
+          "cibles": [
+            "CON"
+          ],
+          "usage": "1",
+          "precision": "Pour résister aux effets de l'alcool.",
+          "temporaire": true
+        }
+      ]
     },
     {
       "nom": "Sens de l'effort",
-      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie de la puissance ou de la voie du charme. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie de la puissance ou de la voie du charme."
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 de la voie de la puissance ou de la voie du charme. Au rang 4 de cette voie, il gagne une capacité supplémentaire de rang 1 ou 2 de la voie de la puissance ou de la voie du charme.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du charme",
+            "Voie de la puissance"
+          ],
+          "rangMax": 2
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Voie du charme",
+            "Voie de la puissance"
+          ],
+          "rangMax": 2,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Tiser entre amis",
-      "desc": "Boire de l’alcool pour un nain de l’ordre du Malt est une activité sociale. Le PJ bénéficie d'un bonus de +5 à tous les tests de CHA avec toute personne qui accepte de partager une boisson alcoolisée avec lui."
+      "desc": "Boire de l’alcool pour un nain de l’ordre du Malt est une activité sociale. Le PJ bénéficie d'un bonus de +5 à tous les tests de CHA avec toute personne qui accepte de partager une boisson alcoolisée avec lui.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Tiser entre amis",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "precision": "Avec toute personne qui accepte de partager une boisson alcoolisée avec lui.",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Courage liquide",
@@ -2352,7 +3319,16 @@
     {
       "nom": "Seigneur du Malt",
       "desc": "Le PJ augmente ses valeurs de CHA et de CON de +2.",
-      "effects": [],
+      "effects": [
+        {
+          "stat": "CHA",
+          "value": 2
+        },
+        {
+          "stat": "CON",
+          "value": 2
+        }
+      ],
       "grants": []
     }
   ],
@@ -2675,7 +3651,48 @@
   "Voie de la gravure": [
     {
       "nom": "Bâton du runiste",
-      "desc": "Le runiste grave une série de runes sur un bâton. Avec cette arme magique à deux mains, il gagne un bonus de +1 aux tests d’attaque au contact et inflige [1d4 + Mod. d’INT] DM magiques. A partir du rang 3, il inflige [2d4 + Mod. d’INT] DM magiques. A partir du rang 5, il inflige [4d4 + Mod. d’INT] DM magiques.\nLe runiste est le seul à pouvoir bénéficier des effets magiques de cette arme. Si le bâton est perdu ou brisé, le runiste peut graver des runes sur une autre arme au prix d’une journée de travail. Les armes traditionnelles ou légendaires ne peuvent être gravées de la sorte.\n**==Capacité avancée : ==**Le runiste peut utiliser son score d’attaque magique pour porter des attaques de contact avec ce bâton."
+      "desc": "Le runiste grave une série de runes sur un bâton. Avec cette arme magique à deux mains, il gagne un bonus de +1 aux tests d’attaque au contact et inflige [1d4 + Mod. d’INT] DM magiques. A partir du rang 3, il inflige [2d4 + Mod. d’INT] DM magiques. A partir du rang 5, il inflige [4d4 + Mod. d’INT] DM magiques.\nLe runiste est le seul à pouvoir bénéficier des effets magiques de cette arme. Si le bâton est perdu ou brisé, le runiste peut graver des runes sur une autre arme au prix d’une journée de travail. Les armes traditionnelles ou légendaires ne peuvent être gravées de la sorte.\n**==Capacité avancée : ==**Le runiste peut utiliser son score d’attaque magique pour porter des attaques de contact avec ce bâton.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Bâton du runiste",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "1d4+Mod.INT",
+          "deDegatsParArme": true,
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Bâton du runiste",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "2d4+Mod.INT",
+          "deDegatsParArme": true,
+          "temporaire": true,
+          "usage": "1",
+          "minRang": 3
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Bâton du runiste",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "deDegats": "4d4+Mod.INT",
+          "deDegatsParArme": true,
+          "temporaire": true,
+          "usage": "1",
+          "minRang": 5
+        }
+      ],
+      "effects": []
     },
     {
       "nom": "Runes de protection",

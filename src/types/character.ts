@@ -84,11 +84,11 @@ export interface Character {
   defense: number
   bonusDefense: number
   pvTotal: number
-  pvRestants: number
+  pvRestants?: number
   pr: number
   prUtilises: boolean[]
   pm: number
-  pmRestants: number
+  pmRestants?: number
   pc: number
   pcRestants: number
   deVie: string
@@ -222,11 +222,9 @@ export const defaultCharacter = (): Character => ({
   defense: 10,
   bonusDefense: 0,
   pvTotal: 0,
-  pvRestants: 0,
   pr: 0,
   prUtilises: [false, false, false, false, false, false],
   pm: 0,
-  pmRestants: 0,
   pc: 0,
   pcRestants: 0,
   deVie: 'd8',

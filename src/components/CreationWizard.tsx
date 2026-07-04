@@ -1503,7 +1503,7 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
 
   React.useEffect(() => {
-    onChange({ pvTotal, pvRestants: pvTotal, pm: Math.max(0, pm), pc, pr, prUtilises: Array(pr).fill(true), defense, initiative, attaqueContact, attaqueDistance, attaqueMagique })
+    onChange({ pvTotal, pvRestants: pvTotal, pm: Math.max(0, pm), pmRestants: Math.max(0, pm), pc, pr, prUtilises: Array(pr).fill(true), defense, initiative, attaqueContact, attaqueDistance, attaqueMagique })
   }, [famille, character.peuple, character.niveau, FOR.mod, DEX.mod, CON.mod, INT.mod, SAG.mod, CHA.mod])
 
   const cellStyle: React.CSSProperties = {
@@ -2310,9 +2310,9 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
             }}>
               <div>
-                <div style={{ fontSize: 13, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>Jouer</div>
+                <div style={{ fontSize: 13, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.jouer')}</div>
                 <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                  Ouvrir le mode de jeu pour lancer des dés et gérer la partie.
+                  {t('wizard.step7.jouerDesc')}
                 </div>
               </div>
               <button onClick={onPlay} style={{
@@ -2320,7 +2320,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                 border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)',
                 color: 'rgba(200,170,255,0.95)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                Jouer
+                {t('wizard.step7.btnJouer')}
               </button>
             </div>
           )}
