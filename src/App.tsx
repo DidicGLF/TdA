@@ -436,6 +436,9 @@ function AppContent() {
           onClose={() => setShowSave(false)}
         />
       )}
+      {isMobile && showGameMode && (
+        <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
+      )}
     </>
   )
 
@@ -456,6 +459,11 @@ function AppContent() {
           {t(`fiche.${p}`)}
         </button>
       ))}
+      <button onClick={() => setShowGameMode(true)} style={{
+        flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+        border: '1px solid rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.25)',
+        color: 'rgba(210,185,255,0.95)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+      }}>{t('toolbar.jouer')}</button>
       <button onClick={() => setShowSave(true)} style={{
         flexShrink: 0, padding: '6px 12px', borderRadius: 4,
         border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
