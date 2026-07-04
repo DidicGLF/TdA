@@ -92,7 +92,7 @@ function AppContent() {
   const [screenWidth, setScreenWidth] = useState(() => window.innerWidth)
   // showFullRunes = conteneur plein écran : runes divines large OU runes étroites (mobile layout)
   const showFullRunes = sheetPage === 'runes' && (runesDivinesUnlocked || screenWidth < RUNES_FULL_MIN_WIDTH)
-  const [mobileTab, setMobileTab] = useState<'fiche' | 'creation'>('fiche')
+  const [mobileTab, setMobileTab] = useState<'fiche' | 'creation' | 'jeu'>('fiche')
 
   const onChange = (patch: Partial<Character>) =>
     setCharacter(prev => ({ ...prev, ...patch }))
@@ -436,9 +436,6 @@ function AppContent() {
           onClose={() => setShowSave(false)}
         />
       )}
-      {isMobile && showGameMode && (
-        <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
-      )}
     </>
   )
 
@@ -459,7 +456,7 @@ function AppContent() {
           {t(`fiche.${p}`)}
         </button>
       ))}
-      <button onClick={() => setShowGameMode(true)} style={{
+      <button onClick={() => { setShowGameMode(true); setMobileTab('jeu') }} style={{
         flexShrink: 0, padding: '6px 12px', borderRadius: 4,
         border: '1px solid rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.25)',
         color: 'rgba(210,185,255,0.95)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
@@ -493,11 +490,11 @@ function AppContent() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         {printContainer}
 
-        {/* Zone de contenu */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        {/* Zone de contenu — Fiche et Création/Jeu restent montés (display seul change) pour ne pas perdre l'état du mode de jeu en changeant d'onglet */}
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
 
-          {mobileTab === 'fiche' ? (
-            sheetPage === 'runes' ? (
+          <div style={{ display: mobileTab === 'fiche' ? 'block' : 'none', height: '100%' }}>
+            {sheetPage === 'runes' ? (
               /* Runes : toolbar fixe + composant 3 zones */
               <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#111', overflow: 'hidden' }}>
                 <div style={{
@@ -534,42 +531,48 @@ function AppContent() {
                   )}
                 </div>
               </div>
-            )
-          ) : (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(20,16,10,0.98)' }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
-                  {t('app.titre')}
+            )}
+          </div>
+
+          <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
+            {showGameMode ? (
+              <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => { setShowGameMode(false); setMobileTab('creation') }} screenWidth={screenWidth} />
+            ) : (
+              <>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
+                    {t('app.titre')}
+                  </div>
+                  <div style={{ fontSize: 17, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
+                    {t('app.sousTitre')}
+                  </div>
                 </div>
-                <div style={{ fontSize: 17, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
-                  {t('app.sousTitre')}
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <CreationWizard
+                    step={step} maxStep={maxStep} character={character} onChange={onChange}
+                    onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                    onPrev={() => setStep(s => Math.max(s - 1, 0))}
+                    onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
+                    onSave={() => setShowSave(true)}
+                    onPlay={() => { setShowGameMode(true); setMobileTab('jeu') }}
+                  />
                 </div>
-              </div>
-              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <CreationWizard
-                  step={step} maxStep={maxStep} character={character} onChange={onChange}
-                  onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
-                  onPrev={() => setStep(s => Math.max(s - 1, 0))}
-                  onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
-                  onSave={() => setShowSave(true)}
-                  onPlay={() => setShowGameMode(true)}
-                />
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Barre de navigation basse */}
         <div style={{ flexShrink: 0, background: 'rgba(15,12,8,0.98)', borderTop: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ display: 'flex', height: 56 }}>
-            {(['fiche', 'creation'] as const).map(tab => (
+            {(['fiche', showGameMode ? 'jeu' : 'creation'] as const).map(tab => (
               <button key={tab} onClick={() => setMobileTab(tab)} style={{
                 flex: 1, border: 'none', background: 'transparent',
                 color: mobileTab === tab ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.45)',
                 fontSize: 15, fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
                 borderTop: mobileTab === tab ? '2px solid var(--tdr-gold)' : '2px solid transparent',
                 cursor: 'pointer',
-              }}>{tab === 'fiche' ? t('mobile.ongletFiche') : t('mobile.ongletCreation')}</button>
+              }}>{tab === 'fiche' ? t('mobile.ongletFiche') : tab === 'jeu' ? t('gameMode.title') : t('mobile.ongletCreation')}</button>
             ))}
           </div>
           <div style={{ height: 'env(safe-area-inset-bottom)' }} />
@@ -977,7 +980,7 @@ function AppContent() {
         overflow: 'hidden',
       }}>
         {showGameMode ? (
-          <GameModePanel inline character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
+          <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
         ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>

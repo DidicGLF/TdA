@@ -98,7 +98,6 @@ interface Props {
   onChange: (patch: CharacterPatch) => void
   onClose: () => void
   screenWidth: number
-  inline?: boolean
 }
 
 let nextId = 1
@@ -113,11 +112,10 @@ function rollDiceStr(diceStr: string): number {
   return total
 }
 
-export default function GameModePanel({ character, descriptions, onChange, onClose, screenWidth, inline = false }: Props) {
+export default function GameModePanel({ character, descriptions, onChange, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
   const { armes, armures } = useGameData()
-  const isMobile = !inline && screenWidth < 700
-  const [minimized, setMinimized] = useState(false)
+  const isMobile = screenWidth < 700
   const [result, setResult] = useState<RollResult | null>(null)
   const [history, setHistory] = useState<RollResult[]>([])
   const [effectCounters, setEffectCounters] = useState<Record<string, number>>({})
@@ -495,30 +493,10 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     })
   }, [])
 
-  // Ces deux hooks doivent rester avant le `return` anticipé du mode minimisé ci-dessous :
-  // les appeler après romprait les Rules of Hooks (nombre de hooks différent selon `minimized`).
   const attaques = useMemo(() => computeAttaquesTotaux(character, descriptions, armes, armures), [character, descriptions, armes, armures])
   const effectsAll = useMemo(() => computeEffectsWithCristaux(character, descriptions), [character, descriptions])
 
-  const panelStyle: React.CSSProperties = inline
-    ? { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: BG }
-    : isMobile
-      ? (minimized
-          ? { position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(44px + env(safe-area-inset-bottom))', boxSizing: 'border-box', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)', zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderTop: `2px solid ${GOLD}`, boxShadow: '0 -4px 24px rgba(0,0,0,0.7)' }
-          : { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' })
-      : { position: 'fixed', top: 0, right: 0, bottom: 0, width: minimized ? 36 : 320, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderLeft: `2px solid ${GOLD}`, boxShadow: '-4px 0 24px rgba(0,0,0,0.7)', transition: 'width 0.2s' }
-
-  if (!inline && minimized) {
-    return (
-      <div style={panelStyle} onClick={() => setMinimized(false)}>
-        {isMobile ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8, cursor: 'pointer', color: GOLD, fontSize: 16, fontWeight: 700 }}>{t('gameMode.title')}</div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', cursor: 'pointer', writingMode: 'vertical-rl', color: GOLD, fontSize: 15, fontWeight: 700, letterSpacing: '0.08em' }}>{t('gameMode.title')}</div>
-        )}
-      </div>
-    )
-  }
+  const panelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: BG }
 
   const btnStyle = (active?: boolean): React.CSSProperties => ({
     padding: '6px 10px', borderRadius: 4, fontSize: 14, cursor: 'pointer', fontWeight: 600,
@@ -635,7 +613,6 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, gap: 8 }}>
         <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, flex: 1, fontFamily: "'Cinzel', serif" }}>{t('gameMode.title')}</span>
-        {!inline && <button onClick={() => setMinimized(true)} style={{ background: 'transparent', border: 'none', color: `rgba(245,236,215,0.5)`, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>—</button>}
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: `rgba(245,236,215,0.5)`, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>✕</button>
       </div>
 
