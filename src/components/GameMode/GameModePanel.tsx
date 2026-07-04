@@ -504,7 +504,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     ? { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: BG }
     : isMobile
       ? (minimized
-          ? { position: 'fixed', bottom: 0, left: 0, right: 0, height: 44, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderTop: `2px solid ${GOLD}`, boxShadow: '0 -4px 24px rgba(0,0,0,0.7)' }
+          ? { position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(44px + env(safe-area-inset-bottom))', boxSizing: 'border-box', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)', zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderTop: `2px solid ${GOLD}`, boxShadow: '0 -4px 24px rgba(0,0,0,0.7)' }
           : { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' })
       : { position: 'fixed', top: 0, right: 0, bottom: 0, width: minimized ? 36 : 320, zIndex: 8000, display: 'flex', flexDirection: 'column', background: BG, borderLeft: `2px solid ${GOLD}`, boxShadow: '-4px 0 24px rgba(0,0,0,0.7)', transition: 'width 0.2s' }
 
