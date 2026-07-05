@@ -193,7 +193,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => exportCharacter(e)} style={btn} title={t('saveLoad.exporterTitle')}>↓</button>
+                <button onClick={() => exportCharacter(e)} style={btn} title={t('saveLoad.exporterTitle')}>{t('saveLoad.exporter')}</button>
                 <button onClick={() => { onLoad(e.character, e.maxStep ?? 0); onClose() }} style={btn}>{t('saveLoad.charger')}</button>
                 {confirm === e.id ? (
                   <>
@@ -201,7 +201,7 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
                     <button onClick={() => setConfirm(null)} style={{ ...btn, opacity: 0.5 }}>✕</button>
                   </>
                 ) : (
-                  <button onClick={() => setConfirm(e.id)} style={btnDanger}>{t('saveLoad.supprimer')}</button>
+                  <button onClick={() => setConfirm(e.id)} style={btnDanger} title={t('saveLoad.supprimer')}>🗑️</button>
                 )}
               </div>
             </div>

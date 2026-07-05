@@ -1,1 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: 512px; width: 512px;"><path d="M0 0h512v512H0z" fill="#000" fill-opacity="1"></path><g class="" transform="translate(0,0)" style=""><path d="M74.5 36A38.5 38.5 0 0 0 36 74.5v363A38.5 38.5 0 0 0 74.5 476h363a38.5 38.5 0 0 0 38.5-38.5v-363A38.5 38.5 0 0 0 437.5 36h-363zm48.97 36.03A50 50 0 0 1 172 122a50 50 0 0 1-100 0 50 50 0 0 1 51.47-49.97zm268 0A50 50 0 0 1 440 122a50 50 0 0 1-100 0 50 50 0 0 1 51.47-49.97zM256 206a50 50 0 0 1 0 100 50 50 0 0 1 0-100zM123.47 340.03A50 50 0 0 1 172 390a50 50 0 0 1-100 0 50 50 0 0 1 51.47-49.97zm268 0A50 50 0 0 1 440 390a50 50 0 0 1-100 0 50 50 0 0 1 51.47-49.97z" fill="#fff" fill-opacity="1"></path></g></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="dice-six-faces-five.svg"
+   width="512"
+   height="512"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="true"
+     inkscape:zoom="2.2617188"
+     inkscape:cx="256"
+     inkscape:cy="256"
+     inkscape:window-width="2560"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2">
+    <inkscape:grid
+       id="grid2"
+       units="px"
+       originx="0"
+       originy="0"
+       spacingx="1"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       enabled="true"
+       visible="true" />
+  </sodipodi:namedview>
+  <path
+     d="M 0,0 H 512 V 512 H 0 Z"
+     fill="#000000"
+     fill-opacity="1"
+     id="path1" />
+  <g
+     class=""
+     id="g2">
+    <path
+       d="M 74.5,36 C 53.237037,36 36,53.237037 36,74.5 v 363 c 0,21.26296 17.237037,38.5 38.5,38.5 h 363 c 21.26296,0 38.5,-17.23704 38.5,-38.5 V 74.5 C 476,53.237037 458.76296,36 437.5,36 Z m 48.97,36.03 c 27.02687,0.794933 48.52546,22.931439 48.53,49.97 0,27.61426 -22.38576,49.99998 -50,49.99998 -27.614237,0 -50,-22.38572 -50,-49.99998 0.0047,-28.18686 23.295324,-50.798694 51.47,-49.97 z m 268,0 c 27.02687,0.794933 48.52546,22.931439 48.53,49.97 0,27.61426 -22.38576,49.99998 -50,49.99998 -27.61424,0 -50,-22.38572 -50,-49.99998 0.005,-28.18686 23.29532,-50.798694 51.47,-49.97 z M 122,206 c 27.61426,0 49.99998,22.38576 49.99998,50 0,27.61424 -22.38572,50 -49.99998,50 -27.614256,0 -49.999978,-22.38576 -49.999978,-50 0,-27.61424 22.385722,-50 49.999978,-50 z m 1.47,134.03 c 27.02687,0.79493 48.52546,22.93144 48.53,49.97 0,27.61426 -22.38576,49.99998 -50,49.99998 -27.614237,0 -50,-22.38572 -50,-49.99998 0.0047,-28.18686 23.295324,-50.79869 51.47,-49.97 z m 268,0 c 27.02687,0.79493 48.52546,22.93144 48.53,49.97 0,27.61426 -22.38576,49.99998 -50,49.99998 -27.61424,0 -50,-22.38572 -50,-49.99998 0.005,-28.18686 23.29532,-50.79869 51.47,-49.97 z M 390,209 c 27.61426,0 49.99998,22.38576 49.99998,50 0,27.61424 -22.38572,50 -49.99998,50 -27.61426,0 -49.99998,-22.38576 -49.99998,-50 0,-27.61424 22.38572,-50 49.99998,-50 z"
+       fill="#ffffff"
+       fill-opacity="1"
+       id="path2"
+       sodipodi:nodetypes="sssssssssscscsscscssssssscscsscscssssss" />
+  </g>
+</svg>

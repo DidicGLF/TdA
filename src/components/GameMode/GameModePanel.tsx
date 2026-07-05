@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
 type CharacterPatch = Partial<Character>
-import type { DescMap } from '../../types/gameData'
+import type { DescMap, Grant } from '../../types/gameData'
 import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
@@ -208,11 +208,22 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         if (!unlocked) return
         const rang = rangsDesc[idx]
         if (!rang?.grants) return
+        const eligibles: Extract<Grant, { type: 'ACTION' }>[] = []
         for (const grant of rang.grants) {
           if (grant.type !== 'ACTION') continue
           if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
           if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
           if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
+          eligibles.push(grant)
+        }
+        // Une même capacité (label identique) peut monter en puissance avec le rang via plusieurs paliers
+        // minRang successifs : ne garder que le palier le plus élevé actuellement atteint, pas tous à la fois.
+        const meilleurParLabel = new Map<string, typeof eligibles[number]>()
+        for (const grant of eligibles) {
+          const actuel = meilleurParLabel.get(grant.label)
+          if (!actuel || (grant.minRang ?? 1) > (actuel.minRang ?? 1)) meilleurParLabel.set(grant.label, grant)
+        }
+        for (const grant of meilleurParLabel.values()) {
           out.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, label: grant.label, de: grant.de, dm: grant.dm, attType: grant.attType, activable: grant.activable, cout_pm: grant.cout_pm })
         }
       })
@@ -272,13 +283,13 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
 
     let boost: number | undefined
     let boostLabel: string | undefined
-    if (stat) {
-      const match = activeBoosts.find(b => b.stat === stat)
-      if (match) {
-        boost = match.bonus
-        boostLabel = match.label
-        setActiveBoosts(prev => prev.filter(b => b.id !== match.id))
-      }
+    // Un bonus ciblant "JET" s'applique au prochain jet de d20, quel qu'il soit (attaque, carac ou jet libre)
+    const match = (stat ? activeBoosts.find(b => b.stat === stat) : undefined)
+      ?? (sides === 20 ? activeBoosts.find(b => b.stat === 'JET') : undefined)
+    if (match) {
+      boost = match.bonus
+      boostLabel = match.label
+      setActiveBoosts(prev => prev.filter(b => b.id !== match.id))
     }
     const modStr = modifier !== null ? (modifier >= 0 ? `+${modifier}` : String(modifier)) : ''
     const boostStr = boost ? `+${boost}` : ''

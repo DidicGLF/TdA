@@ -366,7 +366,67 @@
   "Voie du pugilat": [
     {
       "nom": "Poings de fer",
-      "desc": "Lorsqu'il combat à mains nues, le PJ peut (s'il le souhaite) utiliser son score d'attaque à distance au lieu de celui d'attaque au contact. Au rang 1 de cette voie, il inflige [1d6 + Mod. de FOR] DM létaux. Ces DM passent à 1d8 au rang 3 et à 1d10 au rang 5.\n**==Capacité avancée : ==**la valeur du dé des DM est augmentée d'une catégorie, jusqu'au d12 au rang 5."
+      "desc": "Lorsqu'il combat à mains nues, le PJ peut (s'il le souhaite) utiliser son score d'attaque à distance au lieu de celui d'attaque au contact. Au rang 1 de cette voie, il inflige [1d6 + Mod. de FOR] DM létaux. Ces DM passent à 1d8 au rang 3 et à 1d10 au rang 5.\n**==Capacité avancée : ==**la valeur du dé des DM est augmentée d'une catégorie, jusqu'au d12 au rang 5.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d6+Mod.FOR",
+          "attType": "contact",
+          "masqueSiAvancee": true,
+          "activable": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d8+Mod.FOR",
+          "attType": "contact",
+          "masqueSiAvancee": true,
+          "avancee": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d10+Mod.FOR",
+          "attType": "contact",
+          "masqueSiAvancee": true,
+          "avancee": true,
+          "minRang": 3
+        },
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d12+Mod.FOR",
+          "attType": "contact",
+          "masqueSiAvancee": true,
+          "avancee": true,
+          "minRang": 5
+        },
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d8+Mod.FOR",
+          "attType": "contact",
+          "minRang": 3,
+          "masqueSiAvancee": true,
+          "activable": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Poings de fer",
+          "de": 20,
+          "dm": "1d10+Mod.FOR",
+          "attType": "contact",
+          "minRang": 5,
+          "masqueSiAvancee": true,
+          "activable": true
+        }
+      ]
     },
     {
       "nom": "Peau de pierre",
@@ -393,6 +453,14 @@
         {
           "stat": "FOR",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "FOR",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -733,11 +801,61 @@
   "Voie du bohème": [
     {
       "nom": "Rumeurs et légendes",
-      "desc": "À force de voyager, le PJ a appris toutes sortes de choses. Il obtient un bonus de +5 aux tests d'INT pour se « souvenir » d'une information historique, politique, géographique ou occulte qui pourrait lui être utile. Ce bonus peut être appliqué aux tests d'identification des objets légendaires.\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "À force de voyager, le PJ a appris toutes sortes de choses. Il obtient un bonus de +5 aux tests d'INT pour se « souvenir » d'une information historique, politique, géographique ou occulte qui pourrait lui être utile. Ce bonus peut être appliqué aux tests d'identification des objets légendaires.\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Rumeurs et légendes",
+          "bonus": 5,
+          "cibles": [
+            "INT"
+          ],
+          "precision": "Pour se « souvenir » d'une information historique, politique, géographique ou occulte qui pourrait lui être utile. Ce bonus peut être appliqué aux tests d'identification des objets légendaires.",
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Rumeurs et légendes",
+          "bonus": 10,
+          "cibles": [
+            "INT"
+          ],
+          "precision": "Pour se « souvenir » d'une information historique, politique, géographique ou occulte qui pourrait lui être utile. Ce bonus peut être appliqué aux tests d'identification des objets légendaires.",
+          "avancee": true,
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Argumenter",
-      "desc": "Le PJ peut mettre sa logique et sa malice au service de sa force de persuasion. Il obtient un bonus de +5 aux tests de CHA visant à convaincre.\n**==Capacité avancée : ==**le PJ peut également appliquer ce bonus pour tromper, mentir ou séduire (ne se cumule pas avec\nla capacité Charmant de la voie du charme )."
+      "desc": "Le PJ peut mettre sa logique et sa malice au service de sa force de persuasion. Il obtient un bonus de +5 aux tests de CHA visant à convaincre.\n**==Capacité avancée : ==**le PJ peut également appliquer ce bonus pour tromper, mentir ou séduire (ne se cumule pas avec\nla capacité Charmant de la voie du charme ).",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Argumenter",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "precision": "Pour convaincre",
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Argumenter",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "precision": "Pour convaincre, pour tromper, mentir ou séduire (ne se cumule pas avec la capacité Charmant de la voie du charme ).",
+          "temporaire": true,
+          "usage": "1",
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Débrouillard",
@@ -755,7 +873,32 @@
   "Voie du charme": [
     {
       "nom": "Charmant",
-      "desc": "Le PJ obtient un bonus de +5 pour tous ses tests de CHA visant à séduire, baratiner ou mentir.\n**==Capacité avancée : ==**le bonus passe à +10."
+      "desc": "Le PJ obtient un bonus de +5 pour tous ses tests de CHA visant à séduire, baratiner ou mentir.\n**==Capacité avancée : ==**le bonus passe à +10.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Charmant",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Pour séduire, baratiner ou mentir."
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Charmant",
+          "bonus": 10,
+          "cibles": [
+            "CHA"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Pour séduire, baratiner ou mentir.",
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Provocation (L)",
@@ -763,7 +906,20 @@
     },
     {
       "nom": "Attaque flamboyante (L)",
-      "desc": "Le style de combat du PJ est flamboyant et surprenant : avec cette capacité, il effectue une attaque de contact avec un bonus d'attaque et de DM égal à son Mod. de CHA (en plus du Mod. de FOR ou de DEX)."
+      "desc": "Le style de combat du PJ est flamboyant et surprenant : avec cette capacité, il effectue une attaque de contact avec un bonus d'attaque et de DM égal à son Mod. de CHA (en plus du Mod. de FOR ou de DEX).",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque flamboyante (L)",
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME"
+          ],
+          "formula": "MOD_CHA",
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Suggestion (L)",
@@ -776,6 +932,14 @@
         {
           "stat": "CHA",
           "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "CHA",
+          "lancer": 2,
+          "garder": 1
         }
       ]
     }
@@ -1011,6 +1175,14 @@
           "stat": "SAG",
           "value": 2
         }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "SAG",
+          "lancer": 2,
+          "garder": 1
+        }
       ]
     }
   ],
@@ -1117,7 +1289,29 @@
   "Voie des forêts": [
     {
       "nom": "Peau d'écorce*",
-      "desc": "La peau du PJ prend la consistance de l'écorce. Il gagne +2 en DEF pendant [5 + Mod. de SAG] tours. Ce bonus passe à +4 au rang 4 de cette voie. \n**==Capacité avancée : ==**le PJ applique le bonus de DEF à tous les tests de CON pour résister aux poisons."
+      "desc": "La peau du PJ prend la consistance de l'écorce. Il gagne +2 en DEF pendant [5 + Mod. de SAG] tours. Ce bonus passe à +4 au rang 4 de cette voie. \n**==Capacité avancée : ==**le PJ applique le bonus de DEF à tous les tests de CON pour résister aux poisons.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Peau d'écorce*",
+          "bonus": 2,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "[5+ModSAG]"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Peau d'écorce*",
+          "bonus": 2,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "[5+ModSAG]"
+        }
+      ]
     },
     {
       "nom": "Prison végétale*",
@@ -1248,7 +1442,8 @@
   "Voie des sombres savoirs": [
     {
       "nom": "Saignements*",
-      "desc": "Le PJ doit réussir un test d'attaque magique (portée : 10 m). Du sang s'écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit 1d6 DM par tour pendant [rang atteint dans la voie] tours. Ce sort ignore la RD d'une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades). Les DM passent à 1d8 au rang 4 atteint dans cette voie. \n**==Capacité avancée : ==**la durée du sort devient [rang atteint dans la voie + Mod. SAG] tours."
+      "desc": "Le PJ doit réussir un test d'attaque magique (portée : 10 m). Du sang s'écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit 1d6 DM par tour pendant [rang atteint dans la voie] tours. Ce sort ignore la RD d'une cible mais les créatures qui ne saignent pas y sont immunisées (telles que les créatures non vivantes, les goules ou encore les dryades). Les DM passent à 1d8 au rang 4 atteint dans cette voie. \n**==Capacité avancée : ==**la durée du sort devient [rang atteint dans la voie + Mod. SAG] tours.",
+      "grants": []
     },
     {
       "nom": "Malédiction*",
@@ -1256,7 +1451,38 @@
     },
     {
       "nom": "Pacte sanglant*",
-      "desc": "Par une action gratuite, le PJ sacrifie 1d4 PV et gagne immédiatement +3 sur un jet de d20 de son choix ou en DEF contre une attaque. À partir du rang 5 atteint dans cette voie, il peut sacrifier 2d4 PV pour faire passer ce bonus à +5."
+      "desc": "Par une action gratuite, le PJ sacrifie 1d4 PV et gagne immédiatement +3 sur un jet de d20 de son choix ou en DEF contre une attaque. À partir du rang 5 atteint dans cette voie, il peut sacrifier 2d4 PV pour faire passer ce bonus à +5.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Pacte sanglant*",
+          "bonus": 3,
+          "cibles": [
+            "JET",
+            "DEF"
+          ],
+          "choix": true,
+          "temporaire": true,
+          "usage": "1",
+          "cout_pv": "1d4",
+          "cout_pm": "3"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Pacte sanglant*",
+          "bonus": 5,
+          "cibles": [
+            "JET",
+            "DEF"
+          ],
+          "choix": true,
+          "temporaire": true,
+          "usage": "1",
+          "cout_pv": "2d4",
+          "cout_pm": "3",
+          "minRang": 5
+        }
+      ]
     },
     {
       "nom": "Hémorragie*",
@@ -1270,7 +1496,31 @@
   "Voie des armes lourdes": [
     {
       "nom": "Allonge",
-      "desc": "Le PJ obtient un bonus de +1 en attaque et +5 en Init. lorsqu'il utilise une arme à deux mains."
+      "desc": "Le PJ obtient un bonus de +1 en attaque et +5 en Init. lorsqu'il utilise une arme à deux mains.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Allonge",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Avec une utilisation d'arme à 2 mains"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Allonge",
+          "bonus": 5,
+          "cibles": [
+            "INIT"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Avec une utilisation d'arme à 2 mains"
+        }
+      ]
     },
     {
       "nom": "Frappe massive (L)",
@@ -1282,7 +1532,31 @@
     },
     {
       "nom": "Attaque à outrance",
-      "desc": "Le PJ peut choisir une pénalité en -2 DEF pour gagner un bonus de +1d6 aux DM ou un bonus de -5 en DEF pour gagner un bonus de +2d6 aux DM. Ce bonus n'est pas multiplié en cas de critique."
+      "desc": "Le PJ peut choisir une pénalité en -2 DEF pour gagner un bonus de +1d6 aux DM ou un bonus de -5 en DEF pour gagner un bonus de +2d6 aux DM. Ce bonus n'est pas multiplié en cas de critique.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque à outrance",
+          "bonus": 1,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "coutCaracStat": "DEF",
+          "coutCaracValeur": 2,
+          "cout_pv": "1d6"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Attaque à outrance",
+          "bonus": 1,
+          "cibles": [],
+          "temporaire": true,
+          "usage": "1",
+          "coutCaracStat": "DEF",
+          "coutCaracValeur": 5,
+          "cout_pv": "2d6"
+        }
+      ]
     },
     {
       "nom": "Critique destructeur",
@@ -1639,11 +1913,25 @@
   "Voie du duel": [
     {
       "nom": "Vives lames",
-      "desc": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de duel ou une épée."
+      "desc": "Le PJ peut utiliser son Mod. de DEX au choix en attaque au contact ou aux DM (mais pas les deux) au lieu du Mod. de FOR lorsqu'il utilise une arme de duel ou une épée.",
+      "grants": []
     },
     {
       "nom": "Défi (L)",
-      "desc": "Une fois par combat, le PJ peut défier une cible de son choix (portée : 30 mètres). Il obtient un bonus de +2 en attaque et en DEF pour le reste du combat contre cette cible."
+      "desc": "Une fois par combat, le PJ peut défier une cible de son choix (portée : 30 mètres). Il obtient un bonus de +2 en attaque et en DEF pour le reste du combat contre cette cible.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Défi (L)",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT",
+            "DEF"
+          ],
+          "temporaire": true,
+          "precision": "Pour le reste du combat"
+        }
+      ]
     },
     {
       "nom": "Juste toi et moi",
@@ -1766,7 +2054,7 @@
     },
     {
       "nom": "Résistance au poison",
-      "desc": "À force de manipuler les poisons, le PJ a déve- loppé des immunités. Lorsqu'il est empoisonné, faites un test de CON difficulté 10. En cas de succès, il ne subit aucun effet ; s'il rate, seulement la moitié."
+      "desc": "À force de manipuler les poisons, le PJ a développé des immunités. Lorsqu'il est empoisonné, faites un test de CON difficulté 10. En cas de succès, il ne subit aucun effet ; s'il rate, seulement la moitié."
     },
     {
       "nom": "Poisons virulents",
@@ -1991,11 +2279,47 @@
   "Voie du peuple elfe": [
     {
       "nom": "Grâce elfique",
-      "desc": "Le PJ gagne +5 à tous les tests de CHA et de déplacement silencieux."
+      "desc": "Le PJ gagne +5 à tous les tests de CHA et de déplacement silencieux.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Grâce elfique",
+          "bonus": 5,
+          "cibles": [
+            "CHA"
+          ],
+          "precision": "Aussi sur les tests de déplacements silencieux"
+        }
+      ]
     },
     {
       "nom": "Essence magique",
-      "desc": "Le PJ est naturellement lié à l'essence du monde. Il obtient un bonus de +2 en DEF contre les attaques magiques et à tous les tests destinés à résister à la magie. Ce bonus passe à +4 au rang 4 atteint dans cette voie."
+      "desc": "Le PJ est naturellement lié à l'essence du monde. Il obtient un bonus de +2 en DEF contre les attaques magiques et à tous les tests destinés à résister à la magie. Ce bonus passe à +4 au rang 4 atteint dans cette voie.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Essence magique",
+          "bonus": 2,
+          "cibles": [
+            "DEF"
+          ],
+          "precision": "Contre les attaques magiques",
+          "temporaire": true,
+          "usage": "1"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Essence magique",
+          "bonus": 4,
+          "cibles": [
+            "DEF"
+          ],
+          "precision": "Contre les attaques magiques",
+          "temporaire": true,
+          "usage": "1",
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Maîtrise des armes elfiques",
@@ -2326,7 +2650,17 @@
   "Voie du peuple nain": [
     {
       "nom": "Résistance",
-      "desc": "Le PJ gagne un bonus de +5 à tous les tests de CON."
+      "desc": "Le PJ gagne un bonus de +5 à tous les tests de CON.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Résistance",
+          "bonus": 5,
+          "cibles": [
+            "CON"
+          ]
+        }
+      ]
     },
     {
       "nom": "Solide comme un roc",
@@ -2357,7 +2691,8 @@
     {
       "nom": "Artisan de la forge",
       "desc": "Le PJ choisit un métier présent au sein de l'ordre de la Forge (alchimiste, armurier, médecin, orfèvre, mineur, etc.). Il obtient un bonus de +5 à tous les tests en rapport avec ce métier.",
-      "effects": []
+      "effects": [],
+      "grants": []
     },
     {
       "nom": "Forgeron runique",
@@ -2751,7 +3086,32 @@
     },
     {
       "nom": "Loup parmi les loups",
-      "desc": "Le PJ gagne +1 aux DM lorsqu'il combat un adversaire humanoïde. Ce bonus passe à +2 au rang 4 de cette voie."
+      "desc": "Le PJ gagne +1 aux DM lorsqu'il combat un adversaire humanoïde. Ce bonus passe à +2 au rang 4 de cette voie.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Loup parmi les loups",
+          "bonus": 1,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Contre un adversaire humanoide"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Loup parmi les loups",
+          "bonus": 2,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Contre un adversaire humanoide",
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Enseignement exotique",
@@ -2763,7 +3123,21 @@
     },
     {
       "nom": "Dépassement",
-      "desc": "Le PJ augmente la valeur d'une Carac. au choix de +2. "
+      "desc": "Le PJ augmente la valeur d'une Carac. au choix de +2. ",
+      "grants": [
+        {
+          "type": "EFFECT_CHOIX",
+          "stats": [
+            "FOR",
+            "DEX",
+            "CON",
+            "INT",
+            "SAG",
+            "CHA"
+          ],
+          "value": 2
+        }
+      ]
     }
   ],
   "Voie culturelle des ruines nordiques": [
@@ -3062,7 +3436,8 @@
   "Voie du peuple des Peaux vertes": [
     {
       "nom": "Pour l'honneur",
-      "desc": "Les Peaux vertes sont des parias aux yeux des autres peuples des Terres d'Arran mais, au sein de leurs clans, leurs victoires et leurs faits d'armes forgent leurs légendes. Le PJ gagne un bonus de +5 aux tests de Carac. pour toute interaction sociale avec d'autres Peaux vertes."
+      "desc": "Les Peaux vertes sont des parias aux yeux des autres peuples des Terres d'Arran mais, au sein de leurs clans, leurs victoires et leurs faits d'armes forgent leurs légendes. Le PJ gagne un bonus de +5 aux tests de Carac. pour toute interaction sociale avec d'autres Peaux vertes.",
+      "grants": []
     },
     {
       "nom": "Frappe Déloyale",
@@ -3074,7 +3449,22 @@
     },
     {
       "nom": "Croyances païennes",
-      "desc": "Le PJ arbore désormais un tatouage mystique qui améliore ses performances physiques. Au choix : taureau (+5 aux tests de FOR), ours (+5 aux tests de CON), panthère (+5 aux tests de DEX) ou chouette (+5 aux tests de SAG)."
+      "desc": "Le PJ arbore désormais un tatouage mystique qui améliore ses performances physiques. Au choix : taureau (+5 aux tests de FOR), ours (+5 aux tests de CON), panthère (+5 aux tests de DEX) ou chouette (+5 aux tests de SAG).",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Croyances païennes",
+          "bonus": 5,
+          "cibles": [
+            "FOR",
+            "CON",
+            "DEX"
+          ],
+          "choix": true,
+          "temporaire": true,
+          "usage": "1"
+        }
+      ]
     },
     {
       "nom": "Héros tribal",
@@ -3369,6 +3759,14 @@
           "stat": "INT",
           "value": 2
         }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "INT",
+          "lancer": 2,
+          "garder": 1
+        }
       ]
     }
   ],
@@ -3409,11 +3807,98 @@
   "Voie des pentacles": [
     {
       "nom": "Affûtage*",
-      "desc": "Le P Jpeut toucher une arme et affûter son tranchant pendant [5 + Mod. de SAG] tours, conférant un bonus de +1 aux DM de cette arme. Ce pentacle ne peut affecter que les armes tranchantes et perforantes. Les carreaux d’arbalète et flèches d’arc peuvent être améliorées par ce sort, à raison d’un lot de 5 projectiles par sort.\nLe bonus passe à +2 au rang 3 atteint dans la voie, et à +3 au rang 5 atteint dans la voie.\n**==Capacité avancée : ==**Le PJ peut également appliquer le bonus aux tests d’attaque de contact."
+      "desc": "Le P Jpeut toucher une arme et affûter son tranchant pendant [5 + Mod. de SAG] tours, conférant un bonus de +1 aux DM de cette arme. Ce pentacle ne peut affecter que les armes tranchantes et perforantes. Les carreaux d’arbalète et flèches d’arc peuvent être améliorées par ce sort, à raison d’un lot de 5 projectiles par sort.\nLe bonus passe à +2 au rang 3 atteint dans la voie, et à +3 au rang 5 atteint dans la voie.\n**==Capacité avancée : ==**Le PJ peut également appliquer le bonus aux tests d’attaque de contact.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 1,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 1,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes",
+          "avancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 2,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes",
+          "minRang": 3
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes",
+          "minRang": 3,
+          "avancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 3,
+          "cibles": [
+            "DM_ARME"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes",
+          "minRang": 5
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Affûtage*",
+          "bonus": 3,
+          "cibles": [
+            "ATT_CONTACT"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]",
+          "precision": "Que sur les armes tranchantes et perforantes",
+          "minRang": 5,
+          "avancee": true
+        }
+      ]
     },
     {
       "nom": "Peau de mercure*",
-      "desc": "La peau du PJ se transforme en mercure alchimique, lui conférant un bonus de +3 à la DEF pendant [5 + Mod. de SAG] tours.\n**==Capacité avancée :==** Sous l’effet de ce sort, le PJ bénéficie d’une réduction de DM (RD) de 2 pour tous les dégâts élémentaires et magiques."
+      "desc": "La peau du PJ se transforme en mercure alchimique, lui conférant un bonus de +3 à la DEF pendant [5 + Mod. de SAG] tours.\n**==Capacité avancée :==** Sous l’effet de ce sort, le PJ bénéficie d’une réduction de DM (RD) de 2 pour tous les dégâts élémentaires et magiques.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Peau de mercure*",
+          "bonus": 3,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "[5+Mod.SAG]"
+        }
+      ]
     },
     {
       "nom": "Forge alchimique*",
@@ -3421,7 +3906,18 @@
     },
     {
       "nom": "Projection de métal*",
-      "desc": "Le PJ lance un jet de métal en fusion sur une cible située à une distance de 10 mètres maximum. Sur un test d’attaque magique réussi, il inflige [2d6 + Mod. d’INT] DM. À moins de réussir un test de CON difficulté [12 + Mod. d’INT], la cible continue de subir 1d6 DM de brûlures par tour pendant [Mod. de SAG] tour(s) (minimum 1).\nUne même cible peut cumuler plusieurs fois les DM de brûlures."
+      "desc": "Le PJ lance un jet de métal en fusion sur une cible située à une distance de 10 mètres maximum. Sur un test d’attaque magique réussi, il inflige [2d6 + Mod. d’INT] DM. À moins de réussir un test de CON difficulté [12 + Mod. d’INT], la cible continue de subir 1d6 DM de brûlures par tour pendant [Mod. de SAG] tour(s) (minimum 1).\nUne même cible peut cumuler plusieurs fois les DM de brûlures.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Projection de métal*",
+          "de": 20,
+          "dm": "2d6+Mod.INT",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "4"
+        }
+      ]
     },
     {
       "nom": "Dôme arcanique*",
@@ -3479,7 +3975,18 @@
     },
     {
       "nom": "Lumière transmutée*",
-      "desc": "Le PJ altère la lumière pour former des éclats d’énergie pure. Il réalise un test d’attaque magique et le compare à la DEF de toutes les cibles autour de lui sur un rayon de 6 mètres. En cas de réussite, elles subissent [2d6 + Mod. d’INT] DM magiques et sont aveuglées pendant 1 tour. En cas d’échec, les cibles ne subissent que la moitié des DM et ne sont pas aveuglées.\nL’alchimiste doit disposer d’une source de lumière. Il ne peut utiliser cette capacité dans les ténèbres complètes."
+      "desc": "Le PJ altère la lumière pour former des éclats d’énergie pure. Il réalise un test d’attaque magique et le compare à la DEF de toutes les cibles autour de lui sur un rayon de 6 mètres. En cas de réussite, elles subissent [2d6 + Mod. d’INT] DM magiques et sont aveuglées pendant 1 tour. En cas d’échec, les cibles ne subissent que la moitié des DM et ne sont pas aveuglées.\nL’alchimiste doit disposer d’une source de lumière. Il ne peut utiliser cette capacité dans les ténèbres complètes.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Lumière transmutée*",
+          "de": 20,
+          "dm": "[2d6+Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "2"
+        }
+      ]
     },
     {
       "nom": "Double sigle (L)",
@@ -3491,7 +3998,18 @@
     },
     {
       "nom": "Frappe d’antimatière*",
-      "desc": "Le PJ touche une cible et génère un champ d’antimatière qui détruit tout ce qu’il touche. Sur une attaque magique réussie, il inflige [3d8 + Mod. d’INT] DM magique. Cette attaque ignore la RD de la cible.\nSi l’attaque échoue mais que la cible porte une armure manufacturée ou un bouclier, alors le pentacle détruit une partie de son équipement et elle subit un malus de -2 à la DEF."
+      "desc": "Le PJ touche une cible et génère un champ d’antimatière qui détruit tout ce qu’il touche. Sur une attaque magique réussie, il inflige [3d8 + Mod. d’INT] DM magique. Cette attaque ignore la RD de la cible.\nSi l’attaque échoue mais que la cible porte une armure manufacturée ou un bouclier, alors le pentacle détruit une partie de son équipement et elle subit un malus de -2 à la DEF.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Frappe d’antimatière*",
+          "de": 20,
+          "dm": "[3d8+Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "5"
+        }
+      ]
     }
   ],
   "Voie des pierres supérieures": [

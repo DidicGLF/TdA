@@ -97,6 +97,9 @@ const PRINT_CSS = `
 
 const STATS = ['PV', 'DEF', 'INIT', 'PR', 'PM', 'PC', 'ATT_CONTACT', 'ATT_DISTANCE', 'ATT_MAGIQUE', 'DM_ARME', 'DM_MAINS_NUES', 'FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
 const FORMULAS = ['MOD_FOR', 'MOD_DEX', 'MOD_CON', 'MOD_INT', 'MOD_SAG', 'MOD_CHA'] as const
+// Cible spéciale réservée aux "cibles" de Bonus temporaire : bonus appliqué au prochain jet de d20, quel qu'il soit
+// (attaque, caractéristique ou jet libre) — n'a de sens que pour BONUS_TEMP, donc gardée hors de STATS.
+const CIBLE_JET_LIBRE = 'JET'
 
 const FORMATIONS = [
   'Armes de duel', 'Armes de guerre', 'Armes de guerre lourdes', 'Armes de jet',
@@ -2240,6 +2243,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                 >
                                   <option value="">+ stat</option>
                                   {STATS.filter(s => !grant.cibles.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+                                  {!grant.cibles.includes(CIBLE_JET_LIBRE) && <option value={CIBLE_JET_LIBRE}>{CIBLE_JET_LIBRE} (jet de d20 libre)</option>}
                                 </select>
                               </div>
                               {/* Dé bonus (dégâts) */}
