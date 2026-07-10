@@ -69,6 +69,13 @@ function AppContent() {
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showTranslationEditor, setShowTranslationEditor] = useState(false)
   const [showGameMode, setShowGameMode] = useState(false)
+  // Copie de session créée à l'ouverture du Mode de jeu : toutes les mutations de la partie (PV, PM, PR, effets
+  // temporaires...) se font dessus, jamais sur `character`. Fermer le Mode de jeu la jette (setGameCharacter(null)) —
+  // la fiche d'origine n'est donc jamais altérée par une session de jeu.
+  const [gameCharacter, setGameCharacter] = useState<Character | null>(null)
+  const openGameMode = () => setGameCharacter(JSON.parse(JSON.stringify(character)))
+  const closeGameMode = () => { setShowGameMode(false); setGameCharacter(null) }
+  const gameOnChange = (patch: Partial<Character>) => setGameCharacter(prev => prev ? { ...prev, ...patch } : prev)
   const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [ficheLocked, setFicheLocked] = useState(true)
@@ -96,6 +103,11 @@ function AppContent() {
 
   const onChange = (patch: Partial<Character>) =>
     setCharacter(prev => ({ ...prev, ...patch }))
+
+  // Pendant une session de Mode de jeu, la fiche recto affichée montre la copie de session (PV/PM/PR/DEF en
+  // temps réel) au lieu de l'original — jamais l'inverse.
+  const sheetCharacter = (showGameMode && gameCharacter) ? gameCharacter : character
+  const sheetOnChange = (showGameMode && gameCharacter) ? gameOnChange : onChange
 
   const importSheetImage = (side: 'recto' | 'verso', file: File) => {
     const reader = new FileReader()
@@ -456,7 +468,7 @@ function AppContent() {
           {t(`fiche.${p}`)}
         </button>
       ))}
-      <button onClick={() => { setShowGameMode(true); setMobileTab('jeu') }} style={{
+      <button onClick={() => { openGameMode(); setShowGameMode(true); setMobileTab('jeu') }} style={{
         flexShrink: 0, padding: '6px 12px', borderRadius: 4,
         border: '1px solid rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.25)',
         color: 'rgba(210,185,255,0.95)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
@@ -521,7 +533,7 @@ function AppContent() {
                 </div>
                 <div style={{ padding: '0 4px 80px' }}>
                   {sheetPage === 'recto' ? (
-                    <CharacterSheetRecto character={character} onChange={onChange} activeStep={step} />
+                    <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step} />
                   ) : sheetPage === 'verso' ? (
                     <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
                   ) : sheetPage === 'cristaux' ? (
@@ -536,7 +548,7 @@ function AppContent() {
 
           <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
             {showGameMode ? (
-              <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => { setShowGameMode(false); setMobileTab('creation') }} screenWidth={screenWidth} />
+              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
             ) : (
               <>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
@@ -554,7 +566,7 @@ function AppContent() {
                     onPrev={() => setStep(s => Math.max(s - 1, 0))}
                     onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                     onSave={() => setShowSave(true)}
-                    onPlay={() => { setShowGameMode(true); setMobileTab('jeu') }}
+                    onPlay={() => { openGameMode(); setShowGameMode(true); setMobileTab('jeu') }}
                   />
                 </div>
               </>
@@ -626,36 +638,6 @@ function AppContent() {
 
             <div style={{ flex: 1, minWidth: 16 }} />
 
-            {/* Imprimer */}
-            <button
-              onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
-              style={{
-                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-                border: '1px solid rgba(201,168,76,0.3)',
-                background: 'transparent',
-                color: 'rgba(245,236,215,0.65)',
-                cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}
-            >
-              {t('toolbar.imprimer')}
-            </button>
-
-            {/* Jouer */}
-            <button
-              onClick={() => setShowGameMode(true)}
-              style={{
-                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
-                border: '1px solid rgba(160,120,255,0.6)',
-                background: 'rgba(140,100,255,0.25)',
-                color: 'rgba(210,185,255,0.95)',
-                cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}
-            >
-              {t('toolbar.jouer')}
-            </button>
-
             {/* Sauvegarde */}
             <button
               onClick={() => setShowSave(true)}
@@ -685,6 +667,36 @@ function AppContent() {
               }}
             >
               {t('toolbar.niveau', { niveau: character.niveau })}{character.niveau >= 20 ? ' ★' : ' →'}
+            </button>
+
+            {/* Imprimer */}
+            <button
+              onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(201,168,76,0.3)',
+                background: 'transparent',
+                color: 'rgba(245,236,215,0.65)',
+                cursor: 'pointer', letterSpacing: '0.03em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {t('toolbar.imprimer')}
+            </button>
+
+            {/* Jouer */}
+            <button
+              onClick={() => { openGameMode(); setShowGameMode(true) }}
+              style={{
+                marginBottom: 4, padding: '3px 12px', borderRadius: 4,
+                border: '1px solid rgba(160,120,255,0.6)',
+                background: 'rgba(140,100,255,0.25)',
+                color: 'rgba(210,185,255,0.95)',
+                cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              {t('toolbar.jouer')}
             </button>
 
             {/* Zoom */}
@@ -828,7 +840,7 @@ function AppContent() {
             onClick={calibrate ? e => { e.stopPropagation(); setPinned(getCoords(e)) } : undefined}
           >
             {sheetPage === 'recto' ? (
-              <CharacterSheetRecto character={character} onChange={onChange} activeStep={step}
+              <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined}
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : sheetPage === 'verso' ? (
@@ -980,7 +992,7 @@ function AppContent() {
         overflow: 'hidden',
       }}>
         {showGameMode ? (
-          <GameModePanel character={character} descriptions={descriptions} onChange={onChange} onClose={() => setShowGameMode(false)} screenWidth={screenWidth} />
+          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
@@ -999,7 +1011,7 @@ function AppContent() {
                 onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                 onSave={() => setShowSave(true)}
                 onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
-                onPlay={() => setShowGameMode(true)}
+                onPlay={() => { openGameMode(); setShowGameMode(true) }}
               />
             </div>
           </>

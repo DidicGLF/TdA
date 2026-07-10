@@ -52,6 +52,8 @@ export type Contribution = {
   triggerRang: number
   voie: string
   conditionArmes?: string[]
+  div2?: boolean
+  immunite?: boolean
 }
 
 export type EffectsResult = Record<string, Contribution[]>
@@ -84,7 +86,7 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
       // Effets normaux
       for (const effect of rangData.effects ?? []) {
         if (effect.avancee && !(voie.rangsAvances?.[i])) continue
-        if (!effect.value && !effect.formula) continue
+        if (!effect.value && !effect.formula && !effect.div2 && !effect.immunite) continue
 
         if (effect.minRang !== undefined && !voie.rangs[effect.minRang - 1]) continue
         if (effect.condition && !evaluateCondition(effect.condition, character)) continue
@@ -96,6 +98,8 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
           const resolved = resolveFormula(effect.formula, character)
           if (resolved === null) continue
           value = effect.rangMultiplier ? resolved * (i + 1) : resolved
+        } else if (effect.div2 || effect.immunite) {
+          value = 0
         } else {
           continue
         }
@@ -108,6 +112,8 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
           triggerRang: effect.minRang ?? (i + 1),
           voie: voie.nom,
           conditionArmes: effect.condition && effect.condition.type === 'hasArme' ? effect.condition.armes : undefined,
+          div2: effect.div2,
+          immunite: effect.immunite,
         }
 
         if (!result[effect.stat]) result[effect.stat] = []
@@ -221,6 +227,23 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
 
 export function sumStat(contributions: Contribution[]): number {
   return contributions.reduce((acc, c) => acc + c.value, 0)
+}
+
+// Contributions des bonus temporaires (Effets en jeu) actuellement actifs sur la copie de session du Mode de
+// jeu (character.activeBoosts/effectCounters) — utilisé à la fois par le Mode de jeu et par la fiche affichée
+// pendant la partie, pour qu'elle reflète en temps réel les effets en cours (DEF, etc.).
+export function activeBoostContributions(character: Character, statKey: string): Contribution[] {
+  const boosts = character.activeBoosts ?? []
+  const counters = character.effectCounters ?? {}
+  const result: Contribution[] = []
+  for (const boost of boosts) {
+    if (boost.stat !== statKey || !boost.sourceKey) continue
+    // Un compteur absent (pas de durée "usage" définie) signifie "actif jusqu'à retrait manuel", pas "expiré"
+    const compteur = counters[boost.sourceKey]
+    if (compteur !== undefined && compteur <= 0) continue
+    result.push({ stat: statKey, value: boost.bonus, nom: boost.nom, rang: boost.rang, triggerRang: boost.rang, voie: '', div2: boost.div2, immunite: boost.immunite })
+  }
+  return result
 }
 
 // ── Attaques totales (identiques à la fiche) ──────────────────────────────────

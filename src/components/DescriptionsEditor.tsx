@@ -95,7 +95,11 @@ const PRINT_CSS = `
   .tda-table .tda-alt td { background: rgba(160,112,48,0.05); }
 `
 
-const STATS = ['PV', 'DEF', 'INIT', 'PR', 'PM', 'PC', 'ATT_CONTACT', 'ATT_DISTANCE', 'ATT_MAGIQUE', 'DM_ARME', 'DM_MAINS_NUES', 'FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
+const STATS = [
+  // Pour RD / RD_<TYPE>, cocher "Diviser par 2" (div2) transforme cette entrée en résistance (÷2) plutôt qu'en réduction à points fixes
+  'PV', 'DEF', 'RD', 'RD_FEU', 'RD_FROID', 'RD_FOUDRE', 'RD_ACIDE', 'RD_POISON', 'RD_NECROTIQUE', 'RD_TENEBRES', 'RD_LUMIERE', 'RD_MENTAL', 'RD_TRANCHANT', 'RD_PERFORANT', 'RD_CONTONDANT',
+  'INIT', 'PR', 'PM', 'PC', 'ATT_CONTACT', 'ATT_DISTANCE', 'ATT_MAGIQUE', 'DM_ARME', 'DM_MAINS_NUES', 'FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA',
+] as const
 const FORMULAS = ['MOD_FOR', 'MOD_DEX', 'MOD_CON', 'MOD_INT', 'MOD_SAG', 'MOD_CHA'] as const
 // Cible spéciale réservée aux "cibles" de Bonus temporaire : bonus appliqué au prochain jet de d20, quel qu'il soit
 // (attaque, caractéristique ou jet libre) — n'a de sens que pour BONUS_TEMP, donc gardée hors de STATS.
@@ -111,7 +115,7 @@ type EffectCondition =
   | { type: 'hasBouclier' }
   | { type: 'hasArme'; armes: string[] }
   | { type: 'noArme' }
-type Effect = { stat: string; value?: number; formula?: string; diceStr?: string; minRang?: number; avancee?: boolean; rangMultiplier?: boolean; condition?: EffectCondition }
+type Effect = { stat: string; value?: number; formula?: string; diceStr?: string; minRang?: number; avancee?: boolean; rangMultiplier?: boolean; condition?: EffectCondition; div2?: boolean; immunite?: boolean }
 type Grant =
   | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
@@ -119,7 +123,7 @@ type Grant =
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
   | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; condition?: EffectCondition; minRang?: number; avancee?: boolean }
-  | { type: 'BONUS_TEMP'; label: string; bonus?: number; formula?: string; deDegats?: string; deDegatsParArme?: boolean; temporaire?: boolean; cibles: string[]; choix?: boolean; cout_pv?: string; cout_pm?: string; coutCaracStat?: string; coutCaracValeur?: number; usage?: string; post_jet?: boolean; precision?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
+  | { type: 'BONUS_TEMP'; label: string; bonus?: number; formula?: string; deDegats?: string; deDegatsParArme?: boolean; temporaire?: boolean; cibles: string[]; choix?: boolean; cout_pv?: string; cout_pm?: string; coutCaracStat?: string; coutCaracValeur?: number; usage?: string; post_jet?: boolean; precision?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean; div2?: boolean; immunite?: boolean }
   | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
   | { type: 'ACTION'; label: string; de: number; dm: string; attType?: 'contact' | 'distance' | 'magique'; activable?: boolean; cout_pm?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
@@ -329,7 +333,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateEffect = (voie: string, rang: number, effIdx: number, patch: { stat?: string; value?: number | null; formula?: string | null; diceStr?: string | null; minRang?: number | null; avancee?: boolean; rangMultiplier?: boolean | null; condition?: EffectCondition | null }) => {
+  const updateEffect = (voie: string, rang: number, effIdx: number, patch: { stat?: string; value?: number | null; formula?: string | null; diceStr?: string | null; minRang?: number | null; avancee?: boolean; rangMultiplier?: boolean | null; condition?: EffectCondition | null; div2?: boolean; immunite?: boolean }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
@@ -1815,6 +1819,28 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         >
                           {STATS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
+                        {eff.stat.startsWith('RD') && (
+                          <>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!eff.div2}
+                                onChange={e => updateEffect(selected, i, ei, { div2: e.target.checked || undefined })}
+                                style={{ accentColor: S.gold, cursor: 'pointer' }}
+                              />
+                              {t('descEditor.diviserPar2')}
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!eff.immunite}
+                                onChange={e => updateEffect(selected, i, ei, { immunite: e.target.checked || undefined })}
+                                style={{ accentColor: S.gold, cursor: 'pointer' }}
+                              />
+                              {t('descEditor.immunise')}
+                            </label>
+                          </>
+                        )}
                         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
                           <input
                             type="checkbox"
@@ -2245,6 +2271,28 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                                   {STATS.filter(s => !grant.cibles.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
                                   {!grant.cibles.includes(CIBLE_JET_LIBRE) && <option value={CIBLE_JET_LIBRE}>{CIBLE_JET_LIBRE} (jet de d20 libre)</option>}
                                 </select>
+                                {grant.cibles.some(c => c.startsWith('RD')) && (
+                                  <>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!!grant.div2}
+                                        onChange={e => updateGrant(selected, i, gi, { div2: e.target.checked || undefined } as never)}
+                                        style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                      />
+                                      {t('descEditor.diviserPar2')}
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!!grant.immunite}
+                                        onChange={e => updateGrant(selected, i, gi, { immunite: e.target.checked || undefined } as never)}
+                                        style={{ accentColor: S.gold, cursor: 'pointer' }}
+                                      />
+                                      {t('descEditor.immunise')}
+                                    </label>
+                                  </>
+                                )}
                               </div>
                               {/* Dé bonus (dégâts) */}
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

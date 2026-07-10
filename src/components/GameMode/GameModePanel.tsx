@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
@@ -12,9 +12,18 @@ const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const BG = '#1a1410'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
+const SECTION_DIVIDER: React.CSSProperties = { borderTop: `1px dashed ${SECTION_BORDER}`, paddingTop: 12 }
 
 const STATS: Caracteristique[] = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA']
 const BARE_DICE = [4, 6, 8, 10, 12, 20]
+// Types de dégâts sélectionnables pour le champ "Dégâts subis" — chaque type (hors générique) a sa propre
+// stat de RD dédiée (RD_FEU, RD_FROID, ...), qui s'ajoute à la RD générique (stat "RD").
+const DAMAGE_TYPES = ['FEU', 'FROID', 'FOUDRE', 'ACIDE', 'POISON', 'NECROTIQUE', 'TENEBRES', 'LUMIERE', 'MENTAL', 'TRANCHANT', 'PERFORANT', 'CONTONDANT']
+// Icônes (non traduites, universelles) associées à chaque type de dégâts — '' = générique
+const DAMAGE_TYPE_ICONS: Record<string, string> = {
+  '': '⚔️', FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
+  TENEBRES: '🌑', LUMIERE: '☀️', MENTAL: '🧠', TRANCHANT: '🗡️', PERFORANT: '🏹', CONTONDANT: '🔨',
+}
 
 
 interface ContributingEffect {
@@ -48,11 +57,18 @@ interface ActiveBoost {
   post_jet: boolean
   cout_pv?: string
   sourceKey?: string
+  div2?: boolean
+  immunite?: boolean
+  // Nom de la capacité + rang, dupliqués ici (plutôt qu'une recherche dans availableBonuses) pour que ce soit
+  // auto-suffisant une fois persisté sur le personnage et relu par la fiche.
+  nom: string
+  rang: number
 }
 
 interface AvailableBonus {
   voieNom: string
   rangIdx: number
+  grantIdx: number
   rangNom: string
   label: string
   bonus: number
@@ -69,6 +85,8 @@ interface AvailableBonus {
   usage?: string
   post_jet?: boolean
   precision?: string
+  div2?: boolean
+  immunite?: boolean
 }
 
 interface AvailableAvantage {
@@ -112,20 +130,34 @@ function rollDiceStr(diceStr: string): number {
   return total
 }
 
+// Clé unique par grant activable — doit inclure grantIdx : plusieurs Bonus temporaire peuvent coexister
+// sur un même rang (ex: DEF+4, immunité au froid, ÷2 au feu), et ab-${voieNom}-${rangIdx} seul les confondrait.
+function boostKey(ab: { voieNom: string; rangIdx: number; grantIdx: number }): string {
+  return `ab-${ab.voieNom}-${ab.rangIdx}-${ab.grantIdx}`
+}
+
 export default function GameModePanel({ character, descriptions, onChange, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
   const { armes, armures } = useGameData()
   const isMobile = screenWidth < 700
   const [result, setResult] = useState<RollResult | null>(null)
   const [history, setHistory] = useState<RollResult[]>([])
-  const [effectCounters, setEffectCounters] = useState<Record<string, number>>({})
-  const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>([])
+  // Le "character" reçu est déjà la copie de session créée par App.tsx à l'ouverture du Mode de jeu (jamais
+  // l'original) — on peut donc écrire dessus librement via onChange, ça ne touche jamais la vraie fiche.
+  const [effectCounters, setEffectCounters] = useState<Record<string, number>>(() => character.effectCounters ?? {})
+  const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>(() => (character.activeBoosts as ActiveBoost[] | undefined) ?? [])
+  useEffect(() => {
+    onChange({ activeBoosts, effectCounters })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBoosts, effectCounters])
   const [pendingStatPick, setPendingStatPick] = useState<{ abIdx: number } | null>(null)
   const [deDegatsWeapon, setDeDegatsWeapon] = useState<Record<string, string>>({})
-  const [currentPV, setCurrentPV] = useState<number | null>(null)
-  const [currentPM, setCurrentPM] = useState<number | null>(null)
+  const [currentPV, setCurrentPV] = useState<number | null>(() => character.pvRestants ?? null)
+  const [currentPM, setCurrentPM] = useState<number | null>(() => character.pmRestants ?? null)
   const [resultInHistory, setResultInHistory] = useState(false)
   const [healInput, setHealInput] = useState('')
+  const [dmInput, setDmInput] = useState('')
+  const [gmTooltip, setGmTooltip] = useState<{ title: string; desc?: string; x: number; y: number } | null>(null)
 
 
   const voiesPerso = useMemo(() => [
@@ -144,13 +176,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         if (!unlocked) return
         const rang = rangsDesc[idx]
         if (!rang?.grants) return
-        for (const grant of rang.grants) {
+        for (let gi = 0; gi < rang.grants.length; gi++) {
+          const grant = rang.grants[gi]
           if (grant.type !== 'BONUS_TEMP') continue
           if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
           if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
           if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
           const bonusValue = grant.formula ? (resolveFormula(grant.formula, character) ?? 0) : (grant.bonus ?? 0)
-          out.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, label: grant.label, bonus: bonusValue, formula: grant.formula, deDegats: grant.deDegats, deDegatsParArme: grant.deDegatsParArme, temporaire: grant.temporaire, cibles: grant.cibles, choix: grant.choix, cout_pv: grant.cout_pv, cout_pm: grant.cout_pm, coutCaracStat: grant.coutCaracStat, coutCaracValeur: grant.coutCaracValeur, usage: grant.usage, post_jet: grant.post_jet, precision: grant.precision })
+          out.push({ voieNom: voie.nom, rangIdx: idx, grantIdx: gi, rangNom: rang.nom, label: grant.label, bonus: bonusValue, formula: grant.formula, deDegats: grant.deDegats, deDegatsParArme: grant.deDegatsParArme, temporaire: grant.temporaire, cibles: grant.cibles, choix: grant.choix, cout_pv: grant.cout_pv, cout_pm: grant.cout_pm, coutCaracStat: grant.coutCaracStat, coutCaracValeur: grant.coutCaracValeur, usage: grant.usage, post_jet: grant.post_jet, precision: grant.precision, div2: grant.div2, immunite: grant.immunite })
         }
       })
     }
@@ -168,7 +201,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
 
   // Bonus en dés (deDegats) actuellement actifs : permanents, ou temporaires en cours
   const activeDeDegats = useMemo(() => availableBonuses.filter(ab =>
-    ab.deDegats && (!ab.temporaire || (effectCounters[`ab-${ab.voieNom}-${ab.rangIdx}`] ?? 0) > 0)
+    ab.deDegats && (!ab.temporaire || (effectCounters[boostKey(ab)] ?? 0) > 0)
   ), [availableBonuses, effectCounters])
 
   // Stats avec "garder le meilleur jet" : stat → { lancer, garder }
@@ -394,7 +427,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     if (!ab.deDegatsParArme) return undefined
     const equipped = [character.arme1, character.arme2].filter(Boolean)
     if (equipped.length <= 1) return equipped[0]
-    return deDegatsWeapon[`ab-${ab.voieNom}-${ab.rangIdx}`]
+    return deDegatsWeapon[boostKey(ab)]
   }
 
   const handleWeaponDegats = (nomArme: string, label: string, dmFallback: string) => {
@@ -428,7 +461,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   }
 
   const handleActivateClick = (ab: AvailableBonus, idx: number) => {
-    const key = `ab-${ab.voieNom}-${ab.rangIdx}`
+    const key = boostKey(ab)
     if (ab.cout_pv) {
       const cost = rollDiceStr(ab.cout_pv)
       const m = ab.cout_pv.match(/^(\d*)d(\d+)$/i)
@@ -456,7 +489,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     if (ab.coutCaracStat && ab.coutCaracValeur) {
       setActiveBoosts(prev => [
         ...prev,
-        { id: nextId++, stat: ab.coutCaracStat!, bonus: -ab.coutCaracValeur!, label: `${ab.label} — ${t('gameMode.sufCout')}`, post_jet: false, sourceKey: key },
+        { id: nextId++, stat: ab.coutCaracStat!, bonus: -ab.coutCaracValeur!, label: `${ab.label} — ${t('gameMode.sufCout')}`, post_jet: false, sourceKey: key, nom: ab.rangNom, rang: ab.rangIdx + 1 },
       ])
     }
     if (ab.deDegats) {
@@ -468,15 +501,15 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     } else if (!ab.deDegats) {
       setActiveBoosts(prev => [
         ...prev,
-        ...ab.cibles.map(s => ({ id: nextId++, stat: s, bonus: ab.bonus, label: ab.label, post_jet: ab.post_jet ?? false, cout_pv: ab.cout_pv, sourceKey: key })),
+        ...ab.cibles.map(s => ({ id: nextId++, stat: s, bonus: ab.bonus, label: ab.label, post_jet: ab.post_jet ?? false, cout_pv: ab.cout_pv, sourceKey: key, div2: ab.div2, immunite: ab.immunite, nom: ab.rangNom, rang: ab.rangIdx + 1 })),
       ])
     }
   }
 
   const handleStatPick = (ab: AvailableBonus, stat: string) => {
     setPendingStatPick(null)
-    const key = `ab-${ab.voieNom}-${ab.rangIdx}`
-    setActiveBoosts(prev => [...prev, { id: nextId++, stat, bonus: ab.bonus, label: ab.label, post_jet: ab.post_jet ?? false, cout_pv: ab.cout_pv, sourceKey: key }])
+    const key = boostKey(ab)
+    setActiveBoosts(prev => [...prev, { id: nextId++, stat, bonus: ab.bonus, label: ab.label, post_jet: ab.post_jet ?? false, cout_pv: ab.cout_pv, sourceKey: key, div2: ab.div2, immunite: ab.immunite, nom: ab.rangNom, rang: ab.rangIdx + 1 }])
   }
 
   const applyPostJetBoost = useCallback((boost: ActiveBoost) => {
@@ -517,6 +550,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     textAlign: 'center' as const, whiteSpace: 'nowrap' as const,
   })
 
+  // Tooltip au même design que celui de la fiche de personnage (fond sombre, bordure dorée), positionné
+  // au-dessus de l'élément survolé plutôt que via le tooltip natif du navigateur.
+  const showGmTooltip = (e: React.MouseEvent, title: string, desc?: string) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setGmTooltip({ title, desc, x: rect.left + rect.width / 2, y: rect.top })
+  }
+  const hideGmTooltip = () => setGmTooltip(null)
+
   const pvFromVoies = sumStat(effectsAll['PV'] ?? [])
   // Réplique le calcul de la fiche de personnage (CharacterSheetRecto) : base niveau 1 (snapshot ou dé de vie + Mod.CON) + historique de montées de niveau
   const deVieFaces = character.famille === 'combattants' ? 10 : character.famille === 'aventuriers' ? 8 : 6
@@ -528,11 +569,66 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     const bonus = sumStat(effectsAll[stat] ?? [])
     return bonus === 0 ? character.caracteristiques[stat].mod : getMod(character.caracteristiques[stat].valeur + bonus)
   }
+  // Détail des sources qui contribuent au score/mod affiché sur les boutons de Caractéristiques (pour le tooltip) :
+  // les bonus de score permanents (Effects, ajoutés avant conversion en mod) et les bonus permanents de Mod (Bonus temporaire non-temporaire).
+  const modSourcesPourStat = (stat: string): { nom: string; rang: number; value: number }[] => {
+    const sources: { nom: string; rang: number; value: number }[] = []
+    for (const c of effectsAll[stat] ?? []) sources.push({ nom: c.nom, rang: c.rang, value: c.value })
+    for (const ab of availableBonuses) {
+      if (ab.temporaire || !ab.cibles.includes(stat)) continue
+      sources.push({ nom: ab.rangNom, rang: ab.rangIdx + 1, value: ab.bonus })
+    }
+    return sources
+  }
   const pmFromVoies = sumStat(effectsAll['PM'] ?? [])
   // PM = Niveau + Mod.SAG (doublé pour les mystiques), recalculé en direct plutôt que de se fier à character.pm figé
   const pmBaseNiveau = character.niveau + effectiveMod('SAG')
   const pmNiveau = Math.max(0, character.famille === 'mystiques' ? 2 * pmBaseNiveau : pmBaseNiveau)
   const pmTotalEffectif = pmNiveau + pmFromVoies
+  // Réduction des dégâts (RD) accordée par certaines voies — appliquée automatiquement sur les DM encaissés.
+  // Additionne la RD permanente (Effects) et la RD des bonus temporaires actuellement activés (Effets en jeu),
+  // tant que leur compteur de tours n'est pas retombé à 0 — pas seulement "au prochain jet". On garde le détail
+  // (nom de la capacité + rang + éventuels flags "div2"/"immunite") pour pouvoir l'expliquer dans le tooltip.
+  // Note : les bonus temporaires (choix ou non) finissent tous dans activeBoosts (cf. handleActivateClick /
+  // handleStatPick) — ne parcourir que ce tableau évite de compter deux fois la même activation.
+  type RdSource = { nom: string; rang: number; value: number; div2?: boolean; immunite?: boolean }
+  const rdSourcesPourStat = (statKey: string): RdSource[] => {
+    const sources: RdSource[] = []
+    for (const c of effectsAll[statKey] ?? []) sources.push({ nom: c.nom, rang: c.rang, value: c.value, div2: c.div2, immunite: c.immunite })
+    for (const boost of activeBoosts) {
+      if (boost.stat !== statKey || !boost.sourceKey) continue
+      // Un compteur absent (pas de "usage" renseigné sur le grant) signifie "actif tant qu'il n'est pas retiré
+      // manuellement", pas "expiré" — ne l'exclure que si un compteur existe ET est retombé à 0.
+      const compteur = effectCounters[boost.sourceKey]
+      if (compteur !== undefined && compteur <= 0) continue
+      sources.push({ nom: boost.nom, rang: boost.rang, value: boost.bonus, div2: boost.div2, immunite: boost.immunite })
+    }
+    return sources
+  }
+  // RD générique (s'applique à tous les types) + RD spécifique au type de dégâts, si renseigné
+  const combinedRdSourcesPourType = (typeKey: string) => [...rdSourcesPourStat('RD'), ...(typeKey ? rdSourcesPourStat(`RD_${typeKey}`) : [])]
+  const rdEffectifPourType = (typeKey: string): number => combinedRdSourcesPourType(typeKey).filter(s => !s.div2 && !s.immunite).reduce((s, c) => s + c.value, 0)
+  const rdSourcesPourType = (typeKey: string) => combinedRdSourcesPourType(typeKey).filter(s => !s.div2 && !s.immunite)
+  // Une source RD/RD_<TYPE> peut être marquée "div2" (résistance) : elle divise par 2 les DM au lieu de les
+  // réduire à points fixes. Ne se cumule pas (une seule division, peu importe le nombre de sources actives)
+  // et s'applique avant la RD à points fixes.
+  const halfDamageSourcesPourType = (typeKey: string) => combinedRdSourcesPourType(typeKey).filter(s => s.div2 && !s.immunite)
+  const isHalfDamage = (typeKey: string): boolean => halfDamageSourcesPourType(typeKey).length > 0
+  // Une source marquée "immunite" ramène les DM correspondants à 0, prioritaire sur div2 et la RD à points fixes
+  const immuniteSourcesPourType = (typeKey: string) => combinedRdSourcesPourType(typeKey).filter(s => s.immunite)
+  const isImmune = (typeKey: string): boolean => immuniteSourcesPourType(typeKey).length > 0
+  // DEF effective, live comme sur la fiche (10 + Mod.DEX + armure + bouclier + bonus manuel), mais en tenant compte
+  // en plus des bonus temporaires actuellement actifs (Effets en jeu) — pas juste des effets permanents.
+  const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+  const armorDef = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const shieldDef = character.armuresEquipees.filter(a => isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const defSourcesTemporaireEtEffects = rdSourcesPourStat('DEF')
+  const defBonusVoies = defSourcesTemporaireEtEffects.reduce((s, c) => s + c.value, 0) + (permanentBonusByStat.get('DEF') ?? 0)
+  const defTotalEffectif = 10 + effectiveMod('DEX') + armorDef + shieldDef + (character.bonusDefense ?? 0) + defBonusVoies
+  const defSources = [
+    ...defSourcesTemporaireEtEffects,
+    ...availableBonuses.filter(ab => !ab.temporaire && ab.cibles.includes('DEF')).map(ab => ({ nom: ab.rangNom, rang: ab.rangIdx + 1, value: ab.bonus })),
+  ]
   // currentPV/currentPM sont null au premier render → on initialise au max effectif
   const pvActuels = currentPV ?? pvTotalEffectif
   const pvPct = pvTotalEffectif > 0 ? pvActuels / pvTotalEffectif : 0
@@ -589,6 +685,30 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     applyHeal(total, t('gameMode.recuperationHistoryLabel'), `1d${deVieFaces}${modStr}+${character.niveau}`, `[${dieRoll}]`, 'PR')
   }
 
+  // Applique des DM reçus du type choisi : immunité totale en priorité, sinon division par 2 si applicable,
+  // puis déduction de la RD (générique + spécifique au type) avant de retirer les PV
+  const handleTakeDamage = (type: string) => {
+    const amount = parseInt(dmInput, 10)
+    if (!Number.isFinite(amount) || amount <= 0) return
+    const label = type ? `${t('gameMode.damageTakenHistoryLabel')} (${t(`gameMode.dmType${type}`)})` : t('gameMode.damageTakenHistoryLabel')
+    if (isImmune(type)) {
+      pushHistory({ label, formula: `${amount} ${t('gameMode.sufImmunite')}`, sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+      setDmInput('')
+      return
+    }
+    const halved = isHalfDamage(type)
+    const apresDivision = halved ? Math.floor(amount / 2) : amount
+    const rd = rdEffectifPourType(type)
+    const net = Math.max(0, apresDivision - rd)
+    const parts = [String(amount)]
+    if (halved) parts.push(`÷2 = ${apresDivision}`)
+    if (rd > 0) parts.push(`− ${rd} ${t('gameMode.sufRD')}`)
+    const formula = parts.length > 1 ? parts.join(' ') : `${amount} ${t('gameMode.pv')}`
+    pushHistory({ label, formula, sides: 6, roll: net, modifier: null, total: net, costType: 'PV', flash: false })
+    applyPVLoss(Math.max(0, pvActuels - net))
+    setDmInput('')
+  }
+
   const payPMCost = (cost: number, label: string) => {
     const pmSpent = Math.min(cost, pmActuels)
     const deficit = cost - pmSpent
@@ -612,7 +732,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   }
 
   const formatFormula = (formula: string) => `Mod.${formula.replace(/^MOD_/, '')}`
+  // Pour un bonus RD/RD_<TYPE> marqué "immunite" ou "div2", il n'y a pas de valeur chiffrée à afficher (le +0 par
+  // défaut n'a aucun sens) — on affiche plutôt ce que l'activation représente concrètement.
   const formatBonusLabel = (ab: AvailableBonus) => {
+    if (ab.immunite) return t('gameMode.sufImmunite')
+    if (ab.div2) return t('gameMode.sufDiv2')
     const signedBonus = `${ab.bonus >= 0 ? '+' : ''}${ab.bonus}`
     return ab.formula ? `${formatFormula(ab.formula)} (${signedBonus})` : signedBonus
   }
@@ -628,7 +752,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       </div>
 
       {/* Barre PV / PM */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <div onClick={() => { setCurrentPV(pvTotalEffectif); onChange({ pvRestants: pvTotalEffectif }) }}
             title={t('gameMode.clickToFull')}
@@ -652,6 +776,15 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
           )}
         </div>
         <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(245,236,215,0.3)' }}>{t('gameMode.clickCardToFull')}</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span
+            onMouseEnter={e => showGmTooltip(e, t('gameMode.defCardTitle'), defSources.map(s => t('gameMode.bonusSourceLine', { nom: s.nom, rang: s.rang, value: s.value })).join('\n') || undefined)}
+            onMouseLeave={hideGmTooltip}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: GOLD, background: 'rgba(201,168,76,0.1)', border: `1px solid ${GOLD}`, borderRadius: 12, padding: '3px 12px', cursor: 'help' }}
+          >
+            🛡️ {t('gameMode.defCardTitle')} {defTotalEffectif}
+          </span>
+        </div>
         {activeBoosts.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
             {activeBoosts.map(b => (
@@ -682,9 +815,9 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         )}
 
         {/* ── Section : Soins ── */}
-        <div>
+        <div style={SECTION_DIVIDER}>
           <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.healSection')}</div>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
             <input
               type="number"
               min={1}
@@ -692,21 +825,90 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               onChange={e => setHealInput(e.target.value)}
               placeholder={t('gameMode.healPlaceholder')}
               disabled={isPvFull}
-              style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '6px 10px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: isPvFull ? 0.35 : 1 }}
+              style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: isPvFull ? 0.35 : 1 }}
             />
             <button onClick={handleManualHeal} disabled={isPvFull} style={{ ...btnStyle(), flexShrink: 0, opacity: isPvFull ? 0.35 : 1, cursor: isPvFull ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
+            <button
+              onClick={handleRecuperation}
+              disabled={isUnconscious || prRemaining <= 0 || isPvFull}
+              title={prRemaining > 0 ? t('gameMode.recuperationLabel', { count: prRemaining }) : t('gameMode.recuperationNone')}
+              style={{ ...btnStyle(), flexShrink: 0, opacity: (isUnconscious || prRemaining <= 0 || isPvFull) ? 0.35 : 1, cursor: (isUnconscious || prRemaining <= 0 || isPvFull) ? 'not-allowed' : 'pointer' }}
+            >
+              🩹 {t('gameMode.recuperationButton')} ({prRemaining})
+            </button>
           </div>
-          <button
-            onClick={handleRecuperation}
-            disabled={isUnconscious || prRemaining <= 0 || isPvFull}
-            style={{ ...btnStyle(), width: '100%', boxSizing: 'border-box', opacity: (isUnconscious || prRemaining <= 0 || isPvFull) ? 0.35 : 1, cursor: (isUnconscious || prRemaining <= 0 || isPvFull) ? 'not-allowed' : 'pointer' }}
-          >
-            🩹 {t('gameMode.recuperationButton')} — {prRemaining > 0 ? t('gameMode.recuperationLabel', { count: prRemaining }) : t('gameMode.recuperationNone')}
-          </button>
+        </div>
+
+        {/* ── Section : Dégâts subis ── */}
+        <div style={SECTION_DIVIDER}>
+          <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.damageTakenSection')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start', justifyContent: 'center' }}>
+            <input
+              type="number"
+              min={1}
+              value={dmInput}
+              onChange={e => setDmInput(e.target.value)}
+              placeholder={t('gameMode.damageTakenPlaceholder')}
+              style={{ width: 100, height: 48, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+            />
+            {(() => {
+              const amount = parseInt(dmInput, 10)
+              const amountValide = Number.isFinite(amount) && amount > 0
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {['', ...DAMAGE_TYPES].map(type => {
+                    const immune = isImmune(type)
+                    const rd = rdEffectifPourType(type)
+                    const halved = isHalfDamage(type)
+                    const label = type ? t(`gameMode.dmType${type}`) : t('gameMode.dmTypeGenerique')
+                    const rdDesc = rd > 0
+                      ? rdSourcesPourType(type).map(s => t('gameMode.bonusSourceLine', { nom: s.nom, rang: s.rang, value: s.value })).join('\n')
+                      : undefined
+                    const halfDesc = halved
+                      ? halfDamageSourcesPourType(type).map(s => t('gameMode.halfDamageSourceLine', { nom: s.nom, rang: s.rang })).join('\n')
+                      : undefined
+                    const immuniteDesc = immune
+                      ? immuniteSourcesPourType(type).map(s => t('gameMode.immuniteSourceLine', { nom: s.nom, rang: s.rang })).join('\n')
+                      : undefined
+                    const hintParts = immune
+                      ? [t('gameMode.sufImmunite')]
+                      : [halved ? t('gameMode.sufDiv2') : null, rd > 0 ? `${rd} ${t('gameMode.sufRD')}` : null].filter(Boolean)
+                    const hintDesc = immune ? immuniteDesc : [halfDesc, rdDesc].filter(Boolean).join('\n')
+                    return (
+                      <div key={type || 'GENERIQUE'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <button
+                          disabled={!amountValide}
+                          onClick={() => handleTakeDamage(type)}
+                          onMouseEnter={e => showGmTooltip(e, label)}
+                          onMouseLeave={hideGmTooltip}
+                          style={{
+                            ...btnStyle(),
+                            border: immune ? `1px solid ${GOLD}` : btnStyle().border,
+                            width: 48, height: 48, boxSizing: 'border-box', padding: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 22, opacity: amountValide ? 1 : 0.35, cursor: amountValide ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          {DAMAGE_TYPE_ICONS[type]}
+                        </button>
+                        <span
+                          onMouseEnter={hintParts.length > 0 ? e => showGmTooltip(e, label, hintDesc) : undefined}
+                          onMouseLeave={hintParts.length > 0 ? hideGmTooltip : undefined}
+                          style={{ fontSize: 13, color: immune ? GOLD : 'rgba(245,236,215,0.45)', height: 16, lineHeight: '16px', cursor: hintParts.length > 0 ? 'help' : 'default' }}
+                        >
+                          {hintParts.length > 0 ? hintParts.join(' · ') : ' '}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
         </div>
 
         {/* ── Section 1 : Jets rapides ── */}
-        <div>
+        <div style={SECTION_DIVIDER}>
           <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.quickRolls')}</div>
 
           <div style={{ fontSize: 13, color: `rgba(245,236,215,0.4)`, marginBottom: 4 }}>{t('gameMode.attacksSection')}</div>
@@ -750,8 +952,20 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               const mod = effectiveMod(stat) + permBonus
               const boost = activeBoosts.find(b => b.stat === stat)
               const boostedMod = boost ? mod + boost.bonus : mod
+              const sources = modSourcesPourStat(stat)
+              const tooltipDesc = [
+                t('gameMode.bonusBaseLine', { value: character.caracteristiques[stat].mod }),
+                ...sources.map(s => t('gameMode.bonusSourceLine', { nom: s.nom, rang: s.rang, value: s.value })),
+                ...(boost ? [t('gameMode.bonusNextRollLine', { nom: boost.label, value: boost.bonus })] : []),
+              ].join('\n')
               return (
-                <button key={stat} disabled={isUnconscious} style={{ ...btnStyle(!!boost), flex: 1, padding: '4px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => roll(20, t(`stats.${stat}`), mod, stat)}>
+                <button
+                  key={stat} disabled={isUnconscious}
+                  style={{ ...btnStyle(!!boost), flex: 1, padding: '4px 2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }}
+                  onClick={() => roll(20, t(`stats.${stat}`), mod, stat)}
+                  onMouseEnter={e => showGmTooltip(e, t(`stats.${stat}`), tooltipDesc)}
+                  onMouseLeave={hideGmTooltip}
+                >
                   <span style={{ fontSize: 11, color: boost ? '#ffe94d' : (permBonus || scoreBonus) ? GOLD : `rgba(245,236,215,0.5)`, display: 'flex', alignItems: 'center', gap: 2 }}>
                     {t(`stats.${stat}`)}{boost && <span style={{ fontSize: 10 }}>{boost.bonus >= 0 ? '+' : ''}{boost.bonus}</span>}
                   </span>
@@ -868,7 +1082,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         </div>
 
         {/* ── Section 2 : Effets actifs ── */}
-        <div style={{ borderTop: `1px solid ${SECTION_BORDER}`, paddingTop: 12 }}>
+        <div style={SECTION_DIVIDER}>
           <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.activeEffects')}</div>
           {availableBonuses.length === 0 && availableAvantages.length === 0 && availableActions.length === 0 ? (
             <div style={{ padding: '12px 0', textAlign: 'center' }}>
@@ -929,7 +1143,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               ))}
               {availableBonuses.map((ab, i) => {
                 const equippedWeapons = [character.arme1, character.arme2].filter(Boolean)
-                const weaponKey = `ab-${ab.voieNom}-${ab.rangIdx}`
+                const weaponKey = boostKey(ab)
                 const needsWeaponChoice = !!ab.deDegats && !!ab.deDegatsParArme && equippedWeapons.length >= 2
                 const resolvedWeapon = ab.deDegats ? getDeDegatsWeapon(ab) : undefined
                 const showStandaloneRoll = !!ab.deDegats && (ab.deDegatsParArme ? !resolvedWeapon : equippedWeapons.length === 0)
@@ -968,7 +1182,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                   )
                 }
                 const isPending = pendingStatPick?.abIdx === i
-                const activationKey = `ab-${ab.voieNom}-${ab.rangIdx}`
+                const activationKey = boostKey(ab)
                 const remainingTurns = effectCounters[activationKey] ?? 0
                 const alreadyUsed = remainingTurns > 0
                 return (
@@ -1033,8 +1247,22 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
           )}
         </div>
 
-
       </div>
+
+      {/* Tooltip custom, même design que celui de la fiche de personnage (fond sombre, bordure dorée) */}
+      {gmTooltip && (
+        <div style={{
+          position: 'fixed', left: gmTooltip.x, top: gmTooltip.y,
+          transform: 'translate(-50%, calc(-100% - 8px))',
+          maxWidth: 220, background: 'rgba(20,15,8,0.97)', color: '#e8dfc0',
+          border: `1px solid ${GOLD}`, borderRadius: 4, padding: '8px 10px',
+          fontSize: 13, lineHeight: 1.5, zIndex: 9999, pointerEvents: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.7)', whiteSpace: 'pre-line',
+        }}>
+          <div style={{ fontWeight: 700, color: GOLD, marginBottom: gmTooltip.desc ? 6 : 0, fontSize: '1.05em' }}>{gmTooltip.title}</div>
+          {gmTooltip.desc && <div>{gmTooltip.desc}</div>}
+        </div>
+      )}
     </div>
   )
 }

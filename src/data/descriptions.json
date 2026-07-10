@@ -440,7 +440,13 @@
     },
     {
       "nom": "Peau d'acier",
-      "desc": "Le PJ ne sent plus la douleur et ignore les égratignures, il réduit tous les DM subis de 2 points. Il subit toujours au moins 1 point de DM de chaque attaque reçue."
+      "desc": "Le PJ ne sent plus la douleur et ignore les égratignures, il réduit tous les DM subis de 2 points. Il subit toujours au moins 1 point de DM de chaque attaque reçue.",
+      "effects": [
+        {
+          "stat": "RD",
+          "value": 2
+        }
+      ]
     },
     {
       "nom": "Déluge de coups (L)",
@@ -653,7 +659,7 @@
   "Voie de l'arbalètrie": [
     {
       "nom": "Joli coup !",
-      "desc": "Le PJ ignore les pénalités normalement appliquées lorsque la cible est à couvert (générale- ment -2 à -5).\n**==Capacité avancée : ==**le PJ ajoute +1 aux DM de l’arme tant qu’il l’utilise à une portée optimale, soit qui n’outrepasse pas la portée maximale de l’arme."
+      "desc": "Le PJ ignore les pénalités normalement appliquées lorsque la cible est à couvert (généralement -2 à -5).\n**==Capacité avancée : ==**le PJ ajoute +1 aux DM de l’arme tant qu’il l’utilise à une portée optimale, soit qui n’outrepasse pas la portée maximale de l’arme."
     },
     {
       "nom": "Cadence de tir",
@@ -1673,7 +1679,55 @@
     },
     {
       "nom": "Résistance élémentaire",
-      "desc": "Le lien qui unit le PJ et sa monture est plus fort. Il retranche 5 points à tous les DM de son élément subis (donc RD (feu) pour les dragons, (foudre) pour les griffons, etc.). Cette réduction passe à 10 au rang 5 atteint dans cette voie. Nombre de monture :"
+      "desc": "Le lien qui unit le PJ et sa monture est plus fort. Il retranche 5 points à tous les DM de son élément subis (donc RD (feu) pour les dragons, (foudre) pour les griffons, etc.). Cette réduction passe à 10 au rang 5 atteint dans cette voie. Nombre de monture :",
+      "effects": [],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Résistance élémentaire",
+          "bonus": 5,
+          "cibles": [
+            "RD_FEU",
+            "RD_FROID",
+            "RD_FOUDRE",
+            "RD_ACIDE",
+            "RD_POISON",
+            "RD_NECROTIQUE",
+            "RD_TENEBRES",
+            "RD_LUMIERE",
+            "RD_MENTAL",
+            "RD_TRANCHANT",
+            "RD_PERFORANT",
+            "RD_CONTONDANT"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "choix": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Résistance élémentaire",
+          "bonus": 10,
+          "cibles": [
+            "RD_FEU",
+            "RD_FROID",
+            "RD_FOUDRE",
+            "RD_ACIDE",
+            "RD_POISON",
+            "RD_NECROTIQUE",
+            "RD_TENEBRES",
+            "RD_LUMIERE",
+            "RD_MENTAL",
+            "RD_TRANCHANT",
+            "RD_PERFORANT",
+            "RD_CONTONDANT"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "choix": true,
+          "minRang": 5
+        }
+      ]
     },
     {
       "nom": "Monture puissante",
@@ -2533,7 +2587,41 @@
     },
     {
       "nom": "Lancier d'élite",
-      "desc": "Le PJ ignore les malus liés à l'usage des armes d'hast. Il gagne la maîtrise des armes d'hast. Il gagne également un bonus de +1 aux tests d'attaque et aux DM avec une arme d'hast."
+      "desc": "Le PJ ignore les malus liés à l'usage des armes d'hast. Il gagne la maîtrise des armes d'hast. Il gagne également un bonus de +1 aux tests d'attaque et aux DM avec une arme d'hast.",
+      "grants": [
+        {
+          "type": "FORMATION",
+          "value": "Armes d'hast"
+        }
+      ],
+      "effects": [
+        {
+          "stat": "ATT_CONTACT",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Épieu",
+              "Lance",
+              "Lance de cavalerie",
+              "Pique"
+            ]
+          }
+        },
+        {
+          "stat": "DM_ARME",
+          "value": 1,
+          "condition": {
+            "type": "hasArme",
+            "armes": [
+              "Épieu",
+              "Lance",
+              "Lance de cavalerie",
+              "Pique"
+            ]
+          }
+        }
+      ]
     },
     {
       "nom": "Blancheur immaculée",
@@ -2665,7 +2753,13 @@
     {
       "nom": "Solide comme un roc",
       "desc": "Le PJ réduit tous les DM subis de 1 point (mais il subit toujours au moins 1 point de DM par attaque reçue). Ce bonus est cumulable avec d'autres sources de réduction des DM.",
-      "effects": []
+      "effects": [
+        {
+          "stat": "RD",
+          "value": 1
+        }
+      ],
+      "grants": []
     },
     {
       "nom": "Maîtrise des armes runiques",
@@ -3897,8 +3991,21 @@
           ],
           "temporaire": true,
           "usage": "[5+Mod.SAG]"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Peau de mercure*",
+          "bonus": 2,
+          "cibles": [
+            "RD"
+          ],
+          "avancee": true,
+          "temporaire": true,
+          "usage": "1",
+          "precision": "Contre les dégats élémentaires et magiques"
         }
-      ]
+      ],
+      "effects": []
     },
     {
       "nom": "Forge alchimique*",

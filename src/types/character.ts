@@ -39,6 +39,19 @@ export interface VoiePersonnage {
   rangsAvances?: boolean[] // index 0 = cap. avancée rang 1, index 1 = cap. avancée rang 2
 }
 
+// Bonus temporaire (Effets en jeu) actuellement activé — vit sur la copie de session du Mode de jeu
+// (jamais sur le personnage d'origine), pour que la fiche affichée pendant la partie reflète ces effets.
+export interface ActiveBoostPersisted {
+  id: number
+  stat: string
+  bonus: number
+  nom: string
+  rang: number
+  sourceKey?: string
+  div2?: boolean
+  immunite?: boolean
+}
+
 export interface TraitMagique {
   nom: string
   desc: string
@@ -85,6 +98,9 @@ export interface Character {
   bonusDefense: number
   pvTotal: number
   pvRestants?: number
+  // État live du Mode de jeu (Effets en jeu actuellement actifs) — présent uniquement sur la copie de session
+  activeBoosts?: ActiveBoostPersisted[]
+  effectCounters?: Record<string, number>
   pr: number
   prUtilises: boolean[]
   pm: number

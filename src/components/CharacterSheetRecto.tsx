@@ -11,7 +11,7 @@ import type { ArmesData, ArmuresData, FieldPositions } from '../context/GameData
 import { parseDesc } from '../utils/parseDesc'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
-import { computeEffectsWithCristaux, computeDiceEffects, sumStat } from '../utils/computeEffects'
+import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions } from '../utils/computeEffects'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
 
 const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
@@ -596,15 +596,28 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             />
           )}
 
-          {/* Défense : bonus */}
-          {f({ label: "Bonus DEF", tooltipTitle: t('recto.bonusDef'), top: 38.1, left: 87.2, width: 5.0, height: 2.0,
-            value: (character.bonusDefense ?? 0) >= 0 ? `+${character.bonusDefense ?? 0}` : `${character.bonusDefense ?? 0}`,
-            onChange: v => { const n = parseInt(v); onChange({ bonusDefense: isNaN(n) ? 0 : n }) },
-            align: "center", tooltipDesc: t('recto.bonusDefDisp') })}
+          {/* Défense : bonus — l'affichage inclut les effets de voies/cristaux et les bonus temporaires actuellement
+              actifs en Mode de jeu (activeBoostContributions), en plus du bonus manuel stocké ; la valeur brute
+              stockée (bonusDefense) n'est modifiée que par une saisie manuelle, donc pas de double-comptage sur
+              "DEF total" qui, lui, continue de n'ajouter que la valeur brute + defFromVoies séparément. */}
+          {(() => {
+            const defContribsPourAffichage = [...(effects['DEF'] ?? []), ...activeBoostContributions(character, 'DEF')]
+            const bonusDefAffiche = (character.bonusDefense ?? 0) + sumStat(defContribsPourAffichage)
+            const bonusDefLines = [
+              { label: t('recto.tlBonusDef'), value: fmt(character.bonusDefense ?? 0) },
+              ...groupContribs(defContribsPourAffichage),
+            ]
+            return f({ label: "Bonus DEF", tooltipTitle: t('recto.bonusDef'), top: 38.1, left: 87.2, width: 5.0, height: 2.0,
+              value: locked ? fmt(bonusDefAffiche) : (character.bonusDefense ?? 0),
+              onChange: locked ? () => {} : v => { const n = parseInt(v); onChange({ bonusDefense: isNaN(n) ? 0 : n }) },
+              readOnly: locked, align: "center",
+              tooltipDesc: locked ? undefined : t('recto.bonusDefDisp'),
+              formula: locked ? { lines: bonusDefLines, total: bonusDefAffiche } : undefined })
+          })()}
 
           {/* Défense : total */}
           {(() => {
-            const defContribs = effects['DEF'] ?? []
+            const defContribs = [...(effects['DEF'] ?? []), ...activeBoostContributions(character, 'DEF')]
             const defFromVoies = sumStat(defContribs)
             const defBase = 10 + DEX.mod + armorDef + shieldDef + (character.bonusDefense ?? 0)
             const defLines = [
