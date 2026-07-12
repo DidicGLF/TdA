@@ -140,7 +140,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
       </div>
       {avanceesRangs.map(ri => {
         const taken = voie.rangsAvances?.[ri] === true
-        const canAfford = disponibles >= 2
+        const canAfford = disponibles >= 1
         const disabled = !taken && !canAfford
         const toggle = () => {
           if (!onAvanceeChange) return
@@ -173,7 +173,7 @@ function VoieRangBar({ voie, voieKey, disponibles, onChange, capsDesc, onAvancee
             </div>
             <span style={{ fontSize: 11, color: taken ? 'var(--tdr-gold)' : canAfford ? 'rgba(245,236,215,0.55)' : 'rgba(245,236,215,0.2)' }}>
               {t('levelUp.capaciteAvancee', { rang: ri + 1 })}
-              {!taken && <span style={{ opacity: 0.5, marginLeft: 4 }}>· 2 pts</span>}
+              {!taken && <span style={{ opacity: 0.5, marginLeft: 4 }}>· 1 pt</span>}
             </span>
           </button>
         )

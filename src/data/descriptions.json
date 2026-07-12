@@ -1305,17 +1305,19 @@
             "DEF"
           ],
           "temporaire": true,
-          "usage": "[5+ModSAG]"
+          "usage": "[5+ModSAG]",
+          "cout_pm": "1"
         },
         {
           "type": "BONUS_TEMP",
           "label": "Peau d'écorce*",
-          "bonus": 2,
+          "bonus": 4,
           "cibles": [
             "DEF"
           ],
           "temporaire": true,
-          "usage": "[5+ModSAG]"
+          "usage": "[5+ModSAG]",
+          "minRang": 4
         }
       ]
     },
@@ -1605,7 +1607,20 @@
     },
     {
       "nom": "Danse de lames (L)",
-      "desc": "Au prix d'une action limitée, le PJ entre en transe pour le reste du combat. Pendant la Danse des lames, il gagne +2 en attaque et en DEF et peut réaliser une attaque gratuite supplémentaire en utilisant un d12 au lieu du d20 à chaque tour. Le personnage peut mettre fin à la transe quand il le veut mais ne peut recommencer avant le prochain combat. Toutefois, s'il reçoit les DM d'une attaque critique, la transe est stoppée net."
+      "desc": "Au prix d'une action limitée, le PJ entre en transe pour le reste du combat. Pendant la Danse des lames, il gagne +2 en attaque et en DEF et peut réaliser une attaque gratuite supplémentaire en utilisant un d12 au lieu du d20 à chaque tour. Le personnage peut mettre fin à la transe quand il le veut mais ne peut recommencer avant le prochain combat. Toutefois, s'il reçoit les DM d'une attaque critique, la transe est stoppée net.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Danse de lames (L)",
+          "bonus": 2,
+          "cibles": [
+            "ATT_CONTACT",
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "0"
+        }
+      ]
     },
     {
       "nom": "Volte-face",
@@ -2250,11 +2265,28 @@
   "Voie de la glace": [
     {
       "nom": "Verglas*",
-      "desc": "Un verglas glissant recouvre le sol sur une surface de 10 m de diamètre pour le reste du combat (le PJ peut décider à tout moment de mettre fin au sort). Dans cette zone, rester debout demande lors de son tour un test de DEX de difficulté 10, s'y déplacer ou combattre un test de difficulté 15. Un échec signifie que la créature est au sol. Se relever nécessite de réussir un nouveau test de DEX de difficulté 15 et prend un tour. Ramper en dehors de la zone demande un tour complet."
+      "desc": "Un verglas glissant recouvre le sol sur une surface de 10 m de diamètre pour le reste du combat (le PJ peut décider à tout moment de mettre fin au sort). Dans cette zone, rester debout demande lors de son tour un test de DEX de difficulté 10, s'y déplacer ou combattre un test de difficulté 15. Un échec signifie que la créature est au sol. Se relever nécessite de réussir un nouveau test de DEX de difficulté 15 et prend un tour. Ramper en dehors de la zone demande un tour complet.",
+      "effects": []
     },
     {
       "nom": "Cœur de glace (L)",
-      "desc": "Le PJ divise par deux tous les DM de froid et d'électricité subis pour le reste du combat (10 tours hors combat)."
+      "desc": "Le PJ divise par deux tous les DM de froid et d'électricité subis pour le reste du combat (10 tours hors combat).",
+      "effects": [],
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Cœur de glace (L)",
+          "bonus": 0,
+          "cibles": [
+            "RD_FROID",
+            "RD_FOUDRE"
+          ],
+          "temporaire": true,
+          "usage": "20",
+          "div2": true,
+          "cout_pm": "2"
+        }
+      ]
     },
     {
       "nom": "Cône de froid*",
@@ -2262,7 +2294,45 @@
     },
     {
       "nom": "Présence glaciale*",
-      "desc": "Le PJ transforme son corps en glace vivante. Il gagne +4 en DEF, est immunisé au froid et divise les DM de feu par deux. Les créatures qui le touchent ou l'attaquent avec des armes de contact subissent 1d6 DM. Lorsqu'il marche, il gèle le sol et peut se déplacer sur l'eau en la transformant en glace. Le sort a une durée de [1d6 + Mod. de SAG] minutes."
+      "desc": "Le PJ transforme son corps en glace vivante. Il gagne +4 en DEF, est immunisé au froid et divise les DM de feu par deux. Les créatures qui le touchent ou l'attaquent avec des armes de contact subissent 1d6 DM. Lorsqu'il marche, il gèle le sol et peut se déplacer sur l'eau en la transformant en glace. Le sort a une durée de [1d6 + Mod. de SAG] minutes.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Présence glaciale*",
+          "bonus": 4,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "4"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Présence glaciale*",
+          "bonus": 0,
+          "cibles": [
+            "RD_FROID"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "4",
+          "immunite": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Présence glaciale*",
+          "bonus": 0,
+          "cibles": [
+            "RD_FEU"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "4",
+          "div2": true
+        }
+      ],
+      "effects": []
     },
     {
       "nom": "Tempête de cristal*",

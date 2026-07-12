@@ -955,6 +955,13 @@
     "dmTypeMENTAL": "🧠 Mental / Psychic",
     "dmTypeTRANCHANT": "🗡️ Slashing",
     "dmTypePERFORANT": "🏹 Piercing",
-    "dmTypeCONTONDANT": "🔨 Bludgeoning"
+    "dmTypeCONTONDANT": "🔨 Bludgeoning",
+    "deathHistoryLabel": "💀 Character dead",
+    "deathTitle": "💀 Dead",
+    "deathDesc": "HP dropped below -{{con}} (Constitution value). The character is dead.",
+    "ogreResistButton": "🩸 Resist and keep fighting (Unkillable)",
+    "ogreResistingTitle": "🩸 Resisting unconsciousness (Unkillable)",
+    "ogreResistingDesc": "The character keeps fighting despite negative HP. They die if their HP drops below -{{con}} (Constitution value).",
+    "ogreNoFreeHeal": "Negative HP: no free healing possible, only Recovery (1 RP) can heal."
   }
 }

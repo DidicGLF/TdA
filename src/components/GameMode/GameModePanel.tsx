@@ -150,6 +150,9 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     onChange({ activeBoosts, effectCounters })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoosts, effectCounters])
+  // Voie culturelle des Ogres, rang 4 "Intuable" : le PJ peut choisir de résister à l'inconscience à 0 PV
+  // et continuer à se battre, PV négatifs jusqu'à -CON, au-delà duquel il meurt.
+  const [ogreResisting, setOgreResisting] = useState(false)
   const [pendingStatPick, setPendingStatPick] = useState<{ abIdx: number } | null>(null)
   const [deDegatsWeapon, setDeDegatsWeapon] = useState<Record<string, string>>({})
   const [currentPV, setCurrentPV] = useState<number | null>(() => character.pvRestants ?? null)
@@ -473,7 +476,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       } else {
         pushResult(entry)
       }
-      applyPVLoss(Math.max(0, pvActuels - cost))
+      applyPVLoss(clampPvLoss(pvActuels - cost))
     }
     if (ab.cout_pm) {
       const { formula, total: cost, display } = rollDmFormula(ab.cout_pm)
@@ -633,28 +636,42 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const pvActuels = currentPV ?? pvTotalEffectif
   const pvPct = pvTotalEffectif > 0 ? pvActuels / pvTotalEffectif : 0
   const pvColor = pvPct > 0.5 ? '#5cb85c' : pvPct > 0.25 ? '#e8a838' : '#d9534f'
-  const isUnconscious = pvActuels <= 0
+  // Voie culturelle des Ogres rang 4 "Intuable" : possibilité de résister à l'inconscience à 0 PV
+  const hasOgreResilience = character.voieCulturelle.nom === 'Voie culturelle des Ogres' && character.voieCulturelle.rangs[3] === true
+  const conValeur = character.caracteristiques.CON.valeur
+  const isResisting = hasOgreResilience && ogreResisting
+  const isDead = isResisting && pvActuels <= -conValeur
+  const isUnconscious = isDead || (pvActuels <= 0 && !isResisting)
   const isPvFull = pvActuels >= pvTotalEffectif
   const pmActuels = currentPM ?? pmTotalEffectif
+  // Sous 0 PV, un PJ "Intuable" ne peut pas descendre plus bas que -CON (au-delà, il meurt)
+  const clampPvLoss = (newPV: number) => isResisting ? Math.max(-conValeur, newPV) : Math.max(0, newPV)
 
   // Paie un coût en PM ; si les PM sont insuffisants, la différence est infligée en PV (brûlure de mana)
-  // Applique une nouvelle valeur de PV et journalise le passage à l'inconscience (PV à 0)
+  // Applique une nouvelle valeur de PV et journalise le passage à l'inconscience (PV à 0) ou à la mort (Intuable)
   const applyPVLoss = (newPV: number) => {
     const wasConscious = pvActuels > 0
+    const wasAlive = !isDead
     setCurrentPV(newPV)
     onChange({ pvRestants: newPV })
-    if (wasConscious && newPV <= 0) {
+    if (wasAlive && isResisting && newPV <= -conValeur) {
+      pushHistory({ label: t('gameMode.deathHistoryLabel'), formula: t('gameMode.pvZero'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+    } else if (wasConscious && newPV <= 0 && !isResisting) {
       pushHistory({ label: t('gameMode.unconsciousHistoryLabel'), formula: t('gameMode.pvZero'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
     }
   }
 
-  // Applique un soin : augmente les PV (jamais au-delà du max), même si le PJ est inconscient
+  // Applique un soin : augmente les PV (jamais au-delà du max) ; bloqué sous 0 PV sauf via la Récupération (1 PR),
+  // et impossible sur un PJ mort (Intuable au-delà de -CON)
   const applyHeal = (amount: number, label: string, formula?: string, rollDisplay?: string, costType: 'PV' | 'PR' = 'PV') => {
     if (!Number.isFinite(amount) || amount <= 0) return
+    if (isDead) return
+    if (pvActuels < 0 && costType !== 'PR') return
     const newPV = Math.min(pvTotalEffectif, pvActuels + amount)
     const healed = newPV - pvActuels
     setCurrentPV(newPV)
     onChange({ pvRestants: newPV })
+    if (newPV > 0) setOgreResisting(false)
     pushHistory({ label, formula: formula ?? `+${healed} ${t('gameMode.pv')}`, sides: 6, roll: healed, modifier: null, total: healed, costType, rollDisplay, flash: false })
   }
 
@@ -705,7 +722,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     if (rd > 0) parts.push(`− ${rd} ${t('gameMode.sufRD')}`)
     const formula = parts.length > 1 ? parts.join(' ') : `${amount} ${t('gameMode.pv')}`
     pushHistory({ label, formula, sides: 6, roll: net, modifier: null, total: net, costType: 'PV', flash: false })
-    applyPVLoss(Math.max(0, pvActuels - net))
+    applyPVLoss(clampPvLoss(pvActuels - net))
     setDmInput('')
   }
 
@@ -717,7 +734,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     onChange({ pmRestants: newPM })
     if (deficit > 0) {
       pushHistory({ label: `${label} — ${t('gameMode.sufBruleMana')}`, formula: `${deficit} ${t('gameMode.pv')}`, sides: 6, roll: deficit, modifier: null, total: deficit, costType: 'PV', flash: false })
-      applyPVLoss(Math.max(0, pvActuels - deficit))
+      applyPVLoss(clampPvLoss(pvActuels - deficit))
     }
   }
 
@@ -807,16 +824,34 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {isUnconscious && (
+        {isDead ? (
+          <div style={{ padding: '10px 12px', borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(220,50,50,0.5)', textAlign: 'center' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#ff5555', letterSpacing: '0.05em' }}>{t('gameMode.deathTitle')}</div>
+            <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>{t('gameMode.deathDesc', { con: conValeur })}</div>
+          </div>
+        ) : isUnconscious ? (
           <div style={{ padding: '10px 12px', borderRadius: 6, background: 'rgba(180,30,30,0.15)', border: '1px solid rgba(220,50,50,0.5)', textAlign: 'center' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#ff5555', letterSpacing: '0.05em' }}>{t('gameMode.unconsciousTitle')}</div>
             <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>{t('gameMode.unconsciousDesc')}</div>
+            {hasOgreResilience && pvActuels <= 0 && (
+              <button onClick={() => setOgreResisting(true)} style={{ ...btnStyle(), marginTop: 8, border: '1px solid rgba(220,50,50,0.6)', color: 'rgba(255,150,150,0.95)' }}>
+                {t('gameMode.ogreResistButton')}
+              </button>
+            )}
+          </div>
+        ) : isResisting && pvActuels <= 0 && (
+          <div style={{ padding: '10px 12px', borderRadius: 6, background: 'rgba(180,30,30,0.1)', border: '1px solid rgba(220,50,50,0.35)', textAlign: 'center' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#ff8888', letterSpacing: '0.05em' }}>{t('gameMode.ogreResistingTitle')}</div>
+            <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>{t('gameMode.ogreResistingDesc', { con: conValeur })}</div>
           </div>
         )}
 
         {/* ── Section : Soins ── */}
         <div style={SECTION_DIVIDER}>
           <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.healSection')}</div>
+          {pvActuels < 0 && !isDead && (
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,150,150,0.7)', marginBottom: 6 }}>{t('gameMode.ogreNoFreeHeal')}</div>
+          )}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
             <input
               type="number"
@@ -824,10 +859,10 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               value={healInput}
               onChange={e => setHealInput(e.target.value)}
               placeholder={t('gameMode.healPlaceholder')}
-              disabled={isPvFull}
-              style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: isPvFull ? 0.35 : 1 }}
+              disabled={isPvFull || pvActuels < 0 || isDead}
+              style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1 }}
             />
-            <button onClick={handleManualHeal} disabled={isPvFull} style={{ ...btnStyle(), flexShrink: 0, opacity: isPvFull ? 0.35 : 1, cursor: isPvFull ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
+            <button onClick={handleManualHeal} disabled={isPvFull || pvActuels < 0 || isDead} style={{ ...btnStyle(), flexShrink: 0, opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1, cursor: (isPvFull || pvActuels < 0 || isDead) ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
             <button
               onClick={handleRecuperation}
               disabled={isUnconscious || prRemaining <= 0 || isPvFull}

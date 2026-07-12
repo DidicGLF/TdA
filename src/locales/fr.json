@@ -955,7 +955,14 @@
     "dmTypeMENTAL": "🧠 Mental / Psychique",
     "dmTypeTRANCHANT": "🗡️ Tranchant",
     "dmTypePERFORANT": "🏹 Perforant",
-    "dmTypeCONTONDANT": "🔨 Contondant"
+    "dmTypeCONTONDANT": "🔨 Contondant",
+    "deathHistoryLabel": "💀 PJ mort",
+    "deathTitle": "💀 Mort",
+    "deathDesc": "Les PV sont descendus en dessous de -{{con}} (valeur de Constitution). Le personnage est mort.",
+    "ogreResistButton": "🩸 Résister et continuer à se battre (Intuable)",
+    "ogreResistingTitle": "🩸 Résistance à l'inconscience (Intuable)",
+    "ogreResistingDesc": "Le personnage continue de se battre malgré des PV négatifs. Il meurt si ses PV descendent en dessous de -{{con}} (valeur de Constitution).",
+    "ogreNoFreeHeal": "PV négatifs : aucun soin gratuit possible, seule la Récupération (1 PR) peut soigner."
   }
 }
 

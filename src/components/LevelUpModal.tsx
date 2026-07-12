@@ -173,7 +173,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     for (let i = 0; i < count; i++) cost += coutRangPourVoie(key, firstNext + i)
     return sum + cost
   }, 0) + formationsAchetées.length
-    + Object.values(avancesAchetées).reduce((sum, idxs) => sum + (idxs?.length ?? 0) * 2, 0)
+    + Object.values(avancesAchetées).reduce((sum, idxs) => sum + (idxs?.length ?? 0), 0)
   const ptsRestants = ptsTotal - ptsDépensés
   const canRoll = ptsRestants === 0
 
@@ -554,7 +554,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                     {/* Capacités avancées disponibles */}
                     {avancesDisponibles.map(ri => {
                       const isSelected = avancesAchetées[key]?.includes(ri) ?? false
-                      const canAfford = isSelected || ptsRestants >= 2
+                      const canAfford = isSelected || ptsRestants >= 1
                       return (
                         <div key={ri} style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(201,168,76,0.12)' }}>
                           <button
@@ -576,7 +576,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
                             </div>
                             <span style={{ fontSize: 12, color: isSelected ? 'rgba(120,210,120,0.9)' : canAfford ? 'rgba(245,236,215,0.65)' : 'rgba(245,236,215,0.25)' }}>
                               {t('levelUp.capaciteAvancee', { rang: ri + 1 })}
-                              <span style={{ opacity: 0.5, marginLeft: 5 }}>· 2 pts</span>
+                              <span style={{ opacity: 0.5, marginLeft: 5 }}>· 1 pt</span>
                             </span>
                           </button>
                         </div>
