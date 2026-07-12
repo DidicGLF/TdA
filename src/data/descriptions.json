@@ -67,11 +67,6 @@
         {
           "stat": "PV",
           "value": 3
-        },
-        {
-          "stat": "PV",
-          "value": 1,
-          "avancee": true
         }
       ],
       "grants": []
@@ -1317,7 +1312,8 @@
           ],
           "temporaire": true,
           "usage": "[5+ModSAG]",
-          "minRang": 4
+          "minRang": 4,
+          "cout_pm": "1"
         }
       ]
     },
