@@ -2263,14 +2263,14 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 13, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.sauvegarder')}</div>
-              <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 15, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.sauvegarder')}</div>
+              <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
                 {t('wizard.step7.sauvegarderDesc')}
               </div>
             </div>
             {onSave && (
               <button onClick={onSave} style={{
-                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 15, cursor: 'pointer',
                 border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.15)',
                 color: 'var(--tdr-gold)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
@@ -2286,14 +2286,14 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 13, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.imprimer')}</div>
-              <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 15, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.imprimer')}</div>
+              <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
                 {t('wizard.step7.imprimerDesc')}
               </div>
             </div>
             {onPrint && (
               <button onClick={onPrint} style={{
-                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 15, cursor: 'pointer',
                 border: '1px solid rgba(120,180,255,0.35)', background: 'rgba(120,180,255,0.08)',
                 color: 'rgba(140,190,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
@@ -2310,13 +2310,13 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
             }}>
               <div>
-                <div style={{ fontSize: 13, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.jouer')}</div>
-                <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 15, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.jouer')}</div>
+                <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
                   {t('wizard.step7.jouerDesc')}
                 </div>
               </div>
               <button onClick={onPlay} style={{
-                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+                flexShrink: 0, padding: '7px 16px', borderRadius: 5, fontSize: 15, cursor: 'pointer',
                 border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)',
                 color: 'rgba(200,170,255,0.95)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
@@ -2332,18 +2332,18 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
           background: manquants.length > 0 ? 'rgba(200,80,60,0.04)' : 'rgba(201,168,76,0.04)',
         }}>
           <div style={{
-            fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 10,
+            fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 10,
             color: manquants.length > 0 ? '#c97a4c' : 'var(--tdr-gold)',
           }}>
             {t('wizard.step7.recap', { count: manquants.length + conseilles.length })}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {[...manquants, ...conseilles].map((c, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
                 <span style={{
-                  flexShrink: 0, width: 18, height: 18, borderRadius: 3,
+                  flexShrink: 0, width: 20, height: 20, borderRadius: 3,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700,
+                  fontSize: 13, fontWeight: 700,
                   background: c.niveau === 'requis' ? 'rgba(200,80,60,0.2)' : 'rgba(201,168,76,0.12)',
                   color: c.niveau === 'requis' ? '#c97a4c' : 'rgba(201,168,76,0.8)',
                   border: `1px solid ${c.niveau === 'requis' ? 'rgba(200,80,60,0.35)' : 'rgba(201,168,76,0.25)'}`,
@@ -2354,7 +2354,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                   {c.label}
                 </span>
                 {c.niveau === 'conseille' && (
-                  <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>{t('wizard.step7.conseille')}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>{t('wizard.step7.conseille')}</span>
                 )}
               </div>
             ))}

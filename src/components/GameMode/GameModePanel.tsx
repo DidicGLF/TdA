@@ -21,7 +21,7 @@ const BARE_DICE = [4, 6, 8, 10, 12, 20]
 const DAMAGE_TYPES = ['FEU', 'FROID', 'FOUDRE', 'ACIDE', 'POISON', 'NECROTIQUE', 'TENEBRES', 'LUMIERE', 'MENTAL', 'TRANCHANT', 'PERFORANT', 'CONTONDANT']
 // Icônes (non traduites, universelles) associées à chaque type de dégâts — '' = générique
 const DAMAGE_TYPE_ICONS: Record<string, string> = {
-  '': '⚔️', FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
+  '': '🩸', FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
   TENEBRES: '🌑', LUMIERE: '☀️', MENTAL: '🧠', TRANCHANT: '🗡️', PERFORANT: '🏹', CONTONDANT: '🔨',
 }
 
@@ -63,6 +63,17 @@ interface ActiveBoost {
   // auto-suffisant une fois persisté sur le personnage et relu par la fiche.
   nom: string
   rang: number
+}
+
+// Dégâts sur la durée (poison, brûlure, etc.) : X points du type choisi, encaissés automatiquement (avec
+// prise en compte de la RD/div2/immunité du type au moment de chaque application) à chaque fin de tour,
+// pendant un nombre de tours donné.
+interface ActiveDot {
+  id: number
+  type: string
+  amount: number
+  remainingTurns: number
+  label: string
 }
 
 interface AvailableBonus {
@@ -146,10 +157,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   // l'original) — on peut donc écrire dessus librement via onChange, ça ne touche jamais la vraie fiche.
   const [effectCounters, setEffectCounters] = useState<Record<string, number>>(() => character.effectCounters ?? {})
   const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>(() => (character.activeBoosts as ActiveBoost[] | undefined) ?? [])
+  const [activeDots, setActiveDots] = useState<ActiveDot[]>(() => character.activeDots ?? [])
   useEffect(() => {
-    onChange({ activeBoosts, effectCounters })
+    onChange({ activeBoosts, effectCounters, activeDots })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBoosts, effectCounters])
+  }, [activeBoosts, effectCounters, activeDots])
   // Voie culturelle des Ogres, rang 4 "Intuable" : le PJ peut choisir de résister à l'inconscience à 0 PV
   // et continuer à se battre, PV négatifs jusqu'à -CON, au-delà duquel il meurt.
   const [ogreResisting, setOgreResisting] = useState(false)
@@ -160,7 +172,10 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const [resultInHistory, setResultInHistory] = useState(false)
   const [healInput, setHealInput] = useState('')
   const [dmInput, setDmInput] = useState('')
-  const [gmTooltip, setGmTooltip] = useState<{ title: string; desc?: string; x: number; y: number } | null>(null)
+  const [dotAmountInput, setDotAmountInput] = useState('')
+  const [dotDurationInput, setDotDurationInput] = useState('')
+  const [dotTypeInput, setDotTypeInput] = useState('')
+  const [gmTooltip, setGmTooltip] = useState<{ title: string; desc?: string; x: number; y: number; below: boolean } | null>(null)
 
 
   const voiesPerso = useMemo(() => [
@@ -524,22 +539,6 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     })
   }, [])
 
-  const handleEndTurn = useCallback(() => {
-    setEffectCounters(prev => {
-      const next: Record<string, number> = {}
-      const expiredKeys: string[] = []
-      for (const [key, val] of Object.entries(prev)) {
-        const newVal = Math.max(0, val - 1)
-        next[key] = newVal
-        if (val > 0 && newVal === 0) expiredKeys.push(key)
-      }
-      if (expiredKeys.length > 0) {
-        setActiveBoosts(prevBoosts => prevBoosts.filter(b => !b.sourceKey || !expiredKeys.includes(b.sourceKey)))
-      }
-      return next
-    })
-  }, [])
-
   const attaques = useMemo(() => computeAttaquesTotaux(character, descriptions, armes, armures), [character, descriptions, armes, armures])
   const effectsAll = useMemo(() => computeEffectsWithCristaux(character, descriptions), [character, descriptions])
 
@@ -554,12 +553,22 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   })
 
   // Tooltip au même design que celui de la fiche de personnage (fond sombre, bordure dorée), positionné
-  // au-dessus de l'élément survolé plutôt que via le tooltip natif du navigateur.
+  // au-dessus de l'élément survolé plutôt que via le tooltip natif du navigateur — sauf si l'élément est trop
+  // proche du haut de la fenêtre (ex. pastilles de dégâts sur la durée sur la carte PV), auquel cas on bascule
+  // l'affichage en dessous pour éviter qu'il soit tronqué.
   const showGmTooltip = (e: React.MouseEvent, title: string, desc?: string) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    setGmTooltip({ title, desc, x: rect.left + rect.width / 2, y: rect.top })
+    const below = rect.top < 80
+    setGmTooltip({ title, desc, x: rect.left + rect.width / 2, y: below ? rect.bottom : rect.top, below })
   }
   const hideGmTooltip = () => setGmTooltip(null)
+
+  // Sur mobile/tactile, le tap déclenche onMouseEnter (affiche le tooltip) mais jamais onMouseLeave
+  // (pas de vrai pointeur qui "quitte" l'élément), donc le tooltip reste bloqué à l'écran après l'action.
+  useEffect(() => {
+    document.addEventListener('touchend', hideGmTooltip)
+    return () => document.removeEventListener('touchend', hideGmTooltip)
+  }, [])
 
   const pvFromVoies = sumStat(effectsAll['PV'] ?? [])
   // Réplique le calcul de la fiche de personnage (CharacterSheetRecto) : base niveau 1 (snapshot ou dé de vie + Mod.CON) + historique de montées de niveau
@@ -703,27 +712,83 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   }
 
   // Applique des DM reçus du type choisi : immunité totale en priorité, sinon division par 2 si applicable,
-  // puis déduction de la RD (générique + spécifique au type) avant de retirer les PV
-  const handleTakeDamage = (type: string) => {
-    const amount = parseInt(dmInput, 10)
-    if (!Number.isFinite(amount) || amount <= 0) return
-    const label = type ? `${t('gameMode.damageTakenHistoryLabel')} (${t(`gameMode.dmType${type}`)})` : t('gameMode.damageTakenHistoryLabel')
-    if (isImmune(type)) {
-      pushHistory({ label, formula: `${amount} ${t('gameMode.sufImmunite')}`, sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
-      setDmInput('')
-      return
-    }
+  // puis déduction de la RD (générique + spécifique au type) avant de retirer les PV. Factorisé pour être
+  // réutilisé aussi bien par la saisie manuelle (handleTakeDamage) que par le tic automatique des dégâts sur
+  // la durée (handleEndTurn), qui doivent appliquer exactement la même résolution RD/div2/immunité.
+  const computeIncomingDamage = (type: string, amount: number) => {
+    if (isImmune(type)) return { net: 0, apresDivision: amount, halved: false, rd: 0, immune: true }
     const halved = isHalfDamage(type)
     const apresDivision = halved ? Math.floor(amount / 2) : amount
     const rd = rdEffectifPourType(type)
     const net = Math.max(0, apresDivision - rd)
+    return { net, apresDivision, halved, rd, immune: false }
+  }
+  const formatDamageFormula = (amount: number, calc: ReturnType<typeof computeIncomingDamage>) => {
+    if (calc.immune) return `${amount} ${t('gameMode.sufImmunite')}`
     const parts = [String(amount)]
-    if (halved) parts.push(`÷2 = ${apresDivision}`)
-    if (rd > 0) parts.push(`− ${rd} ${t('gameMode.sufRD')}`)
-    const formula = parts.length > 1 ? parts.join(' ') : `${amount} ${t('gameMode.pv')}`
-    pushHistory({ label, formula, sides: 6, roll: net, modifier: null, total: net, costType: 'PV', flash: false })
-    applyPVLoss(clampPvLoss(pvActuels - net))
+    if (calc.halved) parts.push(`÷2 = ${calc.apresDivision}`)
+    if (calc.rd > 0) parts.push(`− ${calc.rd} ${t('gameMode.sufRD')}`)
+    return parts.length > 1 ? parts.join(' ') : `${amount} ${t('gameMode.pv')}`
+  }
+
+  const handleTakeDamage = (type: string) => {
+    const amount = parseInt(dmInput, 10)
+    if (!Number.isFinite(amount) || amount <= 0) return
+    const label = type ? `${t('gameMode.damageTakenHistoryLabel')} (${t(`gameMode.dmType${type}`)})` : t('gameMode.damageTakenHistoryLabel')
+    const calc = computeIncomingDamage(type, amount)
+    pushHistory({ label, formula: formatDamageFormula(amount, calc), sides: 6, roll: calc.net, modifier: null, total: calc.net, costType: 'PV', flash: false })
+    if (!calc.immune) applyPVLoss(clampPvLoss(pvActuels - calc.net))
     setDmInput('')
+  }
+
+  // Enregistre un effet de dégâts sur la durée (poison, brûlure, ...) : X dégâts du type choisi, encaissés
+  // automatiquement à chaque fin de tour (handleEndTurn) pendant N tours, puis retiré de lui-même.
+  const handleAddDot = () => {
+    const amount = parseInt(dotAmountInput, 10)
+    const duration = parseInt(dotDurationInput, 10)
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(duration) || duration <= 0) return
+    const type = dotTypeInput
+    const typeLabel = type ? t(`gameMode.dmType${type}`) : t('gameMode.dmTypeGenerique')
+    const label = `${t('gameMode.dotTickHistoryLabel')} (${typeLabel})`
+    setActiveDots(prev => [...prev, { id: nextId++, type, amount, remainingTurns: duration, label }])
+    pushHistory({
+      label: t('gameMode.dotAddedHistoryLabel', { type: typeLabel }),
+      formula: `${amount} ${t('gameMode.pv')} / ${t('gameMode.turn', { count: duration })}`,
+      sides: 6, roll: 0, modifier: null, total: 0, flash: false,
+    })
+    setDotAmountInput('')
+    setDotDurationInput('')
+  }
+
+  // Décompte les tours d'effets temporaires (Effets en jeu) ET applique le tic de chaque dégât sur la durée
+  // actif (immunité/div2/RD résolus comme pour un dégât encaissé manuellement), en une seule perte de PV
+  // groupée pour rester cohérent même avec plusieurs DoT actifs simultanément (poison + brûlure, etc.).
+  const handleEndTurn = () => {
+    setEffectCounters(prev => {
+      const next: Record<string, number> = {}
+      const expiredKeys: string[] = []
+      for (const [key, val] of Object.entries(prev)) {
+        const newVal = Math.max(0, val - 1)
+        next[key] = newVal
+        if (val > 0 && newVal === 0) expiredKeys.push(key)
+      }
+      if (expiredKeys.length > 0) {
+        setActiveBoosts(prevBoosts => prevBoosts.filter(b => !b.sourceKey || !expiredKeys.includes(b.sourceKey)))
+      }
+      return next
+    })
+    if (!isDead && activeDots.length > 0) {
+      let totalNet = 0
+      for (const dot of activeDots) {
+        const calc = computeIncomingDamage(dot.type, dot.amount)
+        pushHistory({ label: dot.label, formula: formatDamageFormula(dot.amount, calc), sides: 6, roll: calc.net, modifier: null, total: calc.net, costType: 'PV', flash: false })
+        totalNet += calc.net
+      }
+      if (totalNet > 0) applyPVLoss(clampPvLoss(pvActuels - totalNet))
+    }
+    setActiveDots(prev => prev
+      .map(d => ({ ...d, remainingTurns: d.remainingTurns - 1 }))
+      .filter(d => d.remainingTurns > 0))
   }
 
   const payPMCost = (cost: number, label: string) => {
@@ -773,12 +838,28 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <div onClick={() => { setCurrentPV(pvTotalEffectif); onChange({ pvRestants: pvTotalEffectif }) }}
             title={t('gameMode.clickToFull')}
-            style={{ cursor: 'pointer', width: 130, height: 130, boxSizing: 'border-box', borderRadius: 10, border: `1px solid ${GOLD}`, background: 'linear-gradient(to right, rgba(74,222,128,0.28), transparent 10%, transparent 90%, rgba(74,222,128,0.28)), linear-gradient(to bottom, rgba(74,222,128,0.28), transparent 10%, transparent 90%, rgba(74,222,128,0.28)), rgba(0,0,0,0.4)' }}>
+            style={{ position: 'relative', cursor: 'pointer', width: 130, height: 130, boxSizing: 'border-box', borderRadius: 10, border: `1px solid ${GOLD}`, background: 'linear-gradient(to right, rgba(74,222,128,0.28), transparent 10%, transparent 90%, rgba(74,222,128,0.28)), linear-gradient(to bottom, rgba(74,222,128,0.28), transparent 10%, transparent 90%, rgba(74,222,128,0.28)), rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly', width: '100%', height: '100%' }}>
               <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('gameMode.pvCardTitle')}</span>
               <span style={{ fontSize: 24 }}>❤️</span>
               <span style={{ fontSize: 20, fontWeight: 700, color: pvColor }}>{pvActuels} / {pvTotalEffectif}</span>
             </div>
+            {activeDots.map((d, i) => (
+              <span
+                key={d.id}
+                onMouseEnter={e => { e.stopPropagation(); showGmTooltip(e, t('gameMode.dotBadgeTitle'), `${DAMAGE_TYPE_ICONS[d.type]} ${d.amount} ${t('gameMode.pv')} · ${t('gameMode.turn', { count: d.remainingTurns })}`) }}
+                onMouseLeave={hideGmTooltip}
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', top: -8 + i * 20, right: -13, width: 26, height: 26, borderRadius: '50%',
+                  zIndex: i + 1,
+                  background: BG, border: `2px solid ${GOLD}`, boxShadow: '0 2px 5px rgba(0,0,0,0.6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, cursor: 'help',
+                }}
+              >
+                {DAMAGE_TYPE_ICONS[d.type]}
+              </span>
+            ))}
           </div>
           {pmTotalEffectif > 0 && (
             <div onClick={() => { setCurrentPM(pmTotalEffectif); onChange({ pmRestants: pmTotalEffectif }) }}
@@ -940,6 +1021,59 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               )
             })()}
           </div>
+
+          {/* Dégâts sur la durée (poison, brûlure, ...) : encaissés automatiquement à chaque fin de tour
+              (RD/div2/immunité du type résolus à chaque tic, comme pour un dégât encaissé manuellement) */}
+          <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 12, marginBottom: 4, textAlign: 'center' }}>
+            {t('gameMode.dotSectionTitle')}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+            <input
+              type="number" min={1}
+              value={dotAmountInput}
+              onChange={e => setDotAmountInput(e.target.value)}
+              placeholder={t('gameMode.dotAmountPlaceholder')}
+              style={{ width: 90, height: 34, flexShrink: 0, boxSizing: 'border-box', padding: '4px 8px', borderRadius: 4, fontSize: 13, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+            />
+            <input
+              type="number" min={1}
+              value={dotDurationInput}
+              onChange={e => setDotDurationInput(e.target.value)}
+              placeholder={t('gameMode.dotDurationPlaceholder')}
+              style={{ width: 70, height: 34, flexShrink: 0, boxSizing: 'border-box', padding: '4px 8px', borderRadius: 4, fontSize: 13, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+            />
+            <select
+              value={dotTypeInput}
+              onChange={e => setDotTypeInput(e.target.value)}
+              style={{ height: 34, flexShrink: 0, boxSizing: 'border-box', padding: '4px 6px', borderRadius: 4, fontSize: 13, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+            >
+              {['', ...DAMAGE_TYPES].map(type => (
+                <option key={type || 'GENERIQUE'} value={type}>{type ? t(`gameMode.dmType${type}`) : t('gameMode.dmTypeGenerique')}</option>
+              ))}
+            </select>
+            {(() => {
+              const dotValide = parseInt(dotAmountInput, 10) > 0 && parseInt(dotDurationInput, 10) > 0
+              return (
+                <button
+                  disabled={!dotValide}
+                  onClick={handleAddDot}
+                  style={{ ...btnStyle(), height: 34, flexShrink: 0, opacity: dotValide ? 1 : 0.35, cursor: dotValide ? 'pointer' : 'not-allowed' }}
+                >
+                  ☠️ {t('gameMode.dotAddButton')}
+                </button>
+              )
+            })()}
+          </div>
+          {activeDots.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {activeDots.map(dot => (
+                <span key={dot.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, background: 'rgba(180,30,30,0.12)', border: '1px solid rgba(220,50,50,0.4)', borderRadius: 12, padding: '3px 8px', color: 'rgba(255,150,150,0.9)' }}>
+                  {DAMAGE_TYPE_ICONS[dot.type]} {dot.amount} · {t('gameMode.turn', { count: dot.remainingTurns })}
+                  <button onClick={() => setActiveDots(prev => prev.filter(d => d.id !== dot.id))} style={{ background: 'none', border: 'none', color: 'rgba(245,236,215,0.4)', cursor: 'pointer', padding: '0 0 0 3px', fontSize: 10, lineHeight: 1 }}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Section 1 : Jets rapides ── */}
@@ -1087,7 +1221,17 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               const histDisplay = resultInHistory ? history.slice(1) : history
               return (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{t('gameMode.history')}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('gameMode.history')}</div>
+                    {history.length > 0 && (
+                      <button
+                        onClick={() => setHistory([])}
+                        style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                      >
+                        🗑️ {t('gameMode.clearHistory')}
+                      </button>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', minHeight: 230, maxHeight: 230, paddingRight: 6 }}>
                     {histDisplay.length === 0
                       ? <div style={{ color: `rgba(245,236,215,0.2)`, fontSize: 13, padding: '4px 6px' }}>—</div>
@@ -1288,7 +1432,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       {gmTooltip && (
         <div style={{
           position: 'fixed', left: gmTooltip.x, top: gmTooltip.y,
-          transform: 'translate(-50%, calc(-100% - 8px))',
+          transform: gmTooltip.below ? 'translate(-50%, 8px)' : 'translate(-50%, calc(-100% - 8px))',
           maxWidth: 220, background: 'rgba(20,15,8,0.97)', color: '#e8dfc0',
           border: `1px solid ${GOLD}`, borderRadius: 4, padding: '8px 10px',
           fontSize: 13, lineHeight: 1.5, zIndex: 9999, pointerEvents: 'none',

@@ -52,6 +52,16 @@ export interface ActiveBoostPersisted {
   immunite?: boolean
 }
 
+// Dégâts sur la durée (poison, brûlure, etc.) actuellement en cours — vit sur la copie de session du
+// Mode de jeu au même titre que les bonus temporaires ; s'applique automatiquement à chaque fin de tour.
+export interface ActiveDotPersisted {
+  id: number
+  type: string
+  amount: number
+  remainingTurns: number
+  label: string
+}
+
 export interface TraitMagique {
   nom: string
   desc: string
@@ -101,6 +111,7 @@ export interface Character {
   // État live du Mode de jeu (Effets en jeu actuellement actifs) — présent uniquement sur la copie de session
   activeBoosts?: ActiveBoostPersisted[]
   effectCounters?: Record<string, number>
+  activeDots?: ActiveDotPersisted[]
   pr: number
   prUtilises: boolean[]
   pm: number

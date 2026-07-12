@@ -164,7 +164,7 @@
     },
     {
       "nom": "Cavalier émérite",
-      "desc": "Lorsqu'il est en selle, le PJ gagne un bonus de +2 en attaque au contact et partage sa DEF avec celle de sa monture – on garde le meilleur score des deux. Monter ou descendre de monture est désormais une action gratuite. \n**==Capacité avancée : ==**en selle, le PJ gagne égale- ment un bonus de +2 aux DM."
+      "desc": "Lorsqu'il est en selle, le PJ gagne un bonus de +2 en attaque au contact et partage sa DEF avec celle de sa monture – on garde le meilleur score des deux. Monter ou descendre de monture est désormais une action gratuite. \n**==Capacité avancée : ==**en selle, le PJ gagne également un bonus de +2 aux DM."
     },
     {
       "nom": "Massacrer la piétaille",
@@ -1301,7 +1301,8 @@
           ],
           "temporaire": true,
           "usage": "[5+ModSAG]",
-          "cout_pm": "1"
+          "cout_pm": "1",
+          "masqueSiAvancee": true
         },
         {
           "type": "BONUS_TEMP",
@@ -1313,7 +1314,8 @@
           "temporaire": true,
           "usage": "[5+ModSAG]",
           "minRang": 4,
-          "cout_pm": "1"
+          "cout_pm": "1",
+          "avancee": true
         }
       ]
     },
