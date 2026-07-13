@@ -5,15 +5,18 @@ import { useGameData } from '../context/GameDataContext'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import { useEquipementName } from '../hooks/useContentTranslation'
 
-type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string }
+type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string; deuxMains?: boolean }
 type EntreeArmure = { nom: string; def: number; prix: string }
 type CatArme      = { categorie: string; entrees: EntreeArme[]; notes?: string }
 type CatArmure    = { categorie: string; entrees: EntreeArmure[]; notes?: string }
 type GroupeArme   = { groupe: string; categories: CatArme[] }
 
 interface Props {
-  character: Character
-  onChange: (patch: Partial<Character>) => void
+  // Optionnels : quand absents (ex. ouverture depuis la modale "Données du jeu", hors contexte personnage),
+  // la modale s'ouvre en pur éditeur de catalogue — aucune section liée à l'équipement d'un personnage
+  // (armes/armures déjà possédées, emplacements équipés) n'est affichée.
+  character?: Character
+  onChange?: (patch: Partial<Character>) => void
   onClose: () => void
 }
 
@@ -68,8 +71,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const { t } = useTranslation()
   const eqName = useEquipementName()
   const fmtPrix = (prix: string) => prix.replace(/\bpa\b/g, t('currency.pa'))
+  // Sans personnage (ouverture depuis "Données du jeu"), la modale n'a aucune utilité hors édition du
+  // catalogue : on démarre directement en mode édition et le bouton pour en sortir est masqué.
+  const catalogueSeul = !character
   const [section,      setSection]      = useState<'armes' | 'armures'>('armes')
-  const [editMode,     setEditMode]     = useState(false)
+  const [editMode,     setEditMode]     = useState(catalogueSeul)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)
@@ -230,12 +236,14 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     setExported(false)
   }
 
-  /* ── sélection personnage ── */
+  /* ── sélection personnage (no-op en mode catalogue seul, sans personnage) ── */
   const appendInv = (nom: string) => {
+    if (!character) return nom
     const inv = character.inventaire.trim()
     return inv ? `${inv}, ${nom}` : nom
   }
   const removeInv = (nom: string) => {
+    if (!character) return ''
     let inv = character.inventaire
     if (inv.includes(`, ${nom}`)) inv = inv.replace(`, ${nom}`, '')
     else if (inv.includes(`${nom}, `)) inv = inv.replace(`${nom}, `, '')
@@ -243,12 +251,15 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     return inv.trim()
   }
 
-  const addArme = (e: EntreeArme) =>
+  const addArme = (e: EntreeArme) => {
+    if (!character || !onChange) return
     onChange({
-      armes: [...character.armes, { nom: e.nom, dm: e.dm, attaque: e.mod, special: '', prix: e.prix, portee: e.portee }],
+      armes: [...character.armes, { nom: e.nom, dm: e.dm, attaque: e.mod, special: '', prix: e.prix, portee: e.portee, deuxMains: e.deuxMains }],
       inventaire: appendInv(stripExposants(e.nom)),
     })
+  }
   const removeArme = (idx: number) => {
+    if (!character || !onChange) return
     const a = character.armes[idx]
     const stripped = stripExposants(a.nom)
     const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
@@ -262,6 +273,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   }
 
   const equipeArmeSlot = (nom: string | null, slot: 1 | 2) => {
+    if (!character || !onChange) return
     const arme = nom ? character.armes.find(a => a.nom === nom) : null
     const prevNom = slot === 1 ? character.arme1 : character.arme2
     const stripped = nom ? stripExposants(nom) : null
@@ -272,12 +284,15 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     if (slot === 1) onChange({ arme1: stripped ?? '', dmArme1: dm, inventaire: inv })
     else            onChange({ arme2: stripped ?? '', dmArme2: dm, inventaire: inv })
   }
-  const addArmure = (e: EntreeArmure) =>
+  const addArmure = (e: EntreeArmure) => {
+    if (!character || !onChange) return
     onChange({
       armuresEquipees: [...character.armuresEquipees, { nom: e.nom, def: e.def, prix: e.prix, equipe: false }],
       inventaire: appendInv(e.nom),
     })
+  }
   const removeArmure = (idx: number) => {
+    if (!character || !onChange) return
     const a = character.armuresEquipees[idx]
     const invNom = a.equipe ? `${a.nom} (Equip)` : a.nom
     onChange({
@@ -302,6 +317,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   }
 
   const equipeArmure = (nom: string | null) => {
+    if (!character || !onChange) return
     let inv = character.inventaire
     if (armurePortee) inv = unmarkEquipe(inv, armurePortee)
     if (nom)          inv = markEquipe(inv, nom)
@@ -313,6 +329,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     })
   }
   const equipeBouclier = (nom: string | null) => {
+    if (!character || !onChange) return
     let inv = character.inventaire
     if (bouclierPorte) inv = unmarkEquipe(inv, bouclierPorte)
     if (nom)           inv = markEquipe(inv, nom)
@@ -324,8 +341,8 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     })
   }
 
-  const armuresSeules  = character.armuresEquipees.filter(a => !isBouclier(a.nom))
-  const boucliersSeuls = character.armuresEquipees.filter(a =>  isBouclier(a.nom))
+  const armuresSeules  = character?.armuresEquipees.filter(a => !isBouclier(a.nom)) ?? []
+  const boucliersSeuls = character?.armuresEquipees.filter(a =>  isBouclier(a.nom)) ?? []
   const armurePortee   = armuresSeules.find(a => a.equipe)?.nom ?? null
   const bouclierPorte  = boucliersSeuls.find(a => a.equipe)?.nom ?? null
 
@@ -341,7 +358,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   }
 
   const renderArmeTable = (cat: CatArme, gi: number, ci: number, withPortee: boolean) => {
-    const cols = withPortee ? 6 : 5
+    const cols = (withPortee ? 6 : 5) + (editMode ? 1 : 0)
     return (
       <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse' }}>
         <thead><tr>
@@ -350,6 +367,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
           <th style={{ ...headCell, textAlign: 'center', width: 70 }}>+ Mod</th>
           {withPortee && <th style={{ ...headCell, textAlign: 'center', width: 80 }}>{t('equipement.colPortee')}</th>}
           <th style={{ ...headCell, textAlign: 'center', width: 70 }}>{t('equipement.colPrix')}</th>
+          {editMode && <th style={{ ...headCell, textAlign: 'center', width: 60 }}>{t('equipement.colDeuxMains')}</th>}
           <th style={{ ...headCell, width: editMode ? 50 : 80, textAlign: 'center' }}>{!editMode && t('equipement.colAjouter')}</th>
         </tr></thead>
         <tbody>
@@ -377,6 +395,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               <td style={{ ...cell, textAlign: 'center', opacity: editMode ? 1 : 0.6 }}>
                 {editMode ? <input value={e.prix} onChange={ev => updateArme(gi, ci, ei, { prix: ev.target.value })} style={{ ...inputStyle, textAlign: 'center' }} /> : fmtPrix(e.prix)}
               </td>
+              {editMode && (
+                <td style={{ ...cell, textAlign: 'center' }}>
+                  <input type="checkbox" checked={!!e.deuxMains} onChange={ev => updateArme(gi, ci, ei, { deuxMains: ev.target.checked })} style={{ width: 16, height: 16, accentColor: S.gold }} />
+                </td>
+              )}
               <td style={{ ...cell, textAlign: 'center' }}>
                 {editMode
                   ? <button onClick={() => removeArmeEntry(gi, ci, ei)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 14, padding: 0 }}>✕</button>
@@ -459,7 +482,10 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   useModalBackButton(onClose)
 
   // ── Layout mobile ──────────────────────────────────────────────────────
-  if (isMobile) {
+  // Sans personnage (mode catalogue seul), la vue mobile ci-dessous ne sert qu'à parcourir + ajouter à un
+  // personnage — inutile ici, et elle n'offre aucun moyen d'éditer le catalogue. On garde alors l'éditeur
+  // desktop (avec renommage/ajout/suppression) même sur petit écran.
+  if (isMobile && character) {
     // Liste plate des catégories armes
     const mobileCatsArmes: { key: string; label: string; gi: number; ci: number }[] = []
     groupes.forEach((g, gi) => g.categories.forEach((c, ci) => {
@@ -473,7 +499,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const withPortee = section === 'armes' && mobileCatArme ? isDistance(groupes[mgi].groupe) : false
 
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(18,14,9,0.99)',
+      <div style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(18,14,9,0.99)',
         display: 'flex', flexDirection: 'column',
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
@@ -531,7 +557,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   <div style={{ fontSize: 16, color: S.parchment }}>{eqName(e.nom)}</div>
                   <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
                     {e.dm}{e.mod ? ` + ${e.mod}` : ''}{withPortee && e.portee ? ` · ${e.portee}` : ''}
-                    {e.prix ? ` · ${fmtPrix(e.prix)}` : ''}
+                    {e.prix ? ` · ${fmtPrix(e.prix)}` : ''}{e.deuxMains ? ` · ${t('equipement.colDeuxMains')}` : ''}
                   </div>
                 </div>
                 <button onClick={() => addArme(e)} style={{
@@ -684,7 +710,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.75)',
+      style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(0,0,0,0.75)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
@@ -718,14 +744,16 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 {exported ? t('equipement.exporte') : t('equipement.exporterJson', { filename: `${section}.json` })}
               </button>
             )}
-            <button onClick={() => { setEditMode(m => !m); setExported(false) }} style={{
-              padding: '4px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-              border: `1px solid ${editMode ? 'rgba(180,130,255,0.6)' : S.border}`,
-              background: editMode ? 'rgba(180,130,255,0.15)' : 'transparent',
-              color: editMode ? 'rgba(210,180,255,0.9)' : S.parchment,
-            }}>
-              {editMode ? t('equipement.modeEdition') : t('equipement.editer')}
-            </button>
+            {!catalogueSeul && (
+              <button onClick={() => { setEditMode(m => !m); setExported(false) }} style={{
+                padding: '4px 12px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                border: `1px solid ${editMode ? 'rgba(180,130,255,0.6)' : S.border}`,
+                background: editMode ? 'rgba(180,130,255,0.15)' : 'transparent',
+                color: editMode ? 'rgba(210,180,255,0.9)' : S.parchment,
+              }}>
+                {editMode ? t('equipement.modeEdition') : t('equipement.editer')}
+              </button>
+            )}
             <button onClick={onClose} style={{
               background: 'none', border: 'none', color: S.parchment,
               opacity: 0.5, cursor: 'pointer', fontSize: 20, lineHeight: 1,
@@ -966,7 +994,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         </div>
 
         {/* ── Footer récap ── */}
-        {!editMode && (character.armes.length > 0 || character.armuresEquipees.length > 0) && (
+        {!editMode && character && (character.armes.length > 0 || character.armuresEquipees.length > 0) && (
           <div style={{ borderTop: `1px solid ${S.border}`, padding: '10px 20px',
             flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 200, overflowY: 'auto' }}>
 

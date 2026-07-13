@@ -8,6 +8,7 @@ import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import { useGameData } from '../context/GameDataContext'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
+import EquipementModal from './EquipementModal'
 
 // descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
 const _descUnwrapped: Record<string, unknown[]> = (
@@ -166,6 +167,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   , [armes])
 
   const [section, setSection] = useState<'voies' | 'traits' | 'traitsRaciaux' | 'peuples' | 'compagnons'>('peuples')
+  const [showEquipement, setShowEquipement] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void; label?: string; danger?: boolean } | null>(null)
   const askConfirm = (message: string, onConfirm: () => void) => setConfirmDialog({ message, onConfirm })
   const [promptDialog, setPromptDialog] = useState<{ message: string; defaultValue: string; onConfirm: (value: string) => void } | null>(null)
@@ -1358,6 +1360,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
         </div>
       </div>
     )}
+    {showEquipement && (
+      <EquipementModal onClose={() => setShowEquipement(false)} />
+    )}
     <div style={{
       position: 'fixed', inset: 0, zIndex: 300,
       background: 'rgba(0,0,0,0.7)',
@@ -1405,6 +1410,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 {s === 'voies' ? t('descEditor.sectionVoies') : s === 'traits' ? t('descEditor.sectionTraits') : s === 'traitsRaciaux' ? t('descEditor.sectionTraitsRaciaux') : s === 'compagnons' ? t('descEditor.sectionCompagnons') : t('descEditor.sectionPeuples')}
               </button>
             ))}
+            <button onClick={() => setShowEquipement(true)} style={{
+              flexShrink: 0,
+              padding: isMobile ? '4px 10px' : '4px 14px', borderRadius: 4, fontSize: isMobile ? 14 : 17, cursor: 'pointer',
+              border: `1px solid ${S.gold}`, background: 'transparent', color: S.gold, fontWeight: 400,
+            }}>
+              {t('descEditor.sectionArmesArmures')}
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
             {!isMobile && section === 'voies' && (<>

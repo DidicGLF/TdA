@@ -933,17 +933,20 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
           {pvActuels < 0 && !isDead && (
             <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,150,150,0.7)', marginBottom: 6 }}>{t('gameMode.ogreNoFreeHeal')}</div>
           )}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <input
-              type="number"
-              min={1}
-              value={healInput}
-              onChange={e => setHealInput(e.target.value)}
-              placeholder={t('gameMode.healPlaceholder')}
-              disabled={isPvFull || pvActuels < 0 || isDead}
-              style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1 }}
-            />
-            <button onClick={handleManualHeal} disabled={isPvFull || pvActuels < 0 || isDead} style={{ ...btnStyle(), flexShrink: 0, opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1, cursor: (isPvFull || pvActuels < 0 || isDead) ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input
+                type="number"
+                min={1}
+                value={healInput}
+                onChange={e => setHealInput(e.target.value)}
+                placeholder={t('gameMode.healPlaceholder')}
+                disabled={isPvFull || pvActuels < 0 || isDead}
+                style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1 }}
+              />
+              <button onClick={handleManualHeal} disabled={isPvFull || pvActuels < 0 || isDead} style={{ ...btnStyle(), flexShrink: 0, opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1, cursor: (isPvFull || pvActuels < 0 || isDead) ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
+            </div>
+            <div style={{ width: 1, alignSelf: 'stretch', background: SECTION_BORDER }} />
             <button
               onClick={handleRecuperation}
               disabled={isUnconscious || prRemaining <= 0 || isPvFull}

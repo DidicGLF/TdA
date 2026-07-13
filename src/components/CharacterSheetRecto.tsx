@@ -709,7 +709,11 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const modVal1 = e1?.mod === 'FOR' ? FOR.mod : e1?.mod === 'DEX' ? DEX.mod : null
             const bonusContribs1 = character.arme1 ? dmArmeBonusContribs(character.arme1) : []
             const bonus1 = sumStat(bonusContribs1)
-            const dm1base = e1 ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}` : character.dmArme1
+            // Si l'arme n'est pas dans le catalogue officiel (arme personnalisée non enregistrée), se rabat sur
+            // l'inventaire du personnage (toujours à jour) plutôt que sur le champ hérité dmArme1 (qui peut être
+            // vide si l'arme a été équipée avant que ce fallback n'existe).
+            const invEntry1 = !e1 && character.arme1 ? character.armes.find(a => a.nom === character.arme1) : null
+            const dm1base = e1 ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}` : invEntry1 ? [invEntry1.dm, invEntry1.attaque].filter(Boolean).join(' ') : character.dmArme1
             const dm1 = bonus1 !== 0 ? `${dm1base} ${fmt(bonus1)}` : dm1base
             const formula1 = e1 ? { lines: [
               { label: t('recto.tlDes'), value: e1.dm },
@@ -734,7 +738,8 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
             const modVal2 = e2?.mod === 'FOR' ? FOR.mod : e2?.mod === 'DEX' ? DEX.mod : null
             const bonusContribs2 = character.arme2 ? dmArmeBonusContribs(character.arme2) : []
             const bonus2 = sumStat(bonusContribs2)
-            const dm2base = e2 ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}` : character.dmArme2
+            const invEntry2 = !e2 && character.arme2 ? character.armes.find(a => a.nom === character.arme2) : null
+            const dm2base = e2 ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}` : invEntry2 ? [invEntry2.dm, invEntry2.attaque].filter(Boolean).join(' ') : character.dmArme2
             const dm2 = bonus2 !== 0 ? `${dm2base} ${fmt(bonus2)}` : dm2base
             const formula2 = e2 ? { lines: [
               { label: t('recto.tlDes'), value: e2.dm },

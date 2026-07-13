@@ -1617,7 +1617,21 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const moveTip = (e: React.MouseEvent) => {
     if (eqTip) setEqTip(t => t ? { ...t, x: e.clientX + 14, y: e.clientY + 14 } : null)
   }
-  const is2H = (nom: string) => { const n = nom.toLowerCase(); return n.includes('deux mains') || n.includes('arc') }
+  // Une arme est "à deux mains" soit via le flag explicite posé dans l'éditeur d'équipement (nécessaire pour
+  // les armes personnalisées, non enregistrées officiellement, dont le nom ne suit pas la convention),
+  // soit via son nom pour les armes du catalogue officiel ("Épée à deux mains", "Arc long", ...).
+  const is2H = (nom: string) => {
+    if (character.armes.find(a => a.nom === nom)?.deuxMains) return true
+    const n = nom.toLowerCase()
+    return n.includes('deux mains') || n.includes('arc')
+  }
+  // DM (+ mod. d'attaque) de l'arme équipée, tel que stocké dans l'inventaire du personnage — utilisé pour
+  // que la fiche (dmArme1/dmArme2) affiche les bons dégâts même pour une arme personnalisée non enregistrée
+  // dans le catalogue officiel armes.json.
+  const dmPourArme = (nom: string) => {
+    const a = character.armes.find(x => x.nom === nom)
+    return a ? [a.dm, a.attaque].filter(Boolean).join(' ') : ''
+  }
   const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
     e.dataTransfer.setData('cat', cat)
     e.dataTransfer.setData('nom', nom)
@@ -1625,12 +1639,12 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const assignToSlot = (slot: 'mainD' | 'mainG' | 'corps', nom: string, cat: 'arme' | 'armure') => {
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
       if (is2H(nom)) {
-        onChange({ arme1: nom, arme2: '' })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '' })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
       } else {
         if (character.arme1 && is2H(character.arme1)) return
-        onChange({ arme2: nom })
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom) })
       }
     } else if (slot === 'corps' && cat === 'armure') {
       onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
@@ -1643,12 +1657,12 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const nom = e.dataTransfer.getData('nom')
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
       if (is2H(nom)) {
-        onChange({ arme1: nom, arme2: '' })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '' })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
       } else {
         if (character.arme1 && is2H(character.arme1)) { setDragOver(null); return }
-        onChange({ arme2: nom })
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom) })
       }
     } else if (slot === 'corps' && cat === 'armure') {
       onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
@@ -1656,8 +1670,8 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     setDragOver(null)
   }
   const clearSlot = (slot: 'mainD' | 'mainG' | 'corps', nom?: string) => {
-    if (slot === 'mainD') onChange({ arme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '' } : {}) })
-    else if (slot === 'mainG') onChange({ arme2: '' })
+    if (slot === 'mainD') onChange({ arme1: '', dmArme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '', dmArme2: '' } : {}) })
+    else if (slot === 'mainG') onChange({ arme2: '', dmArme2: '' })
     else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
   }
 

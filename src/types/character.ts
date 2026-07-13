@@ -74,6 +74,7 @@ export interface Arme {
   dm: string
   prix?: string
   portee?: string
+  deuxMains?: boolean
 }
 
 export interface ArmureEquipee {
