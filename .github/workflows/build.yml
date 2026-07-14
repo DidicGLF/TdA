@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Generate icons
-        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.svg
+        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.png
 
       - name: Build
         run: npx @tauri-apps/cli@^2 build
@@ -112,7 +112,7 @@ jobs:
         run: npm ci
 
       - name: Generate icons
-        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.svg
+        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.png
 
       - name: Build
         run: npx @tauri-apps/cli@^2 build --bundles appimage
@@ -175,7 +175,7 @@ jobs:
         run: npm ci
 
       - name: Generate icons
-        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.svg
+        run: npx @tauri-apps/cli@^2 icon src-tauri/app-icon.png
 
       - name: Init Android project
         run: npx @tauri-apps/cli@^2 android init
