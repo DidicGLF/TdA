@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { useLocaleContext } from './context/LocaleContext'
 import { loadDataFile, saveDataFile } from './utils/tauriStorage'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { Character } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
@@ -45,6 +46,19 @@ function AppContent() {
       setCharacter(prev => ({ ...prev, compagnonsActifs: newActifs }))
     }
   }, [character.voiePeuple, character.voieCulturelle, character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele])
+
+  // F11 bascule la fenêtre Tauri en plein écran (no-op hors contexte Tauri, ex. navigateur en npm run dev)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'F11') return
+      e.preventDefault()
+      if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) return
+      const win = getCurrentWindow()
+      win.isFullscreen().then(current => win.setFullscreen(!current))
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
