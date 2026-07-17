@@ -64,3 +64,16 @@ export type CompanionEntry = {
   attaque2?: CompanionAttaque
   capacites?: string
 }
+
+export type BestiaireEntry = {
+  nom: string
+  nc: number   // Niveau de Créature (0, 0.5, 1, 2, ... 20)
+  livres: string[]
+}
+
+export type Difficulte = 'facile' | 'ordinaire' | 'difficile' | 'extreme'
+
+export type CoutPAEntry = { niveau: number; facile: number; ordinaire: number; difficile: number; extreme: number }
+// nc: null représente l'entrée "-" (aucune créature, coût 0), distincte du vrai NC 0
+export type NCPAEntry = { nc: number | null; pa: number }
+export type RencontreData = { coutPA: CoutPAEntry[]; ncPA: NCPAEntry[] }

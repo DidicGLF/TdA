@@ -1,0 +1,238 @@
+{
+  "coutPA": [
+    {
+      "niveau": 1,
+      "facile": 3,
+      "ordinaire": 10,
+      "difficile": 20,
+      "extreme": 40
+    },
+    {
+      "niveau": 2,
+      "facile": 5,
+      "ordinaire": 20,
+      "difficile": 40,
+      "extreme": 70
+    },
+    {
+      "niveau": 3,
+      "facile": 10,
+      "ordinaire": 40,
+      "difficile": 70,
+      "extreme": 100
+    },
+    {
+      "niveau": 4,
+      "facile": 20,
+      "ordinaire": 70,
+      "difficile": 100,
+      "extreme": 150
+    },
+    {
+      "niveau": 5,
+      "facile": 40,
+      "ordinaire": 100,
+      "difficile": 150,
+      "extreme": 200
+    },
+    {
+      "niveau": 6,
+      "facile": 70,
+      "ordinaire": 150,
+      "difficile": 200,
+      "extreme": 250
+    },
+    {
+      "niveau": 7,
+      "facile": 100,
+      "ordinaire": 200,
+      "difficile": 250,
+      "extreme": 320
+    },
+    {
+      "niveau": 8,
+      "facile": 150,
+      "ordinaire": 250,
+      "difficile": 320,
+      "extreme": 400
+    },
+    {
+      "niveau": 9,
+      "facile": 200,
+      "ordinaire": 320,
+      "difficile": 400,
+      "extreme": 500
+    },
+    {
+      "niveau": 10,
+      "facile": 250,
+      "ordinaire": 400,
+      "difficile": 500,
+      "extreme": 600
+    },
+    {
+      "niveau": 11,
+      "facile": 320,
+      "ordinaire": 500,
+      "difficile": 600,
+      "extreme": 700
+    },
+    {
+      "niveau": 12,
+      "facile": 400,
+      "ordinaire": 600,
+      "difficile": 700,
+      "extreme": 850
+    },
+    {
+      "niveau": 13,
+      "facile": 500,
+      "ordinaire": 700,
+      "difficile": 850,
+      "extreme": 1000
+    },
+    {
+      "niveau": 14,
+      "facile": 600,
+      "ordinaire": 850,
+      "difficile": 1000,
+      "extreme": 1200
+    },
+    {
+      "niveau": 15,
+      "facile": 700,
+      "ordinaire": 1000,
+      "difficile": 1200,
+      "extreme": 1400
+    },
+    {
+      "niveau": 16,
+      "facile": 850,
+      "ordinaire": 1200,
+      "difficile": 1400,
+      "extreme": 1600
+    },
+    {
+      "niveau": 17,
+      "facile": 1000,
+      "ordinaire": 1400,
+      "difficile": 1600,
+      "extreme": 1800
+    },
+    {
+      "niveau": 18,
+      "facile": 1200,
+      "ordinaire": 1600,
+      "difficile": 1800,
+      "extreme": 2000
+    },
+    {
+      "niveau": 19,
+      "facile": 1400,
+      "ordinaire": 1800,
+      "difficile": 2000,
+      "extreme": 2200
+    },
+    {
+      "niveau": 20,
+      "facile": 1600,
+      "ordinaire": 2000,
+      "difficile": 2200,
+      "extreme": 2500
+    }
+  ],
+  "ncPA": [
+    {
+      "nc": null,
+      "pa": 0
+    },
+    {
+      "nc": 0,
+      "pa": 3
+    },
+    {
+      "nc": 0.5,
+      "pa": 5
+    },
+    {
+      "nc": 1,
+      "pa": 10
+    },
+    {
+      "nc": 2,
+      "pa": 20
+    },
+    {
+      "nc": 3,
+      "pa": 40
+    },
+    {
+      "nc": 4,
+      "pa": 70
+    },
+    {
+      "nc": 5,
+      "pa": 100
+    },
+    {
+      "nc": 6,
+      "pa": 150
+    },
+    {
+      "nc": 7,
+      "pa": 200
+    },
+    {
+      "nc": 8,
+      "pa": 250
+    },
+    {
+      "nc": 9,
+      "pa": 320
+    },
+    {
+      "nc": 10,
+      "pa": 400
+    },
+    {
+      "nc": 11,
+      "pa": 500
+    },
+    {
+      "nc": 12,
+      "pa": 600
+    },
+    {
+      "nc": 13,
+      "pa": 700
+    },
+    {
+      "nc": 14,
+      "pa": 850
+    },
+    {
+      "nc": 15,
+      "pa": 1000
+    },
+    {
+      "nc": 16,
+      "pa": 1200
+    },
+    {
+      "nc": 17,
+      "pa": 1400
+    },
+    {
+      "nc": 18,
+      "pa": 1600
+    },
+    {
+      "nc": 19,
+      "pa": 1800
+    },
+    {
+      "nc": 20,
+      "pa": 2000
+    }
+  ]
+}

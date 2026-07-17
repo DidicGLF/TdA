@@ -1,0 +1,1276 @@
+[
+  {
+    "nom": "Aggerskell",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Aigle",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Aigle géant (adulte)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Aigle géant (jeune)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Araignée géante",
+    "nc": 3,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Aspic",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Bison",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Bison (grand mâle)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Calmar géant",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Centaure",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Centaure (chasseur)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Champion raykenn",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Cheval",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Cheval de guerre",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Cheval de guerre lourd",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Créature corrompue",
+    "nc": 2,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Crocodile",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Crocodile géant",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Démon mineur",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Démone dominatrice",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Dragon commun",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Dragon des Tourbes",
+    "nc": 5,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Dragon épineux",
+    "nc": 9,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Dragon originel",
+    "nc": 14,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Dragon originel (vénérable)",
+    "nc": 18,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Dryade",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Dryade vengeresse",
+    "nc": 13,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Élémentaire (colossal)",
+    "nc": 14,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Élémentaire (énorme)",
+    "nc": 9,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Élémentaire (grand)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Élémentaire (moyen)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elémentaire (petit)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe blanc (élémentaliste)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe blanc (lancier)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe blanche (lancière)",
+    "nc": 5,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Elfe blanche (noble)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe blanche (pisteuse)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe bleu (nécromancienne)",
+    "nc": 8,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Elfe bleu (protecteur vétéran)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe bleu (protecteur)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe bleue (mère-prophétesse)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe bleue (sœur des sens)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Elfe noir (apprenti assassin)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe noir (ar'thnen)",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Elfe noir (mester)",
+    "nc": 10,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe sylvain (Archer)",
+    "nc": 2,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Elfe sylvain (éclaireur)",
+    "nc": 1,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Elfe sylvain (jeune chasseur)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe sylvain (maître de chasse)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe sylvaine (chasseuse)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Elfe sylvaine (druidesse)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Fantôme majeur",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Fantôme mineur",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Fée",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Fée noire",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Fléau",
+    "nc": 19,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Garde-Ruelle",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Géant",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Gobelin",
+    "nc": 0.5,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Gobelin (archer d'élite)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Gobelin (archer)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Gobelin (assassin)",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Gobelin (voleur expérimenté)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Gobelin (voleur)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Golem de chair",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Golem de fer",
+    "nc": 12,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Golem de pierre",
+    "nc": 10,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Gorille géant",
+    "nc": 14,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Goule",
+    "nc": 3,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Goule guerrière",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Goule inférieure",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Goule orc",
+    "nc": 1,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Goule troll de glace",
+    "nc": 9,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Goule wampür",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Grand crocodile",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Griffon",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Guivre",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Guivre vénérable",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Harpie",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (apprenti mage)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (bandit vétéran)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (bandit)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (capitaine pirate)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (chef bandit)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (chevalier d'Eysine)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (Chevalier)",
+    "nc": 2,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Humain (guerrier nordique)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (guerrier)",
+    "nc": 2,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Humain (mage)",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (matelot pirate)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (mercenaire)",
+    "nc": 0.5,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Humain (nécromancien)",
+    "nc": 9,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Humain (spadassin assanide)",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Hydre à 10 têtes",
+    "nc": 10,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Hydre à 5 têtes",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Insecte géant (colossal)",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Insecte géant (énorme)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Insecte géant (grand)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Insecte géant (moyen)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Insecte géant (petit)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Jargal alpha",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Lion",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Lion (grand mâle)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Loup",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Loup (mâle alpha)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Loup arctique",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Loup garou",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Loup géant",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Mage noir",
+    "nc": 13,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Murth'n thun",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Musabilia",
+    "nc": 5,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Myst",
+    "nc": 9,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nain (alchimiste)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nain (assassin)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur",
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nain (capitaine)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nain (exorciste)",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur",
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nain (maître forgeron)",
+    "nc": 8,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nain (marchand)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nain (marchande)",
+    "nc": 1,
+    "livres": [
+      "BI Nains",
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Nain (mercenaire de la légion de Fer)",
+    "nc": 6,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nain (seigneur des runes)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur",
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nain (sergent)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nain (soldat)",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur",
+      "BI Nains",
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Nain (soldate)",
+    "nc": 3,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Nain (vétéran)",
+    "nc": 4,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Nain (voyou errant)",
+    "nc": 0.5,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Nécromant",
+    "nc": 13,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nuée d'araignées venimeuses",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nuée de frelons",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nuée de guêpes géantes",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nuée de rats",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Nuée d'oiseaux",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ogre (ancien)",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ogre (chef de guerre)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ogre (guerrier)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ogre (mercenaire)",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Ombre",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Orc (chaman)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Orc (chasseur)",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Orc (chef)",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Orc (esclavagiste)",
+    "nc": 1,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Orc (guerrier)",
+    "nc": 4,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Orc (guerrier)",
+    "nc": 0.5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Orc (mercenaire)",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur",
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Orc (pilleur)",
+    "nc": 2,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Orc (sans-clan)",
+    "nc": 2,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Orc épineux",
+    "nc": 4,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Orhu'nomathan",
+    "nc": 20,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ours brun",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Ours du Venkor",
+    "nc": 4,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Ours géant",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ours noir",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ours polaire colossal",
+    "nc": 13,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Ours polaire géant",
+    "nc": 8,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Panthère",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Panthère épineux",
+    "nc": 2,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Pégase",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Poulvor",
+    "nc": 4,
+    "livres": [
+      "BI Nains",
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Prédateur des Cavernes",
+    "nc": 6,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Prince-démon",
+    "nc": 17,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Raykenn",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Rhino-noir laineux",
+    "nc": 6,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Sanglier",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur",
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Sanglier sanguinaire",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Semi-elfe (mercenaire)",
+    "nc": 1,
+    "livres": [
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Serpent constricteur",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Serpent géant",
+    "nc": 6,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Serpent venimeux",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Shargren",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Soldat mort-vivant",
+    "nc": 1,
+    "livres": [
+      "BI Orcs & Gobelins"
+    ]
+  },
+  {
+    "nom": "Squelette de base",
+    "nc": 1,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Squelette de géant",
+    "nc": 4,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Tigre à dents de sabre",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Troll",
+    "nc": 5,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Troll des glaces",
+    "nc": 7,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Troll des glaces supérieur",
+    "nc": 9,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  },
+  {
+    "nom": "Troll des Plaines",
+    "nc": 5,
+    "livres": [
+      "BI Nains"
+    ]
+  },
+  {
+    "nom": "Wampür",
+    "nc": 2,
+    "livres": [
+      "Livre du Meneur",
+      "BI Elfes"
+    ]
+  },
+  {
+    "nom": "Worg",
+    "nc": 3,
+    "livres": [
+      "Livre du Meneur"
+    ]
+  }
+]
