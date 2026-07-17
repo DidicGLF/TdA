@@ -1183,8 +1183,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                         <div style={{ fontSize: 13, color: `rgba(245,236,215,0.45)`, marginBottom: 6 }}>
                           {result.label} <span style={{ color: `rgba(201,168,76,0.5)` }}>({result.formula})</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-                          <span style={{ fontSize: 24, color: result.flash ? '#fff' : PARCHMENT, transition: 'color 0.2s' }}>🎲 {result.rollDisplay ?? result.roll}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 24, color: result.flash ? '#fff' : PARCHMENT, transition: 'color 0.2s' }}>
+                            <DiceIcon sides={result.sides} size={32} color={result.flash ? '#fff' : PARCHMENT} />
+                            {result.rollDisplay ?? result.roll}
+                          </span>
                           {result.modifier !== null && (
                             <span style={{ fontSize: 22, color: `rgba(245,236,215,0.55)` }}>{result.modifier >= 0 ? '+' : ''}{result.modifier}</span>
                           )}

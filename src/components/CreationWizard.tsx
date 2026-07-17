@@ -1493,7 +1493,7 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const pmBase = niv + SAG.mod
   const pm = famille === 'mystiques' ? 2 * pmBase : pmBase
   const pc = CHA.mod + 2 + (famille === 'aventuriers' ? 2 : 0)
-  const pr = character.peuple.toLowerCase().includes('ogre') ? 6 : 5
+  const pr = character.culture.toLowerCase().includes('ogre') ? 6 : 5
   const defense = 10 + DEX.mod
   const initiative = DEX.valeur
   const attaqueContact  = niv + FOR.mod + (famille === 'combattants' ? 2 : famille === 'aventuriers' ? 1 : 0)
@@ -1504,7 +1504,7 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
   React.useEffect(() => {
     onChange({ pvTotal, pvRestants: pvTotal, pm: Math.max(0, pm), pmRestants: Math.max(0, pm), pc, pr, prUtilises: Array(pr).fill(true), defense, initiative, attaqueContact, attaqueDistance, attaqueMagique })
-  }, [famille, character.peuple, character.niveau, FOR.mod, DEX.mod, CON.mod, INT.mod, SAG.mod, CHA.mod])
+  }, [famille, character.peuple, character.culture, character.niveau, FOR.mod, DEX.mod, CON.mod, INT.mod, SAG.mod, CHA.mod])
 
   const cellStyle: React.CSSProperties = {
     borderBottom: '1px solid rgba(201,168,76,0.1)',
@@ -1534,7 +1534,7 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       <p className="text-base opacity-70 italic mb-3">{t('wizard.step4.intro')}</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 3rem 1.6fr', columnGap: 12 }}>
         {row(t('wizard.step4.pointsVie'), pvTotal, <>{deVieFamille} ({V(deVie)}) + {t('stats.modCON')} ({V(fmt(CON.mod))})</>)}
-        {row(t('wizard.step4.pointsRecup'), pr, character.peuple.toLowerCase().includes('ogre') ? <>Ogre ({V(6)})</> : <>{t('wizard.step4.fixe')} ({V(5)})</>)}
+        {row(t('wizard.step4.pointsRecup'), pr, character.culture.toLowerCase().includes('ogre') ? <>Ogre ({V(6)})</> : <>{t('wizard.step4.fixe')} ({V(5)})</>)}
         {row(t('wizard.step4.pointsMagie'), Math.max(0, pm), famille === 'mystiques'
           ? <>({t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modSAG')} ({V(fmt(SAG.mod))})) × 2</>
           : <>{t('wizard.step4.niv')} ({V(niv)}) + {t('stats.modSAG')} ({V(fmt(SAG.mod))})</>)}
