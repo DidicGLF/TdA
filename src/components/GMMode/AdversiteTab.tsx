@@ -7,7 +7,7 @@ import { getBudgetPA, getPAPourNC, distribuerNC } from '../../utils/rencontre'
 import { demarrerCombat } from '../../utils/combat'
 import CombatTab from './CombatTab'
 import type { RencontreData, Difficulte, RencontreAdversaire, RencontreSauvegardee } from '../../types/gameData'
-import type { CombatSession } from '../../utils/combat'
+import type { CombatSession, CombatSessionSauvegardee } from '../../utils/combat'
 
 const RENCONTRE = RENCONTRE_RAW as RencontreData
 
@@ -19,6 +19,10 @@ const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4,
   color: PARCHMENT, fontSize: 13, padding: '6px 10px', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
 }
+// Fond opaque : sur Windows, la liste déroulante d'un <select> est un popup natif hors de la
+// page — un fond translucide (comme sur inputStyle) y est composité sur blanc au lieu du thème sombre.
+const selectStyle: React.CSSProperties = { ...inputStyle, background: 'var(--tdr-dark)' }
+const optionStyle: React.CSSProperties = { background: 'var(--tdr-dark)', color: PARCHMENT }
 const labelStyle: React.CSSProperties = {
   fontSize: 11, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block',
 }
@@ -44,7 +48,7 @@ const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 export default function AdversiteTab() {
   const { t } = useTranslation()
-  const { bestiaire, rencontres, setRencontres } = useGameData()
+  const { bestiaire, rencontres, setRencontres, combatsSauvegardes, setCombatsSauvegardes } = useGameData()
 
   const [nombrePJs, setNombrePJs] = useState(4)
   const [niveauMoyen, setNiveauMoyen] = useState(4)
@@ -56,6 +60,8 @@ export default function AdversiteTab() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [combatSession, setCombatSession] = useState<CombatSession | null>(null)
+  const [combatSnapshotId, setCombatSnapshotId] = useState<string | null>(null)
+  const [confirmDeleteCombatId, setConfirmDeleteCombatId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
 
   const budgetTotal = getBudgetPA(RENCONTRE, niveauMoyen, difficulte, nombrePJs)
@@ -140,6 +146,29 @@ export default function AdversiteTab() {
     setConfirmDeleteId(null)
   }
 
+  // Sauvegarde/mise à jour d'un instantané du combat en cours : la session (créatures + PJ, avec
+  // tout leur état — PV, buffs, cibles) est déjà auto-suffisante (voir demarrerCombat/importPJ),
+  // il suffit donc de l'horodater et de l'ajouter/mettre à jour dans la bibliothèque. Les sauvegardes
+  // suivantes du même combat mettent à jour la même entrée plutôt que d'en créer une nouvelle à chaque fois.
+  const sauvegarderSnapshot = () => {
+    if (!combatSession) return
+    const id = combatSnapshotId ?? genId()
+    const entry: CombatSessionSauvegardee = { ...combatSession, id, creeLe: new Date().toISOString() }
+    setCombatsSauvegardes(prev => combatSnapshotId ? prev.map(c => c.id === id ? entry : c) : [...prev, entry])
+    setCombatSnapshotId(id)
+  }
+
+  const reprendreCombat = (c: CombatSessionSauvegardee) => {
+    const session: CombatSession = { nomRencontre: c.nomRencontre, combatants: c.combatants, pjs: c.pjs }
+    setCombatSession(JSON.parse(JSON.stringify(session)) as CombatSession)
+    setCombatSnapshotId(c.id)
+  }
+
+  const supprimerCombat = (id: string) => {
+    setCombatsSauvegardes(prev => prev.filter(c => c.id !== id))
+    setConfirmDeleteCombatId(null)
+  }
+
   const exporter = async (r: RencontreSauvegardee) => {
     const content = JSON.stringify(r, null, 2)
     const safe = r.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'rencontre'
@@ -179,9 +208,9 @@ export default function AdversiteTab() {
           </div>
           <div>
             <span style={labelStyle}>{t('gmMode.adversite.difficulte')}</span>
-            <select value={difficulte} onChange={e => setDifficulte(e.target.value as Difficulte)} style={inputStyle}>
+            <select value={difficulte} onChange={e => setDifficulte(e.target.value as Difficulte)} style={selectStyle}>
               {DIFFICULTES.map(d => (
-                <option key={d} value={d}>{t(`gmMode.adversite.difficultes.${d}`)}</option>
+                <option key={d} value={d} style={optionStyle}>{t(`gmMode.adversite.difficultes.${d}`)}</option>
               ))}
             </select>
           </div>
@@ -217,7 +246,16 @@ export default function AdversiteTab() {
               </button>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+            <span style={{ ...labelStyle, width: 60, flexShrink: 0, marginBottom: 0 }}>{t('gmMode.adversite.nc')}</span>
+            <span style={{ width: 46, flexShrink: 0 }} />
+            <span style={{ visibility: 'hidden', flexShrink: 0, fontSize: 10, padding: '3px 7px', border: '1px solid transparent' }}>
+              {t('gmMode.adversite.manuel')}
+            </span>
+            <span style={{ ...labelStyle, flex: 1, marginBottom: 0 }}>{t('gmMode.adversite.creatures')}</span>
+            <span style={{ width: 24, flexShrink: 0 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
             {adversaires.map((a, i) => {
               const options = creaturesParNC.get(a.nc) ?? []
               return (
@@ -240,9 +278,9 @@ export default function AdversiteTab() {
                   >
                     {a.manuel ? t('gmMode.adversite.manuel') : t('gmMode.adversite.auto')}
                   </button>
-                  <select value={a.creatureNom ?? ''} onChange={e => setSlotCreature(i, e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-                    <option value="">{t('gmMode.adversite.selectionner')}</option>
-                    {options.map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                  <select value={a.creatureNom ?? ''} onChange={e => setSlotCreature(i, e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                    <option value="" style={optionStyle}>{t('gmMode.adversite.selectionner')}</option>
+                    {options.map(c => <option key={c.nom} value={c.nom} style={optionStyle}>{c.nom}</option>)}
                   </select>
                   <button onClick={() => removeSlot(i)} style={removeBtnStyle}>✕</button>
                 </div>
@@ -270,6 +308,44 @@ export default function AdversiteTab() {
         </div>
       )}
 
+      {/* Combats sauvegardés — instantanés repris depuis l'écran de combat (bouton Sauvegarder) */}
+      <div>
+        <div style={sectionTitleStyle}>{t('gmMode.adversite.combatsEnCours')}</div>
+        {combatsSauvegardes.length === 0 ? (
+          <div style={{ fontSize: 13, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+            {t('gmMode.adversite.aucunCombatSauvegarde')}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {combatsSauvegardes.map(c => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                border: `1px solid ${c.id === combatSnapshotId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`, borderRadius: 6,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{c.nomRencontre}</div>
+                  <div style={{ fontSize: 11, opacity: 0.5 }}>
+                    {t('gmMode.bataille.nbAdversaires', { count: c.combatants.length })}
+                    {c.pjs.length > 0 && ` · ${t('gmMode.bataille.nbPJ', { count: c.pjs.length })}`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => reprendreCombat(c)}
+                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 12 }}
+                >
+                  ▶ {t('gmMode.adversite.reprendre')}
+                </button>
+                {confirmDeleteCombatId === c.id ? (
+                  <button onClick={() => supprimerCombat(c.id)} style={{ ...removeBtnStyle, fontSize: 12 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
+                ) : (
+                  <button onClick={() => setConfirmDeleteCombatId(c.id)} style={removeBtnStyle}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Bibliothèque de rencontres */}
       <div>
         <div style={sectionTitleStyle}>{t('gmMode.adversite.rencontresEnregistrees')}</div>
@@ -295,7 +371,7 @@ export default function AdversiteTab() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setCombatSession(demarrerCombat(r, bestiaire))}
+                  onClick={() => { setCombatSession(demarrerCombat(r, bestiaire)); setCombatSnapshotId(null) }}
                   style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 12 }}
                 >
                   ▶ {t('gmMode.adversite.jouer')}
@@ -330,7 +406,8 @@ export default function AdversiteTab() {
         <CombatTab
           session={combatSession}
           onSessionChange={setCombatSession}
-          onEndSession={() => setCombatSession(null)}
+          onEndSession={() => { setCombatSession(null); setCombatSnapshotId(null) }}
+          onSauvegarder={sauvegarderSnapshot}
         />
       </div>
 

@@ -103,6 +103,7 @@ export type BestiaireEntry = {
   nom: string
   nc: number   // Niveau de Créature (0, 0.5, 1, 2, ... 20)
   livres: string[]
+  page?: string
   taille?: string
   image?: string
   imageScale?: number

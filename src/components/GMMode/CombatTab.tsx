@@ -17,6 +17,7 @@ interface Props {
   session: CombatSession | null
   onSessionChange: (session: CombatSession) => void
   onEndSession: () => void
+  onSauvegarder: () => void
 }
 
 type Link = {
@@ -32,10 +33,11 @@ type Link = {
   toucheRate?: boolean
 }
 
-export default function CombatTab({ session, onSessionChange, onEndSession }: Props) {
+export default function CombatTab({ session, onSessionChange, onEndSession, onSauvegarder }: Props) {
   const { t } = useTranslation()
   const { data: descriptions } = useGameData()
   const [pjPanelOpen, setPjPanelOpen] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const creaturesColRef = useRef<HTMLDivElement>(null)
@@ -180,12 +182,26 @@ export default function CombatTab({ session, onSessionChange, onEndSession }: Pr
               {session.pjs.length > 0 && ` · ${t('gmMode.bataille.nbPJ', { count: session.pjs.length })}`}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {saveMsg && <span style={{ fontSize: 12, color: GOLD }}>{saveMsg}</span>}
             <button onClick={tourSuivant} style={{
               padding: '6px 14px', borderRadius: 4, border: '1px solid rgba(201,168,76,0.5)',
               background: 'rgba(201,168,76,0.12)', color: GOLD, cursor: 'pointer', fontSize: 13,
             }}>
               ⏭ {t('gmMode.bataille.tourSuivant')}
+            </button>
+            <button
+              onClick={() => {
+                onSauvegarder()
+                setSaveMsg(t('gmMode.bataille.instantaneEnregistre'))
+                setTimeout(() => setSaveMsg(null), 2500)
+              }}
+              style={{
+                padding: '6px 14px', borderRadius: 4, border: '1px solid rgba(100,200,120,0.5)',
+                background: 'rgba(100,200,120,0.12)', color: 'rgba(120,220,140,0.95)', cursor: 'pointer', fontSize: 13,
+              }}
+            >
+              💾 {t('gmMode.bataille.sauvegarder')}
             </button>
             <button onClick={onEndSession} style={{
               padding: '6px 14px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,

@@ -15,9 +15,11 @@ import HIDDEN_CULTURES_RAW from '../data/hidden-cultures.json'
 import HIDDEN_COMPAGNONS_RAW from '../data/hidden-compagnons.json'
 import BESTIAIRE_RAW from '../data/bestiaire.json'
 import RENCONTRES_RAW from '../data/rencontres.json'
+import COMBATS_RAW from '../data/combats-sauvegardes.json'
 import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee } from '../types/gameData'
+import type { CombatSessionSauvegardee } from '../utils/combat'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
@@ -59,6 +61,8 @@ interface GameDataContextValue {
   setBestiaire: Dispatch<SetStateAction<BestiaireEntry[]>>
   rencontres: RencontreSauvegardee[]
   setRencontres: Dispatch<SetStateAction<RencontreSauvegardee[]>>
+  combatsSauvegardes: CombatSessionSauvegardee[]
+  setCombatsSauvegardes: Dispatch<SetStateAction<CombatSessionSauvegardee[]>>
   showHidden: boolean
   setShowHidden: Dispatch<SetStateAction<boolean>>
   openDataDir: () => void
@@ -141,6 +145,9 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [rencontres, setRencontresRaw] = useState<RencontreSauvegardee[]>(() =>
     unwrap(JSON.parse(JSON.stringify(RENCONTRES_RAW))) as RencontreSauvegardee[]
   )
+  const [combatsSauvegardes, setCombatsSauvegardesRaw] = useState<CombatSessionSauvegardee[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(COMBATS_RAW))) as CombatSessionSauvegardee[]
+  )
   const [showHidden, setShowHidden] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -182,6 +189,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (bestiaireStr) setBestiaireRaw(unwrap(JSON.parse(bestiaireStr)) as BestiaireEntry[])
         const rencontresStr = await loadDataFile('rencontres-sauvegardees.json')
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])
+        const combatsStr = await loadDataFile('combats-sauvegardes.json')
+        if (combatsStr) setCombatsSauvegardesRaw(unwrap(JSON.parse(combatsStr)) as CombatSessionSauvegardee[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -207,6 +216,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setHiddenCompagnons = useMemo(() => makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'), [])
   const setBestiaire = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiaireRaw, 'bestiaire.json', 'bestiaire'), [])
   const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'rencontres-sauvegardees.json', 'rencontres'), [])
+  const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'combats-sauvegardes.json', 'combats'), [])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -228,6 +238,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       hiddenCompagnons, setHiddenCompagnons,
       bestiaire, setBestiaire,
       rencontres, setRencontres,
+      combatsSauvegardes, setCombatsSauvegardes,
       showHidden, setShowHidden,
       openDataDir,
       loaded,

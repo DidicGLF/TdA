@@ -4,6 +4,7 @@ import { useGameData } from '../../context/GameDataContext'
 import CreatureDetail from './CreatureDetail'
 import AdversiteTab from './AdversiteTab'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
+import { saveDataFileToBundle } from '../../utils/tauriStorage'
 import type { BestiaireEntry } from '../../types/gameData'
 
 const GOLD = '#c9a84c'
@@ -77,6 +78,7 @@ function BestiaireTab() {
   const { bestiaire, setBestiaire } = useGameData()
   const [search, setSearch] = useState('')
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const [confirmSauvegarderBundle, setConfirmSauvegarderBundle] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -105,6 +107,7 @@ function BestiaireTab() {
   }
 
   return (
+    <>
     <div style={{ display: 'flex', gap: 16, height: '100%' }}>
       {/* Liste — colonne gauche */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320, flexShrink: 0, minHeight: 0 }}>
@@ -117,16 +120,29 @@ function BestiaireTab() {
             background: 'rgba(255,255,255,0.03)', color: PARCHMENT, fontSize: 14,
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 12, opacity: 0.5 }}>
             {t('gmMode.bestiaireCompte', { count: filtered.length })}
           </span>
-          <button onClick={addCreature} style={{
-            background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
-            color: GOLD, cursor: 'pointer', fontSize: 12, padding: '3px 8px',
-          }}>
-            + {t('gmMode.creatureDetail.nouvelleCreature')}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => setConfirmSauvegarderBundle(true)}
+                style={{
+                  background: 'transparent', border: '1px solid rgba(100,200,120,0.5)', borderRadius: 4,
+                  color: 'rgba(100,200,120,0.8)', cursor: 'pointer', fontSize: 12, padding: '3px 8px',
+                }}
+              >
+                {t('gmMode.bestiaireSauvegarderBundle')}
+              </button>
+            )}
+            <button onClick={addCreature} style={{
+              background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+              color: GOLD, cursor: 'pointer', fontSize: 12, padding: '3px 8px',
+            }}>
+              + {t('gmMode.creatureDetail.nouvelleCreature')}
+            </button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
           {filtered.map(({ c, idx }, i) => {
@@ -158,5 +174,44 @@ function BestiaireTab() {
         )}
       </div>
     </div>
+    {confirmSauvegarderBundle && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          background: 'rgba(22,17,11,0.99)', border: '1px solid rgba(201,168,76,0.5)',
+          borderRadius: 8, padding: '24px 28px', maxWidth: 420, width: '90vw',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
+          display: 'flex', flexDirection: 'column', gap: 20,
+        }}>
+          <div style={{ fontSize: 15, color: '#f5ecd7', lineHeight: 1.5 }}>{t('gmMode.bestiaireConfirmSauvegarderBundle')}</div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setConfirmSauvegarderBundle(false)}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14,
+                border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
+                color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
+              }}
+            >{t('gmMode.annuler')}</button>
+            <button
+              onClick={async () => {
+                setConfirmSauvegarderBundle(false)
+                await saveDataFileToBundle('bestiaire.json', bestiaire)
+                window.location.reload()
+              }}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                border: '1px solid rgba(100,200,120,0.6)', background: 'rgba(100,200,120,0.12)',
+                color: 'rgba(120,220,140,0.95)', fontFamily: 'inherit',
+              }}
+            >{t('gmMode.sauvegarder')}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

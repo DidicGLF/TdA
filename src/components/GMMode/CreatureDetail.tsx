@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
+import { saveDataFile } from '../../utils/tauriStorage'
 import type { BestiaireEntry, CreatureAttaque, CreatureCapacite, CreatureVoie } from '../../types/gameData'
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -35,6 +39,7 @@ interface Props {
 
 export default function CreatureDetail({ creature, onChange, onDelete }: Props) {
   const { t } = useTranslation()
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
 
   const caracs = creature.caracteristiques ?? { FOR: '', DEX: '', CON: '', INT: '', SAG: '', CHA: '' }
   const setCarac = (key: typeof CARACS[number], value: string) =>
@@ -49,6 +54,23 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
   const voies = creature.voies ?? []
   const setVoies = (next: CreatureVoie[]) => onChange({ voies: next })
 
+  const exporterCreature = async () => {
+    const content = JSON.stringify(creature, null, 2)
+    const safe = creature.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'creature'
+    const filename = `${safe}.json`
+    if (isTauri) {
+      await saveDataFile(filename, content)
+      setExportMsg(t('gmMode.creatureDetail.exporteVers', { filename }))
+      setTimeout(() => setExportMsg(null), 3000)
+    } else {
+      const blob = new Blob([content], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {/* Identité */}
@@ -62,7 +84,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
             lignes de gauche (NC-row / Description / Caractéristiques-StatsCombat), ce qui aligne son
             label "Image" avec NC/Taille/Aperçue dans tout en lui donnant toute la hauteur disponible —
             sans espaceur artificiel, la grille calcule ça nativement. */}
-        <div style={{ display: 'grid', gridTemplateColumns: '70px 110px 1fr auto', gridAutoRows: 'auto', columnGap: 20, rowGap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '70px 110px 1fr 80px auto', gridAutoRows: 'auto', columnGap: 20, rowGap: 10 }}>
           <div style={{ gridColumn: 1, gridRow: 1 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.nc')}</span>
             <input type="number" step="0.5" value={creature.nc}
@@ -81,8 +103,17 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
               style={inputStyle}
             />
           </div>
+          <div style={{ gridColumn: 4, gridRow: 1 }}>
+            <span style={labelStyle}>{t('gmMode.creatureDetail.page')}</span>
+            <input
+              value={creature.page ?? ''}
+              onChange={e => onChange({ page: e.target.value })}
+              placeholder={t('gmMode.creatureDetail.pagePlaceholder')}
+              style={inputStyle}
+            />
+          </div>
 
-          <div style={{ gridColumn: '1 / span 3', gridRow: 2 }}>
+          <div style={{ gridColumn: '1 / span 4', gridRow: 2 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.description')}</span>
             <textarea
               value={creature.description ?? ''}
@@ -92,7 +123,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
             />
           </div>
 
-          <div style={{ gridColumn: '1 / span 3', gridRow: 3, display: 'flex', gap: 24 }}>
+          <div style={{ gridColumn: '1 / span 4', gridRow: 3, display: 'flex', gap: 24 }}>
             {/* Caractéristiques */}
             <div style={{ flexShrink: 0 }}>
               <div style={sectionTitleStyle}>{t('gmMode.creatureDetail.caracteristiques')}</div>
@@ -161,7 +192,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
           </div>
 
           {/* Image : chevauche les 3 lignes de gauche, largeur dérivée de sa hauteur (voir CreatureImage) */}
-          <div style={{ gridColumn: 4, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ gridColumn: 5, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.image')}</span>
             <div style={{ flex: 1, minHeight: 0 }}>
               <CreatureImage
@@ -239,10 +270,16 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
         </button>
       </div>
 
-      {/* Suppression */}
-      <button onClick={onDelete} style={{ ...removeBtnStyle, alignSelf: 'flex-start', padding: '6px 12px' }}>
-        {t('gmMode.creatureDetail.supprimer')}
-      </button>
+      {/* Export & Suppression */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={exporterCreature} style={{ ...addBtnStyle, alignSelf: undefined, padding: '6px 12px' }}>
+          {t('gmMode.creatureDetail.exporter')}
+        </button>
+        <button onClick={onDelete} style={{ ...removeBtnStyle, alignSelf: 'flex-start', padding: '6px 12px' }}>
+          {t('gmMode.creatureDetail.supprimer')}
+        </button>
+        {exportMsg && <span style={{ fontSize: 12, opacity: 0.7, color: GOLD }}>{exportMsg}</span>}
+      </div>
     </div>
   )
 }

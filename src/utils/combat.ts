@@ -73,6 +73,11 @@ export type CombatSession = {
   pjs: CombatPJ[]
 }
 
+// Instantané persistable d'une session de combat en cours : mêmes données (créatures présentes,
+// PV/buffs/cibles, PJ importés avec les leurs) + un identifiant pour la retrouver et la mettre à
+// jour dans la bibliothèque, afin de pouvoir reprendre un combat interrompu.
+export type CombatSessionSauvegardee = CombatSession & { id: string; creeLe: string }
+
 // Construit une session de combat éphémère à partir d'une rencontre enregistrée : copie de travail,
 // jamais persistée, jamais réécrite sur la rencontre ou le bestiaire d'origine.
 export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: BestiaireEntry[]): CombatSession {

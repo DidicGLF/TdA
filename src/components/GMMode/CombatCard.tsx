@@ -104,11 +104,11 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase', flexShrink: 0 }}>🎯 {t('gmMode.bataille.cible')}</span>
           <select value={cibleId ?? ''} onChange={e => onSetCible(e.target.value || null)} style={{
-            flex: 1, fontSize: 13, padding: '5px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)',
+            flex: 1, fontSize: 13, padding: '5px 8px', borderRadius: 4, background: 'var(--tdr-dark)',
             border: `1px solid ${cibleId ? PURPLE : SECTION_BORDER}`, color: cibleId ? PURPLE : PARCHMENT,
           }}>
-            <option value="">{t('gmMode.bataille.aucuneCible')}</option>
-            {cibles.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gmMode.bataille.aucuneCible')}</option>
+            {cibles.map(c => <option key={c.id} value={c.id} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{c.nom}</option>)}
           </select>
         </div>
 
@@ -129,8 +129,8 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
             {creature.attaques.map((a, i) => (
               <button key={i} onClick={() => handleAttaque(a)} style={attaqueBtnStyle}>
                 <span style={{ flex: 1, textAlign: 'left' }}>{a.nom}</span>
-                {a.bonus && <span style={{ opacity: 0.7 }}>{a.bonus}</span>}
-                {a.dm && <span style={{ opacity: 0.7 }}>{a.dm}</span>}
+                {a.bonus && <span style={{ opacity: 0.7 }}>{t('gmMode.bataille.attaqueLabel')} {a.bonus}</span>}
+                {a.dm && <span style={{ opacity: 0.7 }}>{t('gmMode.bataille.dmLabel')} {a.dm}</span>}
               </button>
             ))}
           </div>
