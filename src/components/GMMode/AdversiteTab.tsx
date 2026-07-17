@@ -1,0 +1,384 @@
+import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useGameData } from '../../context/GameDataContext'
+import { saveDataFile } from '../../utils/tauriStorage'
+import RENCONTRE_RAW from '../../data/rencontre.json'
+import { getBudgetPA, getPAPourNC, distribuerNC } from '../../utils/rencontre'
+import { demarrerCombat } from '../../utils/combat'
+import CombatTab from './CombatTab'
+import type { RencontreData, Difficulte, RencontreAdversaire, RencontreSauvegardee } from '../../types/gameData'
+import type { CombatSession } from '../../utils/combat'
+
+const RENCONTRE = RENCONTRE_RAW as RencontreData
+
+const GOLD = '#c9a84c'
+const PARCHMENT = '#f5ecd7'
+const SECTION_BORDER = 'rgba(201,168,76,0.2)'
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4,
+  color: PARCHMENT, fontSize: 13, padding: '6px 10px', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
+}
+const labelStyle: React.CSSProperties = {
+  fontSize: 11, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block',
+}
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: 14, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif", letterSpacing: '0.04em',
+  borderBottom: `1px solid ${SECTION_BORDER}`, paddingBottom: 6, marginBottom: 12,
+}
+const btnStyle: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 4,
+  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', fontSize: 13, padding: '6px 12px',
+}
+const removeBtnStyle: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 4,
+  color: 'rgba(255,110,110,0.8)', cursor: 'pointer', fontSize: 12, padding: '4px 8px', flexShrink: 0,
+}
+
+const DIFFICULTES: Difficulte[] = ['facile', 'ordinaire', 'difficile', 'extreme']
+
+const genId = () =>
+  (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : String(Date.now())
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+export default function AdversiteTab() {
+  const { t } = useTranslation()
+  const { bestiaire, rencontres, setRencontres } = useGameData()
+
+  const [nombrePJs, setNombrePJs] = useState(4)
+  const [niveauMoyen, setNiveauMoyen] = useState(4)
+  const [difficulte, setDifficulte] = useState<Difficulte>('ordinaire')
+  const [nombreAdversaires, setNombreAdversaires] = useState(3)
+  const [adversaires, setAdversaires] = useState<RencontreAdversaire[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [nomRencontre, setNomRencontre] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [combatSession, setCombatSession] = useState<CombatSession | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+
+  const budgetTotal = getBudgetPA(RENCONTRE, niveauMoyen, difficulte, nombrePJs)
+  const paUtilise = adversaires.reduce((somme, a) => somme + getPAPourNC(RENCONTRE, a.nc), 0)
+
+  const creaturesParNC = useMemo(() => {
+    const m = new Map<number, typeof bestiaire>()
+    for (const c of bestiaire) m.set(c.nc, [...(m.get(c.nc) ?? []), c])
+    return m
+  }, [bestiaire])
+
+  const applyRedistribution = (slots: RencontreAdversaire[]) => {
+    const ncs = distribuerNC(RENCONTRE, slots.map(s => ({ nc: s.nc, manuel: s.manuel })), budgetTotal)
+    setAdversaires(slots.map((s, i) => {
+      if (s.manuel || s.nc === ncs[i]) return s
+      const nc = ncs[i]
+      const match = creaturesParNC.get(nc)?.[0]
+      return { ...s, nc, creatureNom: match?.nom ?? null }
+    }))
+  }
+
+  const genererCombat = () => {
+    const vides: RencontreAdversaire[] = Array.from({ length: Math.max(1, nombreAdversaires) }, () => ({
+      nc: 0, manuel: false, creatureNom: null,
+    }))
+    const ncs = distribuerNC(RENCONTRE, vides.map(s => ({ nc: s.nc, manuel: s.manuel })), budgetTotal)
+    setAdversaires(vides.map((s, i) => {
+      const nc = ncs[i]
+      const match = creaturesParNC.get(nc)?.[0]
+      return { ...s, nc, creatureNom: match?.nom ?? null }
+    }))
+    setEditingId(null)
+  }
+
+  const setSlotNC = (index: number, nc: number) => {
+    applyRedistribution(adversaires.map((a, i) => i === index ? { ...a, nc, manuel: true } : a))
+  }
+
+  const toggleAuto = (index: number) => {
+    applyRedistribution(adversaires.map((a, i) => i === index ? { ...a, manuel: false } : a))
+  }
+
+  const setSlotCreature = (index: number, nom: string) => {
+    setAdversaires(adversaires.map((a, i) => i === index ? { ...a, creatureNom: nom || null } : a))
+  }
+
+  const addSlot = () => applyRedistribution([...adversaires, { nc: 0, manuel: false, creatureNom: null }])
+  const removeSlot = (index: number) => applyRedistribution(adversaires.filter((_, i) => i !== index))
+  const recalculer = () => applyRedistribution(adversaires)
+
+  const sauvegarder = () => {
+    if (!nomRencontre.trim() || adversaires.length === 0) return
+    const id = editingId ?? genId()
+    const entry: RencontreSauvegardee = {
+      id, nom: nomRencontre.trim(), nombrePJs, niveauMoyen, difficulte,
+      adversaires, creeLe: new Date().toISOString(),
+    }
+    setRencontres(prev => editingId ? prev.map(r => r.id === id ? entry : r) : [...prev, entry])
+    setEditingId(id)
+    setSaveMsg(t('gmMode.adversite.enregistre'))
+    setTimeout(() => setSaveMsg(null), 2500)
+  }
+
+  const charger = (r: RencontreSauvegardee) => {
+    setNombrePJs(r.nombrePJs)
+    setNiveauMoyen(r.niveauMoyen)
+    setDifficulte(r.difficulte)
+    setAdversaires(r.adversaires.map(a => ({ ...a })))
+    setEditingId(r.id)
+    setNomRencontre(r.nom)
+  }
+
+  const nouvelle = () => {
+    setEditingId(null)
+    setNomRencontre('')
+    setAdversaires([])
+  }
+
+  const supprimer = (id: string) => {
+    setRencontres(prev => prev.filter(r => r.id !== id))
+    if (editingId === id) nouvelle()
+    setConfirmDeleteId(null)
+  }
+
+  const exporter = async (r: RencontreSauvegardee) => {
+    const content = JSON.stringify(r, null, 2)
+    const safe = r.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'rencontre'
+    const filename = `${safe}.json`
+    if (isTauri) {
+      await saveDataFile(filename, content)
+      setSaveMsg(t('gmMode.adversite.exporteVers', { filename }))
+      setTimeout(() => setSaveMsg(null), 3000)
+    } else {
+      const blob = new Blob([content], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  const builderContent = (
+    <>
+      <div style={{ fontSize: 12, opacity: 0.5, textAlign: 'center', lineHeight: 1.5 }}>
+        {t('gmMode.adversite.intro')}
+      </div>
+
+      {/* Paramètres de la rencontre */}
+      <div>
+        <div style={sectionTitleStyle}>{t('gmMode.adversite.parametres')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          <div>
+            <span style={labelStyle}>{t('gmMode.adversite.nombrePJs')}</span>
+            <input type="number" min={1} value={nombrePJs}
+              onChange={e => setNombrePJs(Math.max(1, parseInt(e.target.value) || 1))} style={inputStyle} />
+          </div>
+          <div>
+            <span style={labelStyle}>{t('gmMode.adversite.niveauMoyen')}</span>
+            <input type="number" min={1} max={20} value={niveauMoyen}
+              onChange={e => setNiveauMoyen(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))} style={inputStyle} />
+          </div>
+          <div>
+            <span style={labelStyle}>{t('gmMode.adversite.difficulte')}</span>
+            <select value={difficulte} onChange={e => setDifficulte(e.target.value as Difficulte)} style={inputStyle}>
+              {DIFFICULTES.map(d => (
+                <option key={d} value={d}>{t(`gmMode.adversite.difficultes.${d}`)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <span style={labelStyle}>{t('gmMode.adversite.nombreAdversaires')}</span>
+            <input type="number" min={1} max={12} value={nombreAdversaires}
+              onChange={e => setNombreAdversaires(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))} style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12 }}>
+          <span style={{ fontSize: 13, opacity: 0.7 }}>
+            {t('gmMode.adversite.budgetTotal')} : <strong style={{ color: GOLD }}>{budgetTotal} {t('gmMode.adversite.pa')}</strong>
+          </span>
+          <button onClick={genererCombat} style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.2)', color: 'rgba(210,185,255,0.95)' }}>
+            🎲 {t('gmMode.adversite.genererCombat')}
+          </button>
+        </div>
+      </div>
+
+      {/* Adversaires générés */}
+      {adversaires.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ ...sectionTitleStyle, marginBottom: 0, border: 'none', paddingBottom: 0 }}>
+              {t('gmMode.adversite.adversaires')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, color: paUtilise > budgetTotal ? 'rgba(255,150,150,0.9)' : GOLD }}>
+                {paUtilise} / {budgetTotal} {t('gmMode.adversite.pa')}
+              </span>
+              <button onClick={recalculer} style={{ ...btnStyle, fontSize: 12, padding: '4px 10px' }}>
+                🔄 {t('gmMode.adversite.recalculer')}
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+            {adversaires.map((a, i) => {
+              const options = creaturesParNC.get(a.nc) ?? []
+              return (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ width: 60, flexShrink: 0 }}>
+                    <input type="number" step="0.5" value={a.nc} onChange={e => setSlotNC(i, parseFloat(e.target.value) || 0)} style={inputStyle} />
+                  </div>
+                  <span style={{ fontSize: 11, opacity: 0.55, width: 46, flexShrink: 0, textAlign: 'right' }}>
+                    {getPAPourNC(RENCONTRE, a.nc)} {t('gmMode.adversite.pa')}
+                  </span>
+                  <button
+                    onClick={() => a.manuel ? toggleAuto(i) : undefined}
+                    title={a.manuel ? t('gmMode.adversite.manuelTitle') : t('gmMode.adversite.autoTitle')}
+                    style={{
+                      flexShrink: 0, fontSize: 10, padding: '3px 7px', borderRadius: 3, cursor: a.manuel ? 'pointer' : 'default',
+                      border: `1px solid ${a.manuel ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`,
+                      background: a.manuel ? 'rgba(201,168,76,0.12)' : 'transparent',
+                      color: a.manuel ? GOLD : 'rgba(245,236,215,0.4)',
+                    }}
+                  >
+                    {a.manuel ? t('gmMode.adversite.manuel') : t('gmMode.adversite.auto')}
+                  </button>
+                  <select value={a.creatureNom ?? ''} onChange={e => setSlotCreature(i, e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                    <option value="">{t('gmMode.adversite.selectionner')}</option>
+                    {options.map(c => <option key={c.nom} value={c.nom}>{c.nom}</option>)}
+                  </select>
+                  <button onClick={() => removeSlot(i)} style={removeBtnStyle}>✕</button>
+                </div>
+              )
+            })}
+          </div>
+          <button onClick={addSlot} style={{ ...btnStyle, marginTop: 10, borderStyle: 'dashed' }}>
+            + {t('gmMode.adversite.ajouterAdversaire')}
+          </button>
+        </div>
+      )}
+
+      {/* Sauvegarde de la rencontre */}
+      {adversaires.length > 0 && (
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input value={nomRencontre} onChange={e => setNomRencontre(e.target.value)}
+            placeholder={t('gmMode.adversite.nomRencontre')} style={{ ...inputStyle, flex: 1 }} />
+          <button onClick={sauvegarder} disabled={!nomRencontre.trim()} style={{ ...btnStyle, opacity: nomRencontre.trim() ? 1 : 0.4 }}>
+            💾 {editingId ? t('gmMode.adversite.mettreAJour') : t('gmMode.adversite.enregistrer')}
+          </button>
+          {editingId && (
+            <button onClick={nouvelle} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.nouvelle')}</button>
+          )}
+          {saveMsg && <span style={{ fontSize: 12, color: GOLD }}>{saveMsg}</span>}
+        </div>
+      )}
+
+      {/* Bibliothèque de rencontres */}
+      <div>
+        <div style={sectionTitleStyle}>{t('gmMode.adversite.rencontresEnregistrees')}</div>
+        {rencontres.length === 0 ? (
+          <div style={{ fontSize: 13, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+            {t('gmMode.adversite.aucuneRencontre')}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {rencontres.map(r => (
+              <div key={r.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                border: `1px solid ${r.id === editingId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`, borderRadius: 6,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{r.nom}</div>
+                  <div style={{ fontSize: 11, opacity: 0.5 }}>
+                    {t('gmMode.adversite.resume', {
+                      pjs: r.nombrePJs, niveau: r.niveauMoyen,
+                      difficulte: t(`gmMode.adversite.difficultes.${r.difficulte}`),
+                      nb: r.adversaires.length,
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCombatSession(demarrerCombat(r, bestiaire))}
+                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 12 }}
+                >
+                  ▶ {t('gmMode.adversite.jouer')}
+                </button>
+                <button onClick={() => charger(r)} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.charger')}</button>
+                <button onClick={() => exporter(r)} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.exporter')}</button>
+                {confirmDeleteId === r.id ? (
+                  <button onClick={() => supprimer(r.id)} style={{ ...removeBtnStyle, fontSize: 12 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(r.id)} style={removeBtnStyle}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+
+  if (!combatSession) {
+    return (
+      <div style={{ maxWidth: 780, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {builderContent}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative', height: '100%' }}>
+      {/* Zone de combat — décalée à droite pour ne jamais passer sous la poignée du tiroir, même fermé */}
+      <div style={{ height: '100%', paddingLeft: 38 }}>
+        <CombatTab
+          session={combatSession}
+          onSessionChange={setCombatSession}
+          onEndSession={() => setCombatSession(null)}
+        />
+      </div>
+
+      {/* Tiroir latéral — fixe à gauche, s'ouvre au survol ou au clic, glisse par-dessus la zone de combat */}
+      <div
+        onMouseLeave={() => setPanelOpen(false)}
+        style={{
+          position: 'absolute', top: 0, left: 0, height: '100%', zIndex: 20,
+          display: 'flex', alignItems: 'stretch',
+          transform: panelOpen ? 'translateX(0)' : 'translateX(-520px)',
+          transition: 'transform 0.2s ease',
+        }}
+      >
+        <div style={{
+          width: 520, flexShrink: 0, display: 'flex', flexDirection: 'column',
+          background: 'rgba(15,12,8,0.97)', border: `1px solid ${SECTION_BORDER}`, borderLeft: 'none',
+          boxShadow: '6px 0 24px rgba(0,0,0,0.5)', overflow: 'hidden',
+        }}>
+          <div style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.08)',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>{t('gmMode.adversite.parametres')}</span>
+            <button onClick={() => setPanelOpen(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.6)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
+          </div>
+          <div style={{ padding: 16, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {builderContent}
+          </div>
+        </div>
+
+        {/* Poignée — reste collée au bord droit du tiroir, visible même fermé. Le texte pivote via
+            transform (plus fiable entre moteurs de rendu que writing-mode, qui peut ne pas tourner
+            les caractères latins selon le WebKit utilisé et se contenter de retourner à la ligne). */}
+        <button
+          onMouseEnter={() => setPanelOpen(true)}
+          onClick={() => setPanelOpen(o => !o)}
+          style={{
+            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '10px 0', background: 'rgba(15,12,8,0.95)',
+            border: `1px solid ${SECTION_BORDER}`, borderLeft: 'none', borderRadius: '0 6px 6px 0',
+            color: GOLD, cursor: 'pointer', boxShadow: '4px 0 16px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.05em', transform: 'rotate(-90deg)' }}>
+            ⚙ {t('gmMode.adversite.parametresCourt')}
+          </span>
+        </button>
+      </div>
+    </div>
+  )
+}

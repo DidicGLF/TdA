@@ -65,10 +65,60 @@ export type CompanionEntry = {
   capacites?: string
 }
 
+export type CreatureCaracteristiques = {
+  FOR: string
+  DEX: string
+  CON: string
+  INT: string
+  SAG: string
+  CHA: string
+}
+
+export type CreatureAttaque = {
+  nom: string      // ex: "Morsure et griffes", "Souffle (L)"
+  bonus?: string   // ex: "+22"
+  dm?: string      // ex: "4d6+16", "6d6+30"
+  zone?: string    // ex: "(30 x 15 m)"
+}
+
+export type CreatureCapacite = {
+  nom: string
+  desc: string
+}
+
+export type CreatureVoieRang = {
+  rang: number
+  nom: string
+  desc: string
+}
+
+export type CreatureVoie = {
+  nom: string          // ex: "Voie de l'envoûtement"
+  rang: number         // rang atteint par la créature
+  reference?: string   // ex: "LdJ p.134"
+  rangs: CreatureVoieRang[]
+}
+
 export type BestiaireEntry = {
   nom: string
   nc: number   // Niveau de Créature (0, 0.5, 1, 2, ... 20)
   livres: string[]
+  taille?: string
+  image?: string
+  imageScale?: number
+  imageTx?: number
+  imageTy?: number
+  imageFit?: 'cover' | 'contain'
+  imageLocked?: boolean
+  description?: string
+  caracteristiques?: CreatureCaracteristiques
+  def?: number
+  pv?: number
+  init?: number
+  rd?: number
+  attaques?: CreatureAttaque[]
+  capacites?: CreatureCapacite[]
+  voies?: CreatureVoie[]
 }
 
 export type Difficulte = 'facile' | 'ordinaire' | 'difficile' | 'extreme'
@@ -77,3 +127,19 @@ export type CoutPAEntry = { niveau: number; facile: number; ordinaire: number; d
 // nc: null représente l'entrée "-" (aucune créature, coût 0), distincte du vrai NC 0
 export type NCPAEntry = { nc: number | null; pa: number }
 export type RencontreData = { coutPA: CoutPAEntry[]; ncPA: NCPAEntry[] }
+
+export type RencontreAdversaire = {
+  nc: number
+  manuel: boolean          // true si le NC a été fixé à la main (pas redistribué automatiquement)
+  creatureNom: string | null  // nom de la créature choisie dans le bestiaire (lien par nom)
+}
+
+export type RencontreSauvegardee = {
+  id: string
+  nom: string
+  nombrePJs: number
+  niveauMoyen: number
+  difficulte: Difficulte
+  adversaires: RencontreAdversaire[]
+  creeLe: string   // ISO timestamp
+}

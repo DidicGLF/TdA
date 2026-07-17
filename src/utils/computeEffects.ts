@@ -1,4 +1,4 @@
-import type { Character } from '../types/character'
+import type { Character, Caracteristique } from '../types/character'
 import { getMod } from '../types/character'
 import type { DescMap } from '../types/gameData'
 import cristauxData from '../data/cristaux.json'
@@ -227,6 +227,45 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
 
 export function sumStat(contributions: Contribution[]): number {
   return contributions.reduce((acc, c) => acc + c.value, 0)
+}
+
+// Stats de combat "de base" d'un PJ (PV/PM max, DEF, RD générique) à partir des effets permanents
+// (voies + cristaux) uniquement — pas des bonus temporaires de session (activeBoosts/effectCounters),
+// qui n'existent pas sur un personnage fraîchement importé et n'ont pas de sens hors d'une session de
+// Mode de jeu. Pensé pour l'écran de combat MJ : les modificateurs ponctuels du combat (buffs/debuffs
+// posés par le MJ) s'appliquent par-dessus via le même mécanisme StatBuff que les créatures du bestiaire,
+// pas via ce calcul. Réplique la logique de GameModePanel/CharacterSheetRecto sans la dupliquer une
+// troisième fois avec la partie "session live" qui ne s'applique pas ici.
+export function computeCombatStatsPJ(character: Character, descriptions: DescMap): {
+  pvTotal: number
+  pmTotal: number
+  def: number
+  rd: number
+} {
+  const effectsAll = computeEffectsWithCristaux(character, descriptions)
+
+  const effectiveMod = (stat: Caracteristique): number => {
+    const bonus = sumStat(effectsAll[stat] ?? [])
+    return bonus === 0 ? character.caracteristiques[stat].mod : getMod(character.caracteristiques[stat].valeur + bonus)
+  }
+
+  const deVieFaces = character.famille === 'combattants' ? 10 : character.famille === 'aventuriers' ? 8 : 6
+  let pvBase = character.niveau1Base ? character.niveau1Base.pvTotal : deVieFaces + character.caracteristiques.CON.mod
+  for (const e of character.pvHistorique ?? []) pvBase += e.total
+  const pvTotal = pvBase + sumStat(effectsAll['PV'] ?? [])
+
+  const pmBaseNiveau = character.niveau + effectiveMod('SAG')
+  const pmNiveau = Math.max(0, character.famille === 'mystiques' ? 2 * pmBaseNiveau : pmBaseNiveau)
+  const pmTotal = pmNiveau + sumStat(effectsAll['PM'] ?? [])
+
+  const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+  const armorDef = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const shieldDef = character.armuresEquipees.filter(a => isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const def = 10 + effectiveMod('DEX') + armorDef + shieldDef + (character.bonusDefense ?? 0) + sumStat(effectsAll['DEF'] ?? [])
+
+  const rd = sumStat(effectsAll['RD'] ?? [])
+
+  return { pvTotal, pmTotal, def, rd }
 }
 
 // Contributions des bonus temporaires (Effets en jeu) actuellement actifs sur la copie de session du Mode de

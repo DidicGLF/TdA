@@ -168,6 +168,56 @@
     "livres": [
       "Livre du Meneur",
       "BI Elfes"
+    ],
+    "taille": "colossale",
+    "description": "Les dragons originels sont rares, grands, massifs et intelligents. Ils maîtrisent une magie subtile leur permettant de s'immiscer dans l'esprit des créatures pensantes pour communiquer avec elles ou influencer leur esprit.\n\nL'apparence des dragons originels peut varier grandement, certains étant liés à des éléments naturels, tels que la glace, la roche ou le bois, tandis que d'autres sont simplement immenses et majestueux.",
+    "caracteristiques": {
+      "FOR": "+12",
+      "DEX": "+2*",
+      "CON": "+12",
+      "INT": "+4",
+      "SAG": "+4",
+      "CHA": "+4"
+    },
+    "def": 28,
+    "pv": 180,
+    "init": 15,
+    "rd": 3,
+    "attaques": [
+      {
+        "nom": "Morsure et griffes",
+        "bonus": "+22",
+        "dm": "4d6+16"
+      },
+      {
+        "nom": "Attaque magique",
+        "bonus": "+18"
+      },
+      {
+        "nom": "Souffle (L)",
+        "dm": "6d6+30",
+        "zone": "(30 x 15 m)"
+      }
+    ],
+    "capacites": [
+      {
+        "nom": "Souffle enflammé (L)",
+        "desc": "Le souffle est une attaque de zone affectant toutes les créatures dans un cône de 30 m de long sur 15 m de large. L'attaque inflige automatiquement (pas de test d'attaque) [6d6 + 30] DM. Les DM sont divisés par deux si la victime réussit un test de DEX difficulté 13. Après chaque utilisation, la créature doit attendre 1d4 tours avant de pouvoir à nouveau recourir à son souffle."
+      }
+    ],
+    "voies": [
+      {
+        "nom": "Voie de l'envoûtement",
+        "rang": 5,
+        "reference": "LdJ p.134",
+        "rangs": [
+          {
+            "rang": 1,
+            "nom": "Injonction*",
+            "desc": "Donne un ordre simple à une cible contre un test d'attaque magique opposé."
+          }
+        ]
+      }
     ]
   },
   {

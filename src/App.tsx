@@ -13,6 +13,8 @@ import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
 import CharacterSheetCristaux from './components/CharacterSheetCristaux'
 import CreationWizard from './components/CreationWizard'
+import ModeSelector from './components/ModeSelector'
+import GMDashboard from './components/GMMode/GMDashboard'
 import SaveLoadPanel from './components/SaveLoadPanel'
 import DescriptionsEditor from './components/DescriptionsEditor'
 import TranslationEditor from './components/TranslationEditor'
@@ -60,6 +62,7 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  const [appMode, setAppMode] = useState<'joueur' | 'mj' | null>(null)
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
   const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes' | 'cristaux'>('recto')
@@ -334,6 +337,13 @@ function AppContent() {
               <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(201,168,76,0.3)' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => { setAppMode(null); setShowMobileGestion(false) }} style={{
+                padding: '14px 20px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
+              }}>
+                {t('gmMode.changerMode')}
+              </button>
               <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
                 padding: '14px 20px', background: 'transparent', border: 'none',
                 borderBottom: '1px solid rgba(201,168,76,0.1)',
@@ -510,6 +520,17 @@ function AppContent() {
       </div>
     </>
   )
+
+  // Mode MJ trop complexe pour un petit écran : si aucun mode n'est choisi, ou si la fenêtre est
+  // redescendue sous le seuil mobile alors qu'on était déjà en MJ, on (re)montre le sélecteur avec
+  // la carte MJ désactivée plutôt que de laisser l'interface MJ s'afficher sur mobile.
+  if (!appMode || (appMode === 'mj' && isMobile)) {
+    return <ModeSelector onSelect={setAppMode} mjDisabled={isMobile} />
+  }
+
+  if (appMode === 'mj') {
+    return <GMDashboard onBack={() => setAppMode(null)} />
+  }
 
   if (isMobile) {
     return (
@@ -746,6 +767,15 @@ function AppContent() {
               borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
               minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}>
+              {/* Changer de mode */}
+              <button onClick={() => { setAppMode(null); setShowGestion(false) }} style={{
+                padding: '10px 16px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+              }}>
+                {t('gmMode.changerMode')}
+              </button>
+
               {/* Données du jeu */}
               <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
                 padding: '10px 16px', background: 'transparent', border: 'none',
