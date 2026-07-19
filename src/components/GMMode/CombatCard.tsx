@@ -39,7 +39,7 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
     return (
       <div data-combat-id={combatant.id} onClick={onToggleExpand} style={{
         width: 140, cursor: 'pointer', border: `1px solid ${isDown ? 'rgba(150,150,150,0.4)' : SECTION_BORDER}`, borderRadius: 8,
-        overflow: 'hidden', background: 'rgba(255,255,255,0.02)', flexShrink: 0,
+        overflow: 'hidden', background: 'rgba(15,12,8,0.95)', flexShrink: 0,
         filter: isDown ? 'grayscale(1)' : undefined,
       }}>
         <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -66,7 +66,7 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
     <div data-combat-id={combatant.id} style={{
       width: 400, flexShrink: 0,
       border: `1px solid ${isDown ? 'rgba(150,150,150,0.5)' : aJoueCeTour ? 'rgba(255,80,80,0.4)' : SECTION_BORDER}`,
-      borderRadius: 8, background: 'rgba(255,255,255,0.02)', position: 'relative', overflow: 'hidden',
+      borderRadius: 8, background: 'rgba(15,12,8,0.95)', position: 'relative', overflow: 'hidden',
       filter: isDown ? 'grayscale(1)' : undefined,
     }}>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>

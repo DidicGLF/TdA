@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
 import { saveDataFile } from '../../utils/tauriStorage'
-import type { BestiaireEntry, CreatureAttaque, CreatureCapacite, CreatureVoie } from '../../types/gameData'
+import { useGameData } from '../../context/GameDataContext'
+import type { BestiaireEntry, CreatureAttaque, CreatureCapacite, CreatureVoie, CapaciteEffet } from '../../types/gameData'
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -10,11 +11,20 @@ const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
 const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
+// Tailles définies par le Livre du Meneur — liste fermée plutôt qu'un champ libre.
+const TAILLES = ['Minuscule', 'Très petite', 'Petite', 'Moyenne', 'Grande', 'Énorme', 'Colossale'] as const
+// Statistiques modifiables par un effet de capacité — les mêmes identifiants que ceux déjà utilisés
+// par les ajustements manuels du MJ en combat (voir stat= sur StatCell dans CombatCard/PJCard).
+const EFFET_STATS = [...CARACS, 'DEF', 'RD', 'INIT', 'ATK', 'DM'] as const
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4,
   color: PARCHMENT, fontSize: 13, padding: '5px 8px', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
 }
+// Fond opaque : sur Windows, la liste déroulante d'un <select> est un popup natif hors de la
+// page — un fond translucide y est composité sur blanc au lieu du thème sombre.
+const selectStyle: React.CSSProperties = { ...inputStyle, background: 'var(--tdr-dark)' }
+const optionStyle: React.CSSProperties = { background: 'var(--tdr-dark)', color: PARCHMENT }
 const labelStyle: React.CSSProperties = {
   fontSize: 11, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block',
 }
@@ -31,6 +41,9 @@ const addBtnStyle: React.CSSProperties = {
   color: 'rgba(201,168,76,0.8)', cursor: 'pointer', fontSize: 12, padding: '6px 10px', alignSelf: 'flex-start',
 }
 
+const genId = () =>
+  (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : String(Date.now())
+
 interface Props {
   creature: BestiaireEntry
   onChange: (patch: Partial<BestiaireEntry>) => void
@@ -39,7 +52,9 @@ interface Props {
 
 export default function CreatureDetail({ creature, onChange, onDelete }: Props) {
   const { t } = useTranslation()
+  const { capacitesBibliotheque, setCapacitesBibliotheque } = useGameData()
   const [exportMsg, setExportMsg] = useState<string | null>(null)
+  const [biblioMsg, setBiblioMsg] = useState<string | null>(null)
 
   const caracs = creature.caracteristiques ?? { FOR: '', DEX: '', CON: '', INT: '', SAG: '', CHA: '' }
   const setCarac = (key: typeof CARACS[number], value: string) =>
@@ -50,6 +65,35 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
 
   const capacites = creature.capacites ?? []
   const setCapacites = (next: CreatureCapacite[]) => onChange({ capacites: next })
+
+  // Taper un nom qui correspond exactement à une capacité de la bibliothèque copie sa description et
+  // son effet — seulement si la capacité en cours est encore vide, pour ne jamais écraser une capacité
+  // déjà personnalisée qui porterait par coïncidence le même nom.
+  const setCapaciteNom = (i: number, nom: string) => {
+    const c = capacites[i]
+    const match = capacitesBibliotheque.find(cb => cb.nom === nom)
+    if (match && !c.desc.trim() && !(c.effets && c.effets.length)) {
+      setCapacites(capacites.map((x, j) => j === i
+        ? { ...x, nom, desc: match.desc, effets: match.effets?.map(ef => ({ ...ef })) }
+        : x))
+    } else {
+      setCapacites(capacites.map((x, j) => j === i ? { ...x, nom } : x))
+    }
+  }
+
+  const setCapaciteEffets = (i: number, effets: CapaciteEffet[]) =>
+    setCapacites(capacites.map((x, j) => j === i ? { ...x, effets } : x))
+
+  // Enregistre (ou met à jour, si le nom existe déjà) cette capacité dans la bibliothèque partagée,
+  // pour pouvoir la réutiliser directement sur une autre créature sans la retaper.
+  const ajouterALaBibliotheque = (c: CreatureCapacite) => {
+    if (!c.nom.trim()) return
+    const existante = capacitesBibliotheque.find(cb => cb.nom === c.nom)
+    const entry = { id: existante?.id ?? genId(), nom: c.nom, desc: c.desc, effets: c.effets }
+    setCapacitesBibliotheque(prev => existante ? prev.map(cb => cb.id === entry.id ? entry : cb) : [...prev, entry])
+    setBiblioMsg(existante ? t('gmMode.creatureDetail.biblioMiseAJour') : t('gmMode.creatureDetail.biblioAjoutee'))
+    setTimeout(() => setBiblioMsg(null), 2500)
+  }
 
   const voies = creature.voies ?? []
   const setVoies = (next: CreatureVoie[]) => onChange({ voies: next })
@@ -92,7 +136,12 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
           </div>
           <div style={{ gridColumn: 2, gridRow: 1 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.taille')}</span>
-            <input value={creature.taille ?? ''} onChange={e => onChange({ taille: e.target.value })} style={inputStyle} />
+            <select value={creature.taille ?? ''} onChange={e => onChange({ taille: e.target.value || undefined })} style={selectStyle}>
+              <option value="" style={optionStyle}>{t('gmMode.creatureDetail.tailleAucune')}</option>
+              {TAILLES.map(taille => (
+                <option key={taille} value={taille} style={optionStyle}>{taille}</option>
+              ))}
+            </select>
           </div>
           <div style={{ gridColumn: 3, gridRow: 1, minWidth: 0 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.apercuDans')}</span>
@@ -214,16 +263,48 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
 
       {/* Capacités */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={sectionTitleStyle}>{t('gmMode.creatureDetail.capacites')}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <div style={{ ...sectionTitleStyle, flex: 1 }}>{t('gmMode.creatureDetail.capacites')}</div>
+          {biblioMsg && <span style={{ fontSize: 12, color: GOLD }}>{biblioMsg}</span>}
+        </div>
+        <datalist id="capacites-bibliotheque-datalist">
+          {capacitesBibliotheque.map(cb => <option key={cb.id} value={cb.nom} />)}
+        </datalist>
         {capacites.map((c, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 10 }}>
             <div style={{ display: 'flex', gap: 6 }}>
-              <input value={c.nom} onChange={e => setCapacites(capacites.map((x, j) => j === i ? { ...x, nom: e.target.value } : x))}
+              <input value={c.nom} onChange={e => setCapaciteNom(i, e.target.value)} list="capacites-bibliotheque-datalist"
                 placeholder={t('gmMode.creatureDetail.capNom')} style={{ ...inputStyle, flex: 1, fontWeight: 700 }} />
+              <button onClick={() => ajouterALaBibliotheque(c)} title={t('gmMode.creatureDetail.ajouterBiblioTitle')} style={{ ...removeBtnStyle, borderColor: 'rgba(201,168,76,0.4)', color: GOLD }}>
+                💾 {t('gmMode.creatureDetail.ajouterBiblio')}
+              </button>
               <button onClick={() => setCapacites(capacites.filter((_, j) => j !== i))} style={removeBtnStyle}>✕</button>
             </div>
             <textarea value={c.desc} onChange={e => setCapacites(capacites.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))}
               placeholder={t('gmMode.creatureDetail.capDesc')} rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+
+            {/* Effet(s) : bonus/malus préréglés qu'un bouton "Activer" appliquera d'un clic sur la carte de combat */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 4 }}>
+              {(c.effets ?? []).map((ef, k) => (
+                <div key={k} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <select value={ef.stat}
+                    onChange={e => setCapaciteEffets(i, (c.effets ?? []).map((y, l) => l === k ? { ...y, stat: e.target.value } : y))}
+                    style={{ ...selectStyle, flex: 1 }}>
+                    <option value="" style={optionStyle}>{t('gmMode.creatureDetail.effetStat')}</option>
+                    {EFFET_STATS.map(stat => (
+                      <option key={stat} value={stat} style={optionStyle}>{stat}</option>
+                    ))}
+                  </select>
+                  <input value={ef.valeur}
+                    onChange={e => setCapaciteEffets(i, (c.effets ?? []).map((y, l) => l === k ? { ...y, valeur: e.target.value } : y))}
+                    placeholder={t('gmMode.creatureDetail.effetValeurPlaceholder')} style={{ ...inputStyle, width: 80 }} />
+                  <button onClick={() => setCapaciteEffets(i, (c.effets ?? []).filter((_, l) => l !== k))} style={removeBtnStyle}>✕</button>
+                </div>
+              ))}
+              <button onClick={() => setCapaciteEffets(i, [...(c.effets ?? []), { stat: '', valeur: '' }])} style={{ ...addBtnStyle, fontSize: 11, padding: '4px 8px' }}>
+                + {t('gmMode.creatureDetail.ajouterEffet')}
+              </button>
+            </div>
           </div>
         ))}
         <button onClick={() => setCapacites([...capacites, { nom: '', desc: '' }])} style={addBtnStyle}>

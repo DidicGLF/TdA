@@ -16,9 +16,13 @@ import HIDDEN_COMPAGNONS_RAW from '../data/hidden-compagnons.json'
 import BESTIAIRE_RAW from '../data/bestiaire.json'
 import RENCONTRES_RAW from '../data/rencontres.json'
 import COMBATS_RAW from '../data/combats-sauvegardes.json'
+import CAPACITES_BIBLIOTHEQUE_RAW from '../data/capacites-bibliotheque.json'
+import NOTES_RAW from '../data/notes.json'
+import CAMPAGNES_RAW from '../data/campagnes.json'
+import NOTE_IMAGES_RAW from '../data/note-images.json'
 import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
-import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee } from '../types/gameData'
+import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
 
 export type ArmesData = typeof ARMES_RAW
@@ -63,6 +67,14 @@ interface GameDataContextValue {
   setRencontres: Dispatch<SetStateAction<RencontreSauvegardee[]>>
   combatsSauvegardes: CombatSessionSauvegardee[]
   setCombatsSauvegardes: Dispatch<SetStateAction<CombatSessionSauvegardee[]>>
+  capacitesBibliotheque: CapaciteBibliotheque[]
+  setCapacitesBibliotheque: Dispatch<SetStateAction<CapaciteBibliotheque[]>>
+  notes: Note[]
+  setNotes: Dispatch<SetStateAction<Note[]>>
+  campagnes: Campaign[]
+  setCampagnes: Dispatch<SetStateAction<Campaign[]>>
+  noteImages: NoteImage[]
+  setNoteImages: Dispatch<SetStateAction<NoteImage[]>>
   showHidden: boolean
   setShowHidden: Dispatch<SetStateAction<boolean>>
   openDataDir: () => void
@@ -148,6 +160,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [combatsSauvegardes, setCombatsSauvegardesRaw] = useState<CombatSessionSauvegardee[]>(() =>
     unwrap(JSON.parse(JSON.stringify(COMBATS_RAW))) as CombatSessionSauvegardee[]
   )
+  const [capacitesBibliotheque, setCapacitesBibliothequeRaw] = useState<CapaciteBibliotheque[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(CAPACITES_BIBLIOTHEQUE_RAW))) as CapaciteBibliotheque[]
+  )
+  const [notes, setNotesRaw] = useState<Note[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(NOTES_RAW))) as Note[]
+  )
+  const [campagnes, setCampagnesRaw] = useState<Campaign[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(CAMPAGNES_RAW))) as Campaign[]
+  )
+  const [noteImages, setNoteImagesRaw] = useState<NoteImage[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(NOTE_IMAGES_RAW))) as NoteImage[]
+  )
   const [showHidden, setShowHidden] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -191,6 +215,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])
         const combatsStr = await loadDataFile('combats-sauvegardes.json')
         if (combatsStr) setCombatsSauvegardesRaw(unwrap(JSON.parse(combatsStr)) as CombatSessionSauvegardee[])
+        const capacitesBiblioStr = await loadDataFile('capacites-bibliotheque.json')
+        if (capacitesBiblioStr) setCapacitesBibliothequeRaw(unwrap(JSON.parse(capacitesBiblioStr)) as CapaciteBibliotheque[])
+        const notesStr = await loadDataFile('notes.json')
+        if (notesStr) setNotesRaw(unwrap(JSON.parse(notesStr)) as Note[])
+        const campagnesStr = await loadDataFile('campagnes.json')
+        if (campagnesStr) setCampagnesRaw(unwrap(JSON.parse(campagnesStr)) as Campaign[])
+        const noteImagesStr = await loadDataFile('note-images.json')
+        if (noteImagesStr) setNoteImagesRaw(unwrap(JSON.parse(noteImagesStr)) as NoteImage[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -217,6 +249,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setBestiaire = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiaireRaw, 'bestiaire.json', 'bestiaire'), [])
   const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'rencontres-sauvegardees.json', 'rencontres'), [])
   const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'combats-sauvegardes.json', 'combats'), [])
+  const setCapacitesBibliotheque = useMemo(() => makeAutoSaver<CapaciteBibliotheque[]>(setCapacitesBibliothequeRaw, 'capacites-bibliotheque.json', 'capacites-bibliotheque'), [])
+  const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'notes.json', 'notes'), [])
+  const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'campagnes.json', 'campagnes'), [])
+  const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'note-images.json', 'note-images'), [])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -239,6 +275,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       bestiaire, setBestiaire,
       rencontres, setRencontres,
       combatsSauvegardes, setCombatsSauvegardes,
+      capacitesBibliotheque, setCapacitesBibliotheque,
+      notes, setNotes,
+      campagnes, setCampagnes,
+      noteImages, setNoteImages,
       showHidden, setShowHidden,
       openDataDir,
       loaded,

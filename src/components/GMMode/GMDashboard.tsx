@@ -167,7 +167,7 @@ function BestiaireTab() {
         {selected ? <CreatureDetail creature={selected} onChange={updateSelected} onDelete={deleteSelected} /> : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', minHeight: 0 }}>
             <div style={{ flex: '1 1 0', minHeight: 0, minWidth: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src={bestiaireIllustration} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', opacity: 0.15, userSelect: 'none', pointerEvents: 'none' }} />
+              <img src={bestiaireIllustration} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', opacity: 0.08, userSelect: 'none', pointerEvents: 'none' }} />
             </div>
             <span style={{ flexShrink: 0, opacity: 0.4, fontSize: 14 }}>{t('gmMode.creatureDetail.aucuneSelection')}</span>
           </div>

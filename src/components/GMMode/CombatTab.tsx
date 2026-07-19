@@ -22,8 +22,8 @@ interface Props {
 
 type Link = {
   id: string; x1: number; y1: number; x2: number; y2: number
+  midY: number   // hauteur du coude horizontal, déjà calculée pour ne traverser aucune carte
   source: 'creature' | 'pj'
-  offset: number   // décalage vertical du coude, pour étaler les liens qui se chevaucheraient sinon
   aResultat?: boolean   // un jet valide existe pour la cible actuellement assignée (touché ou raté)
   jetTotal?: number
   cibleDef?: number
@@ -68,14 +68,40 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       // deux cartes de colonnes différentes qui tombent au même x dans la grille en wrap).
       const idx = next.length
       const jitterX = idx === 0 ? 0 : (idx % 2 === 1 ? -1 : 1) * Math.ceil(idx / 2) * 10
+      const x1 = rectA.left + rectA.width / 2 - areaRect.left + jitterX
+      const y1 = rectA.bottom - areaRect.top
+      const x2 = rectB.left + rectB.width / 2 - areaRect.left + jitterX
+      const y2 = rectB.bottom - areaRect.top
+
+      // Le coude horizontal doit passer sous TOUTES les cartes qu'il traverserait, pas seulement les
+      // deux cartes reliées : les cartes sont désormais opaques, donc tout chevauchement s'y verrait.
+      // On part du dessous des deux cartes (+ l'étalement habituel entre liens simultanés), puis on
+      // repousse le coude sous chaque carte tierce dont la largeur croise la bande horizontale traversée
+      // à cette hauteur — en boucle, pour gérer plusieurs rangées de cartes empilées.
+      const minX = Math.min(x1, x2), maxX = Math.max(x1, x2)
+      let midY = Math.max(y1, y2) + 20 + idx * 14
+      const toutesLesCartes = areaRef.current!.querySelectorAll('[data-combat-id]')
+      let aAjuste = true
+      while (aAjuste) {
+        aAjuste = false
+        for (const el of toutesLesCartes) {
+          if (el === elA || el === elB) continue
+          const r = el.getBoundingClientRect()
+          const cardTop = r.top - areaRect.top
+          const cardBottom = r.bottom - areaRect.top
+          const cardLeft = r.left - areaRect.left
+          const cardRight = r.right - areaRect.left
+          if (cardRight > minX && cardLeft < maxX && midY > cardTop && midY < cardBottom) {
+            midY = cardBottom + 10
+            aAjuste = true
+          }
+        }
+      }
+
       next.push({
         id: sourceId,
         source,
-        offset: idx * 14,
-        x1: rectA.left + rectA.width / 2 - areaRect.left + jitterX,
-        y1: rectA.bottom - areaRect.top,
-        x2: rectB.left + rectB.width / 2 - areaRect.left + jitterX,
-        y2: rectB.bottom - areaRect.top,
+        x1, y1, x2, y2, midY,
         aResultat: !!resultatValide,
         jetTotal: resultatValide?.jetTotal,
         cibleDef: resultatValide?.cibleDef,
@@ -272,11 +298,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
               </marker>
             </defs>
             {links.map(l => {
-              // Descend sous le bas des deux cartes avant de traverser horizontalement, pour ne jamais
-              // repasser par-dessus une carte (contrairement à un simple pivot au milieu en hauteur).
-              // Le décalage (offset) étale les coudes de plusieurs liens simultanés pour limiter les
-              // chevauchements quand une créature et un PJ ciblent tous les deux quelqu'un en même temps.
-              const midY = Math.max(l.y1, l.y2) + 20 + l.offset
+              const midY = l.midY
               const midX = (l.x1 + l.x2) / 2
               const couleur = l.source === 'pj' ? LINK_COLOR_PJ : LINK_COLOR
               const d = `M ${l.x1},${l.y1} L ${l.x1},${midY} L ${l.x2},${midY} L ${l.x2},${l.y2}`

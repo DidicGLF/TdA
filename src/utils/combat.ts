@@ -1,8 +1,8 @@
-import type { BestiaireEntry, RencontreSauvegardee, DescMap } from '../types/gameData'
+import type { BestiaireEntry, RencontreSauvegardee, DescMap, StatBuff } from '../types/gameData'
 import type { Character } from '../types/character'
 import { computeCombatStatsPJ } from './computeEffects'
 
-export type StatBuff = { stat: string; valeur: number }
+export type { StatBuff }
 
 export type RollResult = {
   attaqueNom: string

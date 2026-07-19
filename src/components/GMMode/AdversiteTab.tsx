@@ -6,6 +6,7 @@ import RENCONTRE_RAW from '../../data/rencontre.json'
 import { getBudgetPA, getPAPourNC, distribuerNC } from '../../utils/rencontre'
 import { demarrerCombat } from '../../utils/combat'
 import CombatTab from './CombatTab'
+import adversiteBg from '../../assets/adversite-gold.png'
 import type { RencontreData, Difficulte, RencontreAdversaire, RencontreSauvegardee } from '../../types/gameData'
 import type { CombatSession, CombatSessionSauvegardee } from '../../utils/combat'
 
@@ -321,6 +322,7 @@ export default function AdversiteTab() {
               <div key={c.id} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                 border: `1px solid ${c.id === combatSnapshotId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`, borderRadius: 6,
+                background: 'rgba(15,12,8,0.9)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{c.nomRencontre}</div>
@@ -359,6 +361,7 @@ export default function AdversiteTab() {
               <div key={r.id} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                 border: `1px solid ${r.id === editingId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`, borderRadius: 6,
+                background: 'rgba(15,12,8,0.9)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{r.nom}</div>
@@ -391,18 +394,33 @@ export default function AdversiteTab() {
     </>
   )
 
+  // Fond décoratif commun aux deux vues (constructeur / combat) : image en arrière-plan, non
+  // interactive, opacité faible pour rester lisible derrière le contenu (même traitement que le
+  // filigrane du Bestiaire — recolorée en or, luminance convertie en alpha).
+  const backgroundLayer = (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 0,
+      backgroundImage: `url(${adversiteBg})`, backgroundSize: 'min(140%, 1280px)', backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center', opacity: 0.08, pointerEvents: 'none', userSelect: 'none',
+    }} />
+  )
+
   if (!combatSession) {
     return (
-      <div style={{ maxWidth: 780, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {builderContent}
+      <div style={{ position: 'relative', minHeight: '100%' }}>
+        {backgroundLayer}
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {builderContent}
+        </div>
       </div>
     )
   }
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
+      {backgroundLayer}
       {/* Zone de combat — décalée à droite pour ne jamais passer sous la poignée du tiroir, même fermé */}
-      <div style={{ height: '100%', paddingLeft: 38 }}>
+      <div style={{ position: 'relative', zIndex: 1, height: '100%', paddingLeft: 38 }}>
         <CombatTab
           session={combatSession}
           onSessionChange={setCombatSession}

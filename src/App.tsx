@@ -20,6 +20,8 @@ import DescriptionsEditor from './components/DescriptionsEditor'
 import TranslationEditor from './components/TranslationEditor'
 import LevelUpModal from './components/LevelUpModal'
 import GameModePanel from './components/GameMode/GameModePanel'
+import NotesTab from './components/NotesTab'
+import NotesGraph from './components/NotesGraph'
 import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
@@ -65,7 +67,10 @@ function AppContent() {
   const [appMode, setAppMode] = useState<'joueur' | 'mj' | null>(null)
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes' | 'cristaux'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
+  // Note actuellement ouverte dans l'onglet Notes — levé ici (plutôt que gardé local à NotesTab) pour
+  // que le graphe de liaisons (NotesGraph, affiché à côté) puisse ouvrir une note d'un clic sur son nœud.
+  const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
   const [runesDivin, setRunesDivin] = useState<string | null>(null)
   const runesDivinesUnlocked = character.voiePrestige.nom === 'Voie des runes divines' && character.voiePrestige.rangs.some(Boolean)
   const RUNES_FULL_MIN_WIDTH = 1740
@@ -478,7 +483,7 @@ function AppContent() {
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
-      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : [])] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux')[]).map(p => (
+      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
           padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -553,6 +558,20 @@ function AppContent() {
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
+                </div>
+              </div>
+            ) : sheetPage === 'notes' ? (
+              /* Notes : toolbar fixe + panneau plein écran (gère son propre scroll interne) */
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#111', overflow: 'hidden' }}>
+                <div style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
+                  zIndex: 35, background: '#111', borderBottom: '1px solid rgba(201,168,76,0.15)',
+                  overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
+                }}>
+                  {mobileToolbarButtons}
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <NotesTab mobile selectedId={notesSelectedId} onSelectId={setNotesSelectedId} />
                 </div>
               </div>
             ) : (
@@ -656,7 +675,7 @@ function AppContent() {
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
-            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : [])] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux')[]).map(p => (
+            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
               <button key={p} onClick={() => setSheetPage(p)} style={{
                 padding: '4px 16px', borderRadius: '4px 4px 0 0',
                 border: '1px solid rgba(201,168,76,0.4)',
@@ -870,6 +889,12 @@ function AppContent() {
             : <div style={{ flex: 1, overflow: 'hidden' }}>
                 <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
               </div>
+        ) : sheetPage === 'notes' ? (
+          /* Notes n'est pas une page de la feuille physique (pas de calibrage/positions de champs/impression) —
+             elle remplace tout le panneau plutôt que de s'insérer dans le conteneur sheetRef ci-dessous. */
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+            <NotesTab selectedId={notesSelectedId} onSelectId={setNotesSelectedId} />
+          </div>
         ) : (
         <div style={{ padding: '0 8px 16px' }}>
           <div
@@ -1035,7 +1060,21 @@ function AppContent() {
         background: 'rgba(20,16,10,0.98)',
         overflow: 'hidden',
       }}>
-        {showGameMode ? (
+        {sheetPage === 'notes' ? (
+          <>
+            {/* Le Wizard/Mode de jeu n'a pas de sens pendant la prise de notes — ce panneau montre
+                plutôt le graphe des liaisons [[...]] entre notes tant que l'onglet Notes est ouvert. */}
+            <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
+                {t('app.titre')}
+              </div>
+              <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'var(--tdr-gold)', letterSpacing: '0.05em' }}>
+                {t('notes.graphe')}
+              </div>
+            </div>
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} />
+          </>
+        ) : showGameMode ? (
           <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>

@@ -81,9 +81,29 @@ export type CreatureAttaque = {
   zone?: string    // ex: "(30 x 15 m)"
 }
 
+// Modificateur numérique simple sur une statistique nommée (ex: "DEF", "ATK"...) — bonus/malus déjà
+// résolu en nombre, utilisé pour les ajustements manuels actifs du MJ en combat (StatCell +/-).
+export type StatBuff = { stat: string; valeur: number }
+
+// Effet préréglé d'une capacité : valeur non résolue (peut être un nombre fixe "5"/"+5" ou un jet de
+// dé "1d6", "1d6+2"...), au même format texte que CreatureAttaque.bonus/.dm — résolue en StatBuff
+// (un nombre) seulement au moment où le MJ active la capacité en combat.
+export type CapaciteEffet = { stat: string; valeur: string }
+
 export type CreatureCapacite = {
   nom: string
   desc: string
+  effets?: CapaciteEffet[]   // appliqués d'un clic (après résolution du jet) quand le MJ active la capacité
+}
+
+// Capacité réutilisable d'une créature à l'autre (ex: "Vision nocturne", "Vol rapide") : le MJ la
+// choisit dans cette bibliothèque au lieu de la retaper (et son éventuel effet) pour chaque créature —
+// la copie posée sur une créature reste ensuite indépendante (voir CreatureCapacite ci-dessus).
+export type CapaciteBibliotheque = {
+  id: string
+  nom: string
+  desc: string
+  effets?: CapaciteEffet[]
 }
 
 export type CreatureVoieRang = {
@@ -143,4 +163,34 @@ export type RencontreSauvegardee = {
   difficulte: Difficulte
   adversaires: RencontreAdversaire[]
   creeLe: string   // ISO timestamp
+}
+
+// Campagne à laquelle une note peut être rattachée (voir Note.campagneId) — permet de séparer les
+// notes de plusieurs campagnes suivies en parallèle.
+export type Campaign = {
+  id: string
+  nom: string
+}
+
+// Image partagée entre notes (bibliothèque centrale, comme les portraits de personnage/créatures
+// ailleurs dans l'app) — référencée dans le texte d'une note via ![[Nom]], jamais embarquée telle
+// quelle dans son contenu.
+export type NoteImage = {
+  id: string
+  nom: string   // référence utilisée dans ![[Nom]] — unique (comme les titres de notes pour [[Titre]])
+  data: string  // data URL (base64)
+}
+
+// Note libre côté joueur (onglet Notes) : texte en Markdown léger (gras/italique/listes) pouvant
+// contenir des liens wiki [[Titre]] vers d'autres notes — cliquer un lien ouvre la note existante
+// portant ce titre, ou en crée une vide si elle n'existe pas encore.
+export type Note = {
+  id: string
+  titre: string
+  contenu: string
+  date?: string          // date libre (in fiction ou réelle), saisie par le joueur — pas de format imposé
+  campagneId?: string    // référence à Campaign.id, si la note est rattachée à une campagne
+  tags?: string[]        // libres, créés à la volée — pas d'entité séparée, juste une liste par note
+  creeLe: string     // ISO timestamp
+  modifieLe: string  // ISO timestamp
 }
