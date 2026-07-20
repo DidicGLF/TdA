@@ -12,8 +12,11 @@ export default function ModeSelector({ onSelect, mjDisabled }: Props) {
   const { t } = useTranslation()
 
   const cardStyle: React.CSSProperties = {
+    // Hauteur minimale fixe : sans ça, le remplacement de la police de secours par Cinzel/Crimson
+    // Text une fois chargée (métriques différentes) fait légèrement changer la hauteur du bouton —
+    // donc sa position, centré verticalement avec l'autre — juste avant qu'on puisse cliquer dessus.
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-    width: 240, padding: '32px 24px', borderRadius: 12,
+    width: 240, minHeight: 190, padding: '32px 24px', borderRadius: 12,
     border: `1px solid rgba(201,168,76,0.4)`, background: 'rgba(255,255,255,0.02)',
     color: PARCHMENT, cursor: 'pointer', fontFamily: "'Cinzel', serif",
     transition: 'background 0.15s, border-color 0.15s',

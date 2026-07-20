@@ -3,15 +3,18 @@ import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import CreatureDetail from './CreatureDetail'
 import AdversiteTab from './AdversiteTab'
+import BatailleTab from './BatailleTab'
+import NotesTab from '../NotesTab'
+import NotesGraph from '../NotesGraph'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
 import { saveDataFileToBundle } from '../../utils/tauriStorage'
-import type { BestiaireEntry } from '../../types/gameData'
+import type { BestiaireEntry, RencontreSauvegardee } from '../../types/gameData'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
 
-type Tab = 'bestiaire' | 'adversite' | 'bataille'
+type Tab = 'bestiaire' | 'adversite' | 'bataille' | 'notes'
 
 interface Props {
   onBack: () => void
@@ -20,6 +23,25 @@ interface Props {
 export default function GMDashboard({ onBack }: Props) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('bestiaire')
+  // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
+  // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.
+  const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
+  // Bibliothèque de notes du MJ — volontairement DISTINCTE de celle du joueur (gmNotes/gmCampagnes/
+  // gmNoteImages plutôt que notes/campagnes/noteImages) : un MJ prépare des notes de scénario qui ne
+  // doivent jamais apparaître côté joueur, et inversement.
+  const { gmNotes, setGmNotes, gmCampagnes, setGmCampagnes, gmNoteImages, setGmNoteImages, bestiaire, rencontres } = useGameData()
+  // Créature à sélectionner automatiquement en arrivant sur l'onglet Bestiaire (déclenché par un lien
+  // [[Créature]] dans une note) — consommé par BestiaireTab, voir plus bas.
+  const [bestiaireForcerNom, setBestiaireForcerNom] = useState<string | null>(null)
+  const onOpenCreature = (nom: string) => { setBestiaireForcerNom(nom); setTab('bestiaire') }
+  // « Modifier » depuis l'aperçu d'un lien rencontre : les rencontres sont une simple liste d'actions
+  // dans l'onglet Adversité (pas de panneau de détail à sélectionner) — on se contente donc d'amener
+  // le MJ sur l'onglet, sans cibler une ligne précise.
+  const onEditRencontre = () => setTab('adversite')
+  // Cliquer directement le lien [[Rencontre]] (plutôt que « Modifier » dans l'aperçu) lance le combat
+  // correspondant — consommé par AdversiteTab, voir plus bas.
+  const [rencontreADemarrer, setRencontreADemarrer] = useState<RencontreSauvegardee | null>(null)
+  const onPlayRencontre = (r: RencontreSauvegardee) => { setRencontreADemarrer(r); setTab('adversite') }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: 'var(--tdr-dark)', color: PARCHMENT }}>
@@ -39,7 +61,7 @@ export default function GMDashboard({ onBack }: Props) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, overflowX: 'auto' }}>
-        {(['bestiaire', 'adversite', 'bataille'] as Tab[]).map(tb => (
+        {(['bestiaire', 'adversite', 'bataille', 'notes'] as Tab[]).map(tb => (
           <button key={tb} onClick={() => setTab(tb)} style={{
             padding: '6px 16px', borderRadius: '4px 4px 0 0',
             border: '1px solid rgba(201,168,76,0.4)',
@@ -55,30 +77,71 @@ export default function GMDashboard({ onBack }: Props) {
       </div>
 
       {/* Contenu */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {tab === 'bestiaire' && <BestiaireTab />}
-        {tab === 'adversite' && <AdversiteTab />}
-        {tab === 'bataille' && <PlaceholderTab label={t('gmMode.tabs.bataille')} />}
-      </div>
+      {tab === 'notes' ? (
+        // Pas de padding/scroll global ici : Notes gère elle-même le défilement de ses deux panneaux
+        // (liste+éditeur, puis graphe), exactement comme côté joueur dans App.tsx.
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+          {/* Partage 60/40 avec le graphe, comme côté joueur (App.tsx) où le panneau de gauche prend
+              zoom% — 60 par défaut — de la largeur et le graphe se contente du reste. Sans ça (les deux
+              flex:1, donc 50/50), le graphe s'affichait visiblement plus large qu'en mode joueur. */}
+          <div style={{ flex: '3 1 0%', minWidth: 0, display: 'flex', overflow: 'hidden' }}>
+            <NotesTab
+              selectedId={notesSelectedId} onSelectId={setNotesSelectedId}
+              notes={gmNotes} setNotes={setGmNotes} campagnes={gmCampagnes} setCampagnes={setGmCampagnes}
+              noteImages={gmNoteImages} setNoteImages={setGmNoteImages}
+              bestiaire={bestiaire} rencontres={rencontres}
+              onOpenCreature={onOpenCreature} onEditRencontre={onEditRencontre} onPlayRencontre={onPlayRencontre}
+            />
+          </div>
+          {/* Grille (pas flex imbriqué) pour la ligne titre / zone du graphe : un track "1fr" se
+              calcule de façon fiable contre la hauteur de la grille, alors qu'un enchaînement de
+              plusieurs niveaux flex + minHeight:0 s'est avéré ne pas s'afficher de façon fiable ici. */}
+          <div style={{ flex: '2 1 0%', minWidth: 300, borderLeft: `1px solid ${SECTION_BORDER}`, display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+            {/* En-tête identique à celui du graphe côté joueur (App.tsx, même sous-titre + titre) —
+                sinon un en-tête plus court ici laisse plus de hauteur au graphe que côté joueur, ce
+                qui rendait la zone de graphe visiblement plus grande en mode MJ. */}
+            <div style={{ padding: '16px', borderBottom: `1px solid ${SECTION_BORDER}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5, color: PARCHMENT }}>
+                {t('app.titre')}
+              </div>
+              <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: GOLD, letterSpacing: '0.05em' }}>
+                {t('notes.graphe')}
+              </div>
+            </div>
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={gmNotes} />
+          </div>
+        </div>
+      ) : (
+        <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+          {tab === 'bestiaire' && <BestiaireTab forcerNom={bestiaireForcerNom} />}
+          {tab === 'adversite' && <AdversiteTab demarrerAuto={rencontreADemarrer} />}
+          {tab === 'bataille' && <BatailleTab />}
+        </div>
+      )}
     </div>
   )
 }
 
-function PlaceholderTab({ label }: { label: string }) {
-  const { t } = useTranslation()
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, fontSize: 14, textAlign: 'center' }}>
-      {t('gmMode.aVenir', { outil: label })}
-    </div>
-  )
-}
-
-function BestiaireTab() {
+function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
   const { t } = useTranslation()
   const { bestiaire, setBestiaire } = useGameData()
   const [search, setSearch] = useState('')
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [confirmSauvegarderBundle, setConfirmSauvegarderBundle] = useState(false)
+
+  // Sélection forcée depuis une note liée (voir NotesTab « → Aller à la créature ») : appliquée
+  // pendant le rendu plutôt que dans un effet (pattern « ajuster l'état pendant le rendu » recommandé
+  // par React pour réagir à un changement de prop), pour ne s'appliquer qu'au changement de nom
+  // demandé — pas à chaque re-render, sinon impossible de changer manuellement de créature ensuite
+  // sans revenir par une note.
+  const [dernierForcerNom, setDernierForcerNom] = useState<string | null | undefined>(undefined)
+  if (forcerNom !== dernierForcerNom) {
+    setDernierForcerNom(forcerNom)
+    if (forcerNom) {
+      const idx = bestiaire.findIndex(c => c.nom === forcerNom)
+      if (idx !== -1) setSelectedIdx(idx)
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -110,7 +173,7 @@ function BestiaireTab() {
     <>
     <div style={{ display: 'flex', gap: 16, height: '100%' }}>
       {/* Liste — colonne gauche */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320, flexShrink: 0, minHeight: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 420, flexShrink: 0, minHeight: 0 }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -121,7 +184,7 @@ function BestiaireTab() {
           }}
         />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 12, opacity: 0.5 }}>
+          <span style={{ fontSize: 14, opacity: 0.5 }}>
             {t('gmMode.bestiaireCompte', { count: filtered.length })}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -130,7 +193,7 @@ function BestiaireTab() {
                 onClick={() => setConfirmSauvegarderBundle(true)}
                 style={{
                   background: 'transparent', border: '1px solid rgba(100,200,120,0.5)', borderRadius: 4,
-                  color: 'rgba(100,200,120,0.8)', cursor: 'pointer', fontSize: 12, padding: '3px 8px',
+                  color: 'rgba(100,200,120,0.8)', cursor: 'pointer', fontSize: 14, padding: '3px 8px',
                 }}
               >
                 {t('gmMode.bestiaireSauvegarderBundle')}
@@ -138,7 +201,7 @@ function BestiaireTab() {
             )}
             <button onClick={addCreature} style={{
               background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
-              color: GOLD, cursor: 'pointer', fontSize: 12, padding: '3px 8px',
+              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px',
             }}>
               + {t('gmMode.creatureDetail.nouvelleCreature')}
             </button>
@@ -149,13 +212,15 @@ function BestiaireTab() {
             const isSelected = selectedIdx === idx
             return (
               <div key={idx} onClick={() => setSelectedIdx(idx)} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer',
+                // Marge droite un peu plus large que les autres côtés : la scrollbar (overlay, s'épaissit
+                // au survol) sinon passe par-dessus le score de NC, collé trop près du bord.
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px 8px 12px', cursor: 'pointer',
                 background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
                 borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
                 borderBottom: i < filtered.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
               }}>
-                <span style={{ flex: 1, fontSize: 14, color: isSelected ? GOLD : PARCHMENT }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
-                <span style={{ fontSize: 12, color: GOLD, fontWeight: 700, minWidth: 24, textAlign: 'right' }}>{c.nc}</span>
+                <span style={{ flex: 1, fontSize: 16, color: isSelected ? GOLD : PARCHMENT }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
+                <span style={{ fontSize: 14, color: GOLD, fontWeight: 700, minWidth: 24, textAlign: 'right' }}>{c.nc}</span>
               </div>
             )
           })}

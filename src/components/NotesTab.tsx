@@ -1,12 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGameData } from '../context/GameDataContext'
 import { saveDataFile } from '../utils/tauriStorage'
-import type { Note, Campaign, NoteImage } from '../types/gameData'
+import noteParchmentBg from '../assets/note-parchment.webp'
+import type { Note, Campaign, NoteImage, BestiaireEntry, RencontreSauvegardee, NoteMarque } from '../types/gameData'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
+// Encre sombre pour le corps de la note : le fond y devient une image de parchemin clair (voir
+// noteParchmentBg), donc le texte clair (PARCHMENT) utilisé partout ailleurs dans l'app sombre y
+// deviendrait illisible.
+const ENCRE = '#2b2013'
+// Nombre minimum de caractères avant de lancer la recherche — sous ce seuil, la liste reste
+// entière plutôt que de filtrer sur une lettre isolée (résultats trop bruités, quasi tout matche).
+const SEUIL_RECHERCHE = 3
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -20,6 +27,7 @@ const NOMS_FICHIERS_RESERVES = new Set([
   'traits-raciaux', 'field-positions', 'sheet-images', 'hidden-voies', 'hidden-peuples',
   'hidden-cultures', 'hidden-compagnons', 'bestiaire', 'rencontres-sauvegardees',
   'combats-sauvegardes', 'capacites-bibliotheque', 'notes', 'campagnes', 'note-images',
+  'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees',
 ])
 
 function nomFichierExport(base: string, secours: string): string {
@@ -35,6 +43,12 @@ const SAVE_DEBOUNCE_MS = 800
 
 const genId = () =>
   (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : String(Date.now())
+
+// Comparaison insensible à la casse ET aux accents — pour reconnaître les mots-clés "créature"/
+// "rencontre" (voir suggestions ci-dessous) même tapés sans accent.
+function normaliser(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
 
 // Repère un lien wiki en cours de frappe : si le curseur se trouve juste après un "[[" pas encore
 // refermé par "]]" (ni suivi d'un saut de ligne), renvoie ce qui a été tapé depuis ce "[[" — sert de
@@ -88,6 +102,28 @@ function renommerReferenceImage(contenu: string, ancienNom: string, nouveauNom: 
     const reste = indexPipe === -1 ? '' : interieur.slice(indexPipe)
     return `![[${nouveauNom}${reste}]]`
   })
+}
+
+// Ce que désigne un lien [[Titre]] : une note existante en priorité (comportement historique, jamais
+// cassé par cette extension), sinon — capacité MJ uniquement (bestiaire/rencontres absents côté
+// joueur) — une créature du Bestiaire ou une rencontre sauvegardée portant ce nom, sinon rien (le lien
+// créera une nouvelle note vide, comportement historique).
+type CibleLien =
+  | { type: 'note'; note: Note }
+  | { type: 'creature'; creature: BestiaireEntry }
+  | { type: 'rencontre'; rencontre: RencontreSauvegardee }
+  | { type: 'aucun' }
+
+function resoudreLien(titre: string, notes: Note[], bestiaire?: BestiaireEntry[], rencontres?: RencontreSauvegardee[]): CibleLien {
+  const q = titre.trim().toLowerCase()
+  if (!q) return { type: 'aucun' }
+  const note = notes.find(n => n.titre.trim().toLowerCase() === q)
+  if (note) return { type: 'note', note }
+  const creature = bestiaire?.find(c => c.nom.trim().toLowerCase() === q)
+  if (creature) return { type: 'creature', creature }
+  const rencontre = rencontres?.find(r => r.nom.trim().toLowerCase() === q)
+  if (rencontre) return { type: 'rencontre', rencontre }
+  return { type: 'aucun' }
 }
 
 // ── Pilotage du curseur/de la sélection d'un <div contentEditable> par décalage de caractères ──
@@ -172,6 +208,45 @@ function getCaretRect(racine: HTMLElement): { top: number; left: number; ligneHa
   return { top: rect.top - racineRect.top, left: rect.left - racineRect.left, ligneHauteur: rect.height || 18 }
 }
 
+// Position (relative au conteneur, comme getCaretRect) d'un décalage de caractère arbitraire — pas
+// besoin d'y avoir la sélection, contrairement à getCaretRect — utilisée pour placer une icône
+// d'ancre directement dans le texte (voir le rendu des ancresPositions dans NoteEditor).
+function rectPourDecalage(racine: HTMLElement, decalage: number): { top: number; left: number } | null {
+  if (!racine.isConnected) return null
+  const pos = decalageVersPosition(racine, decalage)
+  const range = document.createRange()
+  range.setStart(pos.noeud, pos.decalage)
+  range.collapse(true)
+  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect()
+  const racineRect = racine.getBoundingClientRect()
+  return { top: rect.top - racineRect.top, left: rect.left - racineRect.left }
+}
+
+// Décalage de caractère (même sens que positionVersDecalage/decalageVersPosition ci-dessus) au-delà
+// duquel le texte ne tient plus dans hauteurMax — recherche binaire par mesure de rectangle (comme
+// getCaretRect), donc log(n) mesures même pour un gros collage, plutôt qu'une mesure par caractère.
+// Sert à couper une page pile où elle déborde (voir onOverflow) : sans ça, le texte en trop restait
+// bien présent dans la note mais invisible (overflow caché) et jamais reporté sur la page suivante —
+// un collage volumineux semblait alors perdre tout ce qui dépassait l'espace restant.
+function trouverPointDeCoupure(el: HTMLElement, hauteurMax: number): number {
+  const total = (el.textContent ?? '').length
+  if (total === 0) return 0
+  const elRect = el.getBoundingClientRect()
+  const basRelatif = (decalage: number): number => {
+    const pos = decalageVersPosition(el, decalage)
+    const range = document.createRange()
+    range.setStart(pos.noeud, pos.decalage)
+    range.collapse(true)
+    return range.getBoundingClientRect().bottom - elRect.top
+  }
+  let lo = 0, hi = total
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    if (basRelatif(mid) <= hauteurMax) lo = mid; else hi = mid - 1
+  }
+  return lo
+}
+
 // Aperçu au survol d'un lien de note ou d'une image — la modale elle-même (contenu affiché, aller à
 // la note...) est gérée par l'appelant (NoteEditor), renderLiveContent se contente de signaler quoi
 // survoler et où l'ancrer.
@@ -192,7 +267,16 @@ function renderLiveContent(
   images: NoteImage[],
   onHoverStart: (info: HoverInfo, rect: DOMRect) => void,
   onHoverEnd: () => void,
+  // Le corps de la note s'affiche désormais sur un fond de parchemin clair (voir noteParchmentBg) —
+  // le doré/rouge pâle habituel (pensés pour l'app sombre, utilisés ailleurs par cette même fonction
+  // dans l'aperçu au survol) y aurait un contraste trop faible pour rester lisible.
+  fondClair = false,
 ): ReactNode[] {
+  // Bordeaux (« rubrique » des manuscrits enluminés) plutôt qu'un doré assombri : à contraste égal
+  // avec le fond de parchemin clair, le doré reste trop proche en teinte du fond lui-même pour bien
+  // se détacher (ratio WCAG ~3.5, sous le seuil de lisibilité de 4.5) alors que le bordeaux y grimpe à ~7.5.
+  const couleurLien = fondClair ? '#6b1f2f' : GOLD
+  const couleurImageManquante = fondClair ? '#7a1f1f' : 'rgba(255,150,150,0.85)'
   const nodes: ReactNode[] = []
   let key = 0
   let pos = 0
@@ -245,7 +329,7 @@ function renderLiveContent(
               key={key++}
               onMouseEnter={e => onHoverStart({ type: 'image', image }, e.currentTarget.getBoundingClientRect())}
               onMouseLeave={onHoverEnd}
-              style={{ color: GOLD, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'text' }}
+              style={{ color: couleurLien, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'text' }}
             >
               {texteAffiche}
             </span>
@@ -257,7 +341,7 @@ function renderLiveContent(
             // Pas de caractères décoratifs ajoutés (icône, "?"...) : ils s'ajouteraient au texte
             // relu par le navigateur au prochain resync et corromperaient la note — le style seul
             // (couleur + soulignement en tirets) signale une référence d'image introuvable.
-            <span key={key++} style={{ color: 'rgba(255,150,150,0.85)', fontStyle: 'italic', textDecoration: 'underline', textDecorationStyle: 'dashed', textUnderlineOffset: 2 }}>
+            <span key={key++} style={{ color: couleurImageManquante, fontStyle: 'italic', textDecoration: 'underline', textDecorationStyle: 'dashed', textUnderlineOffset: 2 }}>
               {texteAffiche}
             </span>
           )
@@ -274,7 +358,7 @@ function renderLiveContent(
             onMouseDown={e => { e.preventDefault(); onLien(titreLien) }}
             onMouseEnter={e => onHoverStart({ type: 'lien', titre: titreLien }, e.currentTarget.getBoundingClientRect())}
             onMouseLeave={onHoverEnd}
-            style={{ color: GOLD, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}
+            style={{ color: couleurLien, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}
           >
             {titreLien}
           </span>
@@ -314,12 +398,44 @@ interface NoteEditorProps {
   note: Note
   notes: Note[]
   campagnes: Campaign[]
+  noteImages: NoteImage[]
+  setNoteImages: Dispatch<SetStateAction<NoteImage[]>>
   mobile?: boolean
+  // Capacité réservée au mode MJ (voir GMDashboard) : présents uniquement quand NotesTab est monté
+  // depuis le tableau de bord MJ, jamais côté joueur — un [[Titre]] qui ne désigne aucune note peut
+  // alors désigner une créature du Bestiaire ou une rencontre sauvegardée (voir resoudreLien).
+  bestiaire?: BestiaireEntry[]
+  rencontres?: RencontreSauvegardee[]
+  onOpenCreature?: (nom: string) => void       // survol/clic d'un lien créature → sa fiche
+  onEditRencontre?: (id: string) => void       // bouton « Modifier » de l'aperçu d'un lien rencontre
+  // Note : le lancement du combat au clic d'un lien rencontre passe par `onLien` (résolu dans
+  // `suivreLien`, côté NotesTab), pas par une prop dédiée ici — NoteEditor n'a pas besoin de le savoir.
   onSave: (patch: Partial<Note>) => void
   onBack: () => void
   onDelete: () => void
   onLien: (titre: string) => void
   onEnsureNote: (titre: string) => void
+  // Pagination — la note complète est déjà découpée en pages par le composant parent (séparateur
+  // form feed dans note.contenu, voir NotesTab) ; NoteEditor n'édite ici que la page active (fournie
+  // dans note.contenu), sans rien savoir des autres pages.
+  pageActive: number
+  pageCount: number
+  onPrevPage: () => void
+  onNextPage: () => void
+  // texteGarde = ce qui tient encore sur la page actuelle, texteReporte = le reste, à faire commencer
+  // la page suivante (voir trouverPointDeCoupure) — un vrai découpage, pas juste "page suivante vide".
+  onOverflow?: (texteGarde: string, texteReporte: string) => void
+  autoFocus?: boolean
+  // Position (ou plage, pour sélectionner un mot trouvé par la recherche) de curseur à restaurer une
+  // fois cette page affichée (ex. en arrivant via une ancre de paragraphe ou un résultat de recherche
+  // en texte) — n'a d'effet que si autoFocus est vrai. fin === debut pour un simple curseur.
+  curseurInitial?: { debut: number; fin: number } | null
+  // Marque-pages (note.marques, déjà présents sur `note` — pas une prop séparée) : navigation directe
+  // vers une AUTRE page de cette même note (contrairement à onPrevPage/onNextPage, qui n'avancent que
+  // d'une page), et création/suppression.
+  onGoToPage: (page: number, decalage?: number) => void
+  onAjouterMarque: (nom: string, page: number, decalage?: number) => void
+  onSupprimerMarque: (marqueId: string) => void
 }
 
 const toolbarBtnStyle: React.CSSProperties = {
@@ -350,9 +466,12 @@ const groupeIconBtnStyle: React.CSSProperties = {
 // nativement par le navigateur (accents/touches mortes/IME inclus) ; on ne fait que relire le texte et
 // la position du curseur après coup et re-rendre en conséquence, avec restauration explicite du
 // curseur (useLayoutEffect) pour ne jamais le laisser sauter au mauvais endroit.
-function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, onLien, onEnsureNote }: NoteEditorProps) {
+function NoteEditor({
+  note, notes, campagnes, noteImages, setNoteImages, mobile, bestiaire, rencontres, onOpenCreature, onEditRencontre,
+  onSave, onBack, onDelete, onLien, onEnsureNote, pageActive, pageCount, onPrevPage, onNextPage, onOverflow, autoFocus,
+  curseurInitial, onGoToPage, onAjouterMarque, onSupprimerMarque,
+}: NoteEditorProps) {
   const { t } = useTranslation()
-  const { noteImages, setNoteImages } = useGameData()
   const [titre, setTitre] = useState(note.titre)
   const [contenu, setContenu] = useState(note.contenu)
   const [date, setDate] = useState(note.date ?? '')
@@ -361,11 +480,50 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
   const [caretPos, setCaretPos] = useState<{ top: number; left: number; ligneHauteur: number } | null>(null)
   const [preview, setPreview] = useState<HoverInfo | null>(null)
   const [previewRect, setPreviewRect] = useState<{ top: number; left: number } | null>(null)
+  // Panneau des marque-pages (signets/ancres) de cette note — voir la rangée 🔖 dans l'en-tête.
+  const [marquesOuvert, setMarquesOuvert] = useState(false)
+  // Aide (mise en forme, liens, marque-pages) — remplace le texte d'exemple qu'affichait auparavant
+  // le placeholder d'une note vide, qui gênait la lecture une fois du vrai texte tapé par-dessus.
+  const [aideOuverte, setAideOuverte] = useState(false)
+  const [nomNouveauSignet, setNomNouveauSignet] = useState('')
+  const [nomNouvelleAncre, setNomNouvelleAncre] = useState('')
+  // Position (relative au conteneur du texte) de chaque ancre de paragraphe présente sur cette page —
+  // affichée comme une petite icône directement dans le texte (voir le rendu plus bas), pour repérer
+  // une ancre au premier coup d'œil : un simple curseur laissé là après un clic depuis la recherche
+  // est peu visible et redevient invisible dès qu'on clique ailleurs.
+  const [ancresPositions, setAncresPositions] = useState<{ id: string; top: number; left: number }[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editableRef = useRef<HTMLDivElement>(null)
+  // État de dépassement mesuré au dernier rendu — sert à ne déclencher onOverflow qu'au moment où la
+  // page passe de "tient dans la hauteur visible" à "déborde" (front montant), jamais tant qu'elle
+  // reste simplement débordante d'un rendu à l'autre. Le découpage (trouverPointDeCoupure) rend une
+  // page tout juste coupée exactement à la limite, mais reste une garde utile en défense : sans elle,
+  // n'importe quel autre changement d'état (curseur, sélection...) sur une page encore en léger
+  // dépassement redéclencherait un découpage à chaque clic, même sans la moindre frappe.
+  // null = pas encore mesuré (page tout juste montée) : ce premier état ne doit jamais déclencher.
+  const debordaitAvantRef = useRef<boolean | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const hoverShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hoverHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Après un changement de page déclenché par une navigation (auto au dépassement, boutons ‹ ›, ou
+  // clic sur un marque-page), le composant est remonté (key différente côté parent) — on redonne le
+  // focus à la nouvelle page pour que la frappe puisse continuer sans clic, et on place le curseur à
+  // curseurInitial si fourni (arrivée via une ancre de paragraphe précise, pas juste un signet de
+  // page). Absent lors de l'ouverture initiale d'une note (autoFocus alors à false), pour ne pas voler
+  // le focus quand on sélectionne juste une note.
+  useEffect(() => {
+    if (!autoFocus) return
+    const el = editableRef.current
+    if (!el) return
+    if (curseurInitial !== undefined && curseurInitial !== null) {
+      const debut = Math.min(curseurInitial.debut, contenu.length)
+      const fin = Math.min(curseurInitial.fin, contenu.length)
+      definirSelection(el, debut, fin)
+    }
+    el.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Aperçu au survol (lien de note ou image) : un léger délai avant affichage évite un flash pendant
   // qu'on traverse juste le texte au passage de la souris ; un léger délai avant fermeture laisse le
@@ -525,7 +683,57 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
     }
     setSelection(nouvelleSelection)
     setLienQuery(nouvelleSelection.debut === nouvelleSelection.fin ? lienEnCours(brut, nouvelleSelection.debut) : null)
+    // La détection de dépassement de page ne vit plus ici : mesurer scrollHeight juste après un
+    // événement natif (keyup...) ne garantit pas que React ait déjà commité le rendu de la dernière
+    // frappe (setContenu ci-dessus est asynchrone) — la mesure portait parfois sur l'état affiché AVANT
+    // cette frappe. Voir le useLayoutEffect ci-dessous, qui s'exécute toujours après le commit réel.
   }
+
+  // Page pleine : se déclenche à CHAQUE rendu où `contenu` a changé (donc après que React a commité le
+  // texte affiché, quelle que soit sa source — frappe normale via beforeinput, IME, collage, insertion
+  // d'image...), jamais avant — contrairement à une mesure prise dans un gestionnaire d'événement natif
+  // (keyup...), qui pouvait tomber avant que React ait fini de rendre la dernière frappe et manquer le
+  // vrai dépassement, ou au contraire mesurer un état déjà périmé. `useLayoutEffect` s'exécute après le
+  // commit DOM mais avant que le navigateur affiche quoi que ce soit : aucun flash visible possible.
+  // Ne se déclenche que sur le FRONT MONTANT (ne débordait pas → déborde, voir debordaitAvantRef) —
+  // jamais tant que la page reste débordante d'un rendu à l'autre, ce qui est son état normal juste
+  // après avoir déjà signalé le dépassement : sans cette garde, le moindre autre changement d'état
+  // (curseur, sélection...) redéclencherait un découpage à chaque fois. Le texte est réellement coupé
+  // au point exact où il déborde (trouverPointDeCoupure) et reporté sur la nouvelle page — un simple
+  // collage volumineux qui dépasse largement la page ne perd donc plus sa fin, elle apparaît sur la
+  // page suivante au lieu de rester invisible (overflow caché) sur la page d'origine.
+  useLayoutEffect(() => {
+    const el = editableRef.current
+    if (!el) return
+    const debordeMaintenant = el.scrollHeight > el.clientHeight + 2
+    if (onOverflow && debordeMaintenant && debordaitAvantRef.current === false) {
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+      const coupure = trouverPointDeCoupure(el, el.clientHeight)
+      onOverflow(contenu.slice(0, coupure), contenu.slice(coupure))
+    }
+    debordaitAvantRef.current = debordeMaintenant
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contenu])
+
+  // Icône d'ancre : affichée seulement quelques secondes juste après avoir navigué DESSUS (via un
+  // marque-page/résultat de recherche — curseurInitial pointe alors précisément sur son décalage),
+  // jamais en permanence — sinon elle gênerait la lecture, d'autant plus avec plusieurs ancres sur la
+  // même page. Effet de montage uniquement (comme la restauration du curseur ci-dessus) : NoteEditor
+  // étant remonté à chaque navigation (voir navigationSeq côté parent), il se redéclenche à chaque fois,
+  // y compris en cliquant à nouveau sur la même ancre.
+  useLayoutEffect(() => {
+    if (!autoFocus || !curseurInitial) return
+    const cible = (note.marques ?? []).find(m => m.page === pageActive && m.decalage === curseurInitial.debut)
+    if (!cible) return
+    const el = editableRef.current
+    if (!el) return
+    const rect = rectPourDecalage(el, curseurInitial.debut)
+    if (!rect) return
+    setAncresPositions([{ id: cible.id, ...rect }])
+    const timer = setTimeout(() => setAncresPositions([]), 2500)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // « Dernière version » des gestionnaires accessible depuis un écouteur DOM natif attaché une seule
   // fois (voir plus bas) — évite de désabonner/réabonner beforeinput à chaque rendu tout en gardant
@@ -632,9 +840,27 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
     requestAnimationFrame(() => el.focus())
   }
 
-  const suggestions = lienQuery === null ? [] : notes
-    .filter(n => n.id !== note.id && n.titre.trim() && n.titre.toLowerCase().includes(lienQuery.toLowerCase()))
-    .slice(0, 8)
+  // Suggestions pour l'autocomplétion [[...]] : par défaut des notes existantes (comportement
+  // historique, insensible à la casse). Deux mots-clés réservés — capacité MJ uniquement (bestiaire/
+  // rencontres absents côté joueur) — donnent accès à des listes dédiées plutôt que de chercher un nom :
+  // taper [[créature affiche TOUTE la bibliothèque de créatures, [[rencontre TOUTES les rencontres
+  // sauvegardées — la note reçue elle-même n'a jamais ce nom, un filtre par sous-chaîne ne servirait à
+  // rien ici. Choisir une suggestion insère son nom réel ([[Gobelin]]) : le mot-clé ne survit pas dans
+  // la note, seule la sélection compte.
+  const suggestions = useMemo(() => {
+    if (lienQuery === null) return []
+    const q = normaliser(lienQuery)
+    if (bestiaire && q.length >= 3 && normaliser('créature').startsWith(q)) {
+      return bestiaire.map(c => ({ type: 'creature' as const, titre: c.nom, key: `creature-${c.nom}` })).slice(0, 30)
+    }
+    if (rencontres && q.length >= 3 && normaliser('rencontre').startsWith(q)) {
+      return rencontres.map(r => ({ type: 'rencontre' as const, titre: r.nom, key: `rencontre-${r.id}` })).slice(0, 30)
+    }
+    return notes
+      .filter(n => n.id !== note.id && n.titre.trim() && n.titre.toLowerCase().includes(lienQuery.toLowerCase()))
+      .map(n => ({ type: 'note' as const, titre: n.titre, key: `note-${n.id}` }))
+      .slice(0, 8)
+  }, [lienQuery, notes, note.id, bestiaire, rencontres])
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, minHeight: 0 }}>
@@ -654,6 +880,111 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
             fontSize: 18, fontWeight: 700, fontFamily: "'Cinzel', serif", letterSpacing: '0.02em',
           }}
         />
+        {/* Pagination — chaque page est une portion du même texte (voir la découpe côté NotesTab),
+            « › » navigue vers la page suivante existante ou en crée une vierge si on est déjà sur la
+            dernière (même chemin que le déclenchement automatique au dépassement, voir onOverflow). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }} title={t('notes.pageAide')}>
+          <button
+            onClick={() => { flush(); onPrevPage() }}
+            disabled={pageActive === 0}
+            style={{
+              background: 'transparent', border: 'none', cursor: pageActive === 0 ? 'default' : 'pointer',
+              color: pageActive === 0 ? 'rgba(245,236,215,0.25)' : GOLD, fontSize: 16, padding: '0 2px', lineHeight: 1,
+            }}
+          >
+            ‹
+          </button>
+          <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.6)', minWidth: 44, textAlign: 'center' }}>
+            {t('notes.pageLabel', { page: pageActive + 1, total: pageCount })}
+          </span>
+          <button
+            onClick={() => { flush(); onNextPage() }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: GOLD, fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+          >
+            ›
+          </button>
+        </div>
+        {/* Marque-pages : 📌 signet de page, ⚓ ancre sur le paragraphe où se trouve le curseur — les
+            deux se retrouvent ensuite via la recherche (voir sections/correspond) et ramènent d'un clic
+            à la bonne page (et à la bonne position pour une ancre, voir onGoToPage/curseurInitial). */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setMarquesOuvert(o => !o)}
+            title={t('notes.marquesTitre')}
+            style={{
+              background: marquesOuvert ? 'rgba(201,168,76,0.15)' : 'transparent', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+              color: (note.marques ?? []).length > 0 ? GOLD : 'rgba(245,236,215,0.5)', cursor: 'pointer', fontSize: 13, padding: '4px 8px',
+            }}
+          >
+            🔖{(note.marques ?? []).length > 0 ? ` ${(note.marques ?? []).length}` : ''}
+          </button>
+          {marquesOuvert && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 20, width: 260,
+              background: 'rgba(15,12,8,0.98)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.5)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={nomNouveauSignet}
+                  onChange={e => setNomNouveauSignet(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && nomNouveauSignet.trim()) { onAjouterMarque(nomNouveauSignet, pageActive); setNomNouveauSignet('') } }}
+                  placeholder={t('notes.nomSignet')}
+                  style={{ ...metaInputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={() => { onAjouterMarque(nomNouveauSignet, pageActive); setNomNouveauSignet('') }}
+                  disabled={!nomNouveauSignet.trim()}
+                  title={t('notes.ajouterSignet')}
+                  style={{ ...toolbarBtnStyle, opacity: nomNouveauSignet.trim() ? 1 : 0.4 }}
+                >
+                  📌
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={nomNouvelleAncre}
+                  onChange={e => setNomNouvelleAncre(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && nomNouvelleAncre.trim()) { onAjouterMarque(nomNouvelleAncre, pageActive, selection?.debut ?? contenu.length); setNomNouvelleAncre('') } }}
+                  placeholder={t('notes.nomAncre')}
+                  style={{ ...metaInputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={() => { onAjouterMarque(nomNouvelleAncre, pageActive, selection?.debut ?? contenu.length); setNomNouvelleAncre('') }}
+                  disabled={!nomNouvelleAncre.trim()}
+                  title={t('notes.ajouterAncre')}
+                  style={{ ...toolbarBtnStyle, opacity: nomNouvelleAncre.trim() ? 1 : 0.4 }}
+                >
+                  ⚓
+                </button>
+              </div>
+              {(note.marques ?? []).length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: `1px solid ${SECTION_BORDER}`, paddingTop: 8, maxHeight: 160, overflowY: 'auto' }}>
+                  {(note.marques ?? []).map(m => (
+                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => { flush(); onGoToPage(m.page, m.decalage); setMarquesOuvert(false) }}
+                        style={{
+                          flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 'none',
+                          color: PARCHMENT, cursor: 'pointer', fontSize: 13, padding: '2px 0',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {m.decalage !== undefined ? '⚓' : '📌'} {m.nom} <span style={{ opacity: 0.5 }}>· {t('notes.pageAbrege', { page: m.page + 1 })}</span>
+                      </button>
+                      <button
+                        onClick={() => onSupprimerMarque(m.id)}
+                        style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.4)', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {exportMsg && <span style={{ fontSize: 11, color: GOLD, flexShrink: 0 }}>{exportMsg}</span>}
         <button
           onClick={exporterNote}
@@ -671,26 +1002,84 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
         }}>
           ✕
         </button>
+        <button
+          onClick={() => setAideOuverte(true)}
+          title={t('notes.aideBouton')}
+          style={{
+            background: 'transparent', border: `1px solid ${SECTION_BORDER}`, borderRadius: '50%',
+            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, width: 24, height: 24,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0,
+          }}
+        >
+          ?
+        </button>
       </div>
-      {/* Métadonnées : date libre (in-fiction ou réelle, aucun format imposé) + rappel en lecture seule
-          de la campagne rattachée — l'assigner se fait désormais par glisser-déposer dans la liste. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${SECTION_BORDER}` }}>
+      {aideOuverte && (
+        <div
+          onClick={() => setAideOuverte(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'rgba(22,17,11,0.99)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 8,
+              padding: '24px 28px', maxWidth: 440, width: '90vw', maxHeight: '80vh', overflowY: 'auto',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 18,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif" }}>{t('notes.aideTitre')}</span>
+              <button onClick={() => setAideOuverte(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.6)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{t('notes.aideMiseEnFormeTitre')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: PARCHMENT, opacity: 0.85 }}>
+                <span>{t('notes.aideGras')}</span>
+                <span>{t('notes.aideItalique')}</span>
+                <span>{t('notes.aideListe')}</span>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{t('notes.aideLiensTitre')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: PARCHMENT, opacity: 0.85 }}>
+                <span>{t('notes.aideLienNote')}</span>
+                <span>{t('notes.aideLienImage')}</span>
+                {bestiaire && <span>{t('notes.aideLienCreature')}</span>}
+                {rencontres && <span>{t('notes.aideLienRencontre')}</span>}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{t('notes.aideMarquesTitre')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: PARCHMENT, opacity: 0.85 }}>
+                <span>{t('notes.aideSignetDesc')}</span>
+                <span>{t('notes.aideAncreDesc')}</span>
+                <span style={{ opacity: 0.7 }}>{t('notes.aideMarquesRecherche')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Métadonnées + rappel de syntaxe sur une seule ligne (repasse à la ligne si la fenêtre est
+          trop étroite) — date, campagne, tags et boutons de formatage tenaient auparavant sur 3 lignes
+          distinctes ; les regrouper laisse plus de hauteur à la « page » ci-dessous. */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${SECTION_BORDER}` }}>
         <input
           value={date}
           onChange={e => { setDate(e.target.value); scheduleSave({ date: e.target.value || undefined }) }}
           onBlur={flush}
           placeholder={t('notes.datePlaceholder')}
-          style={{ ...metaInputStyle, width: 140, flexShrink: 0 }}
+          style={{ ...metaInputStyle, width: 120, flexShrink: 0 }}
         />
         {campagneNom && (
-          <span style={{ fontSize: 12, color: GOLD, opacity: 0.8 }}>📁 {campagneNom}</span>
+          <span style={{ fontSize: 12, color: GOLD, opacity: 0.8, flexShrink: 0 }}>📁 {campagneNom}</span>
         )}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, padding: '8px 14px', borderBottom: `1px solid ${SECTION_BORDER}` }}>
         {tagsActuels.map(tag => (
           <span key={tag} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(201,168,76,0.12)',
-            border: `1px solid ${SECTION_BORDER}`, borderRadius: 12, padding: '2px 8px', fontSize: 13, color: GOLD,
+            border: `1px solid ${SECTION_BORDER}`, borderRadius: 12, padding: '2px 8px', fontSize: 13, color: GOLD, flexShrink: 0,
           }}>
             #{tag}
             <button onClick={() => retirerTag(tag)} style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.5)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>
@@ -705,88 +1094,158 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouterTag(nouveauTag) } }}
           onBlur={() => ajouterTag(nouveauTag)}
           placeholder={t('notes.ajouterTag')}
-          style={{ ...metaInputStyle, width: 110 }}
+          style={{ ...metaInputStyle, width: 90, flexShrink: 0 }}
         />
         <datalist id="tags-existants">
           {tagsExistants.map(tag => <option key={tag} value={tag} />)}
         </datalist>
+        <div style={{ width: 1, alignSelf: 'stretch', background: SECTION_BORDER, flexShrink: 0 }} />
+        <button type="button" onClick={() => entourerSelection('**', '**', t('notes.repereGras'))} style={toolbarBtnStyle}>
+          **{t('notes.boutonGras')}**
+        </button>
+        <button type="button" onClick={() => entourerSelection('*', '*', t('notes.repereItalique'))} style={{ ...toolbarBtnStyle, fontStyle: 'italic' }}>
+          *{t('notes.boutonItalique')}*
+        </button>
+        <button type="button" onClick={() => entourerSelection('[[', ']]', t('notes.repereLien'))} style={toolbarBtnStyle}>
+          [[{t('notes.boutonLien')}]]
+        </button>
+        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
+        <button type="button" onClick={() => imageInputRef.current?.click()} style={toolbarBtnStyle}>
+          🖼️ {t('notes.boutonImage')}
+        </button>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Rappel de syntaxe toujours visible — cliquer entoure la sélection courante avec le marqueur
-            correspondant. Le résultat s'affiche directement mis en forme au fil de la frappe. */}
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button type="button" onClick={() => entourerSelection('**', '**', t('notes.repereGras'))} style={toolbarBtnStyle}>
-            **{t('notes.boutonGras')}**
-          </button>
-          <button type="button" onClick={() => entourerSelection('*', '*', t('notes.repereItalique'))} style={{ ...toolbarBtnStyle, fontStyle: 'italic' }}>
-            *{t('notes.boutonItalique')}*
-          </button>
-          <button type="button" onClick={() => entourerSelection('[[', ']]', t('notes.repereLien'))} style={toolbarBtnStyle}>
-            [[{t('notes.boutonLien')}]]
-          </button>
-          <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
-          <button type="button" onClick={() => imageInputRef.current?.click()} style={toolbarBtnStyle}>
-            🖼️ {t('notes.boutonImage')}
-          </button>
-        </div>
-        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-          <div
-            ref={editableRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={() => { if (!composingRef.current) resyncDepuisDom(true) }}
-            onBlur={flush}
-            onKeyDown={handleKeyDown}
-            onKeyUp={() => resyncDepuisDom(false)}
-            onMouseUp={() => resyncDepuisDom(false)}
-            onCompositionStart={() => { composingRef.current = true }}
-            onCompositionEnd={() => { composingRef.current = false; resyncDepuisDom(true) }}
-            data-placeholder={t('notes.contenuPlaceholder')}
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, background: 'rgba(0,0,0,0.25)', borderRadius: 4 }}>
+          {/* Boutons de page dans le bandeau neutre de part et d'autre de la page — repris ici en grand
+              (plutôt que seulement les ‹ › de l'en-tête) puisque cette zone est sinon vide sur un
+              panneau large. Mêmes actions que l'en-tête (flush avant de changer de page). */}
+          <button
+            onClick={() => { flush(); onPrevPage() }}
+            disabled={pageActive === 0}
+            title={t('notes.pageAide')}
             style={{
-              width: '100%', height: '100%', minHeight: 300, boxSizing: 'border-box', overflowY: 'auto',
-              background: 'rgba(255,255,255,0.03)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
-              color: PARCHMENT, fontSize: 16, fontFamily: 'inherit', lineHeight: 1.6, padding: 12,
-              whiteSpace: 'pre-wrap', wordBreak: 'break-word', outline: 'none',
+              position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+              background: 'transparent', border: 'none', cursor: pageActive === 0 ? 'default' : 'pointer',
+              color: pageActive === 0 ? 'rgba(245,236,215,0.15)' : 'rgba(245,236,215,0.5)', fontSize: 32, lineHeight: 1, padding: 8,
+              transition: 'color 0.15s',
             }}
+            onMouseEnter={e => { if (pageActive !== 0) e.currentTarget.style.color = GOLD }}
+            onMouseLeave={e => { e.currentTarget.style.color = pageActive === 0 ? 'rgba(245,236,215,0.15)' : 'rgba(245,236,215,0.5)' }}
           >
-            {/* eslint-disable-next-line react-hooks/refs -- handleHoverStart/handleHoverEnd ne lisent leurs
-                refs que dans des gestionnaires d'événements différés (onMouseEnter/onMouseLeave...), jamais
-                pendant ce rendu ; renderLiveContent est une fonction pure (pas un composant), le compilateur
-                ne peut pas voir à travers son appel que l'usage est bien différé. */}
-            {renderLiveContent(contenu, selection, onLien, noteImages, handleHoverStart, handleHoverEnd)}
-          </div>
-          {contenu === '' && (
-            <div style={{ position: 'absolute', top: 12, left: 12, right: 12, color: 'rgba(245,236,215,0.3)', fontSize: 16, pointerEvents: 'none' }}>
-              {t('notes.contenuPlaceholder')}
-            </div>
-          )}
-          {/* Suggestions de liens [[...]] — ancrées juste sous le curseur. */}
-          {lienQuery !== null && suggestions.length > 0 && caretPos && (
-            <div style={{
-              position: 'absolute', top: caretPos.top + caretPos.ligneHauteur, left: caretPos.left,
-              minWidth: 160, maxWidth: 320, zIndex: 10,
-              background: 'rgba(15,12,8,0.98)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.5)', overflow: 'hidden', maxHeight: 220, overflowY: 'auto',
-            }}>
-              {suggestions.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => choisirSuggestion(s.titre)}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none',
-                    color: PARCHMENT, cursor: 'pointer', fontSize: 14, padding: '7px 12px', fontFamily: 'inherit',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            ‹
+          </button>
+          <button
+            onClick={() => { flush(); onNextPage() }}
+            title={t('notes.pageAide')}
+            style={{
+              position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'rgba(245,236,215,0.5)', fontSize: 32, lineHeight: 1, padding: 8,
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = GOLD }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(245,236,215,0.5)' }}
+          >
+            ›
+          </button>
+          {/* « Page » à l'aspect exact de l'image (portrait) — sa largeur se déduit automatiquement de
+              la hauteur disponible (aspectRatio + height:100%) et elle reste centrée horizontalement
+              (margin:auto) : l'image ne montre donc jamais qu'une partie de son cadre, ni découpée ni
+              recomposée, quitte à laisser un bandeau neutre de chaque côté sur une zone très large. */}
+          <div style={{
+            position: 'relative', height: '100%', minHeight: 300, maxWidth: '100%', aspectRatio: '2480 / 3508', margin: '0 auto',
+            backgroundImage: `url(${noteParchmentBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+            border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+          }}>
+            {/* Zone de texte — décalée des bords de la page pour rester hors de la bordure ornée de
+                l'image (marges calées à la main sur l'image, voir le repère visuel utilisé pour les
+                déterminer : ~89/214px haut/bas et ~103/215px gauche/droite sur l'image 2480×3508).
+                top/bottom en % se calculent contre la HAUTEUR du conteneur ici (positionnement absolu),
+                left/right contre la LARGEUR — contrairement à un padding, dont les % seraient TOUS
+                calculés contre la largeur (source d'un bug si on avait gardé ces marges en padding). */}
+            <div style={{ position: 'absolute', top: '2.54%', right: '10.17%', bottom: '6.10%', left: '2.65%' }}>
+              <div
+                ref={editableRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={() => { if (!composingRef.current) resyncDepuisDom(true) }}
+                onBlur={flush}
+                onKeyDown={handleKeyDown}
+                onKeyUp={() => resyncDepuisDom(false)}
+                onMouseUp={() => resyncDepuisDom(false)}
+                onCompositionStart={() => { composingRef.current = true }}
+                onCompositionEnd={() => { composingRef.current = false; resyncDepuisDom(true) }}
+                data-placeholder={t('notes.contenuPlaceholder')}
+                style={{
+                  // "hidden" et non "auto" : la pagination automatique doit garantir qu'on ne reste
+                  // jamais assez longtemps en situation de dépassement pour qu'une scrollbar soit utile —
+                  // "auto" ne faisait qu'exposer visuellement l'instant (un cycle de rendu) entre le
+                  // dépassement réel et la bascule vers la page suivante, ce qui donnait l'impression que
+                  // du texte s'ajoutait sous la zone visible. "hidden" rend ce court instant invisible.
+                  width: '100%', height: '100%', boxSizing: 'border-box', overflowY: 'hidden',
+                  color: ENCRE, fontSize: 16, fontFamily: 'inherit', lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word', outline: 'none',
+                }}
+              >
+                {/* eslint-disable-next-line react-hooks/refs -- handleHoverStart/handleHoverEnd ne lisent leurs
+                    refs que dans des gestionnaires d'événements différés (onMouseEnter/onMouseLeave...), jamais
+                    pendant ce rendu ; renderLiveContent est une fonction pure (pas un composant), le compilateur
+                    ne peut pas voir à travers son appel que l'usage est bien différé. */}
+                {renderLiveContent(contenu, selection, onLien, noteImages, handleHoverStart, handleHoverEnd, true)}
+              </div>
+              {contenu === '' && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, color: 'rgba(43,32,19,0.4)', fontSize: 16, pointerEvents: 'none' }}>
+                  {t('notes.contenuPlaceholder')}
+                </div>
+              )}
+              {/* Icônes d'ancre : petit repère décoratif au-dessus du point exact du texte où chaque
+                  ancre de paragraphe de cette page est posée (voir ancresPositions) — pas dans le
+                  contentEditable lui-même (casserait les calculs de décalage de caractère utilisés
+                  partout ailleurs), juste une superposition en lecture seule par-dessus. Un SVG plutôt
+                  que l'emoji ⚓ : la plupart des systèmes le dessinent en emoji couleur, qui ignore
+                  totalement la couleur CSS — un noir garanti demande un tracé qu'on maîtrise. */}
+              {ancresPositions.map(a => (
+                <svg
+                  key={a.id}
+                  width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth={2.5}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  style={{ position: 'absolute', top: a.top, left: a.left, transform: 'translate(-50%, -60%)', pointerEvents: 'none' }}
                 >
-                  {s.titre}
-                </button>
+                  <title>{t('notes.ancrePresente')}</title>
+                  <circle cx="12" cy="5" r="3" />
+                  <line x1="12" y1="8" x2="12" y2="21" />
+                  <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
+                </svg>
               ))}
+              {/* Suggestions de liens [[...]] — ancrées juste sous le curseur. */}
+              {lienQuery !== null && suggestions.length > 0 && caretPos && (
+                <div style={{
+                  position: 'absolute', top: caretPos.top + caretPos.ligneHauteur, left: caretPos.left,
+                  minWidth: 160, maxWidth: 320, zIndex: 10,
+                  background: 'rgba(15,12,8,0.98)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.5)', overflow: 'hidden', maxHeight: 220, overflowY: 'auto',
+                }}>
+                  {suggestions.map(s => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => choisirSuggestion(s.titre)}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none',
+                        color: PARCHMENT, cursor: 'pointer', fontSize: 14, padding: '7px 12px', fontFamily: 'inherit',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {s.type === 'creature' ? '🐉 ' : s.type === 'rencontre' ? '⚔ ' : ''}{s.titre}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
       {/* Aperçu au survol d'un lien de note (lecture seule) ou d'une image — position=fixed puisque
@@ -806,27 +1265,88 @@ function NoteEditor({ note, notes, campagnes, mobile, onSave, onBack, onDelete, 
           {preview.type === 'image' ? (
             <img src={preview.image.data} alt={preview.image.nom} style={{ display: 'block', maxWidth: '100%', maxHeight: 340, margin: '0 auto', borderRadius: 4 }} />
           ) : (() => {
-            const noteLiee = notes.find(n => n.titre.trim().toLowerCase() === preview.titre.trim().toLowerCase())
-            return noteLiee ? (
-              <>
-                <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Cinzel', serif" }}>
-                  {noteLiee.titre.trim() || t('notes.sansTitre')}
-                </div>
-                <div style={{ fontSize: 14, color: PARCHMENT, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {noteLiee.contenu.trim()
-                    ? renderLiveContent(noteLiee.contenu, null, () => {}, noteImages, () => {}, () => {})
-                    : <span style={{ opacity: 0.4 }}>{t('notes.contenuVide')}</span>}
-                </div>
-                <button
-                  onClick={() => { onLien(preview.titre); setPreview(null) }}
-                  style={{ ...toolbarBtnStyle, marginTop: 10 }}
-                >
-                  {t('notes.allerNote')} →
-                </button>
-              </>
-            ) : (
-              <span style={{ fontSize: 14, opacity: 0.5 }}>{t('notes.sansTitre')}</span>
-            )
+            const cible = resoudreLien(preview.titre, notes, bestiaire, rencontres)
+            if (cible.type === 'note') {
+              const noteLiee = cible.note
+              return (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Cinzel', serif" }}>
+                    {noteLiee.titre.trim() || t('notes.sansTitre')}
+                  </div>
+                  <div style={{ fontSize: 14, color: PARCHMENT, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {noteLiee.contenu.trim()
+                      ? renderLiveContent(noteLiee.contenu, null, () => {}, noteImages, () => {}, () => {})
+                      : <span style={{ opacity: 0.4 }}>{t('notes.contenuVide')}</span>}
+                  </div>
+                  <button
+                    onClick={() => { onLien(preview.titre); setPreview(null) }}
+                    style={{ ...toolbarBtnStyle, marginTop: 10 }}
+                  >
+                    {t('notes.allerNote')} →
+                  </button>
+                </>
+              )
+            }
+            if (cible.type === 'creature') {
+              const c = cible.creature
+              return (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Cinzel', serif" }}>
+                    🐉 {c.nom}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7 }}>NC {c.nc}</span>
+                    {c.def !== undefined && <span style={{ opacity: 0.7 }}>DEF {c.def}</span>}
+                    {c.pv !== undefined && <span style={{ opacity: 0.7 }}>PV {c.pv}</span>}
+                    {c.rd !== undefined && <span style={{ opacity: 0.7 }}>RD {c.rd}</span>}
+                    {c.init !== undefined && <span style={{ opacity: 0.7 }}>INIT {c.init}</span>}
+                  </div>
+                  {c.description && (
+                    <div style={{ fontSize: 13, color: PARCHMENT, lineHeight: 1.5, opacity: 0.85 }}>
+                      {c.description.length > 240 ? `${c.description.slice(0, 240)}…` : c.description}
+                    </div>
+                  )}
+                  {onOpenCreature && (
+                    <button
+                      onClick={() => { onOpenCreature(c.nom); setPreview(null) }}
+                      style={{ ...toolbarBtnStyle, marginTop: 10 }}
+                    >
+                      {t('notes.allerCreature')} →
+                    </button>
+                  )}
+                </>
+              )
+            }
+            if (cible.type === 'rencontre') {
+              const r = cible.rencontre
+              const composition = new Map<string, number>()
+              for (const a of r.adversaires) {
+                if (a.creatureNom) composition.set(a.creatureNom, (composition.get(a.creatureNom) ?? 0) + 1)
+              }
+              return (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Cinzel', serif" }}>
+                    ⚔ {r.nom}
+                  </div>
+                  <div style={{ fontSize: 13, color: PARCHMENT, lineHeight: 1.7 }}>
+                    {composition.size === 0
+                      ? <span style={{ opacity: 0.4 }}>{t('notes.rencontreVide')}</span>
+                      : [...composition.entries()].map(([nom, n]) => (
+                        <div key={nom}>{nom}{n > 1 ? ` ×${n}` : ''}</div>
+                      ))}
+                  </div>
+                  {onEditRencontre && (
+                    <button
+                      onClick={() => { onEditRencontre(r.id); setPreview(null) }}
+                      style={{ ...toolbarBtnStyle, marginTop: 10 }}
+                    >
+                      {t('notes.modifierRencontre')}
+                    </button>
+                  )}
+                </>
+              )
+            }
+            return <span style={{ fontSize: 14, opacity: 0.5 }}>{t('notes.sansTitre')}</span>
           })()}
         </div>
       )}
@@ -840,11 +1360,28 @@ interface Props {
   // puisse ouvrir une note d'un clic sur son nœud.
   selectedId: string | null
   onSelectId: (id: string | null) => void
+  // Données injectées par l'appelant (plutôt que lues directement via useGameData ici) pour que le même
+  // composant serve à la fois les notes joueur (App.tsx) et les notes MJ (GMDashboard.tsx), deux
+  // bibliothèques distinctes qui ne doivent jamais se mélanger.
+  notes: Note[]
+  setNotes: Dispatch<SetStateAction<Note[]>>
+  campagnes: Campaign[]
+  setCampagnes: Dispatch<SetStateAction<Campaign[]>>
+  noteImages: NoteImage[]
+  setNoteImages: Dispatch<SetStateAction<NoteImage[]>>
+  // Capacité MJ (voir NoteEditorProps ci-dessus) — transmise telle quelle, absente côté joueur.
+  bestiaire?: BestiaireEntry[]
+  rencontres?: RencontreSauvegardee[]
+  onOpenCreature?: (nom: string) => void
+  onEditRencontre?: (id: string) => void
+  onPlayRencontre?: (rencontre: RencontreSauvegardee) => void
 }
 
-export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
+export default function NotesTab({
+  mobile, selectedId, onSelectId, notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages,
+  bestiaire, rencontres, onOpenCreature, onEditRencontre, onPlayRencontre,
+}: Props) {
   const { t } = useTranslation()
-  const { notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages } = useGameData()
   const [search, setSearch] = useState('')
   const [nouvelleCampagneOuverte, setNouvelleCampagneOuverte] = useState(false)
   const [nouvelleCampagneNom, setNouvelleCampagneNom] = useState('')
@@ -881,14 +1418,28 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
     setRenommageId(null)
   }
 
+  // Supprimer un groupe ne supprime jamais les notes qu'il contenait : leur campagneId pointe alors
+  // vers un id inexistant, ce que `sections` (voir plus bas) traite déjà comme "sans groupe" — elles
+  // redeviennent simplement visibles dans cette section plutôt que d'être perdues.
+  const [confirmDeleteGroupId, setConfirmDeleteGroupId] = useState<string | null>(null)
+  const supprimerGroupe = (id: string) => {
+    setCampagnes(prev => prev.filter(c => c.id !== id))
+    setConfirmDeleteGroupId(null)
+  }
+
   // Notes groupées par campagne (dans l'ordre de création des campagnes) + une section "sans
   // campagne" en tête — une note dont la campagne référencée a été supprimée retombe aussi ici, pour
   // ne jamais disparaître silencieusement de la liste.
   const sections = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const brut = search.trim()
+    const q = brut.length >= SEUIL_RECHERCHE ? brut.toLowerCase() : ''
+    // Recherche dans le titre, les tags, le CONTENU (mots dans le texte de la note — le \f de
+    // séparation des pages n'y gêne pas, une simple sous-chaîne) et le nom des marque-pages/ancres.
     const correspond = (n: Note) => !q
       || n.titre.toLowerCase().includes(q)
       || (n.tags ?? []).some(tag => tag.toLowerCase().includes(q))
+      || n.contenu.toLowerCase().includes(q)
+      || (n.marques ?? []).some(m => m.nom.toLowerCase().includes(q))
     const tri = (a: Note, b: Note) => b.modifieLe.localeCompare(a.modifieLe)
 
     const sansCampagne: Note[] = []
@@ -974,13 +1525,30 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
       setTimeout(() => setImportMsg(null), 3000)
       return
     }
-    const d = data as { note?: Partial<Note>; notes?: Partial<Note>[]; images?: NoteImage[] }
+    const d = data as { groupe?: string; note?: Partial<Note>; notes?: Partial<Note>[]; images?: NoteImage[] }
     const items = d.notes ?? (d.note ? [d.note] : [])
     const imagesImportees = d.images ?? []
     if (items.length === 0) {
       setImportMsg(t('notes.importInvalide'))
       setTimeout(() => setImportMsg(null), 3000)
       return
+    }
+
+    // Un export de groupe retrouve automatiquement son groupe d'origine (recréé s'il n'existe plus,
+    // réutilisé par nom sinon) — peu importe le bouton ↑ cliqué pour déclencher l'import, pour ne pas
+    // obliger à recréer le groupe à la main avant d'importer. Un export mono-note (sans nom de groupe)
+    // continue d'utiliser le groupe ciblé par le bouton cliqué.
+    let campagneCibleId = campagneImportCibleRef.current
+    const nomGroupe = d.groupe?.trim()
+    if (nomGroupe) {
+      const existant = campagnes.find(c => c.nom.trim().toLowerCase() === nomGroupe.toLowerCase())
+      if (existant) {
+        campagneCibleId = existant.id
+      } else {
+        const nouveauId = genId()
+        setCampagnes(prev => [...prev, { id: nouveauId, nom: nomGroupe }])
+        campagneCibleId = nouveauId
+      }
     }
 
     const mapping = new Map<string, string>()
@@ -1007,7 +1575,7 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
       mapping.forEach((nouveau, ancien) => { contenu = renommerReferenceImage(contenu, ancien, nouveau) })
       return {
         id: genId(), titre: item.titre ?? '', contenu, date: item.date, tags: item.tags,
-        campagneId: campagneImportCibleRef.current,
+        campagneId: campagneCibleId,
         creeLe: maintenant, modifieLe: maintenant,
       }
     })
@@ -1021,18 +1589,120 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, modifieLe: new Date().toISOString() } : n))
   }
 
+  // Pagination — la note reste UNE seule chaîne (note.contenu) : les pages sont juste délimitées par
+  // un caractère form feed ('\f'), invisible partout ailleurs dans l'app (recherche, liens, export...).
+  // NoteEditor n'édite qu'une page à la fois, remonté (key différente) à chaque changement de page.
+  const pages = useMemo(() => (selected?.contenu ?? '').split('\f'), [selected?.contenu])
+  const [pageActive, setPageActive] = useState(0)
+  // Compteur inclus dans la key de NoteEditor (voir plus bas) pour forcer un remontage même quand
+  // pageActive ne change pas — ex. cliquer sur une 2e occurrence d'un mot trouvée sur la page déjà
+  // affichée : sans ça, curseurInitial changerait bien mais l'effet qui l'applique (au montage
+  // seulement) ne se redéclencherait pas, et le mot ne serait jamais (re)sélectionné.
+  const [navigationSeq, setNavigationSeq] = useState(0)
+  // Revient à la première page à l'ouverture d'une AUTRE note (comparaison sur l'id seul, pas sur
+  // selected.contenu qui change à chaque frappe) — et n'accorde le focus automatique (voir plus bas)
+  // qu'aux changements de page déclenchés explicitement par une navigation, jamais à ce cas-ci.
+  const [dernierSelectedId, setDernierSelectedId] = useState<string | null>(null)
+  const [pageVientDeNaviguer, setPageVientDeNaviguer] = useState(false)
+  // Position (ou plage, pour sélectionner un mot trouvé par la recherche) de curseur à restaurer une
+  // fois la page affichée — utilisé pour amener précisément sur une ancre de paragraphe ou surligner
+  // un résultat de recherche en texte (voir allerA), pas seulement amener sur la bonne page.
+  const [curseurCible, setCurseurCible] = useState<{ debut: number; fin: number } | null>(null)
+  // Page/ancre/occurrence visée par un clic dans les résultats de recherche : posé juste avant
+  // onSelectId (qui peut viser une AUTRE note), consommé au prochain changement de sélection ci-dessous
+  // plutôt que remis à zéro comme d'habitude. En state (pas en ref) : le compilateur React interdit de
+  // lire/écrire une ref pendant le rendu, y compris dans ce genre de bloc d'ajustement d'état.
+  const [cibleApresSelection, setCibleApresSelection] = useState<{ noteId: string; page: number; decalage?: number; longueur?: number } | null>(null)
+  if (selectedId !== dernierSelectedId) {
+    setDernierSelectedId(selectedId)
+    if (cibleApresSelection && cibleApresSelection.noteId === selectedId) {
+      setCibleApresSelection(null)
+      setPageActive(cibleApresSelection.page)
+      setCurseurCible(cibleApresSelection.decalage !== undefined
+        ? { debut: cibleApresSelection.decalage, fin: cibleApresSelection.decalage + (cibleApresSelection.longueur ?? 0) }
+        : null)
+      setPageVientDeNaviguer(true)
+    } else {
+      setPageActive(0)
+      setCurseurCible(null)
+      setPageVientDeNaviguer(false)
+    }
+  }
+
+  const allerPage = (index: number, decalage?: number, longueur?: number) => {
+    setPageActive(index)
+    setCurseurCible(decalage !== undefined ? { debut: decalage, fin: decalage + (longueur ?? 0) } : null)
+    setPageVientDeNaviguer(true)
+    setNavigationSeq(s => s + 1)
+  }
+  // Clic sur un marque-page ou sur une occurrence trouvée par la recherche en texte (liste de
+  // recherche, ou dans le panneau de la note ouverte) : bascule sur la bonne note si besoin (via
+  // cibleApresSelection, consommé ci-dessus) puis sur la bonne page. longueur sélectionne le mot trouvé
+  // (recherche en texte) au lieu d'un simple curseur (marque-page/ancre).
+  const allerA = (noteId: string, page: number, decalage?: number, longueur?: number) => {
+    if (noteId === selectedId) {
+      allerPage(page, decalage, longueur)
+    } else {
+      setCibleApresSelection({ noteId, page, decalage, longueur })
+      onSelectId(noteId)
+    }
+  }
+  const allerAuMarque = (noteId: string, m: NoteMarque) => allerA(noteId, m.page, m.decalage)
+  const ajouterPageEtAller = () => {
+    if (!selected) return
+    updateNoteById(selected.id, { contenu: [...pages, ''].join('\f') })
+    allerPage(pages.length)
+  }
+  const pagePrecedente = () => { if (pageActive > 0) allerPage(pageActive - 1) }
+  const pageSuivante = () => { if (pageActive < pages.length - 1) allerPage(pageActive + 1); else ajouterPageEtAller() }
+  // Dépassement détecté par NoteEditor (voir trouverPointDeCoupure) : insère une page contenant
+  // texteReporte juste APRÈS la page active, dont le contenu est remplacé par texteGarde — un vrai
+  // découpage, jamais seulement une page vide en fin de note, pour qu'un gros collage qui dépasse
+  // largement la page ne perde pas sa fin. Ça marche aussi en reprenant l'écriture sur une page déjà
+  // revisitée (via ‹) même si d'autres pages existent déjà plus loin — la nouvelle page s'insère juste
+  // après, décalant les suivantes. texteGarde/texteReporte (mesurés au moment précis du dépassement)
+  // remplacent la version potentiellement pas encore sauvegardée dans `pages` — sinon les toutes
+  // dernières frappes qui ont causé le dépassement seraient perdues.
+  const pageDebordee = (texteGarde: string, texteReporte: string) => {
+    if (!selected) return
+    const nouvellesPages = pages.slice()
+    nouvellesPages[pageActive] = texteGarde
+    nouvellesPages.splice(pageActive + 1, 0, texteReporte)
+    updateNoteById(selected.id, { contenu: nouvellesPages.join('\f') })
+    allerPage(pageActive + 1)
+  }
+
+  // Marque-pages : signet de page (decalage absent) ou ancre de paragraphe (decalage = position dans
+  // le texte de cette page) — voir NoteMarque. Champ note-level, pas besoin de passer par la logique
+  // de découpage en pages ci-dessus.
+  const ajouterMarque = (noteId: string, nom: string, page: number, decalage?: number) => {
+    const n = notes.find(x => x.id === noteId)
+    if (!n || !nom.trim()) return
+    const marque: NoteMarque = { id: genId(), nom: nom.trim(), page, decalage }
+    updateNoteById(noteId, { marques: [...(n.marques ?? []), marque] })
+  }
+  const supprimerMarque = (noteId: string, marqueId: string) => {
+    const n = notes.find(x => x.id === noteId)
+    if (!n) return
+    updateNoteById(noteId, { marques: (n.marques ?? []).filter(m => m.id !== marqueId) })
+  }
+
   const supprimerNote = (id: string) => {
     setNotes(prev => prev.filter(n => n.id !== id))
     if (selectedId === id) onSelectId(null)
   }
 
-  // Clic sur un lien [[Titre]] : ouvre la note existante (recherche insensible à la casse/aux espaces)
-  // ou en crée une vide portant ce titre, rattachée à la même campagne que la note d'où part le lien
-  // — c'est le cœur du système de liens entre notes.
+  // Clic sur un lien [[Titre]] : ouvre la note existante (recherche insensible à la casse/aux espaces),
+  // sinon — capacité MJ uniquement — saute vers la créature ou lance la rencontre du même nom, sinon
+  // crée une note vide portant ce titre, rattachée à la même campagne que la note d'où part le lien.
   const suivreLien = (titre: string) => {
-    const existante = notes.find(n => n.titre.trim().toLowerCase() === titre.trim().toLowerCase())
-    if (existante) {
-      onSelectId(existante.id)
+    const cible = resoudreLien(titre, notes, bestiaire, rencontres)
+    if (cible.type === 'note') {
+      onSelectId(cible.note.id)
+    } else if (cible.type === 'creature') {
+      onOpenCreature?.(cible.creature.nom)
+    } else if (cible.type === 'rencontre') {
+      onPlayRencontre?.(cible.rencontre)
     } else {
       creerNote(selected?.campagneId, titre)
     }
@@ -1040,10 +1710,11 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
 
   // Crée une note vide pour ce titre si elle n'existe pas déjà — appelé dès qu'un lien [[Titre]] est
   // refermé pendant la frappe, sans changer la sélection (contrairement à suivreLien) pour ne pas
-  // interrompre l'écriture de la note en cours.
+  // interrompre l'écriture de la note en cours. Ne crée rien si le titre désigne déjà une créature ou
+  // une rencontre (capacité MJ) : ce lien-là n'est pas censé devenir une note.
   const assurerNote = (titre: string) => {
-    const existante = notes.find(n => n.titre.trim().toLowerCase() === titre.trim().toLowerCase())
-    if (!existante) {
+    const cible = resoudreLien(titre, notes, bestiaire, rencontres)
+    if (cible.type === 'aucun') {
       const maintenant = new Date().toISOString()
       setNotes(prev => [...prev, { id: genId(), titre, contenu: '', creeLe: maintenant, modifieLe: maintenant, campagneId: selected?.campagneId }])
     }
@@ -1059,7 +1730,10 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
   }
 
   const renderSection = (cleSection: string, titreSection: string, notesSection: Note[], campagneId: string | undefined) => {
-    const reduite = sectionsReduites.has(cleSection)
+    // Une recherche active force l'affichage du contenu même si la section a été repliée manuellement
+    // au préalable — sinon les résultats correspondants restent invisibles derrière le repli, ce qui
+    // ressemble à tort à une recherche qui ne trouve rien.
+    const reduite = sectionsReduites.has(cleSection) && search.trim().length < SEUIL_RECHERCHE
     return (
     <div
       key={cleSection}
@@ -1112,6 +1786,25 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
             ✎
           </button>
         )}
+        {campagneId && renommageId !== campagneId && (
+          confirmDeleteGroupId === campagneId ? (
+            <button
+              onClick={() => supprimerGroupe(campagneId)}
+              title={t('notes.confirmerSuppressionGroupe')}
+              style={{ ...groupeIconBtnStyle, width: 'auto', padding: '0 6px', color: 'rgba(255,110,110,0.9)', fontSize: 11, whiteSpace: 'nowrap' }}
+            >
+              {t('notes.confirmerSuppressionGroupe')}
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirmDeleteGroupId(campagneId)}
+              title={t('notes.supprimerGroupe')}
+              style={{ ...groupeIconBtnStyle, color: 'rgba(255,110,110,0.7)', fontSize: 15 }}
+            >
+              ✕
+            </button>
+          )
+        )}
         <button
           onClick={() => declencherImport(campagneId)}
           title={t('notes.importer')}
@@ -1141,32 +1834,83 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
       </div>
       {!reduite && notesSection.map((n, i) => {
         const isSelected = n.id === selectedId
+        // Marque-pages de cette note dont le nom correspond à la recherche en cours — affichés en
+        // sous-lignes cliquables, pour retrouver directement le bon signet/ancre sans d'abord ouvrir
+        // la note puis chercher soi-même la bonne page.
+        const brut = search.trim()
+        const q = brut.length >= SEUIL_RECHERCHE ? brut.toLowerCase() : ''
+        const marquesCorrespondants = q ? (n.marques ?? []).filter(m => m.nom.toLowerCase().includes(q)) : []
+        // Occurrences du mot cherché DANS LE TEXTE (pas juste titre/tags) : une sous-ligne par
+        // occurrence (pas juste par page), pour amener directement dessus — sinon trouver une note
+        // dans la liste ne dit pas sur quelle page, ni à quelle répétition (potentiellement plusieurs
+        // sur la même page), se trouve le mot recherché.
+        const occurrencesContenu = q ? n.contenu.split('\f').flatMap((page, indexPage) => {
+          const pageMinuscule = page.toLowerCase()
+          const decalages: number[] = []
+          let depuis = 0
+          for (;;) {
+            const decalage = pageMinuscule.indexOf(q, depuis)
+            if (decalage === -1) break
+            decalages.push(decalage)
+            depuis = decalage + q.length
+          }
+          return decalages.map((decalage, indexSurPage) => ({ page: indexPage, decalage, indexSurPage, totalSurPage: decalages.length }))
+        }) : []
+        const nbSousLignes = marquesCorrespondants.length + occurrencesContenu.length
         return (
-          <div
-            key={n.id}
-            draggable
-            onDragStart={e => e.dataTransfer.setData('text/plain', n.id)}
-            onClick={() => onSelectId(n.id)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'grab',
-              background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
-              borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
-              borderBottom: i < notesSection.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
-            }}
-          >
-            <span style={{ flex: 1, fontSize: 15, color: isSelected ? GOLD : PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {n.titre.trim() || t('notes.sansTitre')}
-            </span>
-            {n.date && <span style={{ fontSize: 12, opacity: 0.45, flexShrink: 0 }}>{n.date}</span>}
-            {(n.tags ?? []).slice(0, 2).map(tag => (
-              <span
-                key={tag}
-                onClick={e => { e.stopPropagation(); setSearch(tag) }}
-                title={t('notes.filtrerParTag', { tag })}
-                style={{ fontSize: 12, color: GOLD, opacity: 0.6, cursor: 'pointer', flexShrink: 0 }}
-              >
-                #{tag}
+          <div key={n.id}>
+            <div
+              draggable
+              onDragStart={e => e.dataTransfer.setData('text/plain', n.id)}
+              onClick={() => onSelectId(n.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'grab',
+                background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
+                borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
+                borderBottom: nbSousLignes === 0 && i < notesSection.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
+              }}
+            >
+              <span style={{ flex: 1, fontSize: 15, color: isSelected ? GOLD : PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {n.titre.trim() || t('notes.sansTitre')}
               </span>
+              {n.date && <span style={{ fontSize: 12, opacity: 0.45, flexShrink: 0 }}>{n.date}</span>}
+              {(n.tags ?? []).slice(0, 2).map(tag => (
+                <span
+                  key={tag}
+                  onClick={e => { e.stopPropagation(); setSearch(tag) }}
+                  title={t('notes.filtrerParTag', { tag })}
+                  style={{ fontSize: 12, color: GOLD, opacity: 0.6, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            {marquesCorrespondants.map((m, mi) => (
+              <div
+                key={m.id}
+                onClick={e => { e.stopPropagation(); allerAuMarque(n.id, m) }}
+                style={{
+                  padding: '5px 12px 5px 30px', cursor: 'pointer', fontSize: 12, color: GOLD, opacity: 0.8,
+                  borderBottom: (mi < nbSousLignes - 1 || i < notesSection.length - 1) ? `1px solid ${SECTION_BORDER}` : 'none',
+                }}
+              >
+                {m.decalage !== undefined ? '⚓' : '📌'} {m.nom} <span style={{ opacity: 0.6 }}>· {t('notes.pageAbrege', { page: m.page + 1 })}</span>
+              </div>
+            ))}
+            {occurrencesContenu.map((o, oi) => (
+              <div
+                key={`occ-${o.page}-${o.indexSurPage}`}
+                onClick={e => { e.stopPropagation(); allerA(n.id, o.page, o.decalage, brut.length) }}
+                style={{
+                  padding: '5px 12px 5px 30px', cursor: 'pointer', fontSize: 12, color: 'rgba(245,236,215,0.75)', opacity: 0.8,
+                  borderBottom: (marquesCorrespondants.length + oi < nbSousLignes - 1 || i < notesSection.length - 1) ? `1px solid ${SECTION_BORDER}` : 'none',
+                }}
+              >
+                🔎 « {brut} » <span style={{ opacity: 0.6 }}>
+                  · {t('notes.pageAbrege', { page: o.page + 1 })}
+                  {o.totalSurPage > 1 ? ` ${t('notes.occurrenceIndex', { index: o.indexSurPage + 1, total: o.totalSurPage })}` : ''}
+                </span>
+              </div>
             ))}
           </div>
         )
@@ -1223,16 +1967,40 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
 
   const detailPanel = selected ? (
     <NoteEditor
-      key={selected.id}
-      note={selected}
+      key={`${selected.id}:${pageActive}:${navigationSeq}`}
+      note={{ ...selected, contenu: pages[pageActive] ?? '' }}
       notes={notes}
       campagnes={campagnes}
+      noteImages={noteImages}
+      setNoteImages={setNoteImages}
       mobile={mobile}
-      onSave={patch => updateNoteById(selected.id, patch)}
+      bestiaire={bestiaire}
+      rencontres={rencontres}
+      onOpenCreature={onOpenCreature}
+      onEditRencontre={onEditRencontre}
+      onSave={patch => {
+        if (patch.contenu !== undefined) {
+          const nouvellesPages = pages.slice()
+          nouvellesPages[pageActive] = patch.contenu
+          updateNoteById(selected.id, { ...patch, contenu: nouvellesPages.join('\f') })
+        } else {
+          updateNoteById(selected.id, patch)
+        }
+      }}
       onBack={() => onSelectId(null)}
       onDelete={() => supprimerNote(selected.id)}
       onLien={suivreLien}
       onEnsureNote={assurerNote}
+      pageActive={pageActive}
+      pageCount={pages.length}
+      onPrevPage={pagePrecedente}
+      onNextPage={pageSuivante}
+      onOverflow={pageDebordee}
+      autoFocus={pageVientDeNaviguer}
+      curseurInitial={curseurCible}
+      onGoToPage={(page, decalage) => allerPage(page, decalage)}
+      onAjouterMarque={(nom, page, decalage) => ajouterMarque(selected.id, nom, page, decalage)}
+      onSupprimerMarque={marqueId => supprimerMarque(selected.id, marqueId)}
     />
   ) : (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, opacity: 0.4, fontSize: 14 }}>
@@ -1249,7 +2017,7 @@ export default function NotesTab({ mobile, selectedId, onSelectId }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 16, height: '100%', width: '100%', padding: 16, boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', gap: 16, height: '100%', flex: 1, minWidth: 0, padding: 16, boxSizing: 'border-box' }}>
       {listPanel}
       {detailPanel}
     </div>

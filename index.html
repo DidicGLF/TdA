@@ -5,6 +5,14 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>TdA</title>
+    <!-- Chargées ici plutôt que via @import dans index.css : un <link> est découvert par le
+         navigateur dès le parsing du HTML (en parallèle de tout le reste), alors qu'un @import ne
+         se déclenche qu'une fois index.css lui-même téléchargé — un aller-retour de moins avant que
+         les polices arrivent réduit le délai et le léger décalage visuel (FOUT) au tout premier
+         affichage, notamment sensible sur l'écran de choix de mode (ModeSelector). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

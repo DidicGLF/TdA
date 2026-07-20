@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGameData } from '../context/GameDataContext'
+import type { Note } from '../types/gameData'
 
 const GOLD = '#c9a84c'
 
@@ -153,11 +153,13 @@ function meilleureDisposition(nodeIds: string[], edges: GraphEdge[], taille: num
 interface Props {
   selectedId: string | null
   onOpenNote: (id: string) => void
+  // Injecté par l'appelant (comme dans NotesTab) pour que le même graphe serve aux notes joueur et
+  // aux notes MJ, deux bibliothèques distinctes.
+  notes: Note[]
 }
 
-export default function NotesGraph({ selectedId, onOpenNote }: Props) {
+export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
   const { t } = useTranslation()
-  const { notes } = useGameData()
   const svgRef = useRef<SVGSVGElement>(null)
   // Positions déplacées à la souris — prioritaires sur celles calculées par la disposition à ressorts,
   // et conservées même si le graphe se recalcule ensuite (ajout d'une autre note, d'un autre lien...).

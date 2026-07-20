@@ -35,7 +35,10 @@ export default function App() {
 function AppContent() {
   const { t, i18n } = useTranslation()
   const { languages } = useLocaleContext()
-  const { data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages } = useGameData()
+  const {
+    data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages,
+    notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages,
+  } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
     inventaire: t('wizard.step6.inventaireDefault'),
@@ -571,7 +574,11 @@ function AppContent() {
                   {mobileToolbarButtons}
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <NotesTab mobile selectedId={notesSelectedId} onSelectId={setNotesSelectedId} />
+                  <NotesTab
+                    mobile selectedId={notesSelectedId} onSelectId={setNotesSelectedId}
+                    notes={notes} setNotes={setNotes} campagnes={campagnes} setCampagnes={setCampagnes}
+                    noteImages={noteImages} setNoteImages={setNoteImages}
+                  />
                 </div>
               </div>
             ) : (
@@ -893,7 +900,11 @@ function AppContent() {
           /* Notes n'est pas une page de la feuille physique (pas de calibrage/positions de champs/impression) —
              elle remplace tout le panneau plutôt que de s'insérer dans le conteneur sheetRef ci-dessous. */
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-            <NotesTab selectedId={notesSelectedId} onSelectId={setNotesSelectedId} />
+            <NotesTab
+              selectedId={notesSelectedId} onSelectId={setNotesSelectedId}
+              notes={notes} setNotes={setNotes} campagnes={campagnes} setCampagnes={setCampagnes}
+              noteImages={noteImages} setNoteImages={setNoteImages}
+            />
           </div>
         ) : (
         <div style={{ padding: '0 8px 16px' }}>
@@ -1072,7 +1083,7 @@ function AppContent() {
                 {t('notes.graphe')}
               </div>
             </div>
-            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} />
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes} />
           </>
         ) : showGameMode ? (
           <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={closeGameMode} screenWidth={screenWidth} />

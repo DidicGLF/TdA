@@ -71,6 +71,9 @@ export type CombatSession = {
   nomRencontre: string
   combatants: CombatCreature[]
   pjs: CombatPJ[]
+  // Part (0 à 1) de la largeur attribuée à la colonne Créatures dans CombatTab — ajustée en glissant
+  // la barre de séparation, conservée avec la session pour survivre à un instantané sauvegardé/rechargé.
+  splitRatio?: number
 }
 
 // Instantané persistable d'une session de combat en cours : mêmes données (créatures présentes,

@@ -33,7 +33,7 @@ const sectionTitleStyle: React.CSSProperties = {
 }
 const btnStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 4,
-  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', fontSize: 13, padding: '6px 12px',
+  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', fontSize: 15, padding: '6px 12px',
 }
 const removeBtnStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 4,
@@ -47,7 +47,13 @@ const genId = () =>
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
-export default function AdversiteTab() {
+interface Props {
+  // Rencontre à lancer automatiquement (déclenché par un lien [[Rencontre]] cliqué dans une note MJ,
+  // voir GMDashboard) — absent en usage normal (navigation directe vers l'onglet Adversité).
+  demarrerAuto?: RencontreSauvegardee | null
+}
+
+export default function AdversiteTab({ demarrerAuto }: Props) {
   const { t } = useTranslation()
   const { bestiaire, rencontres, setRencontres, combatsSauvegardes, setCombatsSauvegardes } = useGameData()
 
@@ -64,6 +70,19 @@ export default function AdversiteTab() {
   const [combatSnapshotId, setCombatSnapshotId] = useState<string | null>(null)
   const [confirmDeleteCombatId, setConfirmDeleteCombatId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
+
+  // Lance automatiquement la rencontre demandée — appliqué pendant le rendu plutôt que dans un effet
+  // (pattern « ajuster l'état pendant le rendu » recommandé par React pour réagir à un changement de
+  // prop), pour ne s'appliquer qu'au changement de rencontre demandé, pas à chaque re-render (sinon
+  // impossible de revenir au constructeur ensuite sans revenir par une note).
+  const [dernierDemarrerAuto, setDernierDemarrerAuto] = useState<RencontreSauvegardee | null | undefined>(undefined)
+  if (demarrerAuto !== dernierDemarrerAuto) {
+    setDernierDemarrerAuto(demarrerAuto)
+    if (demarrerAuto) {
+      setCombatSession(demarrerCombat(demarrerAuto, bestiaire))
+      setCombatSnapshotId(null)
+    }
+  }
 
   const budgetTotal = getBudgetPA(RENCONTRE, niveauMoyen, difficulte, nombrePJs)
   const paUtilise = adversaires.reduce((somme, a) => somme + getPAPourNC(RENCONTRE, a.nc), 0)
@@ -222,7 +241,7 @@ export default function AdversiteTab() {
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12 }}>
-          <span style={{ fontSize: 13, opacity: 0.7 }}>
+          <span style={{ fontSize: 15, opacity: 0.7 }}>
             {t('gmMode.adversite.budgetTotal')} : <strong style={{ color: GOLD }}>{budgetTotal} {t('gmMode.adversite.pa')}</strong>
           </span>
           <button onClick={genererCombat} style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.2)', color: 'rgba(210,185,255,0.95)' }}>
@@ -239,10 +258,10 @@ export default function AdversiteTab() {
               {t('gmMode.adversite.adversaires')}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 12, color: paUtilise > budgetTotal ? 'rgba(255,150,150,0.9)' : GOLD }}>
+              <span style={{ fontSize: 14, color: paUtilise > budgetTotal ? 'rgba(255,150,150,0.9)' : GOLD }}>
                 {paUtilise} / {budgetTotal} {t('gmMode.adversite.pa')}
               </span>
-              <button onClick={recalculer} style={{ ...btnStyle, fontSize: 12, padding: '4px 10px' }}>
+              <button onClick={recalculer} style={{ ...btnStyle, fontSize: 14, padding: '4px 10px' }}>
                 🔄 {t('gmMode.adversite.recalculer')}
               </button>
             </div>
@@ -303,9 +322,9 @@ export default function AdversiteTab() {
             💾 {editingId ? t('gmMode.adversite.mettreAJour') : t('gmMode.adversite.enregistrer')}
           </button>
           {editingId && (
-            <button onClick={nouvelle} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.nouvelle')}</button>
+            <button onClick={nouvelle} style={{ ...btnStyle, fontSize: 14 }}>{t('gmMode.adversite.nouvelle')}</button>
           )}
-          {saveMsg && <span style={{ fontSize: 12, color: GOLD }}>{saveMsg}</span>}
+          {saveMsg && <span style={{ fontSize: 14, color: GOLD }}>{saveMsg}</span>}
         </div>
       )}
 
@@ -325,7 +344,7 @@ export default function AdversiteTab() {
                 background: 'rgba(15,12,8,0.9)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{c.nomRencontre}</div>
+                  <div style={{ fontSize: 16, color: PARCHMENT, fontWeight: 700 }}>{c.nomRencontre}</div>
                   <div style={{ fontSize: 11, opacity: 0.5 }}>
                     {t('gmMode.bataille.nbAdversaires', { count: c.combatants.length })}
                     {c.pjs.length > 0 && ` · ${t('gmMode.bataille.nbPJ', { count: c.pjs.length })}`}
@@ -333,12 +352,12 @@ export default function AdversiteTab() {
                 </div>
                 <button
                   onClick={() => reprendreCombat(c)}
-                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 12 }}
+                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 14 }}
                 >
                   ▶ {t('gmMode.adversite.reprendre')}
                 </button>
                 {confirmDeleteCombatId === c.id ? (
-                  <button onClick={() => supprimerCombat(c.id)} style={{ ...removeBtnStyle, fontSize: 12 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
+                  <button onClick={() => supprimerCombat(c.id)} style={{ ...removeBtnStyle, fontSize: 14 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
                 ) : (
                   <button onClick={() => setConfirmDeleteCombatId(c.id)} style={removeBtnStyle}>✕</button>
                 )}
@@ -364,7 +383,7 @@ export default function AdversiteTab() {
                 background: 'rgba(15,12,8,0.9)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: PARCHMENT, fontWeight: 700 }}>{r.nom}</div>
+                  <div style={{ fontSize: 16, color: PARCHMENT, fontWeight: 700 }}>{r.nom}</div>
                   <div style={{ fontSize: 11, opacity: 0.5 }}>
                     {t('gmMode.adversite.resume', {
                       pjs: r.nombrePJs, niveau: r.niveauMoyen,
@@ -375,14 +394,14 @@ export default function AdversiteTab() {
                 </div>
                 <button
                   onClick={() => { setCombatSession(demarrerCombat(r, bestiaire)); setCombatSnapshotId(null) }}
-                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 12 }}
+                  style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 14 }}
                 >
                   ▶ {t('gmMode.adversite.jouer')}
                 </button>
-                <button onClick={() => charger(r)} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.charger')}</button>
-                <button onClick={() => exporter(r)} style={{ ...btnStyle, fontSize: 12 }}>{t('gmMode.adversite.exporter')}</button>
+                <button onClick={() => charger(r)} style={{ ...btnStyle, fontSize: 14 }}>{t('gmMode.adversite.charger')}</button>
+                <button onClick={() => exporter(r)} style={{ ...btnStyle, fontSize: 14 }}>{t('gmMode.adversite.exporter')}</button>
                 {confirmDeleteId === r.id ? (
-                  <button onClick={() => supprimer(r.id)} style={{ ...removeBtnStyle, fontSize: 12 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
+                  <button onClick={() => supprimer(r.id)} style={{ ...removeBtnStyle, fontSize: 14 }}>{t('gmMode.adversite.confirmerSuppression')}</button>
                 ) : (
                   <button onClick={() => setConfirmDeleteId(r.id)} style={removeBtnStyle}>✕</button>
                 )}

@@ -43,6 +43,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const creaturesColRef = useRef<HTMLDivElement>(null)
   const pjsColRef = useRef<HTMLDivElement>(null)
   const [links, setLinks] = useState<Link[]>([])
+  // Part (0 à 1) de la largeur totale attribuée à la colonne Créatures — le reste va aux PJ. Ajustable
+  // en glissant la barre de séparation (voir resizeRef ci-dessous) ; conservée dans la session (donc
+  // incluse dans l'instantané sauvegardé) plutôt qu'en état local, pour survivre à une sauvegarde/reprise.
+  const splitRatio = session?.splitRatio ?? 0.5
+  const [isResizingSplit, setIsResizingSplit] = useState(false)
+  const resizeRef = useRef<{ startX: number; startRatio: number; areaWidth: number } | null>(null)
 
   // Recalcule les lignes de ciblage (position des cartes source/cible dans la zone) — nécessaire à
   // chaque changement de session (dépli/replis d'une carte, nouvelle cible...) et à chaque scroll d'une
@@ -121,6 +127,31 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   }, [session, descriptions])
 
   useEffect(() => { recomputeLinks() }, [recomputeLinks])
+
+  // Les cartes se déplacent quand la répartition des colonnes change (glisser la barre de séparation) —
+  // il faut retracer les liens de ciblage pour qu'ils suivent, comme au scroll ou au redimensionnement.
+  useEffect(() => { recomputeLinks() }, [splitRatio, recomputeLinks])
+
+  // Glisser la barre de séparation entre les deux colonnes : suit le pointeur sur window (pas sur la
+  // barre elle-même) pour continuer à recevoir les mouvements même si le curseur s'en éloigne pendant
+  // un glisser rapide — même principe que le drag de nœud dans NotesGraph.
+  useEffect(() => {
+    if (!isResizingSplit || !session) return
+    const handleMove = (e: PointerEvent) => {
+      const drag = resizeRef.current
+      if (!drag || drag.areaWidth <= 0) return
+      const deltaRatio = (e.clientX - drag.startX) / drag.areaWidth
+      const next = Math.min(0.8, Math.max(0.2, drag.startRatio + deltaRatio))
+      onSessionChange({ ...session, splitRatio: next })
+    }
+    const handleUp = () => { resizeRef.current = null; setIsResizingSplit(false) }
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+  }, [isResizingSplit, session, onSessionChange])
 
   useEffect(() => {
     const creaturesEl = creaturesColRef.current
@@ -240,7 +271,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
 
         <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', gap: 16, position: 'relative' }}>
           {/* Créatures */}
-          <div ref={creaturesColRef} style={{ flex: 1, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
+          <div ref={creaturesColRef} style={{ flex: `${splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
             {session.combatants.map(c => (
               <CombatCard
                 key={c.id}
@@ -259,10 +290,26 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
             ))}
           </div>
 
-          <div style={{ width: 1, background: SECTION_BORDER, flexShrink: 0 }} />
+          {/* Barre de séparation déplaçable — zone de saisie large (8px) pour un glisser confortable,
+              trait visuel fin (1px) centré dedans pour rester discret comme avant. */}
+          <div
+            onPointerDown={e => {
+              e.preventDefault()
+              resizeRef.current = { startX: e.clientX, startRatio: splitRatio, areaWidth: areaRef.current?.getBoundingClientRect().width ?? 0 }
+              setIsResizingSplit(true)
+            }}
+            style={{
+              width: 8, flexShrink: 0, cursor: 'col-resize', touchAction: 'none',
+              display: 'flex', justifyContent: 'center',
+            }}
+          >
+            <div style={{
+              width: 1, background: isResizingSplit ? GOLD : SECTION_BORDER, transition: isResizingSplit ? 'none' : 'background 0.15s',
+            }} />
+          </div>
 
           {/* Personnages joueurs */}
-          <div ref={pjsColRef} style={{ flex: 1, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
+          <div ref={pjsColRef} style={{ flex: `${1 - splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
             {session.pjs.length === 0 ? (
               <div style={{ width: '100%', textAlign: 'center', opacity: 0.35, fontSize: 13, padding: '20px 0' }}>
                 {t('gmMode.bataille.aucunPJ')}

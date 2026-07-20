@@ -181,9 +181,21 @@ export type NoteImage = {
   data: string  // data URL (base64)
 }
 
-// Note libre côté joueur (onglet Notes) : texte en Markdown léger (gras/italique/listes) pouvant
-// contenir des liens wiki [[Titre]] vers d'autres notes — cliquer un lien ouvre la note existante
-// portant ce titre, ou en crée une vide si elle n'existe pas encore.
+// Marque-page personnalisé : un signet simple pointe juste vers une page (decalage absent), une ancre
+// pointe plus précisément vers une position de caractère dans le texte de cette page (ex. un
+// paragraphe précis) — les deux se retrouvent via la recherche (voir NotesTab.tsx) et permettent d'y
+// revenir d'un clic sans avoir à re-parcourir la note.
+export type NoteMarque = {
+  id: string
+  nom: string
+  page: number        // index de page (0-based) où se trouve le marque-page
+  decalage?: number    // position de caractère dans le texte de cette page — absent pour un simple signet de page
+}
+
+// Note (onglet Notes, côté joueur ou côté MJ selon la bibliothèque utilisée) : texte en Markdown léger
+// (gras/italique/listes) pouvant contenir des liens wiki [[Titre]] — résolus (voir resoudreLien dans
+// NotesTab.tsx) contre une autre note en priorité, puis, capacité réservée au MJ, contre une créature
+// du Bestiaire ou une rencontre sauvegardée portant ce nom ; sinon le lien crée une note vide.
 export type Note = {
   id: string
   titre: string
@@ -191,6 +203,7 @@ export type Note = {
   date?: string          // date libre (in fiction ou réelle), saisie par le joueur — pas de format imposé
   campagneId?: string    // référence à Campaign.id, si la note est rattachée à une campagne
   tags?: string[]        // libres, créés à la volée — pas d'entité séparée, juste une liste par note
+  marques?: NoteMarque[] // signets de page / ancres de paragraphe personnalisés
   creeLe: string     // ISO timestamp
   modifieLe: string  // ISO timestamp
 }

@@ -20,10 +20,15 @@ import CAPACITES_BIBLIOTHEQUE_RAW from '../data/capacites-bibliotheque.json'
 import NOTES_RAW from '../data/notes.json'
 import CAMPAGNES_RAW from '../data/campagnes.json'
 import NOTE_IMAGES_RAW from '../data/note-images.json'
+import GM_NOTES_RAW from '../data/gm-notes.json'
+import GM_CAMPAGNES_RAW from '../data/gm-campagnes.json'
+import GM_NOTE_IMAGES_RAW from '../data/gm-note-images.json'
+import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
+import type { BatailleSessionSauvegardee } from '../utils/bataille'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
@@ -75,6 +80,17 @@ interface GameDataContextValue {
   setCampagnes: Dispatch<SetStateAction<Campaign[]>>
   noteImages: NoteImage[]
   setNoteImages: Dispatch<SetStateAction<NoteImage[]>>
+  // Notes du mode Maître de jeu — bibliothèque distincte des notes joueur ci-dessus (même outil,
+  // données séparées : un MJ ne doit pas voir/mélanger ses notes de préparation avec celles du joueur).
+  gmNotes: Note[]
+  setGmNotes: Dispatch<SetStateAction<Note[]>>
+  gmCampagnes: Campaign[]
+  setGmCampagnes: Dispatch<SetStateAction<Campaign[]>>
+  gmNoteImages: NoteImage[]
+  setGmNoteImages: Dispatch<SetStateAction<NoteImage[]>>
+  // Batailles de masse sauvegardées (voir utils/bataille.ts) — même principe que combatsSauvegardes.
+  batailles: BatailleSessionSauvegardee[]
+  setBatailles: Dispatch<SetStateAction<BatailleSessionSauvegardee[]>>
   showHidden: boolean
   setShowHidden: Dispatch<SetStateAction<boolean>>
   openDataDir: () => void
@@ -172,6 +188,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [noteImages, setNoteImagesRaw] = useState<NoteImage[]>(() =>
     unwrap(JSON.parse(JSON.stringify(NOTE_IMAGES_RAW))) as NoteImage[]
   )
+  const [gmNotes, setGmNotesRaw] = useState<Note[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(GM_NOTES_RAW))) as Note[]
+  )
+  const [gmCampagnes, setGmCampagnesRaw] = useState<Campaign[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(GM_CAMPAGNES_RAW))) as Campaign[]
+  )
+  const [gmNoteImages, setGmNoteImagesRaw] = useState<NoteImage[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(GM_NOTE_IMAGES_RAW))) as NoteImage[]
+  )
+  const [batailles, setBataillesRaw] = useState<BatailleSessionSauvegardee[]>(() =>
+    unwrap(JSON.parse(JSON.stringify(BATAILLES_RAW))) as BatailleSessionSauvegardee[]
+  )
   const [showHidden, setShowHidden] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -223,6 +251,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (campagnesStr) setCampagnesRaw(unwrap(JSON.parse(campagnesStr)) as Campaign[])
         const noteImagesStr = await loadDataFile('note-images.json')
         if (noteImagesStr) setNoteImagesRaw(unwrap(JSON.parse(noteImagesStr)) as NoteImage[])
+        const gmNotesStr = await loadDataFile('gm-notes.json')
+        if (gmNotesStr) setGmNotesRaw(unwrap(JSON.parse(gmNotesStr)) as Note[])
+        const gmCampagnesStr = await loadDataFile('gm-campagnes.json')
+        if (gmCampagnesStr) setGmCampagnesRaw(unwrap(JSON.parse(gmCampagnesStr)) as Campaign[])
+        const gmNoteImagesStr = await loadDataFile('gm-note-images.json')
+        if (gmNoteImagesStr) setGmNoteImagesRaw(unwrap(JSON.parse(gmNoteImagesStr)) as NoteImage[])
+        const bataillesStr = await loadDataFile('batailles-sauvegardees.json')
+        if (bataillesStr) setBataillesRaw(unwrap(JSON.parse(bataillesStr)) as BatailleSessionSauvegardee[])
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -253,6 +289,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'notes.json', 'notes'), [])
   const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'campagnes.json', 'campagnes'), [])
   const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'note-images.json', 'note-images'), [])
+  const setGmNotes = useMemo(() => makeAutoSaver<Note[]>(setGmNotesRaw, 'gm-notes.json', 'gm-notes'), [])
+  const setGmCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setGmCampagnesRaw, 'gm-campagnes.json', 'gm-campagnes'), [])
+  const setGmNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setGmNoteImagesRaw, 'gm-note-images.json', 'gm-note-images'), [])
+  const setBatailles = useMemo(() => makeAutoSaver<BatailleSessionSauvegardee[]>(setBataillesRaw, 'batailles-sauvegardees.json', 'batailles'), [])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -279,6 +319,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       notes, setNotes,
       campagnes, setCampagnes,
       noteImages, setNoteImages,
+      gmNotes, setGmNotes,
+      gmCampagnes, setGmCampagnes,
+      gmNoteImages, setGmNoteImages,
+      batailles, setBatailles,
       showHidden, setShowHidden,
       openDataDir,
       loaded,
