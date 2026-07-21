@@ -9,6 +9,7 @@ import NotesGraph from '../NotesGraph'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
 import { saveDataFileToBundle } from '../../utils/tauriStorage'
 import type { BestiaireEntry, RencontreSauvegardee } from '../../types/gameData'
+import type { BatailleSessionSauvegardee } from '../../utils/bataille'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -42,6 +43,18 @@ export default function GMDashboard({ onBack }: Props) {
   // correspondant — consommé par AdversiteTab, voir plus bas.
   const [rencontreADemarrer, setRencontreADemarrer] = useState<RencontreSauvegardee | null>(null)
   const onPlayRencontre = (r: RencontreSauvegardee) => { setRencontreADemarrer(r); setTab('adversite') }
+  // « Lancer la rencontre » depuis un événement de bataille (BatailleTab) : même navigation que
+  // onPlayRencontre ci-dessus, mais on retient en plus l'instantané de bataille tout juste sauvegardé
+  // pour y ramener automatiquement le MJ (reprendreAuto, consommé par BatailleTab) une fois le combat
+  // terminé (onCombatTermine, consommé par AdversiteTab) — jamais déclenché pour une rencontre lancée
+  // normalement (lien de note ou clic direct dans Adversité), qui continue de renvoyer là-bas.
+  const [batailleARepredre, setBatailleARepredre] = useState<BatailleSessionSauvegardee | null>(null)
+  const onPlayRencontreDepuisBataille = (r: RencontreSauvegardee, snapshot: BatailleSessionSauvegardee) => {
+    setBatailleARepredre(snapshot)
+    setRencontreADemarrer(r)
+    setTab('adversite')
+  }
+  const onCombatTermine = () => { if (batailleARepredre) setTab('bataille') }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: 'var(--tdr-dark)', color: PARCHMENT }}>
@@ -114,8 +127,14 @@ export default function GMDashboard({ onBack }: Props) {
       ) : (
         <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
           {tab === 'bestiaire' && <BestiaireTab forcerNom={bestiaireForcerNom} />}
-          {tab === 'adversite' && <AdversiteTab demarrerAuto={rencontreADemarrer} />}
-          {tab === 'bataille' && <BatailleTab />}
+          {tab === 'adversite' && <AdversiteTab demarrerAuto={rencontreADemarrer} onCombatTermine={onCombatTermine} />}
+          {tab === 'bataille' && (
+            <BatailleTab
+              onPlayRencontre={onPlayRencontreDepuisBataille}
+              reprendreAuto={batailleARepredre}
+              onReprendreAutoConsomme={() => setBatailleARepredre(null)}
+            />
+          )}
         </div>
       )}
     </div>

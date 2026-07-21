@@ -24,11 +24,13 @@ import GM_NOTES_RAW from '../data/gm-notes.json'
 import GM_CAMPAGNES_RAW from '../data/gm-campagnes.json'
 import GM_NOTE_IMAGES_RAW from '../data/gm-note-images.json'
 import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
+import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
 import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
-import type { BatailleSessionSauvegardee } from '../utils/bataille'
+import type { BatailleSessionSauvegardee, BatailleTemplate } from '../utils/bataille'
+import { normaliserEvenement } from '../utils/bataille'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
@@ -91,6 +93,9 @@ interface GameDataContextValue {
   // Batailles de masse sauvegardées (voir utils/bataille.ts) — même principe que combatsSauvegardes.
   batailles: BatailleSessionSauvegardee[]
   setBatailles: Dispatch<SetStateAction<BatailleSessionSauvegardee[]>>
+  // Gabarits de bataille (config réutilisable, pas encore lancée) — même principe que rencontres ci-dessus.
+  batailleTemplates: BatailleTemplate[]
+  setBatailleTemplates: Dispatch<SetStateAction<BatailleTemplate[]>>
   showHidden: boolean
   setShowHidden: Dispatch<SetStateAction<boolean>>
   openDataDir: () => void
@@ -110,6 +115,13 @@ function unwrap(parsed: unknown): unknown {
     return (parsed as Record<string, unknown>).data
   }
   return parsed
+}
+
+// Passe chaque événement d'une liste de sessions/gabarits de bataille par normaliserEvenement (voir
+// bataille.ts) — nécessaire au chargement de tout fichier venant du disque, pour rester compatible
+// avec les sauvegardes d'avant le système d'effets configurables.
+function normaliserEvenementsBatailles<T extends { evenements: BatailleTemplate['evenements'] }>(arr: T[]): T[] {
+  return arr.map(item => ({ ...item, evenements: item.evenements.map(normaliserEvenement) }))
 }
 
 function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string, type: string): Dispatch<SetStateAction<T>> {
@@ -198,7 +210,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     unwrap(JSON.parse(JSON.stringify(GM_NOTE_IMAGES_RAW))) as NoteImage[]
   )
   const [batailles, setBataillesRaw] = useState<BatailleSessionSauvegardee[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(BATAILLES_RAW))) as BatailleSessionSauvegardee[]
+    normaliserEvenementsBatailles(unwrap(JSON.parse(JSON.stringify(BATAILLES_RAW))) as BatailleSessionSauvegardee[])
+  )
+  const [batailleTemplates, setBatailleTemplatesRaw] = useState<BatailleTemplate[]>(() =>
+    normaliserEvenementsBatailles(unwrap(JSON.parse(JSON.stringify(BATAILLE_TEMPLATES_RAW))) as BatailleTemplate[])
   )
   const [showHidden, setShowHidden] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -258,7 +273,9 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         const gmNoteImagesStr = await loadDataFile('gm-note-images.json')
         if (gmNoteImagesStr) setGmNoteImagesRaw(unwrap(JSON.parse(gmNoteImagesStr)) as NoteImage[])
         const bataillesStr = await loadDataFile('batailles-sauvegardees.json')
-        if (bataillesStr) setBataillesRaw(unwrap(JSON.parse(bataillesStr)) as BatailleSessionSauvegardee[])
+        if (bataillesStr) setBataillesRaw(normaliserEvenementsBatailles(unwrap(JSON.parse(bataillesStr)) as BatailleSessionSauvegardee[]))
+        const batailleTemplatesStr = await loadDataFile('batailles-modeles.json')
+        if (batailleTemplatesStr) setBatailleTemplatesRaw(normaliserEvenementsBatailles(unwrap(JSON.parse(batailleTemplatesStr)) as BatailleTemplate[]))
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
     }
@@ -293,6 +310,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setGmCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setGmCampagnesRaw, 'gm-campagnes.json', 'gm-campagnes'), [])
   const setGmNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setGmNoteImagesRaw, 'gm-note-images.json', 'gm-note-images'), [])
   const setBatailles = useMemo(() => makeAutoSaver<BatailleSessionSauvegardee[]>(setBataillesRaw, 'batailles-sauvegardees.json', 'batailles'), [])
+  const setBatailleTemplates = useMemo(() => makeAutoSaver<BatailleTemplate[]>(setBatailleTemplatesRaw, 'batailles-modeles.json', 'batailles-modeles'), [])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -323,6 +341,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       gmCampagnes, setGmCampagnes,
       gmNoteImages, setGmNoteImages,
       batailles, setBatailles,
+      batailleTemplates, setBatailleTemplates,
       showHidden, setShowHidden,
       openDataDir,
       loaded,

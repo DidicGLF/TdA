@@ -48,12 +48,17 @@ const genId = () =>
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 interface Props {
-  // Rencontre à lancer automatiquement (déclenché par un lien [[Rencontre]] cliqué dans une note MJ,
-  // voir GMDashboard) — absent en usage normal (navigation directe vers l'onglet Adversité).
+  // Rencontre à lancer automatiquement (déclenché par un lien [[Rencontre]] cliqué dans une note MJ, ou
+  // par « Lancer la rencontre » sur un événement de bataille — voir GMDashboard) — absent en usage
+  // normal (navigation directe vers l'onglet Adversité).
   demarrerAuto?: RencontreSauvegardee | null
+  // Appelé quand le combat en cours se termine (bouton « Terminer le combat ») — seul GMDashboard sait
+  // si cette rencontre a été lancée depuis un événement de bataille (auquel cas il ramène le MJ sur
+  // l'onglet Bataille) ; absent en usage normal, où la fin du combat reste simplement dans cet onglet.
+  onCombatTermine?: () => void
 }
 
-export default function AdversiteTab({ demarrerAuto }: Props) {
+export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   const { t } = useTranslation()
   const { bestiaire, rencontres, setRencontres, combatsSauvegardes, setCombatsSauvegardes } = useGameData()
 
@@ -443,7 +448,7 @@ export default function AdversiteTab({ demarrerAuto }: Props) {
         <CombatTab
           session={combatSession}
           onSessionChange={setCombatSession}
-          onEndSession={() => { setCombatSession(null); setCombatSnapshotId(null) }}
+          onEndSession={() => { setCombatSession(null); setCombatSnapshotId(null); onCombatTermine?.() }}
           onSauvegarder={sauvegarderSnapshot}
         />
       </div>

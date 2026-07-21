@@ -807,21 +807,6 @@ function NoteEditor({
     return () => el.removeEventListener('beforeinput', ecouteur)
   }, [])
 
-  // Boutons de mise en forme : entoure la sélection courante (ou un texte-repère déjà sélectionné, prêt
-  // à être écrasé en tapant) avec la syntaxe demandée.
-  const entourerSelection = (avant: string, apres: string, repere: string) => {
-    const el = editableRef.current
-    if (!el) return
-    const sel = lireSelection(el) ?? { debut: contenu.length, fin: contenu.length }
-    const selectionTexte = contenu.slice(sel.debut, sel.fin) || repere
-    const next = contenu.slice(0, sel.debut) + avant + selectionTexte + apres + contenu.slice(sel.fin)
-    setContenu(next)
-    scheduleSave({ contenu: next })
-    const nouveauDebut = sel.debut + avant.length
-    setSelection({ debut: nouveauDebut, fin: nouveauDebut + selectionTexte.length })
-    requestAnimationFrame(() => el.focus())
-  }
-
   const choisirSuggestion = (titreChoisi: string) => {
     const el = editableRef.current
     if (!el) return
@@ -1002,17 +987,6 @@ function NoteEditor({
         }}>
           ✕
         </button>
-        <button
-          onClick={() => setAideOuverte(true)}
-          title={t('notes.aideBouton')}
-          style={{
-            background: 'transparent', border: `1px solid ${SECTION_BORDER}`, borderRadius: '50%',
-            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, width: 24, height: 24,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0,
-          }}
-        >
-          ?
-        </button>
       </div>
       {aideOuverte && (
         <div
@@ -1099,20 +1073,21 @@ function NoteEditor({
         <datalist id="tags-existants">
           {tagsExistants.map(tag => <option key={tag} value={tag} />)}
         </datalist>
-        <div style={{ width: 1, alignSelf: 'stretch', background: SECTION_BORDER, flexShrink: 0 }} />
-        <button type="button" onClick={() => entourerSelection('**', '**', t('notes.repereGras'))} style={toolbarBtnStyle}>
-          **{t('notes.boutonGras')}**
-        </button>
-        <button type="button" onClick={() => entourerSelection('*', '*', t('notes.repereItalique'))} style={{ ...toolbarBtnStyle, fontStyle: 'italic' }}>
-          *{t('notes.boutonItalique')}*
-        </button>
-        <button type="button" onClick={() => entourerSelection('[[', ']]', t('notes.repereLien'))} style={toolbarBtnStyle}>
-          [[{t('notes.boutonLien')}]]
-        </button>
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
         <button type="button" onClick={() => imageInputRef.current?.click()} style={toolbarBtnStyle}>
           🖼️ {t('notes.boutonImage')}
+        </button>
+        <button
+          onClick={() => setAideOuverte(true)}
+          title={t('notes.aideBouton')}
+          style={{
+            marginLeft: 'auto', background: 'transparent', border: `1px solid ${SECTION_BORDER}`, borderRadius: '50%',
+            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, width: 24, height: 24,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0,
+          }}
+        >
+          ?
         </button>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1164,7 +1139,7 @@ function NoteEditor({
                 top/bottom en % se calculent contre la HAUTEUR du conteneur ici (positionnement absolu),
                 left/right contre la LARGEUR — contrairement à un padding, dont les % seraient TOUS
                 calculés contre la largeur (source d'un bug si on avait gardé ces marges en padding). */}
-            <div style={{ position: 'absolute', top: '2.54%', right: '10.17%', bottom: '6.10%', left: '2.65%' }}>
+            <div style={{ position: 'absolute', top: '2.54%', right: '10.17%', bottom: '6.10%', left: '5%' }}>
               <div
                 ref={editableRef}
                 contentEditable
@@ -1176,7 +1151,6 @@ function NoteEditor({
                 onMouseUp={() => resyncDepuisDom(false)}
                 onCompositionStart={() => { composingRef.current = true }}
                 onCompositionEnd={() => { composingRef.current = false; resyncDepuisDom(true) }}
-                data-placeholder={t('notes.contenuPlaceholder')}
                 style={{
                   // "hidden" et non "auto" : la pagination automatique doit garantir qu'on ne reste
                   // jamais assez longtemps en situation de dépassement pour qu'une scrollbar soit utile —
@@ -1194,11 +1168,6 @@ function NoteEditor({
                     ne peut pas voir à travers son appel que l'usage est bien différé. */}
                 {renderLiveContent(contenu, selection, onLien, noteImages, handleHoverStart, handleHoverEnd, true)}
               </div>
-              {contenu === '' && (
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, color: 'rgba(43,32,19,0.4)', fontSize: 16, pointerEvents: 'none' }}>
-                  {t('notes.contenuPlaceholder')}
-                </div>
-              )}
               {/* Icônes d'ancre : petit repère décoratif au-dessus du point exact du texte où chaque
                   ancre de paragraphe de cette page est posée (voir ancresPositions) — pas dans le
                   contentEditable lui-même (casserait les calculs de décalage de caractère utilisés
