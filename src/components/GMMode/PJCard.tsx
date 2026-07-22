@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import StatCell from './StatCell'
+import NumberField from '../NumberField'
 import { computeCombatStatsPJ } from '../../utils/computeEffects'
 import type { CombatPJ, CombatEntiteInfo } from '../../utils/combat'
 
@@ -27,7 +29,12 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
   const { t } = useTranslation()
   const { data: descriptions } = useGameData()
   const { character, expanded, buffs, pvActuels, pmActuels, cibleId } = pj
-  const stats = computeCombatStatsPJ(character, descriptions)
+  // computeCombatStatsPJ scanne voies/traits/cristaux du personnage — coûteux à refaire à chaque
+  // rendu. Le glisser-déposer entre cartes (CombatTab) re-rend cette carte à chaque survol d'un
+  // emplacement différent ; sans ce useMemo, cette carte à elle seule pouvait suffire à rendre le
+  // survol perceptiblement lent (constaté sur la colonne PJ, jamais sur celle des créatures qui n'a
+  // pas cette recomputation).
+  const stats = useMemo(() => computeCombatStatsPJ(character, descriptions), [character, descriptions])
   const isDown = pvActuels <= 0
 
   if (!expanded) {
@@ -39,7 +46,7 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
       }}>
         <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {character.portrait
-            ? <img src={character.portrait} alt="" style={{ width: '100%', height: '100%', objectFit: character.portraitFit ?? 'cover' }} />
+            ? <img src={character.portrait} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: character.portraitFit ?? 'cover' }} />
             : <span style={{ fontSize: 28, opacity: 0.3 }}>🧑</span>}
           {isDown && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -51,7 +58,10 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
           <div style={{ fontSize: 14, fontWeight: 700, color: PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {character.nomPersonnage}
           </div>
-          <div style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {stats.pvTotal}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {stats.pvTotal}</span>
+            <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {character.initiative}</span>
+          </div>
         </div>
       </div>
     )
@@ -67,7 +77,7 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {character.portrait && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img src={character.portrait} alt="" style={{ width: 52, height: 68, objectFit: character.portraitFit ?? 'cover', borderRadius: 4, display: 'block' }} />
+              <img src={character.portrait} alt="" draggable={false} style={{ width: 52, height: 68, objectFit: character.portraitFit ?? 'cover', borderRadius: 4, display: 'block' }} />
               {isDown && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 24 }}>💀</span>
@@ -88,19 +98,15 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase' }}>PV</span>
-            <button onClick={() => onSetPV(Math.max(0, pvActuels - 1))} style={pvBtnStyle}>−</button>
-            <input type="number" value={pvActuels} onChange={e => onSetPV(parseInt(e.target.value) || 0)}
+            <NumberField value={pvActuels} onChange={n => onSetPV(n ?? 0)}
               style={{ width: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, background: 'rgba(255,255,255,0.05)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4, color: pvActuels <= 0 ? RED : PARCHMENT }} />
-            <button onClick={() => onSetPV(pvActuels + 1)} style={pvBtnStyle}>+</button>
-            <span style={{ fontSize: 13, opacity: 0.5 }}>/ {stats.pvTotal}</span>
+            <span style={{ fontSize: 16, opacity: 0.5 }}>/ {stats.pvTotal}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase' }}>PM</span>
-            <button onClick={() => onSetPM(Math.max(0, pmActuels - 1))} style={pvBtnStyle}>−</button>
-            <input type="number" value={pmActuels} onChange={e => onSetPM(parseInt(e.target.value) || 0)}
+            <NumberField value={pmActuels} onChange={n => onSetPM(n ?? 0)}
               style={{ width: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, background: 'rgba(255,255,255,0.05)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4, color: PARCHMENT }} />
-            <button onClick={() => onSetPM(pmActuels + 1)} style={pvBtnStyle}>+</button>
-            <span style={{ fontSize: 13, opacity: 0.5 }}>/ {stats.pmTotal}</span>
+            <span style={{ fontSize: 16, opacity: 0.5 }}>/ {stats.pmTotal}</span>
           </div>
         </div>
 
@@ -121,15 +127,11 @@ export default function PJCard({ pj, cibles, onToggleExpand, onSetPV, onSetPM, o
           {CARACS.map(c => (
             <StatCell key={c} label={c} base={character.caracteristiques[c]?.mod} stat={c} buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           ))}
+          <StatCell label="Init." base={character.initiative} stat="INIT" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="DEF" base={stats.def} stat="DEF" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="RD" base={stats.rd} stat="RD" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
         </div>
       </div>
     </div>
   )
-}
-
-const pvBtnStyle: React.CSSProperties = {
-  width: 26, height: 26, borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'transparent',
-  color: PARCHMENT, cursor: 'pointer', fontSize: 17, lineHeight: 1,
 }

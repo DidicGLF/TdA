@@ -100,6 +100,9 @@ export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: Besti
       cibleId: null,
     })
   })
+  // Classées par initiative décroissante par défaut — celles sans INIT renseignée passent en dernier
+  // plutôt que de casser le tri (undefined traité comme -Infinity).
+  combatants.sort((a, b) => (b.creature.init ?? -Infinity) - (a.creature.init ?? -Infinity))
   return { nomRencontre: rencontre.nom, combatants, pjs: [] }
 }
 

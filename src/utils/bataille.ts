@@ -93,8 +93,9 @@ export type PionPJ = {
   dernierTestDefense: ResultatTestDefense | null
 }
 
-// Effet appliqué à la bataille selon l'issue (succès/échec) d'un événement — un seul par issue (pas de
-// cumul), le MJ choisit son type à la création de l'événement :
+// Effet appliqué à la bataille selon l'issue (succès/échec) d'un événement — plusieurs peuvent se
+// cumuler sur une même issue (voir EvenementBataille.effetsSucces/effetsEchec), le MJ choisit le type
+// de chacun à la création de l'événement :
 // - 'points' : ajuste les points de bataille (comme les +/- manuels de l'en-tête).
 // - 'intensite' : ajuste l'intensité (plafonnée à [0, 10], comme partout ailleurs dans ce fichier).
 // - 'soins' : soigne (ou blesse, si valeur négative) TOUS les pions engagés du montant indiqué, chacun
@@ -104,35 +105,47 @@ export type TypeEffetEvenement = 'points' | 'intensite' | 'soins'
 export type EffetEvenement = { type: TypeEffetEvenement; valeur: number }
 
 // Un événement de bataille est soit un combat (renvoie vers une rencontre déjà créée et sauvegardée
-// dans le générateur d'adversité — voir RencontreSauvegardee dans types/gameData.ts, résolue par son
+// dans le générateur de rencontre — voir RencontreSauvegardee dans types/gameData.ts, résolue par son
 // id plutôt que dupliquée ici), soit une action narrative libre (nom + description saisis par le MJ).
 // Cycle de vie d'une carte pendant une bataille active (système de cartes, voir jouerEvenement/
 // retirerEvenementDeJeu/appliquerResultatEvenement) : en réserve (enJeu=false, resultat=null, dans le
 // menu) → en jeu (enJeu=true, resultat=null, posée sur le panneau de bataille) → résolue (resultat
-// non-null, figé, de retour dans le menu avec sa mention). effetSucces/effetEchec sont définis par le
-// MJ à la création de l'événement (pas de valeur fixe imposée par le système), appliqués selon l'issue
-// choisie lors de la résolution — voir EffetEvenement ci-dessus.
+// non-null, figé, de retour dans le menu avec sa mention). effetsSucces/effetsEchec sont définis par le
+// MJ à la création de l'événement (au moins un par issue, plusieurs cumulables — pas de valeur fixe
+// imposée par le système), tous appliqués séquentiellement selon l'issue choisie lors de la résolution
+// — voir EffetEvenement ci-dessus et appliquerResultatEvenement plus bas.
 export type EvenementBataille = {
   id: string
   resultat: 'succes' | 'echec' | null
   enJeu: boolean
-  effetSucces: EffetEvenement
-  effetEchec: EffetEvenement
+  effetsSucces: EffetEvenement[]
+  effetsEchec: EffetEvenement[]
 } & (
   | { type: 'combat'; rencontreId: string }
   | { type: 'narratif'; nom: string; description: string }
 )
 
 // Compatibilité avec les sauvegardes/gabarits déjà sur le disque des MJ d'avant le système d'effets
-// configurables : ceux-ci stockent pointsSucces/pointsEchec au lieu d'effetSucces/effetEchec, et n'ont
-// pas de champ enJeu. À appeler sur chaque événement lu depuis un fichier (voir GameDataContext) pour
-// ramener les deux formes au même type — les événements déjà au nouveau format traversent inchangés.
-export function normaliserEvenement(e: EvenementBataille & { pointsSucces?: number; pointsEchec?: number }): EvenementBataille {
+// cumulables — trois formats historiques possibles selon l'ancienneté du fichier :
+// 1. pointsSucces/pointsEchec (nombres) — tout premier système, un seul effet implicite de type 'points'.
+// 2. effetSucces/effetEchec (un seul EffetEvenement, pas encore un tableau) — système intermédiaire.
+// 3. effetsSucces/effetsEchec (EffetEvenement[]) — format actuel, traverse inchangé.
+// N'a pas de champ enJeu non plus dans les formats 1 et 2. À appeler sur chaque événement lu depuis un
+// fichier (voir GameDataContext) pour ramener toutes les formes au même type.
+export function normaliserEvenement(e: EvenementBataille & {
+  pointsSucces?: number; pointsEchec?: number
+  effetSucces?: EffetEvenement; effetEchec?: EffetEvenement
+}): EvenementBataille {
+  const versListe = (liste: EffetEvenement[] | undefined, unique: EffetEvenement | undefined, points: number | undefined): EffetEvenement[] => {
+    if (liste) return liste
+    if (unique) return [unique]
+    return [{ type: 'points', valeur: points ?? 0 }]
+  }
   return {
     ...e,
     enJeu: e.enJeu ?? false,
-    effetSucces: e.effetSucces ?? { type: 'points', valeur: e.pointsSucces ?? 0 },
-    effetEchec: e.effetEchec ?? { type: 'points', valeur: e.pointsEchec ?? 0 },
+    effetsSucces: versListe(e.effetsSucces, e.effetSucces, e.pointsSucces),
+    effetsEchec: versListe(e.effetsEchec, e.effetEchec, e.pointsEchec),
   }
 }
 
@@ -140,6 +153,15 @@ export type BatailleSession = {
   nom: string
   tailleArmeePJ: number        // 1 à 5
   tailleArmeeEnnemie: number   // 1 à 5
+  // Effectif brut (100, 1000...) dont la taille ci-dessus a été dérivée (voir tailleDepuisNombreUnites)
+  // — gardé uniquement pour l'affichage (rappel des paramètres) : optionnel, absent des sessions/
+  // instantanés sauvegardés avant son introduction.
+  nombreUnitesArmeePJ?: number
+  nombreUnitesArmeeEnnemie?: number
+  // Créature du bestiaire dont defEnnemieMoyenne/bonusAtqEnnemiMoyen ont été copiés au lancement (voir
+  // selectionnerCreatureType) — '' ou absent si saisie manuelle. Gardé uniquement pour l'affichage
+  // (rappel des paramètres) : optionnel, absent des sessions/instantanés antérieurs à son introduction.
+  creatureTypeNom?: string
   adversite: DeAdversite
   defEnnemieMoyenne: number    // profil type ennemi, saisi par le MJ
   bonusAtqEnnemiMoyen: number  // idem
@@ -154,6 +176,50 @@ export type BatailleSession = {
   tour: number
   limiterRecuperation: boolean
   pions: PionPJ[]
+  // Historique de la bataille (voir ajouterJournal ci-dessous et le bouton Historique de BatailleTab) —
+  // entrées structurées (pas de texte déjà traduit) pour rester traduisibles fr/en au moment de
+  // l'affichage. Optionnel : absent des sessions/instantanés antérieurs à cette fonctionnalité.
+  journal?: JournalEntree[]
+}
+
+// Une ligne d'historique : structurée plutôt que du texte déjà formaté, pour que l'affichage (voir
+// formatJournalEntree dans BatailleTab) reste traduisible fr/en — le nom du pion ou de l'événement est
+// en revanche déjà résolu en clair (nom propre, pas besoin de traduction). Les actions dont la
+// résolution du nom dépend de données externes à ce module (un événement de type combat a besoin de la
+// liste des rencontres pour retrouver son nom, voir GMDashboard/BatailleTab) ajoutent leur entrée depuis
+// BatailleTab plutôt que depuis la fonction bataille.ts correspondante — le reste (accès direct à
+// PionPJ.nom) l'ajoute directement dans sa propre fonction ci-dessous.
+export type JournalEvenement =
+  | { type: 'debutBataille' }
+  | { type: 'tourSuivant'; tour: number }
+  | { type: 'deplacement'; pionNom: string; position: PositionBataille }
+  | { type: 'attaque'; pionNom: string; etat: EtatAttaque; typeAttaque: TypeAttaque }
+  | { type: 'defense'; pionNom: string; reussite: boolean; critique: 'reussite' | 'echec' | null; dm: number }
+  // source distingue un point de récupération dépensé (montant fixe, voir appliquerRecuperation) d'un
+  // soin manuel libre (bouton « Soigner », voir ajusterPV dans BatailleTab) — même effet sur les PV,
+  // mais l'historique les affiche différemment (voir formatJournalEntree).
+  | { type: 'soin'; pionNom: string; montant: number; source: 'recuperation' | 'manuel' }
+  | { type: 'soinCollectif'; montant: number }
+  | { type: 'renfortArrive'; pionNom: string; position: PositionBataille }
+  | { type: 'intensite'; delta: number; valeur: number }
+  // typeEvenement (combat/narratif) reprend le même tag que celui affiché sur la carte (voir menu
+  // Événements/zone de jeu) — permet de reconnaître de quoi il s'agissait rien qu'à l'historique.
+  | { type: 'evenementJoue'; nom: string; typeEvenement: 'combat' | 'narratif' }
+  | { type: 'evenementRetire'; nom: string; typeEvenement: 'combat' | 'narratif' }
+  // effets : ceux réellement appliqués pour cette issue (voir EvenementBataille.effetsSucces/effetsEchec),
+  // affichés directement sur cette ligne (voir formatJournalEntree/resumeEffets dans BatailleTab) plutôt
+  // que sur des lignes séparées — évite de dupliquer l'information avec des entrées 'intensite'/
+  // 'soinCollectif' distinctes pour ce qui est, du point de vue du MJ, un seul événement.
+  | { type: 'evenementResolu'; nom: string; resultat: 'succes' | 'echec'; effets: EffetEvenement[]; typeEvenement: 'combat' | 'narratif' }
+  | { type: 'pionRetire'; pionNom: string }
+
+export type JournalEntree = { id: string; tour: number; evenement: JournalEvenement }
+
+export function ajouterJournal(session: BatailleSession, evenement: JournalEvenement): BatailleSession {
+  const entree: JournalEntree = {
+    id: `journal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, tour: session.tour, evenement,
+  }
+  return { ...session, journal: [...(session.journal ?? []), entree] }
 }
 
 // Victoire : l'intensité réduite à 0 gagne toujours la bataille, quoi qu'il arrive par ailleurs ; le
@@ -229,6 +295,9 @@ export function creerBataille(params: {
   nom: string
   tailleArmeePJ: number
   tailleArmeeEnnemie: number
+  nombreUnitesArmeePJ?: number
+  nombreUnitesArmeeEnnemie?: number
+  creatureTypeNom?: string
   adversite: DeAdversite
   defEnnemieMoyenne: number
   bonusAtqEnnemiMoyen: number
@@ -239,7 +308,8 @@ export function creerBataille(params: {
   limiterRecuperation: boolean
   pions: PionPJ[]
 }): BatailleSession {
-  return { ...params, succesCumules: 0, pointsBataille: 0, tour: 1 }
+  const session: BatailleSession = { ...params, succesCumules: 0, pointsBataille: 0, tour: 1, journal: [] }
+  return ajouterJournal(session, { type: 'debutBataille' })
 }
 
 // Seuil de succès cumulés (test d'attaque) au bout duquel l'intensité baisse de 1 : [taille de
@@ -256,11 +326,12 @@ export function bonusAttaque(pion: PionPJ): number {
 
 // Bonus/malus lié à la position (source unique de vérité pour testerAttaque/testerDefense ci-dessous
 // ET pour son affichage dans PionCard) : la première ligne facilite l'attaque (+5 pour toucher) mais
-// expose davantage en défense (-1, plus de DM subis) ; en retrait fait l'inverse (-5 pour toucher,
-// +1 en défense, moins de DM subis). Neutre en tenant le rang ou à l'arrière.
+// expose davantage en défense (-5, plus de DM subis) ; en retrait fait l'inverse (-5 pour toucher,
+// +5 en défense, moins de DM subis). Neutre en tenant le rang ou à l'arrière. Même amplitude (5) sur
+// les deux stats — pas d'asymétrie entre le gain à l'attaque et le coût en défense (ou l'inverse).
 export function bonusPosition(position: PositionBataille): { atq: number; def: number } {
-  if (position === 'premiereLigne') return { atq: 5, def: -1 }
-  if (position === 'enRetrait') return { atq: -5, def: 1 }
+  if (position === 'premiereLigne') return { atq: 5, def: -5 }
+  if (position === 'enRetrait') return { atq: -5, def: 5 }
   return { atq: 0, def: 0 }
 }
 
@@ -274,13 +345,17 @@ export function appliquerResultatAttaque(session: BatailleSession, pionId: strin
   let succesCumules = Math.max(0, session.succesCumules + DELTA_SUCCES[etat])
   let intensite = session.intensite
   const seuil = seuilSucces(session)
+  let intensiteBaissee = false
   if (seuil > 0 && succesCumules >= seuil) {
     succesCumules -= seuil
     intensite = Math.max(0, intensite - 1)
+    intensiteBaissee = true
   }
 
   const pions = session.pions.map(p => p.id === pionId ? { ...p, dernierEtatAttaque: etat, aAttaqueCeTour: true } : p)
-  return { ...session, succesCumules, intensite, pions }
+  let resultat = ajouterJournal({ ...session, succesCumules, intensite, pions }, { type: 'attaque', pionNom: pion.nom, etat, typeAttaque: pion.typeAttaque })
+  if (intensiteBaissee) resultat = ajouterJournal(resultat, { type: 'intensite', delta: -1, valeur: intensite })
+  return resultat
 }
 
 // Test de défense : d20 + (DEF - 10) vs 10 + bonus ATQ ennemi moyen. Le résultat module l'intensité
@@ -327,7 +402,10 @@ export function appliquerTestDefense(session: BatailleSession, pionId: string): 
   const pions = session.pions.map(p => p.id === pionId
     ? { ...p, pvActuels: Math.max(0, p.pvActuels - resultat.dm), dernierTestDefense: resultat }
     : p)
-  return { session: { ...session, pions }, resultat }
+  const sessionJournal = ajouterJournal({ ...session, pions }, {
+    type: 'defense', pionNom: pion.nom, reussite: resultat.reussite, critique: resultat.critique, dm: resultat.dm,
+  })
+  return { session: sessionJournal, resultat }
 }
 
 // Dépense un point de récupération à l'arrière pour regagner des PV (plafond pvMax) — respecte la
@@ -346,15 +424,40 @@ export function appliquerRecuperation(session: BatailleSession, pionId: string, 
         aRecupereCeTour: true,
       }
     : p)
-  return { ...session, pions }
+  return ajouterJournal({ ...session, pions }, { type: 'soin', pionNom: pion.nom, montant, source: 'recuperation' })
 }
 
-export function definirPosition(session: BatailleSession, pionId: string, position: PositionBataille): BatailleSession {
-  return { ...session, pions: session.pions.map(p => p.id === pionId ? { ...p, position } : p) }
+// Déplace un pion vers une position ET un rang précis parmi les pions déjà présents dans cette
+// position (le MJ choisit librement l'ordre, pas forcément alphabétique).
+// `session.pions` est un tableau plat mêlant toutes les positions ; l'ordre affiché dans une
+// colonne (BatailleTab) vient d'un simple filtre sur ce tableau, donc insérer le pion déplacé au bon
+// endroit DANS LE TABLEAU GLOBAL (juste avant le "index"-ième pion déjà présent dans la position
+// cible) suffit à obtenir le rang voulu une fois filtré, sans structure de données supplémentaire.
+export function deplacerPion(session: BatailleSession, pionId: string, position: PositionBataille, index: number): BatailleSession {
+  const pion = session.pions.find(p => p.id === pionId)
+  if (!pion) return session
+  // Ne journalise que le vrai changement de position — le glisser-déposer sert aussi à réordonner à
+  // l'intérieur d'une même colonne (voir handleColonneDrop dans BatailleTab), pas à consigner ici.
+  const positionChangee = pion.position !== position
+  const autres = session.pions.filter(p => p.id !== pionId)
+  const pionDeplace = { ...pion, position }
+  let compte = 0
+  let indexInsertion = autres.length
+  for (let i = 0; i < autres.length; i++) {
+    if (autres[i].position === position) {
+      if (compte === index) { indexInsertion = i; break }
+      compte++
+    }
+  }
+  const pions = [...autres.slice(0, indexInsertion), pionDeplace, ...autres.slice(indexInsertion)]
+  const nouvelleSession = { ...session, pions }
+  return positionChangee ? ajouterJournal(nouvelleSession, { type: 'deplacement', pionNom: pion.nom, position }) : nouvelleSession
 }
 
 export function retirerPion(session: BatailleSession, pionId: string): BatailleSession {
-  return { ...session, pions: session.pions.filter(p => p.id !== pionId) }
+  const pion = session.pions.find(p => p.id === pionId)
+  const nouvelleSession = { ...session, pions: session.pions.filter(p => p.id !== pionId) }
+  return pion ? ajouterJournal(nouvelleSession, { type: 'pionRetire', pionNom: pion.nom }) : nouvelleSession
 }
 
 export function ajusterPointsBataille(session: BatailleSession, delta: number): BatailleSession {
@@ -377,9 +480,9 @@ export function retirerEvenementDeJeu(session: BatailleSession, evenementId: str
   return { ...session, evenements: session.evenements.map(e => e.id === evenementId ? { ...e, enJeu: false } : e) }
 }
 
-// Résolution d'un événement sur le champ de bataille : applique l'effet défini par le MJ à la création
-// de l'événement pour l'issue choisie (effetSucces/effetEchec, voir EvenementBataille et EffetEvenement
-// ci-dessus) — pas de valeur ni de type fixe imposé ici. Fige le résultat sur l'événement (pas de
+// Résolution d'un événement sur le champ de bataille : applique TOUS les effets définis par le MJ pour
+// l'issue choisie (effetsSucces/effetsEchec, voir EvenementBataille et EffetEvenement ci-dessus),
+// séquentiellement — pas de valeur ni de type fixe imposé ici. Fige le résultat sur l'événement (pas de
 // re-résolution) et la fait sortir de la zone de jeu (retour dans le menu, avec sa mention résolue).
 export function appliquerResultatEvenement(
   session: BatailleSession, evenementId: string, resultat: 'succes' | 'echec',
@@ -387,20 +490,31 @@ export function appliquerResultatEvenement(
   const evenement = session.evenements.find(e => e.id === evenementId)
   if (!evenement) return session
   const evenements = session.evenements.map(e => e.id === evenementId ? { ...e, resultat, enJeu: false } : e)
-  const effet = resultat === 'succes' ? evenement.effetSucces : evenement.effetEchec
-  if (effet.type === 'points') {
-    return { ...session, evenements, pointsBataille: session.pointsBataille + effet.valeur }
+  const effets = resultat === 'succes' ? evenement.effetsSucces : evenement.effetsEchec
+  let pointsBataille = session.pointsBataille
+  let intensite = session.intensite
+  let pions = session.pions
+  // Pas de journalisation ici : l'entrée « événement résolu » (voir resoudreEvenement dans BatailleTab,
+  // qui a accès aux rencontres pour retrouver le nom d'un événement combat) porte déjà la liste des
+  // effets appliqués — inutile de dupliquer avec des lignes 'intensite'/'soinCollectif' séparées.
+  const sessionResultante: BatailleSession = { ...session, evenements }
+  for (const effet of effets) {
+    if (effet.type === 'points') {
+      pointsBataille += effet.valeur
+    } else if (effet.type === 'intensite') {
+      intensite = Math.max(0, Math.min(10, intensite + effet.valeur))
+    } else {
+      pions = pions.map(p => ({ ...p, pvActuels: Math.max(0, Math.min(p.pvMax, p.pvActuels + effet.valeur)) }))
+    }
   }
-  if (effet.type === 'intensite') {
-    return { ...session, evenements, intensite: Math.max(0, Math.min(10, session.intensite + effet.valeur)) }
-  }
-  const pions = session.pions.map(p => ({ ...p, pvActuels: Math.max(0, Math.min(p.pvMax, p.pvActuels + effet.valeur)) }))
-  return { ...session, evenements, pions }
+  return { ...sessionResultante, pointsBataille, intensite, pions }
 }
 
 export function tourSuivant(session: BatailleSession): BatailleSession {
-  return {
-    ...session, tour: session.tour + 1,
+  const nouveauTour = session.tour + 1
+  const resultat: BatailleSession = {
+    ...session, tour: nouveauTour,
     pions: session.pions.map(p => ({ ...p, aRecupereCeTour: false, aAttaqueCeTour: false })),
   }
+  return ajouterJournal(resultat, { type: 'tourSuivant', tour: nouveauTour })
 }

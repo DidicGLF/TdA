@@ -204,6 +204,7 @@ export type Note = {
   campagneId?: string    // référence à Campaign.id, si la note est rattachée à une campagne
   tags?: string[]        // libres, créés à la volée — pas d'entité séparée, juste une liste par note
   marques?: NoteMarque[] // signets de page / ancres de paragraphe personnalisés
+  couleur?: string       // repère visuel libre (hex "#rrggbb"), utilisé pour la pastille dans NotesGraph
   creeLe: string     // ISO timestamp
   modifieLe: string  // ISO timestamp
 }

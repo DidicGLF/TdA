@@ -422,6 +422,9 @@ interface NoteEditorProps {
   pageCount: number
   onPrevPage: () => void
   onNextPage: () => void
+  // Supprime la page active (voir supprimerPage dans NotesTab) — masqué/désactivé s'il n'y a qu'une
+  // seule page, une note ne pouvant pas en avoir zéro.
+  onDeletePage: () => void
   // texteGarde = ce qui tient encore sur la page actuelle, texteReporte = le reste, à faire commencer
   // la page suivante (voir trouverPointDeCoupure) — un vrai découpage, pas juste "page suivante vide".
   onOverflow?: (texteGarde: string, texteReporte: string) => void
@@ -468,13 +471,18 @@ const groupeIconBtnStyle: React.CSSProperties = {
 // curseur (useLayoutEffect) pour ne jamais le laisser sauter au mauvais endroit.
 function NoteEditor({
   note, notes, campagnes, noteImages, setNoteImages, mobile, bestiaire, rencontres, onOpenCreature, onEditRencontre,
-  onSave, onBack, onDelete, onLien, onEnsureNote, pageActive, pageCount, onPrevPage, onNextPage, onOverflow, autoFocus,
+  onSave, onBack, onDelete, onLien, onEnsureNote, pageActive, pageCount, onPrevPage, onNextPage, onDeletePage, onOverflow, autoFocus,
   curseurInitial, onGoToPage, onAjouterMarque, onSupprimerMarque,
 }: NoteEditorProps) {
   const { t } = useTranslation()
+  // Survol du fond de page (parchemin) — la croix de suppression de page ne doit apparaître que
+  // pendant ce survol, voir le rendu de la page plus bas.
+  const [pageHover, setPageHover] = useState(false)
   const [titre, setTitre] = useState(note.titre)
   const [contenu, setContenu] = useState(note.contenu)
   const [date, setDate] = useState(note.date ?? '')
+  // Repère visuel libre — voir Note.couleur, utilisé aussi pour la pastille de cette note dans NotesGraph.
+  const [couleur, setCouleur] = useState(note.couleur ?? '')
   const [selection, setSelection] = useState<{ debut: number; fin: number } | null>(null)
   const [lienQuery, setLienQuery] = useState<string | null>(null)
   const [caretPos, setCaretPos] = useState<{ top: number; left: number; ligneHauteur: number } | null>(null)
@@ -576,7 +584,7 @@ function NoteEditor({
     const nomsRef = imagesReferencees(contenu)
     const imagesLiees = noteImages.filter(img => nomsRef.has(img.nom.toLowerCase()))
     const contenuExport = {
-      note: { titre, contenu, date: date || undefined, tags: tagsActuels.length ? tagsActuels : undefined },
+      note: { titre, contenu, date: date || undefined, tags: tagsActuels.length ? tagsActuels : undefined, couleur: couleur || undefined },
       images: imagesLiees,
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
@@ -594,15 +602,16 @@ function NoteEditor({
     }
   }
 
-  // Un seul minuteur de sauvegarde partagé titre/contenu/date : chaque appel ne fournit que le champ
-  // qui vient de changer, les autres sont complétés depuis l'état courant — sinon changer de champ
-  // avant l'expiration du délai perdrait le changement précédent. La campagne n'y figure jamais : ne
-  // pas l'inclure dans le patch la laisse intacte (fusion superficielle côté appelant).
+  // Un seul minuteur de sauvegarde partagé titre/contenu/date/couleur : chaque appel ne fournit que le
+  // champ qui vient de changer, les autres sont complétés depuis l'état courant — sinon changer de
+  // champ avant l'expiration du délai perdrait le changement précédent. La campagne n'y figure jamais :
+  // ne pas l'inclure dans le patch la laisse intacte (fusion superficielle côté appelant).
   const scheduleSave = (patch: Partial<Note>) => {
     const complet: Partial<Note> = {
       titre: patch.titre ?? titre,
       contenu: patch.contenu ?? contenu,
       date: 'date' in patch ? patch.date : (date || undefined),
+      couleur: 'couleur' in patch ? patch.couleur : (couleur || undefined),
     }
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => onSave(complet), SAVE_DEBOUNCE_MS)
@@ -610,7 +619,7 @@ function NoteEditor({
 
   const flush = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
-    onSave({ titre, contenu, date: date || undefined })
+    onSave({ titre, contenu, date: date || undefined, couleur: couleur || undefined })
   }
 
   // Insère du texte à la position du curseur (ou en fin de note à défaut) — utilisé pour la référence
@@ -1047,6 +1056,33 @@ function NoteEditor({
           placeholder={t('notes.datePlaceholder')}
           style={{ ...metaInputStyle, width: 120, flexShrink: 0 }}
         />
+        {/* Repère visuel libre — voir Note.couleur, repris pour la pastille de cette note dans
+            NotesGraph. Pas de valeur par défaut réellement enregistrée tant que le MJ/joueur ne choisit
+            rien : l'input color a besoin d'une valeur hexadécimale valide à afficher, GOLD sert de
+            couleur neutre affichée mais jamais sauvegardée (voir scheduleSave, qui n'écrit couleur que
+            si elle a été explicitement changée). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <input
+            type="color"
+            value={couleur || GOLD}
+            onChange={e => { setCouleur(e.target.value); scheduleSave({ couleur: e.target.value }) }}
+            onBlur={flush}
+            title={t('notes.couleurTitre')}
+            style={{
+              width: 26, height: 26, padding: 0, border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+              background: 'transparent', cursor: 'pointer',
+            }}
+          />
+          {couleur && (
+            <button
+              onClick={() => { setCouleur(''); onSave({ couleur: undefined }) }}
+              title={t('notes.couleurEffacer')}
+              style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.4)', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
         {campagneNom && (
           <span style={{ fontSize: 12, color: GOLD, opacity: 0.8, flexShrink: 0 }}>📁 {campagneNom}</span>
         )}
@@ -1128,11 +1164,34 @@ function NoteEditor({
               la hauteur disponible (aspectRatio + height:100%) et elle reste centrée horizontalement
               (margin:auto) : l'image ne montre donc jamais qu'une partie de son cadre, ni découpée ni
               recomposée, quitte à laisser un bandeau neutre de chaque côté sur une zone très large. */}
-          <div style={{
-            position: 'relative', height: '100%', minHeight: 300, maxWidth: '100%', aspectRatio: '2480 / 3508', margin: '0 auto',
-            backgroundImage: `url(${noteParchmentBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-            border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
-          }}>
+          <div
+            onMouseEnter={() => setPageHover(true)}
+            onMouseLeave={() => setPageHover(false)}
+            style={{
+              position: 'relative', height: '100%', minHeight: 300, maxWidth: '100%', aspectRatio: '2480 / 3508', margin: '0 auto',
+              backgroundImage: `url(${noteParchmentBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+              border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+            }}
+          >
+            {/* Supprime la page active — posé directement sur l'image de la page (coin haut-droit)
+                plutôt que dans l'en-tête, pour qu'il soit sans ambiguïté sur QUELLE page il agit.
+                Masqué s'il n'y a qu'une seule page (une note ne peut pas en avoir zéro), et invisible
+                tant que la souris n'est pas sur le fond de la page (pageHover). */}
+            {pageCount > 1 && (
+              <button
+                onClick={() => { flush(); onDeletePage() }}
+                title={t('notes.supprimerPage')}
+                style={{
+                  position: 'absolute', top: 23, right: 18, zIndex: 3,
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: '#ff2020', fontSize: 24, padding: 4, lineHeight: 1, fontWeight: 700,
+                  opacity: pageHover ? 1 : 0, pointerEvents: pageHover ? 'auto' : 'none',
+                  transition: 'opacity 0.15s',
+                }}
+              >
+                ✕
+              </button>
+            )}
             {/* Zone de texte — décalée des bords de la page pour rester hors de la bordure ornée de
                 l'image (marges calées à la main sur l'image, voir le repère visuel utilisé pour les
                 déterminer : ~89/214px haut/bas et ~103/215px gauche/droite sur l'image 2480×3508).
@@ -1456,7 +1515,7 @@ export default function NotesTab({
     const imagesLiees = noteImages.filter(img => nomsRef.has(img.nom.toLowerCase()))
     const contenuExport = {
       groupe: nomGroupe ?? undefined,
-      notes: notesDuGroupe.map(n => ({ titre: n.titre, contenu: n.contenu, date: n.date, tags: n.tags })),
+      notes: notesDuGroupe.map(n => ({ titre: n.titre, contenu: n.contenu, date: n.date, tags: n.tags, couleur: n.couleur })),
       images: imagesLiees,
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
@@ -1543,7 +1602,7 @@ export default function NotesTab({
       let contenu = item.contenu ?? ''
       mapping.forEach((nouveau, ancien) => { contenu = renommerReferenceImage(contenu, ancien, nouveau) })
       return {
-        id: genId(), titre: item.titre ?? '', contenu, date: item.date, tags: item.tags,
+        id: genId(), titre: item.titre ?? '', contenu, date: item.date, tags: item.tags, couleur: item.couleur,
         campagneId: campagneCibleId,
         creeLe: maintenant, modifieLe: maintenant,
       }
@@ -1624,6 +1683,15 @@ export default function NotesTab({
   }
   const pagePrecedente = () => { if (pageActive > 0) allerPage(pageActive - 1) }
   const pageSuivante = () => { if (pageActive < pages.length - 1) allerPage(pageActive + 1); else ajouterPageEtAller() }
+  // Supprime la page active — jamais la dernière restante (le bouton est de toute façon masqué dans ce
+  // cas, voir NoteEditor). En supprimant, l'index actif reste identique quand ce n'était pas la
+  // dernière page (on atterrit alors sur ce qui était la page suivante) ou recule d'un cran sinon.
+  const supprimerPage = () => {
+    if (!selected || pages.length <= 1) return
+    const nouvellesPages = pages.filter((_, i) => i !== pageActive)
+    updateNoteById(selected.id, { contenu: nouvellesPages.join('\f') })
+    allerPage(Math.min(pageActive, nouvellesPages.length - 1))
+  }
   // Dépassement détecté par NoteEditor (voir trouverPointDeCoupure) : insère une page contenant
   // texteReporte juste APRÈS la page active, dont le contenu est remplacé par texteGarde — un vrai
   // découpage, jamais seulement une page vide en fin de note, pour qu'un gros collage qui dépasse
@@ -1964,6 +2032,7 @@ export default function NotesTab({
       pageCount={pages.length}
       onPrevPage={pagePrecedente}
       onNextPage={pageSuivante}
+      onDeletePage={supprimerPage}
       onOverflow={pageDebordee}
       autoFocus={pageVientDeNaviguer}
       curseurInitial={curseurCible}

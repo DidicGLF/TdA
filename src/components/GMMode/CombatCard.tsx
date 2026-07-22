@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from '../GameMode/DiceIcon'
 import StatCell from './StatCell'
+import NumberField from '../NumberField'
 import type { CombatCreature, CombatEntiteInfo } from '../../utils/combat'
 
 const GOLD = '#c9a84c'
@@ -44,7 +45,7 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
       }}>
         <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {creature.image
-            ? <img src={creature.image} alt="" style={{ width: '100%', height: '100%', objectFit: creature.imageFit ?? 'cover' }} />
+            ? <img src={creature.image} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: creature.imageFit ?? 'cover' }} />
             : <span style={{ fontSize: 28, opacity: 0.3 }}>🐾</span>}
           {isDown && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -56,7 +57,12 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
           <div style={{ fontSize: 14, fontWeight: 700, color: PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {creature.nom}
           </div>
-          <div style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {creature.pv ?? '—'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {creature.pv ?? '—'}</span>
+            {creature.init !== undefined && (
+              <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {creature.init}</span>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -73,7 +79,7 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {creature.image && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img src={creature.image} alt="" style={{ width: 52, height: 68, objectFit: creature.imageFit ?? 'cover', borderRadius: 4, display: 'block' }} />
+              <img src={creature.image} alt="" draggable={false} style={{ width: 52, height: 68, objectFit: creature.imageFit ?? 'cover', borderRadius: 4, display: 'block' }} />
               {isDown && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 24 }}>💀</span>
@@ -93,11 +99,9 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
         {/* PV */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase' }}>PV</span>
-          <button onClick={() => onSetPV(Math.max(0, pvActuels - 1))} style={pvBtnStyle}>−</button>
-          <input type="number" value={pvActuels} onChange={e => onSetPV(parseInt(e.target.value) || 0)}
+          <NumberField value={pvActuels} onChange={n => onSetPV(n ?? 0)}
             style={{ width: 64, textAlign: 'center', fontSize: 17, fontWeight: 700, background: 'rgba(255,255,255,0.05)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4, color: pvActuels <= 0 ? RED : PARCHMENT }} />
-          <button onClick={() => onSetPV(pvActuels + 1)} style={pvBtnStyle}>+</button>
-          <span style={{ fontSize: 14, opacity: 0.5 }}>/ {creature.pv ?? '—'}</span>
+          <span style={{ fontSize: 17, opacity: 0.5 }}>/ {creature.pv ?? '—'}</span>
         </div>
 
         {/* Cible */}
@@ -117,8 +121,8 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
           {CARACS.map(c => (
             <StatCell key={c} label={c} base={creature.caracteristiques?.[c]} stat={c} buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           ))}
-          <StatCell label="DEF" base={creature.def} stat="DEF" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="Init." base={creature.init} stat="INIT" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
+          <StatCell label="DEF" base={creature.def} stat="DEF" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="RD" base={creature.rd} stat="RD" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
         </div>
 
@@ -201,11 +205,6 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
       )}
     </div>
   )
-}
-
-const pvBtnStyle: React.CSSProperties = {
-  width: 26, height: 26, borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'transparent',
-  color: PARCHMENT, cursor: 'pointer', fontSize: 17, lineHeight: 1,
 }
 
 const attaqueBtnStyle: React.CSSProperties = {

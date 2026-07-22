@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import CombatCard from './CombatCard'
@@ -49,6 +49,95 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const splitRatio = session?.splitRatio ?? 0.5
   const [isResizingSplit, setIsResizingSplit] = useState(false)
   const resizeRef = useRef<{ startX: number; startRatio: number; areaWidth: number } | null>(null)
+
+  // Réorganisation par glisser-déposer des cartes (créatures ET PJ, chacune dans sa propre colonne —
+  // jamais l'une vers l'autre). dragState.width/height sont capturés au dragstart (taille réelle de la
+  // carte, repliée ou dépliée) pour dimensionner la case fantôme à l'identique. dropIndex est l'index
+  // d'insertion visé dans la liste survolée, affiché comme case fantôme entre deux cartes (ou en bout de
+  // liste) ; rien n'est réordonné tant que le dépôt n'a pas lieu (onDrop), la carte glissée reste visible
+  // à sa place d'origine, juste atténuée, pendant le survol.
+  //
+  // Un seul calcul géométrique par colonne (onDragOver posé sur le CONTENEUR, pas sur chaque carte) :
+  // une première version posait un handler par carte + un repli sur le conteneur, qui se marchaient
+  // dessus dans les interstices entre cartes (ni sur l'une ni sur l'autre) — le repli l'emportait alors
+  // systématiquement et forçait l'index à la fin de la liste, rendant le début de liste inaccessible et
+  // le survol capricieux en général. Ici on prend toujours la carte la plus proche du curseur (distance
+  // euclidienne à son centre), ce qui couvre tout le conteneur sans zone morte. setDropIndex ne déclenche
+  // un re-rendu QUE si la valeur change réellement (voir prev === next ci-dessous) — dragover se
+  // déclenche en continu pendant le survol, recalculer à chaque appel sans ce garde-fou noyait React de
+  // re-rendus et donnait l'impression que la case fantôme mettait du temps à apparaître.
+  const [dragState, setDragState] = useState<{ liste: 'creature' | 'pj'; id: string; width: number; height: number } | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+
+  const handleDragStart = (liste: 'creature' | 'pj', id: string) => (e: React.DragEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDragState({ liste, id, width: rect.width, height: rect.height })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragEnd = () => { setDragState(null); setDropIndex(null) }
+
+  // Carte la plus proche du curseur (centre à centre) parmi les emplacements [data-drag-index] direct
+  // descendants du conteneur — avant elle si le curseur est dans sa moitié gauche, après sinon. Marche
+  // pour n'importe quelle position du curseur dans le conteneur (interstice, coin, ligne suivante...),
+  // pas seulement pile sur une carte.
+  function indexDepot(conteneur: HTMLElement, clientX: number, clientY: number, total: number): number {
+    const emplacements = Array.from(conteneur.querySelectorAll<HTMLElement>('[data-drag-index]'))
+    if (emplacements.length === 0) return total
+    let meilleur = emplacements[0]
+    let meilleureDistance = Infinity
+    for (const el of emplacements) {
+      const r = el.getBoundingClientRect()
+      const dx = clientX - (r.left + r.width / 2)
+      const dy = clientY - (r.top + r.height / 2)
+      const distance = dx * dx + dy * dy
+      if (distance < meilleureDistance) { meilleureDistance = distance; meilleur = el }
+    }
+    const r = meilleur.getBoundingClientRect()
+    const index = Number(meilleur.dataset.dragIndex)
+    return clientX < r.left + r.width / 2 ? index : index + 1
+  }
+
+  const handleColumnDragOver = (liste: 'creature' | 'pj', total: number) => (e: React.DragEvent<HTMLDivElement>) => {
+    if (!dragState || dragState.liste !== liste) return
+    e.preventDefault()
+    const next = indexDepot(e.currentTarget, e.clientX, e.clientY, total)
+    setDropIndex(prev => (prev === next ? prev : next))
+  }
+
+  const commitDrop = (liste: 'creature' | 'pj') => {
+    if (!session || !dragState || dragState.liste !== liste || dropIndex === null) return
+    if (liste === 'creature') {
+      const list = [...session.combatants]
+      const fromIndex = list.findIndex(c => c.id === dragState.id)
+      if (fromIndex === -1) return
+      const [item] = list.splice(fromIndex, 1)
+      list.splice(fromIndex < dropIndex ? dropIndex - 1 : dropIndex, 0, item)
+      onSessionChange({ ...session, combatants: list })
+    } else {
+      const list = [...session.pjs]
+      const fromIndex = list.findIndex(p => p.id === dragState.id)
+      if (fromIndex === -1) return
+      const [item] = list.splice(fromIndex, 1)
+      list.splice(fromIndex < dropIndex ? dropIndex - 1 : dropIndex, 0, item)
+      onSessionChange({ ...session, pjs: list })
+    }
+  }
+
+  const handleColumnDrop = (liste: 'creature' | 'pj') => (e: React.DragEvent) => {
+    e.preventDefault()
+    commitDrop(liste)
+    setDragState(null)
+    setDropIndex(null)
+  }
+
+  // Case fantôme : mêmes dimensions que la carte glissée (capturées au dragstart), pointillé doré.
+  const caseFantome = dragState && (
+    <div style={{
+      width: dragState.width, height: dragState.height, flexShrink: 0,
+      border: `2px dashed ${GOLD}`, borderRadius: 8, background: 'rgba(201,168,76,0.08)',
+    }} />
+  )
 
   // Recalcule les lignes de ciblage (position des cartes source/cible dans la zone) — nécessaire à
   // chaque changement de session (dépli/replis d'une carte, nouvelle cible...) et à chaque scroll d'une
@@ -166,6 +255,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     }
   }, [recomputeLinks])
 
+  // listerEntites recalcule les stats de combat de chaque PJ (computeCombatStatsPJ, coûteux — scan
+  // voies/traits/cristaux) : mémoïsé pour ne pas repayer ce coût à chaque rendu déclenché par le survol
+  // pendant un glisser-déposer (dragState/dropIndex changent bien plus souvent qu'une vraie mise à jour
+  // de session). Doit rester AVANT le retour anticipé ci-dessous (règle des Hooks : jamais après un
+  // retour conditionnel) — session peut donc valoir null ici, d'où le fallback tableau vide.
+  const cibles = useMemo(() => (session ? listerEntites(session, descriptions) : []), [session, descriptions])
+
   if (!session) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, fontSize: 14, textAlign: 'center', padding: 20 }}>
@@ -203,10 +299,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
         }
       } catch { /* fichier invalide, ignoré */ }
     }
-    if (nouveaux.length > 0) onSessionChange({ ...session, pjs: [...session.pjs, ...nouveaux] })
+    // Classés par initiative décroissante, quel que soit l'ordre d'import des fichiers (même règle que
+    // les créatures au lancement d'une rencontre, voir demarrerCombat dans combat.ts).
+    if (nouveaux.length > 0) {
+      const pjs = [...session.pjs, ...nouveaux].sort((a, b) => b.character.initiative - a.character.initiative)
+      onSessionChange({ ...session, pjs })
+    }
   }
-
-  const cibles = listerEntites(session, descriptions)
 
   // Un seul appel à onSessionChange pour tout l'attaque (résultat sur l'attaquant + dégâts sur la
   // cible) : deux appels séparés à updateCombatant/updatePJ ici se baseraient tous deux sur le même
@@ -271,23 +370,39 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
 
         <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', gap: 16, position: 'relative' }}>
           {/* Créatures */}
-          <div ref={creaturesColRef} style={{ flex: `${splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
-            {session.combatants.map(c => (
-              <CombatCard
-                key={c.id}
-                combatant={c}
-                cibles={cibles.filter(x => x.id !== c.id)}
-                onToggleExpand={() => updateCombatant(c.id, { expanded: !c.expanded })}
-                onSetPV={pv => updateCombatant(c.id, { pvActuels: pv })}
-                onAttaque={attaque => handleAttaque(c, attaque)}
-                onSetCible={id => updateCombatant(c.id, { cibleId: id })}
-                onSetBuff={(stat, valeur) => {
-                  const buffs = [...c.buffs.filter(b => b.stat !== stat), { stat, valeur }]
-                  updateCombatant(c.id, { buffs })
-                }}
-                onClearBuff={stat => updateCombatant(c.id, { buffs: c.buffs.filter(b => b.stat !== stat) })}
-              />
+          <div
+            ref={creaturesColRef}
+            onDragOver={handleColumnDragOver('creature', session.combatants.length)}
+            onDrop={handleColumnDrop('creature')}
+            style={{ flex: `${splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}
+          >
+            {session.combatants.map((c, index) => (
+              <div key={c.id} style={{ display: 'contents' }}>
+                {dragState?.liste === 'creature' && dropIndex === index && caseFantome}
+                <div
+                  draggable
+                  data-drag-index={index}
+                  onDragStart={handleDragStart('creature', c.id)}
+                  onDragEnd={handleDragEnd}
+                  style={{ opacity: dragState?.id === c.id ? 0.35 : 1, cursor: 'grab' }}
+                >
+                  <CombatCard
+                    combatant={c}
+                    cibles={cibles.filter(x => x.id !== c.id)}
+                    onToggleExpand={() => updateCombatant(c.id, { expanded: !c.expanded })}
+                    onSetPV={pv => updateCombatant(c.id, { pvActuels: pv })}
+                    onAttaque={attaque => handleAttaque(c, attaque)}
+                    onSetCible={id => updateCombatant(c.id, { cibleId: id })}
+                    onSetBuff={(stat, valeur) => {
+                      const buffs = [...c.buffs.filter(b => b.stat !== stat), { stat, valeur }]
+                      updateCombatant(c.id, { buffs })
+                    }}
+                    onClearBuff={stat => updateCombatant(c.id, { buffs: c.buffs.filter(b => b.stat !== stat) })}
+                  />
+                </div>
+              </div>
             ))}
+            {dragState?.liste === 'creature' && dropIndex === session.combatants.length && caseFantome}
           </div>
 
           {/* Barre de séparation déplaçable — zone de saisie large (8px) pour un glisser confortable,
@@ -309,27 +424,43 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
           </div>
 
           {/* Personnages joueurs */}
-          <div ref={pjsColRef} style={{ flex: `${1 - splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}>
+          <div
+            ref={pjsColRef}
+            onDragOver={handleColumnDragOver('pj', session.pjs.length)}
+            onDrop={handleColumnDrop('pj')}
+            style={{ flex: `${1 - splitRatio} 1 0%`, minWidth: 0, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, alignContent: 'flex-start' }}
+          >
             {session.pjs.length === 0 ? (
               <div style={{ width: '100%', textAlign: 'center', opacity: 0.35, fontSize: 13, padding: '20px 0' }}>
                 {t('gmMode.bataille.aucunPJ')}
               </div>
-            ) : session.pjs.map(p => (
-              <PJCard
-                key={p.id}
-                pj={p}
-                cibles={cibles.filter(x => x.id !== p.id)}
-                onToggleExpand={() => updatePJ(p.id, { expanded: !p.expanded })}
-                onSetPV={pv => updatePJ(p.id, { pvActuels: pv })}
-                onSetPM={pm => updatePJ(p.id, { pmActuels: pm })}
-                onSetCible={id => updatePJ(p.id, { cibleId: id })}
-                onSetBuff={(stat, valeur) => {
-                  const buffs = [...p.buffs.filter(b => b.stat !== stat), { stat, valeur }]
-                  updatePJ(p.id, { buffs })
-                }}
-                onClearBuff={stat => updatePJ(p.id, { buffs: p.buffs.filter(b => b.stat !== stat) })}
-              />
+            ) : session.pjs.map((p, index) => (
+              <div key={p.id} style={{ display: 'contents' }}>
+                {dragState?.liste === 'pj' && dropIndex === index && caseFantome}
+                <div
+                  draggable
+                  data-drag-index={index}
+                  onDragStart={handleDragStart('pj', p.id)}
+                  onDragEnd={handleDragEnd}
+                  style={{ opacity: dragState?.id === p.id ? 0.35 : 1, cursor: 'grab' }}
+                >
+                  <PJCard
+                    pj={p}
+                    cibles={cibles.filter(x => x.id !== p.id)}
+                    onToggleExpand={() => updatePJ(p.id, { expanded: !p.expanded })}
+                    onSetPV={pv => updatePJ(p.id, { pvActuels: pv })}
+                    onSetPM={pm => updatePJ(p.id, { pmActuels: pm })}
+                    onSetCible={id => updatePJ(p.id, { cibleId: id })}
+                    onSetBuff={(stat, valeur) => {
+                      const buffs = [...p.buffs.filter(b => b.stat !== stat), { stat, valeur }]
+                      updatePJ(p.id, { buffs })
+                    }}
+                    onClearBuff={stat => updatePJ(p.id, { buffs: p.buffs.filter(b => b.stat !== stat) })}
+                  />
+                </div>
+              </div>
             ))}
+            {dragState?.liste === 'pj' && dropIndex === session.pjs.length && caseFantome}
           </div>
 
           {/* Liens visuels de ciblage — calque SVG non interactif par-dessus les deux colonnes. Tracé en

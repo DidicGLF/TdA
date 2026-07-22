@@ -180,6 +180,33 @@
     "nc": 2,
     "livres": [
       "Livre du Meneur"
+    ],
+    "taille": "Grande",
+    "page": "69",
+    "description": "Ce profil correspond à tous les grands herbivores à cornes (taureau, etc.). Les femelles fuient généralement à moins de défendre un petit.",
+    "caracteristiques": {
+      "FOR": "+4",
+      "DEX": "+0",
+      "CON": "+4*",
+      "INT": "-4",
+      "SAG": "+2",
+      "CHA": "-2"
+    },
+    "def": 13,
+    "pv": 20,
+    "init": 10,
+    "attaques": [
+      {
+        "nom": "Cornes",
+        "bonus": "+5",
+        "dm": "1d6+4"
+      }
+    ],
+    "capacites": [
+      {
+        "nom": "Charge (L)",
+        "desc": "Le bison parcourt une distance maximale de 30 mètres et réalise une attaque. Lancez deux d20 et gardez le meilleur résultat. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test opposé de FOR ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés."
+      }
     ]
   },
   {
@@ -187,6 +214,33 @@
     "nc": 3,
     "livres": [
       "Livre du Meneur"
+    ],
+    "taille": "Grande",
+    "page": "69",
+    "description": "Un grand mâle, d'environ 1,80 m au garrot et pesant une tonne.",
+    "caracteristiques": {
+      "FOR": "+6",
+      "DEX": "+1",
+      "CON": "+6*",
+      "INT": "-4",
+      "SAG": "+2",
+      "CHA": "-2"
+    },
+    "def": 16,
+    "pv": 30,
+    "init": 10,
+    "attaques": [
+      {
+        "nom": "Cornes",
+        "bonus": "+8",
+        "dm": "2d6+6"
+      }
+    ],
+    "capacites": [
+      {
+        "nom": "Charge (L)",
+        "desc": "Le bison parcourt une distance maximale de 30 mètres et réalise une attaque. Lancez deux d20 et gardez le meilleur résultat. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test opposé de FOR ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés."
+      }
     ]
   },
   {

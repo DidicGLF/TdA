@@ -8,14 +8,49 @@ import NotesTab from '../NotesTab'
 import NotesGraph from '../NotesGraph'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
 import { saveDataFileToBundle } from '../../utils/tauriStorage'
+import { NC_DISPONIBLES, VARIANTES_COMBATTANT, genererPNJCombattant } from '../../utils/pnjCombattant'
+import type { VarianteCombattantId } from '../../utils/pnjCombattant'
+import { VARIANTES_AVENTURIER, genererPNJAventurier } from '../../utils/pnjAventurier'
+import type { VarianteAventurierId } from '../../utils/pnjAventurier'
+import { VARIANTES_MYSTIQUE, genererPNJMystique } from '../../utils/pnjMystique'
+import type { VarianteMystiqueId } from '../../utils/pnjMystique'
 import type { BestiaireEntry, RencontreSauvegardee } from '../../types/gameData'
 import type { BatailleSessionSauvegardee } from '../../utils/bataille'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
+// Titre de section dans l'aperçu du générateur de PNJ (voir modaleGenererOuverte) — sépare
+// caractéristiques / statistiques de combat / attaques / capacités plutôt qu'un seul bloc continu.
+const pnjSectionTitreStyle: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
+}
 
 type Tab = 'bestiaire' | 'adversite' | 'bataille' | 'notes'
+
+// Générateur de PNJ (voir BestiaireTab) — une catégorie = une table de stats par NC (voir utils/pnj*.ts)
+// partagée par plusieurs variantes ; ce lookup permet au formulaire de rester générique face aux 3
+// catégories sans dupliquer sa mise en page pour chacune. Les casts sur varianteId sont sûrs : le
+// <select> de variante n'affiche jamais que les id de VARIANTES_<CATEGORIE> correspondants.
+type CategoriePNJId = 'combattant' | 'aventurier' | 'mystique'
+const CATEGORIES_PNJ: Record<CategoriePNJId, {
+  nom: string
+  variantes: { id: string; nom: string }[]
+  generer: (varianteId: string, nc: number, nom: string) => BestiaireEntry
+}> = {
+  combattant: {
+    nom: 'Combattant', variantes: VARIANTES_COMBATTANT,
+    generer: (id, nc, nom) => genererPNJCombattant(id as VarianteCombattantId, nc, nom),
+  },
+  aventurier: {
+    nom: 'Aventurier', variantes: VARIANTES_AVENTURIER,
+    generer: (id, nc, nom) => genererPNJAventurier(id as VarianteAventurierId, nc, nom),
+  },
+  mystique: {
+    nom: 'Mystique', variantes: VARIANTES_MYSTIQUE,
+    generer: (id, nc, nom) => genererPNJMystique(id as VarianteMystiqueId, nc, nom),
+  },
+}
 
 interface Props {
   onBack: () => void
@@ -147,6 +182,18 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
   const [search, setSearch] = useState('')
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [confirmSauvegarderBundle, setConfirmSauvegarderBundle] = useState(false)
+  // Générateur de PNJ (voir CATEGORIES_PNJ) — un aperçu en direct des stats/capacités selon
+  // catégorie+variante+NC choisis, ajouté au bestiaire tel quel en cliquant Ajouter (devient ensuite une
+  // fiche de bestiaire normale, éditable/modifiable comme les autres).
+  const [modaleGenererOuverte, setModaleGenererOuverte] = useState(false)
+  const [pnjNom, setPnjNom] = useState('')
+  const [pnjCategorie, setPnjCategorie] = useState<CategoriePNJId>('combattant')
+  const [pnjVariante, setPnjVariante] = useState<string>(VARIANTES_COMBATTANT[0].id)
+  const [pnjNC, setPnjNC] = useState(1)
+  const [tri, setTri] = useState<{ champ: 'nom' | 'nc'; sens: 'asc' | 'desc' }>({ champ: 'nom', sens: 'asc' })
+  const toggleTri = (champ: 'nom' | 'nc') => {
+    setTri(prev => prev.champ === champ ? { champ, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { champ, sens: 'asc' })
+  }
 
   // Sélection forcée depuis une note liée (voir NotesTab « → Aller à la créature ») : appliquée
   // pendant le rendu plutôt que dans un effet (pattern « ajuster l'état pendant le rendu » recommandé
@@ -164,10 +211,13 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return bestiaire
+    const liste = bestiaire
       .map((c, idx) => ({ c, idx }))
       .filter(({ c }) => !q || c.nom.toLowerCase().includes(q))
-  }, [search, bestiaire])
+    const signe = tri.sens === 'asc' ? 1 : -1
+    liste.sort((a, b) => tri.champ === 'nc' ? (a.c.nc - b.c.nc) * signe : a.c.nom.localeCompare(b.c.nom) * signe)
+    return liste
+  }, [search, bestiaire, tri])
 
   const selected = selectedIdx !== null ? bestiaire[selectedIdx] : null
 
@@ -188,11 +238,20 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
     setSelectedIdx(null)
   }
 
+  const pnjApercu = CATEGORIES_PNJ[pnjCategorie].generer(pnjVariante, pnjNC, pnjNom.trim() || t('gmMode.creatureDetail.nouvelleCreature'))
+
+  const ajouterPNJGenere = () => {
+    setBestiaire(prev => [...prev, pnjApercu])
+    setSelectedIdx(bestiaire.length)
+    setModaleGenererOuverte(false)
+    setPnjNom('')
+  }
+
   return (
     <>
     <div style={{ display: 'flex', gap: 16, height: '100%' }}>
       {/* Liste — colonne gauche */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 420, flexShrink: 0, minHeight: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 520, flexShrink: 0, minHeight: 0 }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -212,7 +271,7 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                 onClick={() => setConfirmSauvegarderBundle(true)}
                 style={{
                   background: 'transparent', border: '1px solid rgba(100,200,120,0.5)', borderRadius: 4,
-                  color: 'rgba(100,200,120,0.8)', cursor: 'pointer', fontSize: 14, padding: '3px 8px',
+                  color: 'rgba(100,200,120,0.8)', cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
                 }}
               >
                 {t('gmMode.bestiaireSauvegarderBundle')}
@@ -220,29 +279,59 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
             )}
             <button onClick={addCreature} style={{
               background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
-              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px',
+              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
             }}>
               + {t('gmMode.creatureDetail.nouvelleCreature')}
             </button>
+            <button onClick={() => setModaleGenererOuverte(true)} style={{
+              background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
+            }}>
+              🛠 {t('gmMode.genererPNJ')}
+            </button>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
-          {filtered.map(({ c, idx }, i) => {
-            const isSelected = selectedIdx === idx
-            return (
-              <div key={idx} onClick={() => setSelectedIdx(idx)} style={{
-                // Marge droite un peu plus large que les autres côtés : la scrollbar (overlay, s'épaissit
-                // au survol) sinon passe par-dessus le score de NC, collé trop près du bord.
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px 8px 12px', cursor: 'pointer',
-                background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
-                borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
-                borderBottom: i < filtered.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
-              }}>
-                <span style={{ flex: 1, fontSize: 16, color: isSelected ? GOLD : PARCHMENT }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
-                <span style={{ fontSize: 14, color: GOLD, fontWeight: 700, minWidth: 24, textAlign: 'right' }}>{c.nc}</span>
-              </div>
-            )
-          })}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
+          {/* En-tête de colonnes triable — même marge droite que les lignes ci-dessous (voir plus bas)
+              pour rester aligné avec le score de NC malgré la scrollbar. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '6px 18px 6px 12px', flexShrink: 0,
+            borderBottom: `1px solid ${SECTION_BORDER}`,
+          }}>
+            <button onClick={() => toggleTri('nom')} style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.04em', padding: 0, textAlign: 'left', color: tri.champ === 'nom' ? GOLD : 'rgba(245,236,215,0.5)',
+            }}>
+              {t('gmMode.bestiaireTriNom')} {tri.champ === 'nom' && (tri.sens === 'asc' ? '▲' : '▼')}
+            </button>
+            <button onClick={() => toggleTri('nc')} style={{
+              minWidth: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4,
+              background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12,
+              fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: 0,
+              color: tri.champ === 'nc' ? GOLD : 'rgba(245,236,215,0.5)',
+            }}>
+              {t('gmMode.creatureDetail.nc')} {tri.champ === 'nc' && (tri.sens === 'asc' ? '▲' : '▼')}
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {filtered.map(({ c, idx }, i) => {
+              const isSelected = selectedIdx === idx
+              return (
+                <div key={idx} onClick={() => setSelectedIdx(idx)} style={{
+                  // Marge droite un peu plus large que les autres côtés : la scrollbar (overlay, s'épaissit
+                  // au survol) sinon passe par-dessus le score de NC, collé trop près du bord.
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px 8px 12px', cursor: 'pointer',
+                  background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
+                  borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
+                }}>
+                  <span style={{ flex: 1, fontSize: 16, color: isSelected ? GOLD : PARCHMENT }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
+                  <span style={{ fontSize: 14, color: GOLD, fontWeight: 700, minWidth: 24, textAlign: 'right' }}>{c.nc}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -292,6 +381,180 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                 color: 'rgba(120,220,140,0.95)', fontFamily: 'inherit',
               }}
             >{t('gmMode.sauvegarder')}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    {modaleGenererOuverte && (
+      <div
+        onClick={() => setModaleGenererOuverte(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.65)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: 'rgba(22,17,11,0.99)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 8,
+            padding: '24px 28px', maxWidth: 560, width: '90vw', maxHeight: '85vh', overflowY: 'auto',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 20, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif" }}>
+              {t('gmMode.genererPNJ')}
+            </span>
+            <button
+              onClick={() => setModaleGenererOuverte(false)}
+              style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.6)', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ fontSize: 15, opacity: 0.5 }}>{t('gmMode.genererPNJIntro')}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                {t('gmMode.genererPNJNom')}
+              </label>
+              <input
+                value={pnjNom} onChange={e => setPnjNom(e.target.value)}
+                placeholder={t('gmMode.creatureDetail.nouvelleCreature')}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(255,255,255,0.03)', color: PARCHMENT, fontSize: 16,
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                {t('gmMode.genererPNJCategorie')}
+              </label>
+              <select
+                value={pnjCategorie}
+                onChange={e => {
+                  const categorie = e.target.value as CategoriePNJId
+                  setPnjCategorie(categorie)
+                  setPnjVariante(CATEGORIES_PNJ[categorie].variantes[0].id)
+                }}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.3)', background: 'var(--tdr-dark)', color: PARCHMENT, fontSize: 16,
+                }}
+              >
+                {(Object.keys(CATEGORIES_PNJ) as CategoriePNJId[]).map(id => (
+                  <option key={id} value={id} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{CATEGORIES_PNJ[id].nom}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                {t('gmMode.genererPNJVariante')}
+              </label>
+              <select
+                value={pnjVariante} onChange={e => setPnjVariante(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.3)', background: 'var(--tdr-dark)', color: PARCHMENT, fontSize: 16,
+                }}
+              >
+                {CATEGORIES_PNJ[pnjCategorie].variantes.map(v => <option key={v.id} value={v.id} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{v.nom}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+                {t('gmMode.creatureDetail.nc')}
+              </label>
+              <select
+                value={pnjNC} onChange={e => setPnjNC(parseFloat(e.target.value))}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 4,
+                  border: '1px solid rgba(201,168,76,0.3)', background: 'var(--tdr-dark)', color: PARCHMENT, fontSize: 16,
+                }}
+              >
+                {NC_DISPONIBLES.map(nc => <option key={nc} value={nc} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{nc}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Aperçu en direct — recalculé à chaque changement de variante/NC (pnjApercu), rien n'est
+              encore ajouté au bestiaire tant que le MJ n'a pas cliqué Ajouter ci-dessous. Sections
+              nommées (caractéristiques / statistiques de combat / attaques / capacités) séparées par un
+              filet pointillé, plutôt qu'un seul bloc continu — mêmes libellés que la fiche de bestiaire
+              (CreatureDetail) pour rester cohérent. */}
+          <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 14, opacity: 0.6, fontStyle: 'italic' }}>{pnjApercu.description}</div>
+
+            <div>
+              <div style={pnjSectionTitreStyle}>{t('gmMode.creatureDetail.caracteristiques')}</div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 16 }}>
+                <span>FOR {pnjApercu.caracteristiques?.FOR}</span>
+                <span>DEX {pnjApercu.caracteristiques?.DEX}</span>
+                <span>CON {pnjApercu.caracteristiques?.CON}</span>
+                <span>INT {pnjApercu.caracteristiques?.INT}</span>
+                <span>SAG {pnjApercu.caracteristiques?.SAG}</span>
+                <span>CHA {pnjApercu.caracteristiques?.CHA}</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px dashed ${SECTION_BORDER}` }} />
+
+            <div>
+              <div style={pnjSectionTitreStyle}>{t('gmMode.creatureDetail.statsCombat')}</div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 16, fontWeight: 700, color: GOLD }}>
+                <span>DEF {pnjApercu.def}</span>
+                <span>PV {pnjApercu.pv}</span>
+                <span>Init. {pnjApercu.init}</span>
+                {pnjApercu.rd !== undefined && <span>RD {pnjApercu.rd}</span>}
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px dashed ${SECTION_BORDER}` }} />
+
+            <div>
+              <div style={pnjSectionTitreStyle}>{t('gmMode.creatureDetail.attaques')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 16 }}>
+                {pnjApercu.attaques?.map((a, i) => (
+                  <span key={i}>{a.nom} {a.bonus}, DM {a.dm}</span>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px dashed ${SECTION_BORDER}` }} />
+
+            <div>
+              <div style={pnjSectionTitreStyle}>{t('gmMode.creatureDetail.capacites')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {pnjApercu.capacites?.map((c, i) => (
+                  <div key={i} style={{ fontSize: 15 }}>
+                    <span style={{ color: GOLD, fontWeight: 700 }}>{c.nom}</span>
+                    <span style={{ opacity: 0.7 }}> — {c.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setModaleGenererOuverte(false)}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 16,
+                border: '1px solid rgba(245,236,215,0.2)', background: 'transparent',
+                color: 'rgba(245,236,215,0.55)', fontFamily: 'inherit',
+              }}
+            >{t('gmMode.annuler')}</button>
+            <button
+              onClick={ajouterPNJGenere}
+              style={{
+                padding: '6px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 16, fontWeight: 600,
+                border: '1px solid rgba(100,200,120,0.6)', background: 'rgba(100,200,120,0.12)',
+                color: 'rgba(120,220,140,0.95)', fontFamily: 'inherit',
+              }}
+            >{t('gmMode.genererPNJAjouter')}</button>
           </div>
         </div>
       </div>

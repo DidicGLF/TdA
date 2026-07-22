@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
+import NumberField from '../NumberField'
 import { saveDataFile } from '../../utils/tauriStorage'
 import { useGameData } from '../../context/GameDataContext'
 import type { BestiaireEntry, CreatureAttaque, CreatureCapacite, CreatureVoie, CapaciteEffet } from '../../types/gameData'
@@ -131,8 +132,8 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
         <div style={{ display: 'grid', gridTemplateColumns: '70px 110px 1fr 80px auto', gridAutoRows: 'auto', columnGap: 20, rowGap: 10 }}>
           <div style={{ gridColumn: 1, gridRow: 1 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.nc')}</span>
-            <input type="number" step="0.5" value={creature.nc}
-              onChange={e => onChange({ nc: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+            <NumberField parseAs="float" value={creature.nc}
+              onChange={n => onChange({ nc: n ?? 0 })} style={inputStyle} />
           </div>
           <div style={{ gridColumn: 2, gridRow: 1 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.taille')}</span>
@@ -191,20 +192,20 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
               <div style={sectionTitleStyle}>{t('gmMode.creatureDetail.statsCombat')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>DEF</span>
-                  <input type="number" value={creature.def ?? ''} onChange={e => onChange({ def: e.target.value === '' ? undefined : parseInt(e.target.value) })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>PV</span>
-                  <input type="number" value={creature.pv ?? ''} onChange={e => onChange({ pv: e.target.value === '' ? undefined : parseInt(e.target.value) })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
+                  <NumberField allowUndefined value={creature.pv} onChange={n => onChange({ pv: n })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>Init.</span>
-                  <input type="number" value={creature.init ?? ''} onChange={e => onChange({ init: e.target.value === '' ? undefined : parseInt(e.target.value) })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
+                  <NumberField allowUndefined value={creature.init} onChange={n => onChange({ init: n })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>DEF</span>
+                  <NumberField allowUndefined value={creature.def} onChange={n => onChange({ def: n })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>RD</span>
-                  <input type="number" value={creature.rd ?? ''} onChange={e => onChange({ rd: e.target.value === '' ? undefined : parseInt(e.target.value) })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
+                  <NumberField allowUndefined value={creature.rd} onChange={n => onChange({ rd: n })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
                 </div>
               </div>
             </div>
@@ -320,7 +321,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={v.nom} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, nom: e.target.value } : x))}
                 placeholder={t('gmMode.creatureDetail.voieNom')} style={{ ...inputStyle, flex: 2 }} />
-              <input type="number" value={v.rang} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, rang: parseInt(e.target.value) || 0 } : x))}
+              <NumberField value={v.rang} onChange={n => setVoies(voies.map((x, j) => j === i ? { ...x, rang: n ?? 0 } : x))}
                 placeholder={t('gmMode.creatureDetail.voieRang')} style={{ ...inputStyle, width: 70 }} />
               <input value={v.reference ?? ''} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, reference: e.target.value } : x))}
                 placeholder={t('gmMode.creatureDetail.voieRef')} style={{ ...inputStyle, flex: 1 }} />
@@ -329,7 +330,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
 
             {v.rangs.map((r, k) => (
               <div key={k} style={{ display: 'flex', gap: 6, paddingLeft: 16 }}>
-                <input type="number" value={r.rang} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, rangs: x.rangs.map((y, l) => l === k ? { ...y, rang: parseInt(e.target.value) || 0 } : y) } : x))}
+                <NumberField value={r.rang} onChange={n => setVoies(voies.map((x, j) => j === i ? { ...x, rangs: x.rangs.map((y, l) => l === k ? { ...y, rang: n ?? 0 } : y) } : x))}
                   style={{ ...inputStyle, width: 50 }} />
                 <input value={r.nom} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, rangs: x.rangs.map((y, l) => l === k ? { ...y, nom: e.target.value } : y) } : x))}
                   placeholder={t('gmMode.creatureDetail.rangNom')} style={{ ...inputStyle, flex: 1 }} />

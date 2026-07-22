@@ -174,7 +174,7 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
   // Incrémenté par le bouton « Recalculer » : force meilleureDisposition à explorer de nouvelles graines.
   const [tentative, setTentative] = useState(0)
 
-  const { nodeIds, edges, titreParId, degreParId, structureKey } = useMemo(() => {
+  const { nodeIds, edges, titreParId, degreParId, couleurParId, structureKey } = useMemo(() => {
     const parTitre = new Map(notes.filter(n => n.titre.trim()).map(n => [n.titre.trim().toLowerCase(), n]))
     const edges: GraphEdge[] = []
     for (const n of notes) {
@@ -185,6 +185,9 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
     }
     const nodeIds = notes.map(n => n.id)
     const titreParId = new Map(notes.map(n => [n.id, n.titre]))
+    // Couleur de repère choisie par note (voir Note.couleur) — volontairement absente de structureKey
+    // ci-dessous : changer juste la couleur d'une note ne doit pas relancer le calcul de disposition.
+    const couleurParId = new Map(notes.map(n => [n.id, n.couleur]))
     // Nombre de liens touchant chaque note (dans un sens ou l'autre) — sert à faire grossir son point.
     const degreParId = new Map<string, number>(nodeIds.map(id => [id, 0]))
     for (const e of edges) {
@@ -192,7 +195,7 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
       degreParId.set(e.target, (degreParId.get(e.target) ?? 0) + 1)
     }
     const structureKey = nodeIds.slice().sort().join(',') + '|' + edges.map(e => `${e.source}>${e.target}`).sort().join(',')
-    return { nodeIds, edges, titreParId, degreParId, structureKey }
+    return { nodeIds, edges, titreParId, degreParId, couleurParId, structureKey }
   }, [notes])
 
   // Ne recalcule la disposition que si la structure du graphe (quelles notes, quels liens) change
@@ -341,9 +344,13 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
               }}
               style={{ cursor: draggingId === id ? 'grabbing' : 'grab' }}
             >
+              {/* Couleur de repère de la note (voir couleurParId) si choisie, sinon le doré par défaut —
+                  fillOpacity (pas une couleur rgba figée) porte l'état focus/atténué/normal, pour que ça
+                  fonctionne pareil quelle que soit la couleur choisie. */}
               <circle
                 cx={p.x} cy={p.y} r={rayon}
-                fill={estFocus ? GOLD : estAttenue ? 'rgba(201,168,76,0.22)' : 'rgba(201,168,76,0.7)'}
+                fill={couleurParId.get(id) || GOLD}
+                fillOpacity={estFocus ? 1 : estAttenue ? 0.22 : 0.7}
                 stroke="rgba(15,12,8,0.85)" strokeWidth={1.5}
               />
               <text x={p.x} y={p.y + rayon + 11} textAnchor="middle" fontSize={10}

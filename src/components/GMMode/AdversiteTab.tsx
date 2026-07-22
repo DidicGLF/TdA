@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import { saveDataFile } from '../../utils/tauriStorage'
+import NumberField from '../NumberField'
 import RENCONTRE_RAW from '../../data/rencontre.json'
 import { getBudgetPA, getPAPourNC, distribuerNC } from '../../utils/rencontre'
 import { demarrerCombat } from '../../utils/combat'
@@ -223,13 +224,13 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           <div>
             <span style={labelStyle}>{t('gmMode.adversite.nombrePJs')}</span>
-            <input type="number" min={1} value={nombrePJs}
-              onChange={e => setNombrePJs(Math.max(1, parseInt(e.target.value) || 1))} style={inputStyle} />
+            <NumberField min={1} value={nombrePJs}
+              onChange={n => setNombrePJs(n ?? 1)} style={inputStyle} />
           </div>
           <div>
             <span style={labelStyle}>{t('gmMode.adversite.niveauMoyen')}</span>
-            <input type="number" min={1} max={20} value={niveauMoyen}
-              onChange={e => setNiveauMoyen(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))} style={inputStyle} />
+            <NumberField min={1} max={20} value={niveauMoyen}
+              onChange={n => setNiveauMoyen(n ?? 1)} style={inputStyle} />
           </div>
           <div>
             <span style={labelStyle}>{t('gmMode.adversite.difficulte')}</span>
@@ -241,8 +242,8 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
           </div>
           <div>
             <span style={labelStyle}>{t('gmMode.adversite.nombreAdversaires')}</span>
-            <input type="number" min={1} max={12} value={nombreAdversaires}
-              onChange={e => setNombreAdversaires(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))} style={inputStyle} />
+            <NumberField min={1} max={12} value={nombreAdversaires}
+              onChange={n => setNombreAdversaires(n ?? 1)} style={inputStyle} />
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12 }}>
@@ -286,7 +287,7 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
               return (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <div style={{ width: 60, flexShrink: 0 }}>
-                    <input type="number" step="0.5" value={a.nc} onChange={e => setSlotNC(i, parseFloat(e.target.value) || 0)} style={inputStyle} />
+                    <NumberField parseAs="float" value={a.nc} onChange={n => setSlotNC(i, n ?? 0)} style={inputStyle} />
                   </div>
                   <span style={{ fontSize: 11, opacity: 0.55, width: 46, flexShrink: 0, textAlign: 'right' }}>
                     {getPAPourNC(RENCONTRE, a.nc)} {t('gmMode.adversite.pa')}
