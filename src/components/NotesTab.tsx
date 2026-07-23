@@ -1904,6 +1904,10 @@ export default function NotesTab({
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'grab',
                 background: isSelected ? 'rgba(201,168,76,0.12)' : 'transparent',
                 borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
+                // Repère de couleur (voir Note.couleur) — même principe que le trait doré de sélection à
+                // gauche, mais à droite et dans la couleur choisie pour la note (même couleur que sa
+                // pastille dans NotesGraph). Rien si aucune couleur n'a été choisie.
+                borderRight: n.couleur ? `3px solid ${n.couleur}` : 'none',
                 borderBottom: nbSousLignes === 0 && i < notesSection.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
               }}
             >

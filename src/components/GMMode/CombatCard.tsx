@@ -12,6 +12,11 @@ const RED = 'rgba(255,150,150,0.95)'
 const PURPLE = 'rgba(200,170,255,0.9)'
 
 const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
+// Icônes des types de dégâts (voir creature.rdTypes) — mêmes codes que CreatureDetail/GameModePanel.
+const ICONES_TYPES_DEGATS: Record<string, string> = {
+  FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
+  TENEBRES: '🌑', LUMIERE: '☀️', MENTAL: '🧠', TRANCHANT: '🗡️', PERFORANT: '🏹', CONTONDANT: '🔨',
+}
 
 interface Props {
   combatant: CombatCreature
@@ -124,6 +129,14 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
           <StatCell label="Init." base={creature.init} stat="INIT" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="DEF" base={creature.def} stat="DEF" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="RD" base={creature.rd} stat="RD" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
+          {creature.rdTypes && creature.rdTypes.length > 0 && (
+            <span
+              style={{ fontSize: 14, alignSelf: 'center' }}
+              title={creature.rdTypes.map(ty => t(`gameMode.dmType${ty}`)).join(', ')}
+            >
+              {creature.rdTypes.map(ty => ICONES_TYPES_DEGATS[ty]).join('')}
+            </span>
+          )}
         </div>
 
         {/* Attaques */}

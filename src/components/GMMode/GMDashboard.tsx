@@ -178,9 +178,13 @@ export default function GMDashboard({ onBack }: Props) {
 
 function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
   const { t } = useTranslation()
-  const { bestiaire, setBestiaire } = useGameData()
+  const { bestiaire, setBestiaire, capacitesBibliotheque } = useGameData()
   const [search, setSearch] = useState('')
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  // Sauvegarde à la fois le bestiaire ET la bibliothèque de capacités (voir CreatureDetail, bouton
+  // Bibliothèque) : les deux vivent dans Documents/TdA en dev et ne rejoignent src/data/ (la base
+  // livrée à tout le monde) que via ce bouton — la bibliothèque est intimement liée au bestiaire
+  // (capacités des créatures), pas la peine d'un bouton séparé.
   const [confirmSauvegarderBundle, setConfirmSauvegarderBundle] = useState(false)
   // Générateur de PNJ (voir CATEGORIES_PNJ) — un aperçu en direct des stats/capacités selon
   // catégorie+variante+NC choisis, ajouté au bestiaire tel quel en cliquant Ajouter (devient ensuite une
@@ -372,7 +376,10 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
             <button
               onClick={async () => {
                 setConfirmSauvegarderBundle(false)
-                await saveDataFileToBundle('bestiaire.json', bestiaire)
+                await Promise.all([
+                  saveDataFileToBundle('bestiaire.json', bestiaire),
+                  saveDataFileToBundle('capacites-bibliotheque.json', capacitesBibliotheque),
+                ])
                 window.location.reload()
               }}
               style={{

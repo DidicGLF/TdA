@@ -17,6 +17,14 @@ const TAILLES = ['Minuscule', 'Très petite', 'Petite', 'Moyenne', 'Grande', 'É
 // Statistiques modifiables par un effet de capacité — les mêmes identifiants que ceux déjà utilisés
 // par les ajustements manuels du MJ en combat (voir stat= sur StatCell dans CombatCard/PJCard).
 const EFFET_STATS = [...CARACS, 'DEF', 'RD', 'INIT', 'ATK', 'DM'] as const
+// Types de dégâts auxquels une RD peut être limitée (ex. "RD 5 (Feu, Froid)" dans le livre) — mêmes
+// codes et icônes que DAMAGE_TYPES/DAMAGE_TYPE_ICONS dans GameModePanel, dupliqués ici car locaux à
+// ce fichier (pas d'export partagé pour l'instant).
+const TYPES_DEGATS = ['FEU', 'FROID', 'FOUDRE', 'ACIDE', 'POISON', 'NECROTIQUE', 'TENEBRES', 'LUMIERE', 'MENTAL', 'TRANCHANT', 'PERFORANT', 'CONTONDANT'] as const
+const ICONES_TYPES_DEGATS: Record<string, string> = {
+  FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
+  TENEBRES: '🌑', LUMIERE: '☀️', MENTAL: '🧠', TRANCHANT: '🗡️', PERFORANT: '🏹', CONTONDANT: '🔨',
+}
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4,
@@ -45,6 +53,31 @@ const addBtnStyle: React.CSSProperties = {
 const genId = () =>
   (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : String(Date.now())
 
+// Retire les retours à la ligne de mise en page (typiquement un copier-coller depuis un PDF en 2
+// colonnes, où chaque ligne visuelle de la colonne devient un vrai saut de ligne) sans perdre les
+// VRAIS sauts de paragraphe : une ligne vide (2 sauts consécutifs ou plus) est préservée en tant que
+// paragraphe, un saut isolé devient un simple espace.
+const MARQUEUR_PARAGRAPHE = '\u0001'
+function nettoyerTextePDF(texte: string): string {
+  return texte
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{2,}/g, MARQUEUR_PARAGRAPHE)
+    .replace(/\n/g, ' ')
+    .split(MARQUEUR_PARAGRAPHE).join('\n\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+}
+
+// Colle le texte nettoyé (voir nettoyerTextePDF) à la position du curseur d'un <textarea> contrôlé —
+// remplace la sélection courante comme un collage normal, contourné via preventDefault car on ne veut
+// pas des retours à la ligne bruts du presse-papiers.
+function collerTexteNettoye(e: React.ClipboardEvent<HTMLTextAreaElement>, valeurActuelle: string, onValeur: (v: string) => void) {
+  e.preventDefault()
+  const texte = nettoyerTextePDF(e.clipboardData.getData('text/plain'))
+  const { selectionStart, selectionEnd } = e.currentTarget
+  onValeur(valeurActuelle.slice(0, selectionStart) + texte + valeurActuelle.slice(selectionEnd))
+}
+
 interface Props {
   creature: BestiaireEntry
   onChange: (patch: Partial<BestiaireEntry>) => void
@@ -53,13 +86,17 @@ interface Props {
 
 export default function CreatureDetail({ creature, onChange, onDelete }: Props) {
   const { t } = useTranslation()
-  const { capacitesBibliotheque, setCapacitesBibliotheque } = useGameData()
+  const { capacitesBibliotheque, setCapacitesBibliotheque, data: descriptions } = useGameData()
   const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [biblioMsg, setBiblioMsg] = useState<string | null>(null)
 
   const caracs = creature.caracteristiques ?? { FOR: '', DEX: '', CON: '', INT: '', SAG: '', CHA: '' }
   const setCarac = (key: typeof CARACS[number], value: string) =>
     onChange({ caracteristiques: { ...caracs, [key]: value } })
+
+  const rdTypes = creature.rdTypes ?? []
+  const toggleRdType = (type: string) =>
+    onChange({ rdTypes: rdTypes.includes(type) ? rdTypes.filter(x => x !== type) : [...rdTypes, type] })
 
   const attaques = creature.attaques ?? []
   const setAttaques = (next: CreatureAttaque[]) => onChange({ attaques: next })
@@ -98,6 +135,17 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
 
   const voies = creature.voies ?? []
   const setVoies = (next: CreatureVoie[]) => onChange({ voies: next })
+
+  // Récupère les rangs (nom + description) d'une voie déjà connue (celles des PJ, voir descriptions.json)
+  // plutôt que de les retaper à la main — seulement si le nom saisi correspond exactement à une voie
+  // existante, jusqu'au rang atteint par la créature (v.rang). Remplace les rangs déjà présents.
+  const recupererRangsVoie = (i: number) => {
+    const v = voies[i]
+    const rangsSource = descriptions[v.nom]
+    if (!rangsSource) return
+    const nouveauxRangs = rangsSource.slice(0, v.rang).map((r, k) => ({ rang: k + 1, nom: r.nom, desc: r.desc }))
+    setVoies(voies.map((x, j) => j === i ? { ...x, rangs: nouveauxRangs } : x))
+  }
 
   const exporterCreature = async () => {
     const content = JSON.stringify(creature, null, 2)
@@ -168,6 +216,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
             <textarea
               value={creature.description ?? ''}
               onChange={e => onChange({ description: e.target.value })}
+              onPaste={e => collerTexteNettoye(e, creature.description ?? '', description => onChange({ description }))}
               rows={6}
               style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
             />
@@ -207,6 +256,30 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
                   <span style={{ ...labelStyle, marginBottom: 0, width: 32, flexShrink: 0 }}>RD</span>
                   <NumberField allowUndefined value={creature.rd} onChange={n => onChange({ rd: n })} style={{ ...inputStyle, width: 56, flexShrink: 0 }} />
                 </div>
+                {/* Types de dégâts auxquels la RD ci-dessus est limitée (ex. "RD 5 (Feu, Froid)") —
+                    vide = RD générale (tous types). Purement informatif pour le MJ. */}
+                {creature.rd !== undefined && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, maxWidth: 160 }} title={t('gmMode.creatureDetail.rdTypesTitle')}>
+                    {TYPES_DEGATS.map(type => {
+                      const actif = rdTypes.includes(type)
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => toggleRdType(type)}
+                          title={t(`gameMode.dmType${type}`)}
+                          style={{
+                            width: 22, height: 22, padding: 0, fontSize: 12, lineHeight: '20px',
+                            background: actif ? 'rgba(201,168,76,0.25)' : 'transparent',
+                            border: `1px solid ${actif ? GOLD : 'rgba(201,168,76,0.25)'}`,
+                            borderRadius: 4, cursor: 'pointer', opacity: actif ? 1 : 0.4,
+                          }}
+                        >
+                          {ICONES_TYPES_DEGATS[type]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -282,6 +355,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
               <button onClick={() => setCapacites(capacites.filter((_, j) => j !== i))} style={removeBtnStyle}>✕</button>
             </div>
             <textarea value={c.desc} onChange={e => setCapacites(capacites.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))}
+              onPaste={e => collerTexteNettoye(e, c.desc, desc => setCapacites(capacites.map((x, j) => j === i ? { ...x, desc } : x)))}
               placeholder={t('gmMode.creatureDetail.capDesc')} rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
 
             {/* Effet(s) : bonus/malus préréglés qu'un bouton "Activer" appliquera d'un clic sur la carte de combat */}
@@ -316,15 +390,26 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
       {/* Voies */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={sectionTitleStyle}>{t('gmMode.creatureDetail.voies')}</div>
+        {/* Autocomplétion sur les voies des PJ (voir descriptions.json) — permet de repérer un nom qui
+            correspond exactement à une voie existante, pour ensuite en récupérer les rangs d'un clic
+            (voir recupererRangsVoie) plutôt que de les retaper à la main. */}
+        <datalist id="voies-datalist">
+          {Object.keys(descriptions).map(nom => <option key={nom} value={nom} />)}
+        </datalist>
         {voies.map((v, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 10 }}>
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={v.nom} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, nom: e.target.value } : x))}
-                placeholder={t('gmMode.creatureDetail.voieNom')} style={{ ...inputStyle, flex: 2 }} />
+                list="voies-datalist" placeholder={t('gmMode.creatureDetail.voieNom')} style={{ ...inputStyle, flex: 2 }} />
               <NumberField value={v.rang} onChange={n => setVoies(voies.map((x, j) => j === i ? { ...x, rang: n ?? 0 } : x))}
                 placeholder={t('gmMode.creatureDetail.voieRang')} style={{ ...inputStyle, width: 70 }} />
               <input value={v.reference ?? ''} onChange={e => setVoies(voies.map((x, j) => j === i ? { ...x, reference: e.target.value } : x))}
                 placeholder={t('gmMode.creatureDetail.voieRef')} style={{ ...inputStyle, flex: 1 }} />
+              {descriptions[v.nom] && (
+                <button onClick={() => recupererRangsVoie(i)} title={t('gmMode.creatureDetail.recupererRangs')} style={{ ...removeBtnStyle, borderColor: 'rgba(201,168,76,0.4)', color: GOLD }}>
+                  ↓
+                </button>
+              )}
               <button onClick={() => setVoies(voies.filter((_, j) => j !== i))} style={removeBtnStyle}>✕</button>
             </div>
 
@@ -339,9 +424,14 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
                 <button onClick={() => setVoies(voies.map((x, j) => j === i ? { ...x, rangs: x.rangs.filter((_, l) => l !== k) } : x))} style={removeBtnStyle}>✕</button>
               </div>
             ))}
+            {/* Un rang de plus que v.rang (le rang atteint par la créature, voir ci-dessus) n'aurait pas
+                de sens — même logique qu'un PJ qui ne peut pas débloquer un rang au-delà de celui de sa
+                voie. */}
             <button
               onClick={() => setVoies(voies.map((x, j) => j === i ? { ...x, rangs: [...x.rangs, { rang: x.rangs.length + 1, nom: '', desc: '' }] } : x))}
-              style={{ ...addBtnStyle, marginLeft: 16 }}
+              disabled={v.rangs.length >= v.rang}
+              title={v.rangs.length >= v.rang ? t('gmMode.creatureDetail.rangMaxAtteint') : undefined}
+              style={{ ...addBtnStyle, marginLeft: 16, opacity: v.rangs.length >= v.rang ? 0.4 : 1, cursor: v.rangs.length >= v.rang ? 'default' : 'pointer' }}
             >
               + {t('gmMode.creatureDetail.ajouterRang')}
             </button>

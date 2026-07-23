@@ -359,15 +359,6 @@ function AppContent() {
               }}>
                 {t('menuGestion.donneesJeu')}
               </button>
-              {!isAndroid && (
-                <button onClick={() => { setShowTranslationEditor(true); setShowMobileGestion(false) }} style={{
-                  padding: '14px 20px', background: 'transparent', border: 'none',
-                  borderBottom: '1px solid rgba(201,168,76,0.1)',
-                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
-                }}>
-                  {t('menuGestion.traductions', 'Traductions')}
-                </button>
-              )}
               <button onClick={() => {
                 if (ficheLocked) { setShowUnlockConfirm(true); setShowMobileGestion(false) }
                 else { setFicheLocked(true); setShowMobileGestion(false) }
@@ -379,17 +370,6 @@ function AppContent() {
               }}>
                 {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
               </button>
-              <div style={{ padding: '12px 20px', borderBottom: '1px solid rgba(201,168,76,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                {languages.map(({ code, label }) => (
-                  <button key={code} onClick={() => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }} style={{
-                    padding: '4px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontWeight: 600,
-                    border: `1px solid ${i18n.language === code ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                    background: i18n.language === code ? 'rgba(201,168,76,0.15)' : 'transparent',
-                    color: i18n.language === code ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                  }}>{label}</button>
-                ))}
-              </div>
               <div style={{ padding: '10px 20px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {t('menuGestion.feuilles')}
@@ -533,7 +513,17 @@ function AppContent() {
   // redescendue sous le seuil mobile alors qu'on était déjà en MJ, on (re)montre le sélecteur avec
   // la carte MJ désactivée plutôt que de laisser l'interface MJ s'afficher sur mobile.
   if (!appMode || (appMode === 'mj' && isMobile)) {
-    return <ModeSelector onSelect={setAppMode} mjDisabled={isMobile} />
+    return (
+      <>
+        <ModeSelector
+          onSelect={setAppMode} mjDisabled={isMobile}
+          languages={languages} currentLanguage={i18n.language}
+          onChangeLanguage={code => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }}
+          onOpenTranslations={isAndroid ? undefined : () => setShowTranslationEditor(true)}
+        />
+        {showTranslationEditor && !isAndroid && <TranslationEditor onClose={() => setShowTranslationEditor(false)} />}
+      </>
+    )
   }
 
   if (appMode === 'mj') {
@@ -811,17 +801,6 @@ function AppContent() {
                 {t('menuGestion.donneesJeu')}
               </button>
 
-              {/* Traductions — desktop seulement */}
-              {!isAndroid && (
-                <button onClick={() => { setShowTranslationEditor(true); setShowGestion(false) }} style={{
-                  padding: '10px 16px', background: 'transparent', border: 'none',
-                  borderBottom: '1px solid rgba(201,168,76,0.1)',
-                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
-                }}>
-                  {t('menuGestion.traductions', 'Traductions')}
-                </button>
-              )}
-
               {/* Déverrouiller la fiche */}
               <button onClick={() => {
                 if (ficheLocked) { setShowUnlockConfirm(true); setShowGestion(false) }
@@ -834,22 +813,6 @@ function AppContent() {
               }}>
                 {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
               </button>
-
-              {/* Langue */}
-              <div style={{
-                padding: '8px 16px', borderBottom: '1px solid rgba(201,168,76,0.1)',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>{t('menuGestion.langue')}</span>
-                {languages.map(({ code, label }) => (
-                  <button key={code} onClick={() => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }} style={{
-                    padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                    border: `1px solid ${i18n.language === code ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                    background: i18n.language === code ? 'rgba(201,168,76,0.15)' : 'transparent',
-                    color: i18n.language === code ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.5)',
-                  }}>{label}</button>
-                ))}
-              </div>
 
               {/* Feuilles personnalisées */}
               <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>

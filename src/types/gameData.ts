@@ -137,6 +137,11 @@ export type BestiaireEntry = {
   pv?: number
   init?: number
   rd?: number
+  // Types de dégâts auxquels la RD ci-dessus s'applique (ex. "RD 5 (Feu, Froid)" dans le livre) —
+  // codes identiques à DAMAGE_TYPES (GameModePanel) : FEU/FROID/FOUDRE/ACIDE/POISON/NECROTIQUE/
+  // TENEBRES/LUMIERE/MENTAL/TRANCHANT/PERFORANT/CONTONDANT. Vide/absent = RD générale (tous types).
+  // Purement informatif pour le MJ : combat.ts applique toujours rd à plat, sans lire ce champ.
+  rdTypes?: string[]
   attaques?: CreatureAttaque[]
   capacites?: CreatureCapacite[]
   voies?: CreatureVoie[]
