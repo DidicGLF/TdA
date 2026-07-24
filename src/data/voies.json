@@ -338,5 +338,110 @@
     "nom": "Voie des pierres esprits",
     "famille": "mystiques",
     "categorie": "prestige"
+  },
+  {
+    "nom": "Desctruction feu",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Destruction nature",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Destruction eau",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Destruction foudre",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la destruction élémentaire",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Élémentaire feu",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Élémentaire eau",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Élémentaire nature",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Élémentaire foudre",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la maîtrise élémentaire",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Création feu",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Création nature",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Création eau",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Création foudre",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la création élémentaire",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Symbiose feu",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Symbiose nature",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Symbiose eau",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Symbiose foudre",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de la symbiose élémentaire",
+    "famille": "mystiques",
+    "categorie": "prestige"
+  },
+  {
+    "nom": "Voie de l'espace temps",
+    "famille": "mystiques",
+    "categorie": "prestige"
   }
 ]

@@ -19,9 +19,10 @@ import VoieCombobox from './VoieCombobox'
 import EquipementModal from './EquipementModal'
 import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/levelUp'
 import type { VoieKey } from '../utils/levelUp'
-import { parseDesc } from '../utils/parseDesc'
 import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
 import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
+import { getVoieRangChoixGrants, getChoixOptions, applyVoieRangChoix, applyVoieRangChoixAvancee, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement } from '../utils/voieRangChoix'
+import CarteVoieModal from './CarteVoieModal'
 import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName, useVoieName, useTranslatedDescriptions, useProfilName } from '../hooks/useContentTranslation'
 
 type TraitEntry = { nom: string; desc: string }
@@ -557,91 +558,6 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             </div>
           )
         })}
-      </div>
-    </div>
-  )
-}
-
-function renderDesc(text: string, character?: Character): React.ReactNode {
-  return parseDesc(text, character)
-}
-
-function CarteVoieModal({ nom, onClose, character }: { nom: string; onClose: () => void; character?: Character }) {
-  const { t } = useTranslation()
-  const { data: rawData } = useGameData()
-  const data = useTranslatedDescriptions(rawData)
-  const voieName = useVoieName()
-  const capacites = data[nom] ?? data[nom.toLowerCase()] ?? []
-
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [onClose])
-
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.88)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px 16px',
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{
-        background: 'rgba(18,14,9,0.98)',
-        border: '1px solid rgba(201,168,76,0.45)',
-        borderRadius: 8,
-        maxWidth: 560,
-        width: '100%',
-        maxHeight: '85vh',
-        overflowY: 'auto',
-        boxShadow: '0 12px 64px rgba(0,0,0,0.9)',
-      }}>
-        {/* En-tête */}
-        <div style={{
-          padding: '16px 20px 12px',
-          borderBottom: '1px solid rgba(201,168,76,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        }}>
-          <h2 style={{
-            margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '0.04em',
-            color: 'var(--tdr-gold)',
-          }}>{voieName(nom)}</h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'rgba(245,236,215,0.5)', fontSize: 20, lineHeight: 1, padding: '0 2px',
-            }}
-            aria-label="Fermer"
-          >×</button>
-        </div>
-
-        {/* Capacités */}
-        <div style={{ padding: '12px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {capacites.map((cap, i) => (
-            <div key={i} style={{
-              borderLeft: '2px solid rgba(201,168,76,0.4)',
-              paddingLeft: 12,
-            }}>
-              <div style={{
-                fontSize: 17, fontWeight: 600, letterSpacing: '0.06em',
-                color: 'rgba(201,168,76,0.7)', marginBottom: 5,
-                textTransform: 'uppercase',
-              }}>
-                {t('wizard.step3.rangCarteTitre', { rang: i + 1, nom: cap.nom })}
-              </div>
-              <div style={{
-                fontSize: 18, lineHeight: 1.6,
-                color: 'rgba(245,236,215,0.85)',
-              }}>
-                {renderDesc(cap.desc, character)}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )
@@ -1386,6 +1302,70 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
                       {stat}
                     </button>
                   ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
+      {/* ── Choix de capacité empruntée à une autre voie (VOIE_RANG_CHOIX) ── */}
+      {(() => {
+        // Seuls les grants encore SANS choix sont affichés — un choix déjà fait est irréversible (voir
+        // la fiche pour le consulter), l'encart ne doit pas réapparaître une fois le choix posé.
+        const pending = getVoieRangChoixGrants(character, dynamicDescriptions).filter(g => !g.choixFait)
+        if (pending.length === 0) return null
+        return (
+          <div style={{ border: '1px solid rgba(120,180,255,0.35)', borderRadius: 8, padding: '14px 16px', background: 'rgba(120,180,255,0.05)' }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(120,180,255,0.85)', marginBottom: 10 }}>
+              {t('levelUp.capaciteEmpruntee')}
+            </div>
+            {pending.map(({ grant, grantKey, rangNom }) => (
+              <div key={grantKey} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: 'rgba(200,220,255,0.75)', marginBottom: 6 }}>{rangNom || t('fiche.choisirCapacite')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {getChoixOptions(grant, dynamicDescriptions).map(opt => {
+                    const dejaPrise = estCapaciteDejaChoisie(character, opt.voie, opt.rang)
+                    const dejaAvancee = dejaPrise && estAvanceeAccordeePourCible(character, dynamicDescriptions, opt.voie, opt.rang)
+                    const proposerAvancee = !!grant.avanceeGratuite && dejaPrise && !dejaAvancee
+                    const bloque = dejaPrise && !proposerAvancee
+                    return (
+                      <div key={`${opt.voie}|${opt.rang}`} style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          disabled={bloque}
+                          onClick={() => onChange({
+                            voieRangChoix: proposerAvancee
+                              ? applyVoieRangChoixAvancee(character, grantKey, opt.voie, opt.rang)
+                              : applyVoieRangChoix(character, grantKey, opt.voie, opt.rang),
+                          })}
+                          title={dejaAvancee ? t('levelUp.dejaAvancee') : bloque ? t('levelUp.capaciteDejaPrise') : undefined}
+                          style={{
+                            flex: 1, textAlign: 'left', padding: '6px 10px', borderRadius: 4,
+                            border: `1px solid rgba(120,180,255,${bloque ? 0.15 : 0.5})`,
+                            background: proposerAvancee ? 'rgba(120,180,255,0.1)' : 'transparent',
+                            color: bloque ? 'rgba(200,220,255,0.35)' : 'rgba(200,220,255,0.9)',
+                            fontSize: 13, cursor: bloque ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                          }}>
+                          {symboleElement(opt.voie) && <span style={{ marginRight: 4 }}>{symboleElement(opt.voie)}</span>}
+                          <strong>{opt.nom}</strong> <span style={{ opacity: 0.6 }}>({opt.voie}, {t('levelUp.rangCourt', { rang: opt.rang })})</span>
+                          {proposerAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.obtenirAvancee')}</span>}
+                          {dejaAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.dejaAvancee')}</span>}
+                          {bloque && !dejaAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.dejaAcquis')}</span>}
+                        </button>
+                        <button
+                          onClick={() => setPreviewVoie(opt.voie)}
+                          title={t('wizard.step3.voirVoie', { nom: voieName(opt.voie) })}
+                          style={{
+                            padding: '6px 10px', borderRadius: 4,
+                            border: '1px solid rgba(120,180,255,0.4)',
+                            background: 'rgba(120,180,255,0.12)',
+                            color: 'rgba(160,200,255,0.95)',
+                            cursor: 'pointer',
+                            fontSize: 16, lineHeight: 1, flexShrink: 0,
+                          }}>▤</button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             ))}

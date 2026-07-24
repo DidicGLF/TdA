@@ -37,7 +37,10 @@ export function getEffectChoixGrants(
       entry.grants.forEach((grant, grantIdx) => {
         if (grant.type !== 'EFFECT_CHOIX') return
         if (grant.avancee) return
-        if (grant.minRang !== undefined && (i + 1) < grant.minRang) return
+        // minRang se compare au rang réellement atteint dans la voie (voie.rangs), pas à l'index du
+        // rang qui héberge le grant — cohérent avec computeEffects.ts, qui applique déjà cette règle
+        // correctement pour le calcul numérique (voir grant.minRang !== undefined && !voie.rangs[...]).
+        if (grant.minRang !== undefined && !voie.rangs[grant.minRang - 1]) return
 
         const grantKey = makeGrantKey(voie.nom, i, grantIdx)
         const choixFait = character.effectsChoix?.[grantKey] ?? null

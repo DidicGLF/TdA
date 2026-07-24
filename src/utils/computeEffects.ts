@@ -2,6 +2,7 @@ import type { Character, Caracteristique } from '../types/character'
 import { getMod } from '../types/character'
 import type { DescMap } from '../types/gameData'
 import cristauxData from '../data/cristaux.json'
+import { getRangsEmpruntes } from './voieRangChoix'
 
 type Condition =
   | { type: 'hasBouclier' }
@@ -153,6 +154,39 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
           voie: voie.nom,
         })
       }
+    }
+  }
+
+  // Rangs empruntés à une autre voie via VOIE_RANG/VOIE_RANG_CHOIX (ex : voie culturelle de la Forge
+  // qui donne un rang 1/2 de la voie d'alchimie ou runique). Seuls leurs effets numériques directs sont
+  // pris en compte, pas leurs propres grants — volontairement non récursif (voir voieRangChoix.ts), et
+  // un rang emprunté n'est jamais jaugé par un minRang (pas de progression dans la voie source). Un
+  // effet "avancé" s'applique en revanche si la case avancée du rang QUI PORTE LE GRANT est cochée
+  // (avanceeAccordee) — pas de case propre au rang emprunté lui-même.
+  for (const { voieNom, rangIdx, rangData, avanceeAccordee } of getRangsEmpruntes(character, descriptions)) {
+    for (const effect of rangData.effects ?? []) {
+      if (effect.avancee && !avanceeAccordee) continue
+      if (effect.minRang !== undefined) continue
+      if (!effect.value && !effect.formula && !effect.div2 && !effect.immunite) continue
+      if (effect.condition && !evaluateCondition(effect.condition, character)) continue
+
+      let value: number
+      if (effect.value !== undefined) {
+        value = effect.value
+      } else if (effect.formula) {
+        const resolved = resolveFormula(effect.formula, character)
+        if (resolved === null) continue
+        value = resolved
+      } else {
+        value = 0
+      }
+
+      const contribution: Contribution = {
+        stat: effect.stat, value, nom: rangData.nom, rang: rangIdx + 1, triggerRang: rangIdx + 1, voie: voieNom,
+        div2: effect.div2, immunite: effect.immunite,
+      }
+      if (!result[effect.stat]) result[effect.stat] = []
+      result[effect.stat].push(contribution)
     }
   }
 

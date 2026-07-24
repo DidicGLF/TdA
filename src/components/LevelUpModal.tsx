@@ -11,7 +11,10 @@ import type { VoieKey } from '../utils/levelUp'
 import VoieCombobox from './VoieCombobox'
 import { computeEffects, sumStat } from '../utils/computeEffects'
 import { getEffectChoixGrants } from '../utils/effectsChoix'
+import { getVoieRangChoixGrants, getChoixOptions, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement } from '../utils/voieRangChoix'
 import { useGameData } from '../context/GameDataContext'
+import { useVoieName } from '../hooks/useContentTranslation'
+import CarteVoieModal from './CarteVoieModal'
 
 interface Props {
   character: Character
@@ -54,6 +57,11 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
   const [prestigeNom, setPrestigeNom] = useState((character.voiePrestige as VoiePersonnage).nom)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [pendingEffectsChoix, setPendingEffectsChoix] = useState<Record<string, string>>({})
+  const [pendingVoieRangChoix, setPendingVoieRangChoix] = useState<Record<string, { voie: string; rang: number; avanceeSeulement?: boolean }>>({})
+  // Voie dont la carte complète est prévisualisée depuis le picker VOIE_RANG_CHOIX (même modale que
+  // le wizard de création, pour que "voir le détail d'une voie" soit cohérent partout dans l'app).
+  const [previewVoie, setPreviewVoie] = useState<string | null>(null)
+  const voieName = useVoieName()
 
   // Per-level conMod: ranks from selections are allocated greedily (2 pts/level),
   // and any CON bonus gained mid-batch applies to subsequent levels.
@@ -272,6 +280,9 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
     const mergedEffectsChoix = Object.keys(pendingEffectsChoix).length > 0
       ? { ...(character.effectsChoix ?? {}), ...pendingEffectsChoix }
       : character.effectsChoix
+    const mergedVoieRangChoix = Object.keys(pendingVoieRangChoix).length > 0
+      ? { ...(character.voieRangChoix ?? {}), ...pendingVoieRangChoix }
+      : character.voieRangChoix
     onConfirm({
       niveau: newNiveau,
       pvTotal: character.pvTotal + pvGagnes!,
@@ -283,11 +294,13 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       ...niveau1BasePatch,
       pvHistorique: [...(character.pvHistorique ?? []), ...nouvellesEntrees],
       ...(mergedEffectsChoix !== undefined ? { effectsChoix: mergedEffectsChoix } : {}),
+      ...(mergedVoieRangChoix !== undefined ? { voieRangChoix: mergedVoieRangChoix } : {}),
     })
     onClose()
   }
 
   return (
+    <>
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
@@ -786,6 +799,83 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
             )
           })()}
 
+          {/* ── Choix de capacité empruntée à une autre voie (VOIE_RANG_CHOIX) ── */}
+          {(() => {
+            const virtualVoies: Partial<Character> = {}
+            for (const key of VOIE_KEYS) {
+              const count = selections[key]
+              if (!count) continue
+              const voie = character[key] as VoiePersonnage
+              const firstNext = prochainRang(voie) ?? voie.rangs.length
+              const newRangs = [...voie.rangs]
+              for (let i = 0; i < count; i++) newRangs[firstNext + i] = true
+              virtualVoies[key] = { ...voie, rangs: newRangs }
+            }
+            const virtualCharacter = { ...character, ...virtualVoies, voieRangChoix: { ...(character.voieRangChoix ?? {}), ...pendingVoieRangChoix } }
+            // Seuls les grants encore SANS choix sont affichés ici — un choix déjà fait est irréversible
+            // (voir la fiche pour le consulter via resolveDisplayRang) : on ne veut pas que l'encart
+            // réapparaisse à chaque montée de niveau tant qu'aucun nouveau grant n'est devenu éligible
+            // (ex : voie de la Forge, le grant du rang 2 ne doit plus rien proposer une fois choisi,
+            // seul celui du rang 4 réapparaîtra plus tard).
+            const pending = getVoieRangChoixGrants(virtualCharacter, data).filter(g => !g.choixFait)
+            if (pending.length === 0) return null
+            return (
+              <section style={{ border: '1px solid rgba(120,180,255,0.35)', borderRadius: 8, padding: '14px 16px', background: 'rgba(120,180,255,0.05)' }}>
+                <div style={{ ...SECTION_LABEL, color: 'rgba(120,180,255,0.85)', marginBottom: 10 }}>
+                  {t('levelUp.capaciteEmpruntee')}
+                </div>
+                {pending.map(({ grant, grantKey, rangNom }) => (
+                  <div key={grantKey} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(200,220,255,0.75)', marginBottom: 6 }}>{rangNom || t('fiche.choisirCapacite')}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {getChoixOptions(grant, data).map(opt => {
+                        const dejaPrise = estCapaciteDejaChoisie(virtualCharacter, opt.voie, opt.rang)
+                        const dejaAvancee = dejaPrise && estAvanceeAccordeePourCible(virtualCharacter, data, opt.voie, opt.rang)
+                        const proposerAvancee = !!grant.avanceeGratuite && dejaPrise && !dejaAvancee
+                        const bloque = dejaPrise && !proposerAvancee
+                        return (
+                          <div key={`${opt.voie}|${opt.rang}`} style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              disabled={bloque}
+                              onClick={() => setPendingVoieRangChoix(prev => ({
+                                ...prev,
+                                [grantKey]: proposerAvancee ? { voie: opt.voie, rang: opt.rang, avanceeSeulement: true } : { voie: opt.voie, rang: opt.rang },
+                              }))}
+                              title={dejaAvancee ? t('levelUp.dejaAvancee') : bloque ? t('levelUp.capaciteDejaPrise') : undefined}
+                              style={{
+                                flex: 1, textAlign: 'left', padding: '6px 10px', borderRadius: 4,
+                                border: `1px solid rgba(120,180,255,${bloque ? 0.15 : 0.5})`,
+                                background: proposerAvancee ? 'rgba(120,180,255,0.1)' : 'transparent',
+                                color: bloque ? 'rgba(200,220,255,0.35)' : 'rgba(200,220,255,0.9)',
+                                fontSize: 13, cursor: bloque ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                              }}>
+                              {symboleElement(opt.voie) && <span style={{ marginRight: 4 }}>{symboleElement(opt.voie)}</span>}
+                              <strong>{opt.nom}</strong> <span style={{ opacity: 0.6 }}>({opt.voie}, {t('levelUp.rangCourt', { rang: opt.rang })})</span>
+                              {proposerAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.obtenirAvancee')}</span>}
+                              {dejaAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.dejaAvancee')}</span>}
+                              {bloque && !dejaAvancee && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>— {t('levelUp.dejaAcquis')}</span>}
+                            </button>
+                            <button
+                              onClick={() => setPreviewVoie(opt.voie)}
+                              title={t('wizard.step3.voirVoie', { nom: voieName(opt.voie) })}
+                              style={{
+                                padding: '6px 10px', borderRadius: 4,
+                                border: '1px solid rgba(120,180,255,0.4)',
+                                background: 'rgba(120,180,255,0.12)',
+                                color: 'rgba(160,200,255,0.95)',
+                                cursor: 'pointer',
+                                fontSize: 16, lineHeight: 1, flexShrink: 0,
+                              }}>▤</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )
+          })()}
+
           {/* ── Notifications Golem ── */}
           {golemNotifs.length > 0 && (
             <section style={{
@@ -929,5 +1019,7 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
         </div>
       </div>
     </div>
+    {previewVoie && <CarteVoieModal nom={previewVoie} onClose={() => setPreviewVoie(null)} character={character} />}
+    </>
   )
 }

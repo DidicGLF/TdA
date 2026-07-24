@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Character, VoiePersonnage, CompagnonOverride } from '../types/character'
+import type { Grant } from '../types/gameData'
 import { parseDesc } from '../utils/parseDesc'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
@@ -10,6 +11,8 @@ import type { FieldPositions } from '../context/GameDataContext'
 import { resolveCompagnon } from '../utils/compagnons'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
 import { useCompagnonName, useTranslatedDescriptions } from '../hooks/useContentTranslation'
+import { resolveDisplayRang, clearVoieRangChoixFromRang, getVoieRangChoixGrants, applyVoieRangChoix, applyVoieRangChoixAvancee } from '../utils/voieRangChoix'
+import VoieRangChoixSheetModal from './VoieRangChoixSheetModal'
 
 interface Props {
   character: Character
@@ -72,6 +75,9 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
   }
   const { data: rawData, compagnons: compagnonsCatalogue } = useGameData()
   const data = useTranslatedDescriptions(rawData)
+  // Modale de choix VOIE_RANG_CHOIX ouverte directement depuis une case à cocher (rang coché sans
+  // être passé par le wizard/la montée de niveau — sinon aucun autre moyen de résoudre le choix).
+  const [choixModal, setChoixModal] = useState<{ grantKey: string; grant: Extract<Grant, { type: 'VOIE_RANG_CHOIX' }>; rangNom: string; anchor: { x: number; y: number } } | null>(null)
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }]))
   )
@@ -115,7 +121,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
     document.addEventListener('mouseup', onUp)
   }
 
-  const togglePrestigeRang = (rang: number) => {
+  const togglePrestigeRang = (rang: number, top: number, left: number) => {
     if (calibrate) return
     const v = character.voiePrestige as VoiePersonnage
     const estCoché = v.rangs[rang]
@@ -133,10 +139,23 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       }
       if (!newRangs[rang]) return
     }
-    onChange({ voiePrestige: { ...v, rangs: newRangs } })
+    if (estCoché) {
+      // Décocher un rang décoche aussi les suivants (en cascade) : leurs choix VOIE_RANG_CHOIX éventuels
+      // n'ont plus de raison d'être conservés.
+      const nextVoieRangChoix = clearVoieRangChoixFromRang(character, data, v.nom, rang)
+      onChange({
+        voiePrestige: { ...v, rangs: newRangs },
+        ...(nextVoieRangChoix !== character.voieRangChoix ? { voieRangChoix: nextVoieRangChoix } : {}),
+      })
+    } else {
+      onChange({ voiePrestige: { ...v, rangs: newRangs } })
+      const virtualCharacter = { ...character, voiePrestige: { ...v, rangs: newRangs } }
+      const pending = getVoieRangChoixGrants(virtualCharacter, data).find(g => g.grantKey.startsWith(`${v.nom}|`) && !g.choixFait)
+      if (pending) setChoixModal({ ...pending, anchor: { x: left, y: top } })
+    }
   }
 
-  const toggleSangMeleRang = (rang: number) => {
+  const toggleSangMeleRang = (rang: number, top: number, left: number) => {
     if (calibrate) return
     const v = character.voieSangMele as VoiePersonnage
     const estCoché = v.rangs[rang]
@@ -154,7 +173,18 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       }
       if (!newRangs[rang]) return
     }
-    onChange({ voieSangMele: { ...v, rangs: newRangs } })
+    if (estCoché) {
+      const nextVoieRangChoix = clearVoieRangChoixFromRang(character, data, v.nom, rang)
+      onChange({
+        voieSangMele: { ...v, rangs: newRangs },
+        ...(nextVoieRangChoix !== character.voieRangChoix ? { voieRangChoix: nextVoieRangChoix } : {}),
+      })
+    } else {
+      onChange({ voieSangMele: { ...v, rangs: newRangs } })
+      const virtualCharacter = { ...character, voieSangMele: { ...v, rangs: newRangs } }
+      const pending = getVoieRangChoixGrants(virtualCharacter, data).find(g => g.grantKey.startsWith(`${v.nom}|`) && !g.choixFait)
+      if (pending) setChoixModal({ ...pending, anchor: { x: left, y: top } })
+    }
   }
 
   const startSangMeleRangDrag = (id: string, e: React.MouseEvent) => {
@@ -408,7 +438,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           <div key={id}>
             <div
               data-voie="true"
-              onClick={() => character.niveau >= 8 && togglePrestigeRang(rang)}
+              onClick={() => character.niveau >= 8 && togglePrestigeRang(rang, top, left)}
               title={character.niveau < 8 ? t('fiche.deblocableNiveau', { n: 8 }) : undefined}
               style={{
                 position: 'absolute', top: `${top}%`, left: `${left}%`,
@@ -445,8 +475,9 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {/* === VOIE PRESTIGE : NOMS DES CAPACITÉS === */}
       {VOIE_PRESTIGE_RANG_NOM_POS.map(({ id, top, left, width }, idx) => {
         const nomVoie = character.voiePrestige.nom
-        const nomCap = data[nomVoie]?.[idx]?.nom || ''
-        const desc = data[nomVoie]?.[idx]?.desc ?? ''
+        const displayRang = resolveDisplayRang(character, data, nomVoie, idx, character.voiePrestige.rangs[idx])
+        const nomCap = displayRang?.rangAChoisir ? t('fiche.choisirCapacite') : (displayRang?.nom || '')
+        const desc = displayRang?.desc ?? ''
         const label = `prestige-cap-${idx}`
         const efp = fp(label, top, left, width, 2.0)
         return (
@@ -493,7 +524,7 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           <div key={id}>
             <div
               data-voie="true"
-              onClick={() => toggleSangMeleRang(rang)}
+              onClick={() => toggleSangMeleRang(rang, top, left)}
               style={{
                 position: 'absolute', top: `${top}%`, left: `${left}%`,
                 width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
@@ -528,8 +559,9 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
       {/* === VOIE SANG-MÊLÉ : NOMS DES CAPACITÉS === */}
       {VOIE_SANG_MELE_RANG_NOM_POS.map(({ id, top, left, width }, idx) => {
         const nomVoie = character.voieSangMele.nom
-        const nomCap = data[nomVoie]?.[idx]?.nom || ''
-        const desc = data[nomVoie]?.[idx]?.desc ?? ''
+        const displayRang = resolveDisplayRang(character, data, nomVoie, idx, character.voieSangMele.rangs[idx])
+        const nomCap = displayRang?.rangAChoisir ? t('fiche.choisirCapacite') : (displayRang?.nom || '')
+        const desc = displayRang?.desc ?? ''
         const label = `sangmele-cap-${idx}`
         const efp = fp(label, top, left, width, 2.0)
         return (
@@ -801,6 +833,22 @@ export default function CharacterSheetVerso({ character, onChange, activeStep, c
           )
         })
       })()}
+
+      {choixModal && (
+        <VoieRangChoixSheetModal
+          character={character}
+          descriptions={data}
+          grant={choixModal.grant}
+          rangNom={choixModal.rangNom}
+          anchor={choixModal.anchor}
+          onChoose={(voieChoisie, rangChoisi, avanceeSeulement) => onChange({
+            voieRangChoix: avanceeSeulement
+              ? applyVoieRangChoixAvancee(character, choixModal.grantKey, voieChoisie, rangChoisi)
+              : applyVoieRangChoix(character, choixModal.grantKey, voieChoisie, rangChoisi),
+          })}
+          onClose={() => setChoixModal(null)}
+        />
+      )}
     </div>
   )
 }

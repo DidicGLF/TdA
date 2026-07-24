@@ -7,6 +7,7 @@ import type { DescMap, Grant } from '../../types/gameData'
 import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
+import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -184,6 +185,21 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     character.voiePrestige, character.voieSangMele,
   ], [character])
 
+  // Rangs obtenus via un grant VOIE_RANG/VOIE_RANG_CHOIX d'une des voies ci-dessus (ex : voie
+  // culturelle de la Forge donnant un rang d'alchimie ou de magie runique, ou "Furie du Berserker"
+  // donnant le rang 3 de la voie de la férocité) — mêmes capacités qu'un rang possédé en propre pour
+  // les bonus/actions activables ci-dessous, mais sans notion de rang avancé ni de sous-choix en cascade.
+  const rangsEmpruntes = useMemo(() => getRangsEmpruntes(character, descriptions), [character, descriptions])
+
+  // Parmi les rangs empruntés, ceux qui n'ont aucun grant activable (BONUS_TEMP/ACTION/AVANTAGE) —
+  // purement descriptifs (ex : Fortifiant, Feu grégeois de la voie d'alchimie) — n'apparaîtraient sinon
+  // nulle part dans le Mode de jeu une fois la fiche fermée ; on les liste à part, en texte simple.
+  const rangsEmpruntesTexte = useMemo(() =>
+    rangsEmpruntes.filter(({ rangData }) =>
+      !(rangData.grants ?? []).some(g => g.type === 'BONUS_TEMP' || g.type === 'ACTION' || g.type === 'AVANTAGE')
+    ),
+  [rangsEmpruntes])
+
   const availableBonuses = useMemo<AvailableBonus[]>(() => {
     const out: AvailableBonus[] = []
     for (const voie of voiesPerso) {
@@ -205,8 +221,22 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         }
       })
     }
+    // Rangs empruntés (VOIE_RANG/VOIE_RANG_CHOIX) : mêmes bonus temporaires activables. La case avancée
+    // se raccroche à celle du rang qui porte le grant (avanceeAccordee), pas de minRang (pas de
+    // progression dans la voie source). Cas limite non géré : si le perso possède déjà EN PROPRE le
+    // même (voieNom, rangIdx) que celui emprunté (ex. Furie du Berserker empruntant un rang de férocité
+    // que le perso a aussi pris directement), boostKey() produit la même clé pour les deux — le livre
+    // les fusionne narrativement dans ce cas précis (voir description de la capacité), pas géré
+    // mécaniquement ici.
+    for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
+      (rangData.grants ?? []).forEach((grant, gi) => {
+        if (grant.type !== 'BONUS_TEMP' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) return
+        const bonusValue = grant.formula ? (resolveFormula(grant.formula, character) ?? 0) : (grant.bonus ?? 0)
+        out.push({ voieNom, rangIdx, grantIdx: gi, rangNom: rangData.nom, label: grant.label, bonus: bonusValue, formula: grant.formula, deDegats: grant.deDegats, deDegatsParArme: grant.deDegatsParArme, temporaire: grant.temporaire, cibles: grant.cibles, choix: grant.choix, cout_pv: grant.cout_pv, cout_pm: grant.cout_pm, coutCaracStat: grant.coutCaracStat, coutCaracValeur: grant.coutCaracValeur, usage: grant.usage, post_jet: grant.post_jet, precision: grant.precision, div2: grant.div2, immunite: grant.immunite })
+      })
+    }
     return out
-  }, [voiesPerso, descriptions, character])
+  }, [voiesPerso, rangsEmpruntes, descriptions, character])
 
   const permanentBonusByStat = useMemo(() => {
     const map = new Map<string, number>()
@@ -246,8 +276,17 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         }
       })
     }
+    for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
+      for (const grant of rangData.grants ?? []) {
+        if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+        const lancer = grant.lancer ?? 2
+        const garder = grant.garder ?? 1
+        map.set(grant.stat, { lancer, garder })
+        list.push({ voieNom, rangIdx, rangNom: rangData.nom, stat: grant.stat, lancer, garder })
+      }
+    }
     return { statsAvantage: map, availableAvantages: list }
-  }, [voiesPerso, descriptions])
+  }, [voiesPerso, rangsEmpruntes, descriptions])
 
   const availableActions = useMemo<AvailableAction[]>(() => {
     const out: AvailableAction[] = []
@@ -279,8 +318,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         }
       })
     }
+    for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
+      for (const grant of rangData.grants ?? []) {
+        if (grant.type !== 'ACTION' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+        out.push({ voieNom, rangIdx, rangNom: rangData.nom, label: grant.label, de: grant.de, dm: grant.dm, attType: grant.attType, activable: grant.activable, cout_pm: grant.cout_pm })
+      }
+    }
     return out
-  }, [voiesPerso, descriptions])
+  }, [voiesPerso, rangsEmpruntes, descriptions])
 
   // Effets de voie actifs par stat
   const effectsByStatMap = useMemo(() => {
@@ -300,6 +345,13 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         }
       })
     }
+    for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
+      for (const eff of rangData.effects ?? []) {
+        if (!eff.stat || (eff.avancee && !avanceeAccordee) || eff.minRang !== undefined) continue
+        if (!map.has(eff.stat)) map.set(eff.stat, [])
+        map.get(eff.stat)!.push({ voieNom, rangIdx, rangNom: rangData.nom, value: eff.value, formula: eff.formula, diceStr: eff.diceStr })
+      }
+    }
     for (const ab of availableBonuses) {
       if (ab.temporaire) continue
       for (const cible of ab.cibles) {
@@ -308,7 +360,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       }
     }
     return map
-  }, [voiesPerso, descriptions, availableBonuses])
+  }, [voiesPerso, rangsEmpruntes, descriptions, availableBonuses])
 
   const pushHistory = useCallback((entry: RollResult) => {
     setHistory(prev => [entry, ...prev].slice(0, 20))
@@ -1431,6 +1483,26 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
             </div>
           )}
         </div>
+
+        {/* ── Section : Capacités empruntées (texte) — voir rangsEmpruntesTexte ── */}
+        {rangsEmpruntesTexte.length > 0 && (
+          <div style={SECTION_DIVIDER}>
+            <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              {t('gameMode.rangsEmpruntesTitre')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rangsEmpruntesTexte.map(({ voieNom, rangIdx, rangData, grantKey }) => (
+                <div key={grantKey} style={{ padding: '8px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: GOLD }}>{rangData.nom}</span>
+                    <span style={{ fontSize: 12, color: `rgba(245,236,215,0.3)` }}>{t('gameMode.rangVoie', { rang: rangIdx + 1, voie: voieNom })}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)', lineHeight: 1.4 }}>{rangData.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 

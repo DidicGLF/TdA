@@ -8,11 +8,14 @@ import CristalSvg from './CristalSvg'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import type { ArmesData, ArmuresData, FieldPositions } from '../context/GameDataContext'
+import type { Grant } from '../types/gameData'
 import { parseDesc } from '../utils/parseDesc'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
 import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions } from '../utils/computeEffects'
 import { calcPointsCapacite, coutRangPourVoie } from '../utils/levelUp'
+import { resolveDisplayRang, clearVoieRangChoixFromRang, getVoieRangChoixGrants, applyVoieRangChoix, applyVoieRangChoixAvancee } from '../utils/voieRangChoix'
+import VoieRangChoixSheetModal from './VoieRangChoixSheetModal'
 
 const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
@@ -162,12 +165,20 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
   const traitRacialName = useTraitRacialName()
   const traitRacialDesc = useTraitRacialDesc()
   type TooltipLine = { label: string; value: string | number; neg?: boolean; cristal?: typeof cristauxData[0] }
+  type TooltipItem = { nom: string; desc: string; avanceeOwned?: boolean }
   type TooltipData =
-    | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; x: number; y: number }
-    | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; avanceeOwned?: never; x: number; y: number }
+    | { nom: string; desc: string; rang?: number; avanceeOwned?: boolean; lines?: never; total?: never; items?: never; x: number; y: number }
+    | { nom: string; lines: TooltipLine[]; total: string | number; rang?: never; desc?: never; avanceeOwned?: never; items?: never; x: number; y: number }
+    // items : une capacité empruntée/choisie affichée avec le nom du rang à côté de plusieurs autres
+    // (ex : Perfection élémentaliste) — chacune avec son propre statut avancée, plutôt qu'un unique
+    // badge global qui ne dirait pas laquelle des capacités jointes est réellement avancée.
+    | { nom: string; items: TooltipItem[]; rang?: number; lines?: never; desc?: never; total?: never; avanceeOwned?: never; x: number; y: number }
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [hoveredRangInfo, setHoveredRangInfo] = useState<{ voie: VoieKey; rang: number; x: number; y: number } | null>(null)
-  const toggleVoieRang = (voie: VoieKey, rang: number) => {
+  // Modale de choix VOIE_RANG_CHOIX ouverte directement depuis une case à cocher (rang coché sans être
+  // passé par le wizard/la montée de niveau — sinon aucun autre moyen de résoudre le choix).
+  const [choixModal, setChoixModal] = useState<{ grantKey: string; grant: Extract<Grant, { type: 'VOIE_RANG_CHOIX' }>; rangNom: string; anchor: { x: number; y: number } } | null>(null)
+  const toggleVoieRang = (voie: VoieKey, rang: number, top: number, left: number) => {
     if (calibrate) return
     const v = character[voie] as VoiePersonnage
     if (!v.nom) return
@@ -188,6 +199,21 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
     }
 
     const patch: Partial<Character> = { [voie]: { ...v, rangs: newRangs } }
+
+    if (estCoché) {
+      // Décocher un rang décoche aussi les suivants (en cascade) : tout choix VOIE_RANG_CHOIX associé à
+      // ces rangs n'a plus de raison d'être conservé, sans quoi il réapparaîtrait tel quel si on recoche.
+      const nextVoieRangChoix = clearVoieRangChoixFromRang(character, data, v.nom, rang)
+      if (nextVoieRangChoix !== character.voieRangChoix) patch.voieRangChoix = nextVoieRangChoix
+    } else {
+      // Rang qui vient d'être coché : si ça débloque un choix VOIE_RANG_CHOIX (le sien ou celui d'un
+      // rang antérieur dont le minRang est désormais atteint, ex: 2e choix de la Forge au rang 4), on
+      // ouvre directement le popover de choix — sinon aucun autre écran ne le proposerait avant la
+      // prochaine ouverture (éventuelle) de la montée de niveau.
+      const virtualCharacter = { ...character, [voie]: { ...v, rangs: newRangs } }
+      const pending = getVoieRangChoixGrants(virtualCharacter, data).find(g => g.grantKey.startsWith(`${v.nom}|`) && !g.choixFait)
+      if (pending) setChoixModal({ ...pending, anchor: { x: left, y: top } })
+    }
 
     if (estCoché && character.pvHistorique?.length) {
       const oldConBonus = sumStat(effects['CON'] ?? [])
@@ -894,12 +920,19 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {/* === NOMS DES CAPACITÉS + ZONES HOVER === */}
       {VOIE_RANG_CHECKBOXES.map(({ id, voie, rang }) => {
         const nomVoie = (character[voie] as VoiePersonnage).nom
-        const nomCap = data[nomVoie]?.[rang]?.nom || ''
-        const desc = data[nomVoie]?.[rang]?.desc ?? ''
+        // Si ce rang porte un choix VOIE_RANG_CHOIX déjà fait (ex: voie culturelle de la Forge), on
+        // affiche la capacité réellement choisie (nom + desc) plutôt que le texte générique du rang —
+        // mais seulement tant que le rang est coché (acquis), sinon on revient au texte générique.
+        const displayRang = resolveDisplayRang(character, data, nomVoie, rang, (character[voie] as VoiePersonnage).rangs[rang])
+        const nomCap = displayRang?.rangAChoisir ? t('fiche.choisirCapacite') : (displayRang?.nom || '')
+        const desc = displayRang?.desc ?? ''
         const pos = VOIE_RANG_NOM_POS.find(p => p.id === id)!
         const voieData = character[voie] as VoiePersonnage
         const hasAvancee = rang <= 1 && desc.includes('Capacité avancée')
-        const avanceeOwned = hasAvancee ? (voieData.rangsAvances?.[rang] === true) : undefined
+        // avanceeAccordee (via un choix VOIE_RANG_CHOIX résolu, payant OU gratuit type Perfection) prime
+        // sur la case avancée brute du rang quand le rang affiché vient d'un choix — sinon (capacité
+        // possédée directement) on retombe sur la case avancée classique du rang.
+        const avanceeOwned = hasAvancee ? (displayRang?.avanceeAccordee ?? (voieData.rangsAvances?.[rang] === true)) : undefined
         return (
           <React.Fragment key={`${id}-cap`}>
             {f({ label: `${id} nom`, top: pos.top, left: pos.left, width: pos.width, height: 2.0, value: nomCap, onChange: () => {}, readOnly: locked, active: activeStep === 3 })}
@@ -915,7 +948,24 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
                 }}
                 onMouseEnter={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
-                  setTooltip({ nom: nomCap, desc, rang: rang + 1, avanceeOwned, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+                  const x = (e.clientX - rect.left) / rect.width * 100
+                  const y = (e.clientY - rect.top) / rect.height * 100
+                  if (displayRang?.items && displayRang.items.length > 0) {
+                    // Plusieurs capacités juxtaposées (ex: Perfection élémentaliste) : chacune avec son
+                    // propre statut avancée, pour ne pas laisser croire qu'un badge global s'applique aux
+                    // deux alors qu'une seule des deux a réellement l'avancée.
+                    setTooltip({
+                      nom: nomCap,
+                      items: displayRang.items.map(it => ({
+                        nom: it.nom,
+                        desc: it.desc,
+                        avanceeOwned: (rang <= 1 && it.desc.includes('Capacité avancée')) ? it.avanceeAccordee : undefined,
+                      })),
+                      rang: rang + 1, x, y,
+                    })
+                  } else {
+                    setTooltip({ nom: nomCap, desc, rang: rang + 1, avanceeOwned, x, y })
+                  }
                 }}
                 onMouseMove={e => {
                   const rect = containerRef.current!.getBoundingClientRect()
@@ -951,7 +1001,9 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
           pointerEvents: 'none',
           boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
         }}>
-          <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
+          {!activeTooltip.items && (
+            <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 6, fontSize: '1.05em' }}>{activeTooltip.nom}</div>
+          )}
           {activeTooltip.desc && (
             <>
               <div style={{ lineHeight: 1.5 }}>{parseDesc(activeTooltip.desc, character, data, activeTooltip.rang)}</div>
@@ -969,6 +1021,23 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
               )}
             </>
           )}
+          {activeTooltip.items && activeTooltip.items.map((item, i) => (
+            <div key={i} style={{ marginTop: i > 0 ? 10 : 0, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? '1px solid rgba(201,168,76,0.2)' : undefined }}>
+              <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 4, fontSize: '1.05em' }}>{item.nom}</div>
+              <div style={{ lineHeight: 1.5 }}>{parseDesc(item.desc, character, data, activeTooltip.rang)}</div>
+              {item.avanceeOwned !== undefined && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  marginTop: 6,
+                  color: item.avanceeOwned ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.35)',
+                  fontSize: '0.9em',
+                }}>
+                  <span style={{ fontSize: '1.1em' }}>{item.avanceeOwned ? '✓' : '○'}</span>
+                  <span>Capacité avancée{!item.avanceeOwned ? ' (non acquise)' : ''}</span>
+                </div>
+              )}
+            </div>
+          ))}
           {activeTooltip.lines && (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <tbody>
@@ -1018,7 +1087,7 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
         return (
           <div key={id}>
             <div
-              onClick={() => !sangMeleLimite && toggleVoieRang(voie, rang)}
+              onClick={() => !sangMeleLimite && toggleVoieRang(voie, rang, top, left)}
               {...(showRangTooltip && {
                 onMouseEnter: e => {
                   const rect = containerRef.current?.getBoundingClientRect()
@@ -1072,6 +1141,21 @@ export default function CharacterSheetRecto({ character, onChange, activeStep, c
       {f({ label: "Voie 2", top: 70.3, left: 53.1, width: 23.6, height: 2.0, value: voieName(character.voie2.nom), onChange: locked ? () => {} : v => onChange({ voie2: { ...character.voie2, nom: v } }), readOnly: locked, active: activeStep === 3 })}
       {f({ label: "Voie 3", top: 70.3, left: 84.1, width: 23.5, height: 2.0, value: voieName(character.voie3.nom), onChange: locked ? () => {} : v => onChange({ voie3: { ...character.voie3, nom: v } }), readOnly: locked, active: activeStep === 3 })}
 
+      {choixModal && (
+        <VoieRangChoixSheetModal
+          character={character}
+          descriptions={data}
+          grant={choixModal.grant}
+          rangNom={choixModal.rangNom}
+          anchor={choixModal.anchor}
+          onChoose={(voieChoisie, rangChoisi, avanceeSeulement) => onChange({
+            voieRangChoix: avanceeSeulement
+              ? applyVoieRangChoixAvancee(character, choixModal.grantKey, voieChoisie, rangChoisi)
+              : applyVoieRangChoix(character, choixModal.grantKey, voieChoisie, rangChoisi),
+          })}
+          onClose={() => setChoixModal(null)}
+        />
+      )}
     </div>
   )
 }

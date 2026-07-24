@@ -120,7 +120,7 @@ type Effect = { stat: string; value?: number; formula?: string; diceStr?: string
 type Grant =
   | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
-  | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
+  | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; rangMin?: number; minRang?: number; avancee?: boolean; avanceeGratuite?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
   | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; condition?: EffectCondition; minRang?: number; avancee?: boolean }
@@ -408,7 +408,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string | number; voie?: string; rang?: number; voies?: string[]; rangMax?: number; nom?: string; noms?: string[]; remplace?: string; stats?: string[]; formula?: string; rangMultiplier?: boolean; minRang?: number | null; avancee?: boolean | null }) => {
+  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string | number; voie?: string; rang?: number; voies?: string[]; rangMax?: number; rangMin?: number; nom?: string; noms?: string[]; remplace?: string; stats?: string[]; formula?: string; rangMultiplier?: boolean; minRang?: number | null; avancee?: boolean | null; avanceeGratuite?: boolean }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
@@ -2097,10 +2097,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
                           {grant.type === 'VOIE_RANG_CHOIX' && (
                             <>
+                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.rangMinLabel')}</span>
+                              <input
+                                type="number" min={1} max={5} value={grant.rangMin ?? 1}
+                                title={t('descEditor.rangMinTitle')}
+                                onChange={e => updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: grant.voies, rangMax: grant.rangMax, rangMin: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) })}
+                                style={{ width: 40, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: S.gold, outline: 'none', textAlign: 'center' }}
+                              />
                               <span style={{ fontSize: 13, color: S.parchment, opacity: 0.5 }}>{t('descEditor.rangMaxLabel')}</span>
                               <input
                                 type="number" min={1} max={5} value={grant.rangMax}
-                                onChange={e => updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: grant.voies, rangMax: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) })}
+                                onChange={e => updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: grant.voies, rangMax: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)), rangMin: grant.rangMin })}
                                 style={{ width: 40, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 13, color: S.gold, outline: 'none', textAlign: 'center' }}
                               />
                             </>
@@ -2561,6 +2568,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               Masqué si capacité avancée prise
                             </label>
                           )}
+                          {grant.type === 'VOIE_RANG_CHOIX' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(120,180,255,0.85)', cursor: 'pointer', userSelect: 'none' }}
+                              title={t('descEditor.avanceeGratuiteTitle')}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!grant.avanceeGratuite}
+                                onChange={e => updateGrant(selected, i, gi, { avanceeGratuite: e.target.checked || undefined } as never)}
+                                style={{ accentColor: 'rgba(120,180,255,0.85)', cursor: 'pointer' }}
+                              />
+                              {t('descEditor.avanceeGratuite')}
+                            </label>
+                          )}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(201,168,76,0.15)' }}>
                           <button
@@ -2596,10 +2616,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                             >
                               <option value="">{t('descEditor.ajouterVoiePlus')}</option>
-                              {VOIES_INIT.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{voieName(v)}</option>)}
+                              {voiesList.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{voieName(v)}</option>)}
                             </select>
                           </div>
                         )}
+
                       </div>
                     )
                     }

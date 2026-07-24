@@ -445,7 +445,7 @@
     },
     {
       "nom": "Déluge de coups (L)",
-      "desc": "Lors de son tour, le PJ peut effectuer deux attaques à mains nues sur des cibles de son choix ou deux attaques avec une arme. Alternative- ment, il peut choisir de porter trois attaques en utilisant un d12 en attaque pour chacune d'elles (au lieu d'un d20)."
+      "desc": "Lors de son tour, le PJ peut effectuer deux attaques à mains nues sur des cibles de son choix ou deux attaques avec une arme. Alternativement, il peut choisir de porter trois attaques en utilisant un d12 en attaque pour chacune d'elles (au lieu d'un d20)."
     },
     {
       "nom": "Force héroïque",
@@ -1854,7 +1854,18 @@
   "Voie du sang draconique": [
     {
       "nom": "Ascendance draconique",
-      "desc": "Grâce au sang de dragon qui coule dans ses veines, le PJ obtient une réduction de 5 points des DM de feu. Cette résistance passe à 10 au rang 4 de la voie."
+      "desc": "Grâce au sang de dragon qui coule dans ses veines, le PJ obtient une réduction de 5 points des DM de feu. Cette résistance passe à 10 au rang 4 de la voie.",
+      "effects": [
+        {
+          "stat": "RD_FEU",
+          "value": 5
+        },
+        {
+          "stat": "RD_FEU",
+          "value": 10,
+          "minRang": 4
+        }
+      ]
     },
     {
       "nom": "Férocité (L)",
@@ -2874,7 +2885,8 @@
             "Voie de l'alchimie",
             "Voie de la magie runique"
           ],
-          "rangMax": 2
+          "rangMax": 2,
+          "minRang": 4
         }
       ]
     },
@@ -4206,7 +4218,7 @@
     },
     {
       "nom": "Etoile jumelle (L)",
-      "desc": "Le PJ choisit une capacité dans la liste des pierres d’âme divines. Il ne peut toujours utiliser qu’une seule pierre divine par jour. Les pierres divines nécessitent toujours une action limitée pour être utilisées."
+      "desc": "Le PJ choisit une capacité dans la liste des pierres d’âme divines. Il ne peut toujours utiliser qu���une seule pierre divine par jour. Les pierres divines nécessitent toujours une action limitée pour être utilisées."
     }
   ],
   "Voie de la mort": [
@@ -4490,6 +4502,962 @@
     {
       "nom": "Pierre-esprit parfaite",
       "desc": "Rang 5 : Pierre-esprit parfaite\nLe runiste est parvenue à créer des pierres-esprits parfaites. Le golem de guerre gagne la capacité avancée de la pierre en plus de la capacité de base."
+    }
+  ],
+  "Desctruction feu": [
+    {
+      "nom": "Trait de feu*",
+      "desc": "Le PJ tire un trait de feu sur une cible située à moins de 10 mètres. Sur une attaque magique réussie, la cible subit [1d6 + Mod. INT] DM de feu. Les DM passent à 2d6 au rang 4 atteint dans la voie.\n\n**==Capacité avancée :==** la cible s’enflamme et subit 1d6 DM de feu supplémentaire pendant [Mod. de SAG] tours.",
+      "effects": [],
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Trait de feu*",
+          "de": 20,
+          "dm": "1d6+Mod.INT",
+          "activable": true,
+          "cout_pm": "1",
+          "attType": "magique"
+        }
+      ]
+    },
+    {
+      "nom": "Combustion spontanée*",
+      "desc": "Le PJ désigne un petit objet inflammable à une portée de 20 mètres et provoque son embrasement. \nS’il est porté par une créature (telle une sacoche en lin ou une mèche de cheveux), le PJ doit réussir un test d’attaque magique avec une difficulté de -5 au test. En cas de réussite, l’embrasement n’est pas suffisant pour blesser mais la créature doit réussir un test de SAG difficulté [12 + Mod. d’INT] sous peine d’être surprise pendant un tour. Une créature ne peut être surprise de cette façon plus d’une fois par combat.\n\n**==Capacité avancée :==** le PJ ne souffre plus de malus à son test d’attaque."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Boule de feu*",
+      "desc": "Le PJ choisit une cible située à moins de 30 mètres. Il fait un test d’attaque magique et le compare à la DEF de tous les personnages (y compris le PJ et ses compagnons) se trouvant dans un diamètre de 6 mètres autour de la cible. Chaque victime pour laquelle le test est un succès encaisse [4d6 + Mod. d’INT] DM de feu. En cas d’échec, la cible subit la moitié des DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Boule de feu*",
+          "de": 20,
+          "dm": "4d6+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "4"
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Destruction nature": [
+    {
+      "nom": "Pluie de silex*",
+      "desc": "Le PJ projette une volée de silex acérés sur une cible située à moins de 15 mètres. Sur une attaque magique réussie, la cible subit 1d4 DM. Si la cible ne porte pas d’armure manufacturée, les DM passent à 3d4.\nLes DM passent au d6 au rang 4 atteint dans la voie (donc 1d6 et 3d6).\n\n**==Capacité avancée :==** le PJ a un meilleur contrôle de sa pluie de silex. Il ajoute son [Mod. d’INT] aux DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Pluie de silex*",
+          "de": 20,
+          "dm": "1d4",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "1",
+          "masqueSiAvancee": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Pluie de silex*",
+          "de": 20,
+          "dm": "1d4+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "1",
+          "avancee": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Pluie de silex*",
+          "de": 20,
+          "dm": "1d6",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "1",
+          "minRang": 4,
+          "masqueSiAvancee": true
+        },
+        {
+          "type": "ACTION",
+          "label": "Pluie de silex*",
+          "de": 20,
+          "dm": "1d6+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "1",
+          "minRang": 4,
+          "avancee": true
+        }
+      ]
+    },
+    {
+      "nom": "Ronces*",
+      "desc": "Le PJ désigne une cible située à une portée de 10 mètres. Sur une attaque magique réussie, il fait jaillir du sol des ronces qui enserrent le corps de la cible pendant [5 + Mod. de SAG] tours. Pendant toute la durée du sort, la cible subit 1 DM pour chaque action qu’elle réalise. Au prix d’une action de mouvement et en réussissant un test de DEX difficulté [12 + Mod. d’INT], la victime peut se libérer des ronces.\n\n**==Capacité avancée :==** les ronces sont empoisonnées et infligent un malus de -2 aux tests."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Projection d'acide*",
+      "desc": "Le PJ projette une gerbe d’acide sur une cible située à une portée de 20 mètres. En cas d’attaque réussie, elle subit [2d6 + Mod d’INT] DM d’acide et le liquide éclabousse toutes les créatures échouant à un test de DEX difficulté [14 + Mod d’INT] situées dans un rayon de 3 mètres. L’acide ronge les chairs pendant 4 tours en infligeant [1d4 + Mod. d’INT] DM d’acide par tour.\n\nIl est possible de se débarrasser du corrosif en se rinçant à l’eau au prix d’une action limitée.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Projection d'acide*",
+          "de": 20,
+          "dm": "2d6+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "4"
+        }
+      ],
+      "effects": []
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Destruction eau": [
+    {
+      "nom": "Asphyxie*",
+      "desc": "Sur une attaque magique réussie, le PJ fait apparaître de l’eau dans les poumons d’une cible (portée : 20 mètres). La cible subit 1d6 DM par tour pendant [1 + Mod. de SAG] tours.\nCe sort est sans effet sur les créatures aquatiques ou qui ne respirent pas.\n\n**==Capacité avancée :==** la cible ne peut plus s’exprimer correctement et devient incapable de parler. S’il s’agit d’un lanceur de sort, elle souffre d’un malus de -3 à ses tests d’attaque magique."
+    },
+    {
+      "nom": "Contre-sort*",
+      "desc": "Une fois par tour et en action immédiate, le PJ peut tenter d’annuler le lancement d’un sort offensif dirigé contre une cible à moins de 20 mètres. Il doit réussir un test d’attaque magique opposé à celui du mystique adverse. En cas de réussite, le sort est annulé. Ce sort ne peut bénéficier de concentration et le PJ ne peut agir lors de son prochain tour.\n\n**==Capacité avancée :==** après avoir eu recours à un contre-sort, le PJ peut effectuer une action de mouvement à son tour."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Cône de froid*",
+      "desc": "Le sort affecte toutes les créatures dans un cône approximatif d’une portée de 10 mètres et d’une largeur de 6 mètres à son extrémité. Les victimes subissent [3d6 + Mod d’INT] DM de froid et sont ralenties pour 1 tour si elles ratent un test de CON difficulté [14 + Mod d’INT].\nEn cas de réussite au test, les victimes ne subissent que la moitié des DM et ne sont pas ralenties.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Cône de froid*",
+          "de": 20,
+          "dm": "3d6+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "4"
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Destruction foudre": [
+    {
+      "nom": "Éclair*",
+      "desc": "Le PJ projette un éclair qui frappe une cible (portée : 10 mètres). Sur une attaque magique réussie, elle subit [1d4 + Mod. d’INT] DM électriques. L’éclair peut affecter également sur une autre cible située à moins de 5 mètres de la première (le test est à comparer à la DEF de la cible). Les DM passent à 1d6 au rang 4 atteint dans la voie.\n\n**==Capacité avancée :==** l’éclair peut rebondir sur une troisième cible située à moins de 5 mètres de la seconde.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Éclair",
+          "de": 20,
+          "dm": "1d4+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "1"
+        }
+      ]
+    },
+    {
+      "nom": "Énergie statique*",
+      "desc": "Le PJ se charge d’énergie statique pendant [5 + Mod de SAG] tours. Toute créature qui le blesse au contact ou le touche reçoit une décharge infligeant 1d6 DM. Pendant toute la durée du sort il peut, au prix d’une action de mouvement, lancer une décharge vers une cible proche (attaque magique, portée 5 mètres) infligeant 1d4 DM.\n\n**==Capacité avancée : ==**le PJ peut ajouter son [Mod d’INT] aux DM de ses décharges."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Foudre*",
+      "desc": "Le PJ produit un éclair sur une ligne de 10 mètres. Toutes les créatures sur la trajectoire sont soumises à un test d’attaque magique et subissent [4d6 + Mod d’INT] DM. En cas d’échec, la cible subit la moitié des DM.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Foudre*",
+          "de": 20,
+          "dm": "4d6+[Mod.INT]",
+          "attType": "magique",
+          "activable": true,
+          "cout_pm": "4"
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Voie de la destruction élémentaire": [
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Desctruction feu",
+            "Destruction eau",
+            "Destruction nature",
+            "Destruction foudre"
+          ],
+          "rangMax": 1
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Desctruction feu",
+            "Destruction eau",
+            "Destruction nature",
+            "Destruction foudre"
+          ],
+          "rangMax": 2,
+          "minRang": 3,
+          "avanceeGratuite": true
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Desctruction feu",
+            "Destruction eau",
+            "Destruction nature",
+            "Destruction foudre"
+          ],
+          "rangMax": 2,
+          "minRang": 5,
+          "rangMin": 1,
+          "avanceeGratuite": true
+        }
+      ],
+      "effects": []
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Desctruction feu",
+            "Destruction eau",
+            "Destruction nature",
+            "Destruction foudre"
+          ],
+          "rangMax": 2,
+          "rangMin": 2
+        }
+      ]
+    },
+    {
+      "nom": "Perfection",
+      "desc": "Le PJ choisit une capacité de rang 1 ou 2 d’une voie de magie élémentaliste qu’il maîtrise déjà. Il gagne une nouvelle version élémentaire de ce rang (ou sa version avancée). Au rang 5 atteint dans cette voie, il peut renouveler cette opération pour gagner une version élémentaire supplémentaire (ou sa version avancée)."
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Desctruction feu",
+            "Destruction nature",
+            "Destruction eau",
+            "Destruction foudre"
+          ],
+          "rangMax": 4,
+          "rangMin": 4
+        }
+      ]
+    },
+    {
+      "nom": "Quintessence élémentaliste",
+      "desc": "Le PJ peut augmenter la puissance destructrice de ses sorts élémentalistes. Sur une attaque magique, il peut utiliser un d12 en attaque au lieu du d20 habituel. Si l’attaque est réussie, il ajoute 2d6 aux DM. Cette capacité s’utilise uniquement avec les sorts nécessitant un test d’attaque et infligeant des DM variables (Ronces n’est donc pas éligible par exemple). Si les DM sont répartis sur plusieurs tours, seuls les DM initiaux sont modifiés."
+    }
+  ],
+  "Élémentaire feu": [
+    {
+      "nom": "Arme enflammée*",
+      "desc": "En touchant une arme, le PJ peut l’enflammer pendant [Mod. de SAG + rang atteint dans la voie] tours, octroyant un bonus de +1d4 DM de feu à celle-ci.\n\nLe bonus passe à +2d4 au rang 4 atteint dans la voie.\n\n**==Capacité avancée :==** le PJ peut lancer le sort à distance jusqu’à une portée de 10 m.\n\nNote : ce sort ne peut se cumuler avec les effets d’une autre amélioration produisant un bonus de DM de même type élémentaire",
+      "grants": []
+    },
+    {
+      "nom": "Mur de flammes*",
+      "desc": "Le PJ génère un mur de flammes d’environ 6 mètres de long et 2 mètres de haut jusqu’à une portée de 15 mètres. Toute créature traversant le mur ou prise dedans subit automatiquement 1d6 DM de feu par rang atteint dans la voie. Les victimes doivent réussir un test de CON difficulté [10 + Mod. d’INT] pour diviser les DM par deux.\nLe mur persiste pendant [5 + Mod. de SAG] tours et le PJ ne peut maintenir qu’un mur à la fois.\n\n**==Capacité avancée :==** le PJ peut maintenir un total de [Mod. d’INT] mur (minimum 2) en même temps. Chaque mur doit être généré individuellement."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Purification*",
+      "desc": "Par la maîtrise de la magie du feu, le PJ peut augmenter la température de son corps et neutraliser immédiatement tous les effets des poisons et maladies l’affectant. De plus, il peut immédiatement dépenser un PR et bénéficier de ses effets."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Élémentaire eau": [
+    {
+      "nom": "Brume*",
+      "desc": "Le PJ crée un brouillard très dense jusqu’à une portée de 20 m sur une zone de 20 m de diamètre. Dans cette zone, la visibilité est très réduite et équivalente à la pénombre. Il n’est pas possible de voir au-delà du brouillard qui persiste pendant [5 + Mod. de SAG] tours.\n\n**==Capacité avancée : ==**en doublant le coût en PM, le PJ peut doubler la zone du sort ou sa durée – tout en appliquant les effets d’une concentration s’il le souhaite.."
+    },
+    {
+      "nom": "Miroir de cristal*",
+      "desc": "Le PJ crée un mur de glace large et dense (portée 10 m, jusqu’à 5 m de haut et 10 m de long) qui persiste pendant [5 + Mod. de SAG] tours.\nLe mur a une solidité égale à [rang atteint dans la voie x 10] et une RD égale à [Mod. d’INT x 3] (minimum 4).\nLa RD est ignorée par les dégâts contondants et divisée par deux par les dégâts de feu.\nLe PJ ne peut générer qu’un seul mur à la fois.\n\n**==Capacité avancée ==**: le PJ peut maintenir un total de [Mod. d’INT] murs (minimum 2) en même temps. Chaque mur doit être généré individuellement."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Présence glaciale*",
+      "desc": "Le corps du PJ se couvre de glace. Il gagne +4 en DEF, est immunisé contre les DM de froid et divise par deux les DM de feu. Lorsqu’il marche, il gèle le sol et peut se déplacer sur l’eau en la transformant en glace. Le sort dure [1d6 + Mod. de SAG] minutes.",
+      "effects": [
+        {
+          "stat": "DEF",
+          "value": 4
+        },
+        {
+          "stat": "RD_FROID",
+          "value": 1,
+          "immunite": true
+        },
+        {
+          "stat": "RD_FEU",
+          "value": 1,
+          "div2": true
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Élémentaire nature": [
+    {
+      "nom": "Prison végétale*",
+      "desc": "Le PJ peut commander à la végétation de pousser et bloquer ses ennemis (mais pas ses alliés) dans une zone de 10 m de diamètre (portée : 20 m) pendant [5 + Mod de SAG] tours. Entravées, les cibles subissent un malus de -2 en attaque et en DEF et ne peuvent pas se déplacer. Chaque tour, une créature peut se libérer au prix d’une action gratuite avec un test de FOR difficulté [10 + Mod. d’INT].\n\n**==Capacité avancée :==** les cibles entravées subissent un malus de -3 en attaque et en DEF."
+    },
+    {
+      "nom": "Ceinture de roches*",
+      "desc": "Des éclats de pierre et de terre lévitent autour du PJ pendant [5 + Mod. de SAG] tours, formant un bouclier. Il gagne +2 en DEF. Ce bonus passe à +4 au rang 4 de la voie.\n\n==**Capacité avancée :**== en doublant le coût en PM, le PJ peut lancer ce sort juste avant de subir une attaque. Il ne doit pas être surpris pour cela et ne peut user de concentration."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Régénération*",
+      "desc": "La cible touchée par le PJ guérit de 2 PV par tour pendant [niveau du PJ + Mod. de SAG] tours. Ce sort ne peut pas affecter une créature plus d’une fois par jour.\n\nCe sort permet de guérir de blessures graves telles que les brûlures ou les larges plaies mais ne permet pas de faire repousser les membres perdus."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Élémentaire foudre": [
+    {
+      "nom": "Bourrasque*",
+      "desc": "Le PJ projette une violente rafale de vent face à lui, formant un cône d’environ 10 m de long pour 4 m de large à son extrémité. Il doit réussir un test d’attaque magique opposé contre les cibles prises dans la zone d’effet (si les créatures n’ont pas d’attaque magique, on utilise alors leur attaque au contact en appliquant un malus de -3). En cas d’échec, elles sont projetées vers l’arrière sur une distance de [1d4 + Mod d’INT] mètres et sont renversées.\n\n**==Capacité avancée :==** le PJ bénéficie d’un bonus de +2 à son test d’attaque magique.",
+      "effects": []
+    },
+    {
+      "nom": "Stimulation*",
+      "desc": "Le PJ envoie une faible décharge électrique vers une cible qu’il peut voir, jusqu’à une portée de 20 mètres. Cette décharge est trop faible pour provoquer une perte de DM mais elle est suffisante pour réveiller une créature endormie (même avec un sommeil magique) ou tenter de contrer les effets d’un sort d’envoûtement : le PJ doit réussir un test d’attaque magique difficulté [15 + Mod. d’INT de la créature] pour la tirer de son envoûtement. En cas d’échec, il ne peut pas retenter sa chance avant une journée\n\n**==Capacité avancée :==** le PJ peut stimuler un total de [Mod. d’INT] (minimum 2) créatures en une seule action."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Forme gazeuse*",
+      "desc": "Le PJ prend la consistance d’un gaz invisible. Il se déplace dans l’air à une vitesse de 10 m par action de mouvement. Il peut s’introduire dans de petits interstices mais ne peut utiliser aucune capacité sous cette forme et ne subit aucun DM – à l’exception des DM de zone magiques ou élémentaires (tels que Boule de feu).\nLe sort dure [5 + Mod. de SAG] tours."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Voie de la maîtrise élémentaire": [
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Élémentaire feu",
+            "Élémentaire nature",
+            "Élémentaire eau",
+            "Élémentaire foudre"
+          ],
+          "rangMax": 1
+        }
+      ],
+      "effects": []
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Élémentaire feu",
+            "Élémentaire nature",
+            "Élémentaire eau",
+            "Élémentaire foudre"
+          ],
+          "rangMax": 2,
+          "rangMin": 2
+        }
+      ]
+    },
+    {
+      "nom": "Prédilection élémentaire",
+      "desc": "Le PJ choisit un élément parmi le feu, la terre, l’eau et le vent. Tous les sorts de cet élément bénéficient d’un bonus parmi les suivants : +2 au test d’attaque magique, aux DM, aux soins, à la durée du sort ou à la difficulté pour résister aux effets du sort. Ce bonus doit être déterminé avant de lancer le sort."
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Élémentaire feu",
+            "Élémentaire nature",
+            "Élémentaire eau",
+            "Élémentaire foudre"
+          ],
+          "rangMax": 4,
+          "rangMin": 4
+        }
+      ]
+    },
+    {
+      "nom": "Spécialisation élémentaire",
+      "desc": "Le bonus de la prédilection élémentaire est doublé et passe à +4.\nAlternativement, le PJ peut choisir un deuxième élément de prédilection auquel il applique un bonus de +2 au test d’attaque magique, aux DM, à la durée du sort ou à la difficulté pour résister aux effets du sort. Ce bonus doit être déterminé avant de lancer le sort."
+    }
+  ],
+  "Création feu": [
+    {
+      "nom": "Doux foyer*",
+      "desc": "Le PJ diffuse une douce chaleur autour de lui, d’une température équivalente à celle d’un feu de camp. L’aura permet de lutter contre l’hypothermie, n’émet aucune lumière et persiste pendant [rang atteint dans la voie] heure.\nLes personnages dont le sommeil bénéficie au moins 4 heures de cette aura récupèrent forcément leur PR à la suite de la nuit de repos.\n\n**==Capacité avancée :==** les mages dont le sommeil bénéficie au moins 4 heures de cette aura récupèrent forcément leurs PM à la suite de la nuit de repos."
+    },
+    {
+      "nom": "Bouclier incandescent*",
+      "desc": "Le PJ génère un bouclier de flamme intangible mais brûlant qui dissuade ses agresseurs. Il gagne un bonus de +3 à la DEF contre les attaques de contact. Ce bonus passe à +6 au rang 5 atteint dans la voie.\n\n**==Capacité avancée :==** les flammes infligent 1d6 DM de feu à toute créature qui parvient à toucher au contact le PJ.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Bouclier incandescent*",
+          "bonus": 3,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "2"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Bouclier incandescent*",
+          "bonus": 6,
+          "cibles": [
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "2",
+          "minRang": 5
+        }
+      ]
+    },
+    {
+      "nom": "Piège explosif*",
+      "desc": "Le PJ concentre de l’énergie élémentaliste sur une surface plane (sol, mur ou plafond) qu’il peut maintenir latente pour une durée maximale de [1d6 + Mod. de SAG] minutes. À tout moment il peut, au prix d’une action gratuite, déclencher la libération de l’énergie provoquant une explosion qui inflige [3d6 + Mod. d’INT] DM de feu aux cibles présentes dans un rayon de 4 m autour du piège. Ces dernières peuvent tenter un test de DEX difficulté [12 + Mod. d’INT] pour diviser les DM par deux."
+    },
+    {
+      "nom": "Familier brûlant*",
+      "desc": "Le PJ génère un petit oiseau de feu qui est une projection de sa conscience. Il peut utiliser ses sens et communiquer avec lui à une distance illimitée. Il gagne un bonus de +2 à tous ses tests tant que son familier est en vue.\n\n==**Familier :** Init. 10, DEF 15 + [niveau du PJ]/2, PV 20. Attaque à distance (6 m) = [Att. mag. du PJ], DM 1d4+2 de feu.==\n\nSi le familier est détruit, le PJ est étourdi pendant un tour."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Création nature": [
+    {
+      "nom": "Baies magiques*",
+      "desc": "Le PJ doit se trouver devant un buisson ou un arbre vivant. Son incantation fait pousser un fruit qu’il peut cueillir. Sa consommation offre l’équivalent d’un repas. Il rend [1d6 + Mod. d’INT] PV. Ces effets ne fonctionnent qu’une fois par jour et par personnage.\n\nLes soins passent à 1d8 une fois le rang 3 atteint dans la voie, et 1d10 au rang 5 atteint dans la voie.\n\n**==Capacité avancée :==** la consommation d’un fruit restitue également un PR."
+    },
+    {
+      "nom": "Corps de chêne*",
+      "desc": "La peau du PJ prend la consistance de l’écorce pendant [5 + Mod. de SAG] tours. Il retranche à tous les DM élémentaires (feu, froid, électricité ou acide) subis un montant égal à deux fois le rang atteint dans cette voie.\n\n**==Capacité avancée : ==**le PJ gagne un bonus aux tests de CON égal au rang atteint dans la voie pendant toute la durée du sort."
+    },
+    {
+      "nom": "Nuage de poison*",
+      "desc": "Le PJ génère un brouillard de poison qui contamine une zone 10 mètres de diamètre jusqu’à une portée de 20 mètres pendant [1d6 + Mod. de SAG] tours.\nToutes les créatures prises dans l’effet ou traversant le nuage doivent réussir un test de CON difficulté [12 + Mod. d’INT] sous peine d’être affaiblie pendant [rang atteint dans la voie] tours.\nIl est possible de traverser le nuage en courant et en retenant sa respiration au prix d’une action limitée."
+    },
+    {
+      "nom": "Animation d'un arbre*",
+      "desc": "Une fois par combat, le PJ peut animer un arbre en le touchant. Il combat pendant [niveau du PJ] tours.\n\n==**Arbre animé :** Init. 7, DEF 12 + [niveau du PJ]/2, PV 45. Attaque de contact = [niveau du PJ], DM 1d6 + [niveau du PJ]/2. Réduction de DM de 10 sauf contre les armes tranchantes et le feu.==\n\nNote : les divisions sont arrondies à l’inférieur."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Création eau": [
+    {
+      "nom": "Source*",
+      "desc": "Une fois par jour, le PJ peut concentrer l’humidité ambiante pour la collecter et générer [rang atteint dans la voie] litre d’eau potable.\nCe sort ne peut être lancé dans un environnement trop sec (tel qu’un désert caniculaire par exemple).\n\n**==Capacité avancée :==** le PJ génère en permanence une forme atténuée de ce sort pour son organisme. Il n’a plus besoin de se désaltérer."
+    },
+    {
+      "nom": "Sphère acqueuse*",
+      "desc": "Le PJ dresse une sphère d’eau autour de son corps qui freine les attaques qui lui sont portées. Il gagne une réduction de DM de 1 pendant [1d4 + Mod. de SAG] tours.\nLa réduction de DM passe à 2 au rang 4 atteint dans la voie.\n\n**==Capacité avancée :==** la réduction de DM est augmentée d’un point (1) supplémentaire.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Sphère acqueuse*",
+          "bonus": 1,
+          "cibles": [
+            "RD"
+          ],
+          "temporaire": true,
+          "usage": "1d4+[Mod.SAG]",
+          "cout_pm": "2"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Sphère acqueuse*",
+          "bonus": 1,
+          "cibles": [
+            "RD"
+          ],
+          "temporaire": true,
+          "usage": "1d4+[Mod.SAG]",
+          "cout_pm": "2",
+          "avancee": true
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Sphère acqueuse*",
+          "bonus": 2,
+          "cibles": [
+            "RD"
+          ],
+          "temporaire": true,
+          "usage": "1d4+[Mod.SAG]",
+          "cout_pm": "2",
+          "minRang": 4
+        }
+      ]
+    },
+    {
+      "nom": "Verglas*",
+      "desc": "Un verglas glissant recouvre le sol sur une surface de 10 mètres de diamètre pour le reste du combat. Dans cette zone, rester debout demande lors de son tour un test de DEX difficulté 10, s’y déplacer ou combattre un test difficulté 15. Un échec signifie que la créature tombe au sol. Se relever nécessite de réussir un nouveau test de DEX difficulté 15 et prend un tour. Au prix d’une action limitée, la créature peut ramper en dehors de la zone."
+    },
+    {
+      "nom": "Clone aquatique*",
+      "desc": "Le PJ peut créer un double aquatique qui combat en projetant des éclats de glace sur ses ennemis pendant [niveau du PJ] tours.\nLe PJ peut animer [Mod. d’INT] (minimum 1) clone en même temps.\n\n==**Clone :** Init. 10, DEF 10 + [niveau du PJ]/2, PV 20. Attaque à distance (10 m) = [2 + niveau du PJ], DM 1d6 + 2.==\nNote : les divisions sont arrondies à l’inférieur."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Création foudre": [
+    {
+      "nom": "Chant du vent*",
+      "desc": "Le PJ énonce un message d’une dizaine de mots qui voyage jusqu’à son destinataire. Il peut entendre immédiatement sa réponse. La portée est de 100 m par rang atteint dans la voie et le PJ doit connaître la cible ou la voir.\n\n**==Capacité avancée :==** le message peut être chuchoté, le rendant inaudible à toute autre personne que le PJ et son destinataire."
+    },
+    {
+      "nom": "Barrière venteuse*",
+      "desc": "Le PJ dresse une barrière de vent tout autour de lui qui dévie les projectiles le visant pendant [rang atteint dans la voie] tours. Pendant toute la durée du sort, les DM des projectiles physiques (flèches, carreaux d’arbalète et armes de jet) sont divisés par deux (arrondis au supérieur) – si le PJ dispose d’une RD, elle est à retrancher ensuite.\n\n**==Capacité avancée :==** en doublant le coût en PM, le PJ peut lancer ce sort juste avant de subir une attaque. Il ne doit pas être surpris pour cela et ne peut user de concentration."
+    },
+    {
+      "nom": "Vents porteurs*",
+      "desc": "Le PJ génère de puissants vents ascendants sur une zone localisée de 10 mètres de diamètre jusqu’à une portée de [10 x rang atteint dans la voie] mètres.\nCes vents ralentissent la chute des objets ou créatures pris dans le courant et annulent les DM de chute.\nLes objets les plus légers sont par ailleurs projetés vers les airs.\nLe PJ peut maintenir ces courants actifs pendant [1d6 + Mod. de SAG] minutes."
+    },
+    {
+      "nom": "Serviteur invisible*",
+      "desc": "Par un contrôle extrêmement précis des courants aériens, le PJ parvient à créer une force invisible pendant [5 + Mod de SAG] minutes. Cette force permet d’effectuer des tâches simples à distance ne nécessitant pas de test de réussite et aucun score de caractéristique supérieur à 10. La portée du sort est de 40 mètres mais le PJ doit pouvoir voir ce qu’il commande."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    }
+  ],
+  "Voie de la création élémentaire": [
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Création feu",
+            "Création nature",
+            "Création eau",
+            "Création foudre"
+          ],
+          "rangMax": 1
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Création feu",
+            "Création nature",
+            "Création eau",
+            "Création foudre"
+          ],
+          "rangMax": 2,
+          "rangMin": 2
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Création feu",
+            "Création nature",
+            "Création eau",
+            "Création foudre"
+          ],
+          "rangMax": 3,
+          "rangMin": 3
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Création feu",
+            "Création nature",
+            "Création eau",
+            "Création foudre"
+          ],
+          "rangMax": 4,
+          "rangMin": 4
+        }
+      ]
+    },
+    {
+      "nom": "Intelligence héroïque",
+      "desc": "Le PJ augmente sa valeur d’INT de +2. Il peut désormais lancer deux d20 chaque fois qu’un test d’INT lui est demandé et conserver le meilleur résultat.",
+      "effects": [
+        {
+          "stat": "INT",
+          "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "INT",
+          "lancer": 2,
+          "garder": 1
+        }
+      ]
+    }
+  ],
+  "Symbiose feu": [
+    {
+      "nom": "",
+      "desc": "Le PJ devient naturellement immunisé aux DM de feu et ne reçoit plus que la moitié des DM de froid.",
+      "effects": [
+        {
+          "stat": "RD_FEU",
+          "value": 1,
+          "immunite": true
+        },
+        {
+          "stat": "RD_FROID",
+          "value": 1,
+          "div2": true
+        }
+      ],
+      "grants": []
+    },
+    {
+      "nom": "",
+      "desc": "Le PJ ajoute +2d6 DM de feu à toutes ses attaques de contact. Une créature qui s’attaque à lui avec des attaques de contact subit [2d6 + Mod. d’INT] DM pour chaque attaque réussie.",
+      "grants": []
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Nuée ardente*",
+      "desc": "Le PJ génère [1d4 + Mod d’INT] orbes de flamme qu’il répartit sur autant de cibles qu’il le souhaite jusqu’à une portée de 20 mètres. Il réalise un test d’attaque magique pour chaque groupe d’orbes. En cas de réussite, les orbes infligent [1d4 / orbe + Mod. d’INT] DM de feu et explosent, infligeant également [1d4 + Mod. d’INT] de feu aux autres créatures présentes dans un rayon de 3 mètres autour de la cible.\nUne créature prise dans la zone d’effet de plusieurs explosions subit plusieurs fois les DM liés aux explosions."
+    }
+  ],
+  "Symbiose nature": [
+    {
+      "nom": "",
+      "desc": "Le PJ ne fait qu’un avec la terre. Il ne peut plus être renversé et détecte automatiquement les pièges creusés dans le sol (trappes, fosse). De plus, il gagne un bonus de +5 à tous les tests pour détecter les pièges ou les passages secrets dissimulés dans les murs de pierre ou le sol."
+    },
+    {
+      "nom": "",
+      "desc": "Le PJ obtient un bonus de +6 en FOR (+3 en attaque de contact, aux DM et aux tests de FOR) ainsi qu’à la DEF.",
+      "grants": [
+        {
+          "type": "BONUS_TEMP",
+          "label": "Forme élémentaire",
+          "bonus": 6,
+          "cibles": [
+            "FOR",
+            "DEF"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "2"
+        },
+        {
+          "type": "BONUS_TEMP",
+          "label": "Forme élémentaire",
+          "bonus": 3,
+          "cibles": [
+            "ATT_CONTACT",
+            "DM_ARME",
+            "DM_MAINS_NUES"
+          ],
+          "temporaire": true,
+          "usage": "1",
+          "cout_pm": "2",
+          "precision": "+3 aux tests de FOR"
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Séisme*",
+      "desc": "Le PJ déclenche un terrible tremblement de terre dans une zone de 20 mètres de rayon autour de lui. Les constructions modestes s’effondrent automatiquement tandis que les bâtiments les plus fortifiés se lézardent. Le séisme persiste pendant [1d4 + Mod. de SAG] tours.\nToutes les créatures prises dans la zone doivent réussir à chaque tour un test de DEX difficulté [15 + Mod. d’INT] sous peine d’être renversées. Se relever nécessite une action de mouvement.\nA moins de se trouver en rase-campagne, les créatures prisent dans la zone subissent à chaque tour 2d4 DM à cause des chutes de pierre ou d’arbre. Les DM sont doublés sur les cibles renversées.\nLe PJ n’est pas affecté par les effets de ce sort."
+    }
+  ],
+  "Symbiose eau": [
+    {
+      "nom": "",
+      "desc": "Le PJ peut marcher sur l’eau à sa guise (comme s’il s’agissait d’un sol stable). Il peut transférer cette capacité pour en faire bénéficier autrui au prix d’une action limitée en touchant sa cible. Il peut ainsi affecter un nombre maximum de cibles égal au rang atteint dans cette voie pour une durée de [1d6 + Mod. de SAG] minutes."
+    },
+    {
+      "nom": "",
+      "desc": "Le PJ guérit toutes ses blessures au rythme de 3 PV par tour et peut déformer son corps pour passer dans le moindre interstice."
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Tempête de cristal*",
+      "desc": "Le PJ choisit une cible située à moins de 40 mètres et génère un bref et violent typhon de glace. Il fait un test d’attaque magique et le compare à la DEF de toutes les créatures (y compris le PJ et ses compagnons) se trouvant dans un rayon de 10 mètres autour de la cible. Chaque victime pour laquelle le test est un succès encaisse [5d6 + Mod. d’INT] DM de froid. En cas d’échec, les victimes subissent la moitié des DM.\nDe plus, les victimes doivent réussir un test de CON difficulté [15 + Mod d’INT] sous peine d’être ralenties pendant 2 tours.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Tempête de cristal*",
+          "de": 20,
+          "dm": "5d6+[Mod.INT]",
+          "attType": "magique",
+          "cout_pm": "5",
+          "activable": true
+        }
+      ]
+    }
+  ],
+  "Symbiose foudre": [
+    {
+      "nom": "",
+      "desc": "Le PJ peut respirer dans n’importe quel milieu hostile, sous l’eau comme dans un milieu empoisonné ou dénué d’air. Il peut transférer cette capacité pour en faire bénéficier autrui au prix d’une action limitée en touchant sa cible. Il peut ainsi affecter un nombre maximum de cibles égal au rang atteint dans cette voie pour une durée de [1d6 + Mod. de SAG] minutes."
+    },
+    {
+      "nom": "",
+      "desc": "Le PJ peut voler (à une vitesse de 30 mètres par action de mouvement) et tous les DM physiques qui lui sont infligés sont divisés par deux – si le PJ dispose d’une RD, elle est à retrancher ensuite",
+      "effects": [
+        {
+          "stat": "RD_TRANCHANT",
+          "value": 1,
+          "div2": true
+        },
+        {
+          "stat": "RD_PERFORANT",
+          "value": 1,
+          "div2": true
+        },
+        {
+          "stat": "RD_CONTONDANT",
+          "value": 1,
+          "div2": true
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "",
+      "desc": ""
+    },
+    {
+      "nom": "Foudroiement*",
+      "desc": "Le PJ projette une puissante orbe de foudre sur une cible (portée 20 m) infligeant [5d6 + Mod. d’INT] DM sur une attaque magique réussie. Après la frappe initiale, l’orbe peut toucher automatiquement une cible secondaire distante de moins de 5 mètres de la première et infligeant [2d6 + Mod. d’INT] DM de foudre.\nEn cas d’échec du test d’attaque magique, la cible ne subit que la moitié des DM et l’orbe secondaire n’est pas générée.",
+      "grants": [
+        {
+          "type": "ACTION",
+          "label": "Foudroiement*",
+          "de": 20,
+          "dm": "5d6+[Mod.INT]",
+          "attType": "magique"
+        }
+      ]
+    }
+  ],
+  "Voie de la symbiose élémentaire": [
+    {
+      "nom": "Affinité élémentaire*",
+      "desc": "Le PJ a atteint une telle maîtrise de la magie élémentaliste qu’il a développé une affinité exceptionnelle avec un élément. Il choisit un élément et gagne la capacité associée. Il peut choisir un deuxième élément lorsqu’il atteint le rang 4 dans la voie.",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Symbiose feu",
+            "Symbiose nature",
+            "Symbiose eau",
+            "Symbiose foudre"
+          ],
+          "rangMax": 1
+        },
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Symbiose feu",
+            "Symbiose nature",
+            "Symbiose eau",
+            "Symbiose foudre"
+          ],
+          "rangMax": 1,
+          "minRang": 4
+        }
+      ]
+    },
+    {
+      "nom": "Forme élémentaire*",
+      "desc": "Le PJ peut transformer son corps pendant [5 + Mod. de SAG] tours en une forme faite de pure énergie élémentaliste. L’opération ne peut être réalisée qu’une fois par jour pour chaque élément maîtrisé.\nIl gagne alors une capacité spéciale :",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Symbiose feu",
+            "Symbiose nature",
+            "Symbiose eau",
+            "Symbiose foudre"
+          ],
+          "rangMax": 2,
+          "rangMin": 2
+        }
+      ]
+    },
+    {
+      "nom": "Double incantation (L)",
+      "desc": "Le PJ peut lancer deux sorts élémentalistes au cours du même tour. Le coût de chaque sort doit être payé individuellement."
+    },
+    {
+      "nom": "Forme élémentaire supérieure*",
+      "desc": "Quand il revêt une forme élémentaire, le PJ gagne une réduction à tous les DM qu’il subit (RD) égale à 5. Sous cette forme, il peut user de concentration pour tous les sorts élémentalistes liés à sa forme élémentaire sans avoir recours à une action limitée (ce qui rend compatibles la concentration et la double incantation par exemple).\nLa forme élémentaire devient un sort de rang 4",
+      "effects": [
+        {
+          "stat": "RD",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "nom": "",
+      "desc": "",
+      "grants": [
+        {
+          "type": "VOIE_RANG_CHOIX",
+          "voies": [
+            "Symbiose feu",
+            "Symbiose nature",
+            "Symbiose eau",
+            "Symbiose foudre"
+          ],
+          "rangMax": 5,
+          "rangMin": 5
+        }
+      ]
+    }
+  ],
+  "Voie de l'espace temps": [
+    {
+      "nom": "Invisibilité*",
+      "desc": "Le PJ se rend invisible pendant [1d6 + Mod. de SAG] minutes. Une fois invisible, personne ne peut plus lui porter d’attaque. Si le PJ attaque ou lance un sort, il redevient visible."
+    },
+    {
+      "nom": "Hâte*",
+      "desc": "Pendant [1d6 + Mod. de SAG] tours, le PJ voit son métabolisme s’accélérer. A partir du tour suivant, il obtient une action supplémentaire par tour : soit une action normale, soit une action de mouvement. Il ne peut toujours réaliser qu’une action limitée par tour, à laquelle s’ajoute cette action supplémentaire."
+    },
+    {
+      "nom": "Déphasage*",
+      "desc": "Pendant les [5 + Mod. de SAG] tours, Le PJ est déphasé de quelques secondes par rapport à la trame temporelle. Pendant la durée du sort, chaque fois que le PJ est touché et subit des DM, il peut décider que l’attaque visait son image résiduelle et ignorer les DM. Il peut prendre cette décision après le tirage des DM. Détruire l’image résiduelle met fin au sort et le PJ se resynchronise avec la temporalité en apparaissant à [1d6 + Mod. d’INT] mètres de la position de son image résiduelle. "
+    },
+    {
+      "nom": "Téléportation",
+      "desc": "Le PJ disparaît et réapparaît à un autre endroit situé à moins de [Mod. d’INT x 10] mètres. Le lieu d’arrivée doit être soit en ligne de vue, soit parfaitement connu par le PJ.\nAlternativement, à l’issue d’un rituel d’une heure, le PJ peut se téléporter à une distance de [Mod. d’INT x 10] kilomètres. La destination doit être plane et dépeuplée pour éviter tout accident.\nEn doublant le coût du sort, le PJ peut téléporter avec lui jusqu’à [1 + Mod. d’INT] cibles avec lui (minimum 2)."
+    },
+    {
+      "nom": "Arrêt du temps*",
+      "desc": "Une fois par jour, le PJ peut arrêter le temps pendant [1d6 + Mod. d’INT] tours. Lui seul peut agir pendant cette période, lancer un sort sur lui-même ou sur l’environnement par exemple, toucher des objets, se déplacer, etc. La moindre interaction avec un être vivant (que ce soit en le touchant ou en lui lançant un sort) met un terme au sort et le temps reprend instantanément son cours."
     }
   ]
 }

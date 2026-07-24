@@ -174,6 +174,13 @@ export interface Character {
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
   effectsChoix?: Record<string, string>  // grantKey → stat choisie par grant EFFECT_CHOIX
+  // grantKey → {voie, rang} choisi par un grant VOIE_RANG_CHOIX (ex : voie culturelle de la Forge
+  // rang 2 "choisis une capacité de rang 1 ou 2 de la voie d'alchimie ou de la voie runique") — le
+  // pointeur est stocké, pas une copie du texte, pour rester à jour si la voie source est retouchée.
+  // avanceeSeulement : ce grant n'a pas servi à choisir une nouvelle capacité (voie/rang pointent vers
+  // une capacité déjà empruntée ailleurs) mais seulement à lui accorder gratuitement sa version avancée
+  // (ex : "Perfection élémentaliste").
+  voieRangChoix?: Record<string, { voie: string; rang: number; avanceeSeulement?: boolean }>
   compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)

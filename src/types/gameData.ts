@@ -21,7 +21,14 @@ export type Effect = {
 export type Grant =
   | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
-  | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; minRang?: number; avancee?: boolean }
+  // rangMin (optionnel, défaut 1) : propose les rangs [rangMin..rangMax] de chaque voie listée, pas
+  // toujours à partir de 1 — ex. un choix qui ne doit proposer QUE le rang 2 (rangMin=2, rangMax=2),
+  // pour ne pas réoffrir le rang 1 quand on choisit à un rang plus élevé de la voie hôte.
+  // avanceeGratuite : en plus du choix normal (nouvelle capacité), le picker propose aussi, pour une
+  // capacité déjà choisie ailleurs et pas encore avancée, d'en obtenir gratuitement la version avancée
+  // (sans coût en points) — ex. "Perfection élémentaliste" : ce choix-là se résout alors sans ajouter
+  // de nouvelle capacité empruntée, juste en accordant l'avancée à la cible déjà choisie.
+  | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; rangMin?: number; minRang?: number; avancee?: boolean; avanceeGratuite?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
   | { type: 'COMPAGNON_CHOIX'; noms: string[]; minRang?: number; avancee?: boolean }
   | { type: 'EFFECT_CHOIX'; stats: string[]; value?: number; formula?: string; rangMultiplier?: boolean; condition?: EffectCondition; minRang?: number; avancee?: boolean }
