@@ -35,9 +35,20 @@ import { normaliserEvenement } from '../utils/bataille'
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
 export type VoieEntry = { nom: string; famille: string; categorie: string }
-export type FieldPosition = { top: number; left: number; width?: number; height?: number }
+// reserved : le champ est actuellement stocké dans la réserve de calibrage plutôt qu'affiché sur la
+// feuille — top/left/width/height sont conservés tels quels pour reprendre leur valeur telle quelle
+// une fois replacé sur la feuille (pas de perte de position en cas d'aller-retour par la réserve).
+// perRow : uniquement pour les champs "rangée de cases à cocher" (DraggableCheckboxRow) — nombre de
+// cases par ligne avant de passer à la suivante ; width/height y sont alors réinterprétés comme
+// l'espacement horizontal/vertical entre cases (stepX/stepY), pas une taille de champ classique.
+// page : la fiche sur laquelle le champ est affiché, quand il a été déplacé depuis sa fiche d'origine.
+// Absent = le champ est resté sur sa fiche d'origine (celle déclarée dans le code du bloc).
+// Les fiches sur lesquelles un champ peut être posé. Ajouter une valeur ici suffit à rendre la
+// nouvelle fiche éligible pour tous les champs existants (ils s'y déplacent via la réserve).
+export type SheetPage = 'recto' | 'verso' | 'voies'
+export type FieldPosition = { top: number; left: number; width?: number; height?: number; reserved?: boolean; perRow?: number; page?: SheetPage }
 export type FieldPositions = Record<string, FieldPosition>
-export type SheetImages = { recto: string; verso: string }
+export type SheetImages = Partial<Record<SheetPage, string>>
 
 interface GameDataContextValue {
   data: DescMap

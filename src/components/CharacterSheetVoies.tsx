@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Character } from '../types/character'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
 import { useGameData } from '../context/GameDataContext'
@@ -23,25 +24,25 @@ interface Props {
   onCheckboxRowMoved?: (label: string, top: number, left: number, perRow: number, stepX: number, stepY: number) => void
 }
 
-// Le recto n'est plus qu'un support : l'image de fond et les blocs de champs. Chaque bloc est monté par
-// les deux fiches et ne dessine que les champs qui lui sont assignés (FieldPosition.page), ce qui permet
-// de déplacer n'importe quel champ d'une fiche à l'autre depuis la réserve, sans toucher au code.
-export default function CharacterSheetRecto({
+// Troisième fiche, dédiée aux voies. Même structure que le recto et le verso : un support (image de
+// fond) qui monte les mêmes blocs de champs, chacun ne dessinant que ce qui lui est assigné.
+export default function CharacterSheetVoies({
   character, onChange, activeStep, calibrate = false, locked = true,
   onFieldMoved, fieldPositions, sheetImage, reservePortalTarget, onReserveToggle, onCheckboxRowMoved,
 }: Props) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const { data: rawData } = useGameData()
   const data = useTranslatedDescriptions(rawData)
 
   const commun = {
-    character, onChange, containerRef, page: 'recto' as const,
+    character, onChange, containerRef, page: 'voies' as const,
     calibrate, locked, fieldPositions, onFieldMoved, reservePortalTarget, onReserveToggle,
   }
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-recto.webp`} alt="Feuille de personnage recto"
+      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-voies.webp`} alt={t('fiche.voies')}
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       <ChampsRecto {...commun} defaultPage="recto" activeStep={activeStep} onCheckboxRowMoved={onCheckboxRowMoved} />

@@ -109,6 +109,8 @@
     "choisirCapacite": "Choisir une capacité",
     "recto": "Recto",
     "verso": "Verso",
+    "voies": "Voies",
+    "ongletVoies": "Voies",
     "golem": "Golem",
     "runes": "Runes",
     "cristaux": "Cristaux",
@@ -234,9 +236,11 @@
   },
   "calibrage": {
     "survol": "Survol :",
-    "glisser": "Glisser un tag doré pour déplacer le champ",
+    "glisser": "Glisser un tag pourpre pour déplacer le champ",
     "copier": "copier",
-    "reinitialiser": "Réinitialiser positions"
+    "reinitialiser": "Réinitialiser positions",
+    "reserve": "Réserve",
+    "reserveAide": "Cliquez sur 📥 pour envoyer un champ ici, cliquez dessus ici pour le replacer sur la feuille"
   },
   "capacite": {
     "disponible_one": "{{count}} pt de capacité disponible",

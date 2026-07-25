@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { majusculeInitiale } from '../utils/texte'
 import type { RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import SheetTextarea from './SheetTextarea'
 
 interface Props {
@@ -16,11 +18,16 @@ interface Props {
   lineHeightPct?: number
   paddingTopPct?: number
   autoShrink?: boolean
+  // Réserve de calibrage — voir DraggableField.
+  reserved?: boolean
+  onReserveToggle?: (reserved: boolean) => void
+  reservePortalTarget?: HTMLElement | null
 }
 
 export default function DraggableTextarea({
   top, left, width: initWidth, height: initHeight, value, onChange,
   calibrate, label, containerRef, onMoved, lineHeightPct, paddingTopPct, autoShrink,
+  reserved, onReserveToggle, reservePortalTarget,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
@@ -109,11 +116,34 @@ export default function DraggableTextarea({
     document.addEventListener('mouseup', onUp)
   }
 
+  if (reserved) {
+    if (!calibrate || !reservePortalTarget) return null
+    return createPortal(
+      <div
+        onClick={() => onReserveToggle?.(false)}
+        title="Placer sur la feuille"
+        style={{
+          display: 'inline-flex', alignItems: 'center',
+          background: 'rgba(160,90,230,0.18)',
+          border: '1px solid rgba(160,90,230,0.6)',
+          color: 'rgba(225,205,255,0.95)',
+          fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
+          padding: '4px 9px', borderRadius: 4,
+          userSelect: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </div>,
+      reservePortalTarget,
+    )
+  }
+
   return (
     <>
       <SheetTextarea
         top={pos.top} left={pos.left} width={width} height={height}
         value={value} onChange={onChange} calibrate={calibrate}
+        placeholder={calibrate && value === '' ? majusculeInitiale(label) : undefined}
         containerRef={containerRef} lineHeightPct={lineHeightPct} paddingTopPct={paddingTopPct}
         autoShrink={autoShrink}
       />
@@ -150,6 +180,13 @@ export default function DraggableTextarea({
           <span onMouseDown={handleResizeHeightMouseDown}
             style={{ cursor: 'ns-resize', paddingLeft: 2, fontSize: 10, lineHeight: 1 }}
             title="Hauteur">↕</span>
+          {onReserveToggle && (
+            <span
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(true) }}
+              style={{ cursor: 'pointer', fontSize: 10, paddingLeft: 3, borderLeft: '1px solid rgba(10,21,32,0.35)', lineHeight: 1 }}
+              title="Envoyer à la réserve"
+            >📥</span>
+          )}
         </div>
       )}
     </>

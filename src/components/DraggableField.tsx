@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { majusculeInitiale } from '../utils/texte'
 import type { RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import SheetField from './SheetField'
 
 interface Props {
@@ -18,11 +20,18 @@ interface Props {
   onMoved: (label: string, top: number, left: number, width?: number) => void
   title?: string
   readOnly?: boolean
+  // Réserve de calibrage (option A) : un champ "reserved" n'est pas affiché sur la feuille (aucune
+  // position réelle n'a de sens) mais listé dans reservePortalTarget, un conteneur DOM neutre affiché
+  // à la place du wizard en mode calibrage. Cliquer dessus le replace sur la feuille (onReserveToggle).
+  reserved?: boolean
+  onReserveToggle?: (reserved: boolean) => void
+  reservePortalTarget?: HTMLElement | null
 }
 
 export default function DraggableField({
   top, left, width: initWidth, height, value, onChange, type, align, active,
   calibrate, label, containerRef, onMoved, title, readOnly,
+  reserved, onReserveToggle, reservePortalTarget,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
@@ -86,12 +95,37 @@ export default function DraggableField({
     document.addEventListener('mouseup', onUp)
   }
 
+  if (reserved) {
+    // Un champ "en réserve" n'a pas de position réelle : jamais affiché sur la feuille (calibrage ou
+    // non) — seulement listé dans la réserve, en mode calibrage, tant qu'il n'a pas été replacé.
+    if (!calibrate || !reservePortalTarget) return null
+    return createPortal(
+      <div
+        onClick={() => onReserveToggle?.(false)}
+        title="Placer sur la feuille"
+        style={{
+          display: 'inline-flex', alignItems: 'center',
+          background: 'rgba(160,90,230,0.18)',
+          border: '1px solid rgba(160,90,230,0.6)',
+          color: 'rgba(225,205,255,0.95)',
+          fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
+          padding: '4px 9px', borderRadius: 4,
+          userSelect: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </div>,
+      reservePortalTarget,
+    )
+  }
+
   return (
     <>
       <SheetField
         top={pos.top} left={pos.left} width={width} height={height}
         value={value} onChange={onChange} type={type} align={align} active={active}
         calibrate={calibrate} title={title} readOnly={readOnly}
+        placeholder={calibrate && String(value ?? '') === '' ? majusculeInitiale(label) : undefined}
       />
       {calibrate && (
         <div
@@ -102,8 +136,8 @@ export default function DraggableField({
             left: `${pos.left}%`,
             transform: 'translate(-50%, -50%)',
             cursor: 'grab',
-            background: 'rgba(201,168,76,0.92)',
-            color: '#1a1510',
+            background: 'rgba(160,90,230,0.92)',
+            color: '#fff',
             fontSize: 8,
             fontFamily: 'monospace',
             fontWeight: 700,
@@ -126,11 +160,24 @@ export default function DraggableField({
               cursor: 'ew-resize',
               fontSize: 10,
               paddingLeft: 3,
-              borderLeft: '1px solid rgba(26,21,16,0.35)',
+              borderLeft: '1px solid rgba(255,255,255,0.35)',
               lineHeight: 1,
             }}
             title="Redimensionner"
           >↔</span>
+          {onReserveToggle && (
+            <span
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(true) }}
+              style={{
+                cursor: 'pointer',
+                fontSize: 10,
+                paddingLeft: 3,
+                borderLeft: '1px solid rgba(255,255,255,0.35)',
+                lineHeight: 1,
+              }}
+              title="Envoyer à la réserve"
+            >📥</span>
+          )}
         </div>
       )}
     </>

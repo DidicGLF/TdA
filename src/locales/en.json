@@ -109,6 +109,8 @@
     "choisirCapacite": "Choose an ability",
     "recto": "Front",
     "verso": "Back",
+    "voies": "Paths",
+    "ongletVoies": "Paths",
     "golem": "Golem",
     "runes": "Runes",
     "cristaux": "Crystals",
@@ -234,9 +236,11 @@
   },
   "calibrage": {
     "survol": "Hover:",
-    "glisser": "Drag a golden tag to move the field",
+    "glisser": "Drag a purple tag to move the field",
     "copier": "copy",
-    "reinitialiser": "Reset positions"
+    "reinitialiser": "Reset positions",
+    "reserve": "Reserve",
+    "reserveAide": "Click 📥 to send a field here, click it here to place it back on the sheet"
   },
   "capacite": {
     "disponible_one": "{{count}} ability point available",

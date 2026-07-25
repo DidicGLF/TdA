@@ -11,6 +11,8 @@ interface SheetFieldProps {
   align?: 'left' | 'center' | 'right'
   active?: boolean
   calibrate?: boolean
+  // Texte-repère affiché uniquement en calibrage, quand le champ est vide (cf. .tdr-field::placeholder)
+  placeholder?: string
   title?: string
   readOnly?: boolean
 }
@@ -20,7 +22,7 @@ const MIN_FONT  = 0.45  // vw
 
 export default function SheetField({
   top, left, width, height = 2.2,
-  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false,
+  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false, placeholder,
 }: SheetFieldProps) {
   const ref = useRef<HTMLInputElement>(null)
 
@@ -34,7 +36,9 @@ export default function SheetField({
       size = +(size - 0.05).toFixed(2)
       el.style.fontSize = `${size}vw`
     }
-  }, [value])
+    // width/height dans les dépendances : sans eux, redimensionner un champ en calibrage ne
+    // recalculait pas la police, qui restait ajustée à l'ancienne largeur.
+  }, [value, width, height])
 
   return (
     <input
@@ -45,6 +49,7 @@ export default function SheetField({
       readOnly={readOnly}
       title={title}
       className="tdr-field"
+      placeholder={placeholder}
       style={{
         position: 'absolute',
         top: `${top}%`,
@@ -59,7 +64,7 @@ export default function SheetField({
         border: active
           ? '1.5px solid rgba(201,168,76,0.7)'
           : calibrate
-            ? '1px dashed rgba(201,168,76,0.5)'
+            ? '2px dashed rgba(160,90,230,0.95)'
             : '1px solid transparent',
         borderRadius: '2px',
         color: '#1a1510',

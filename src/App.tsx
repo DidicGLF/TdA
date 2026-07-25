@@ -8,6 +8,7 @@ import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } f
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
+import CharacterSheetVoies from './components/CharacterSheetVoies'
 import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
@@ -26,6 +27,7 @@ import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
+import type { SheetPage } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 
 export default function App() {
@@ -70,7 +72,7 @@ function AppContent() {
   const [appMode, setAppMode] = useState<'joueur' | 'mj' | null>(null)
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
   // Note actuellement ouverte dans l'onglet Notes — levé ici (plutôt que gardé local à NotesTab) pour
   // que le graphe de liaisons (NotesGraph, affiché à côté) puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -90,6 +92,9 @@ function AppContent() {
     return saved ? parseInt(saved) : 60
   })
   const [calibrate, setCalibrate] = useState(false)
+  // Conteneur DOM de la réserve de calibrage (option A) — affiché à la place du wizard en mode
+  // calibrage ; les champs "reserved" s'y portalent depuis CharacterSheetRecto/Verso.
+  const [reserveEl, setReserveEl] = useState<HTMLDivElement | null>(null)
   const [showSave, setShowSave] = useState(false)
   const [showDescEditor, setShowDescEditor] = useState(false)
   const [showTranslationEditor, setShowTranslationEditor] = useState(false)
@@ -134,7 +139,7 @@ function AppContent() {
   const sheetCharacter = (showGameMode && gameCharacter) ? gameCharacter : character
   const sheetOnChange = (showGameMode && gameCharacter) ? gameOnChange : onChange
 
-  const importSheetImage = (side: 'recto' | 'verso', file: File) => {
+  const importSheetImage = (side: SheetPage, file: File) => {
     const reader = new FileReader()
     reader.onload = e => {
       const dataUrl = e.target?.result as string
@@ -310,11 +315,20 @@ function AppContent() {
 
   const printContainer = (
     <div className="print-only" style={{ '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
+      {/* fieldPositions/sheetImage doivent être passés ici aussi, sinon l'impression ignore tout le
+          calibrage — et depuis que les champs portent une page, un champ déplacé s'imprimerait sur
+          sa fiche d'origine au lieu de celle où il a été posé. */}
       <div className="print-page-recto">
-        <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1} />
+        <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
       </div>
       <div className="print-page-verso">
-        <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1} />
+        <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
+      </div>
+      <div className="print-page-voies">
+        <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
       </div>
     </div>
   )
@@ -374,7 +388,7 @@ function AppContent() {
                 <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {t('menuGestion.feuilles')}
                 </span>
-                {(['recto', 'verso'] as const).map(side => (
+                {(['recto', 'verso', 'voies'] as const).map(side => (
                   <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={() => { (side === 'recto' ? rectoInputRef : versoInputRef).current?.click(); setShowMobileGestion(false) }} style={{
                       flex: 1, padding: '8px 12px', background: 'transparent',
@@ -466,7 +480,7 @@ function AppContent() {
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
-      {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+      {(['recto', 'verso', 'voies', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
           padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -587,6 +601,9 @@ function AppContent() {
                     <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step} />
                   ) : sheetPage === 'verso' ? (
                     <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                  ) : sheetPage === 'voies' ? (
+                    <CharacterSheetVoies character={character} onChange={onChange} activeStep={step}
+                      fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
                   ) : sheetPage === 'cristaux' ? (
                     <CharacterSheetCristaux character={character} onChange={onChange} />
                   ) : (
@@ -672,7 +689,7 @@ function AppContent() {
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
-            {(['recto', 'verso', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+            {(['recto', 'verso', 'voies', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
               <button key={p} onClick={() => setSheetPage(p)} style={{
                 padding: '4px 16px', borderRadius: '4px 4px 0 0',
                 border: '1px solid rgba(201,168,76,0.4)',
@@ -819,7 +836,7 @@ function AppContent() {
                 <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {t('menuGestion.feuilles')}
                 </span>
-                {(['recto', 'verso'] as const).map(side => (
+                {(['recto', 'verso', 'voies'] as const).map(side => (
                   <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => (side === 'recto' ? rectoInputRef : versoInputRef).current?.click()} style={{
                       flex: 1, padding: '5px 8px', background: 'transparent',
@@ -885,11 +902,24 @@ function AppContent() {
             {sheetPage === 'recto' ? (
               <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined}
-                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+                reservePortalTarget={reserveEl}
+                onReserveToggle={(l, r, pos) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], ...pos, reserved: r } }))}
+                onCheckboxRowMoved={(l, t, lf, perRow, sx, sy) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, width: sx, height: sy, perRow } }))}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : sheetPage === 'verso' ? (
               <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
                 calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined}
-                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+                reservePortalTarget={reserveEl}
+                onReserveToggle={(l, r, pos) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], ...pos, reserved: r } }))}
+                onCheckboxRowMoved={(l, t, lf, perRow, sx, sy) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, width: sx, height: sy, perRow } }))}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+            ) : sheetPage === 'voies' ? (
+              <CharacterSheetVoies character={character} onChange={onChange} activeStep={step}
+                calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined}
+                reservePortalTarget={reserveEl}
+                onReserveToggle={(l, r, pos) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], ...pos, reserved: r } }))}
+                onCheckboxRowMoved={(l, t, lf, perRow, sx, sy) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, width: sx, height: sy, perRow } }))}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : sheetPage === 'runes' ? (
               <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />
             ) : sheetPage === 'cristaux' ? (
@@ -1047,6 +1077,27 @@ function AppContent() {
               </div>
             </div>
             <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes} />
+          </>
+        ) : calibrate ? (
+          <>
+            {/* Réserve de calibrage (option A) : les champs sans position placée (ou envoyés ici
+                manuellement) atterrissent dans ce panneau plutôt que sur la feuille — cliquer dessus
+                les replace sur la feuille en cours (recto ou verso selon sheetPage). */}
+            <div style={{ padding: '16px', borderBottom: '1px solid rgba(160,90,230,0.25)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.5 }}>
+                {t('app.titre')}
+              </div>
+              <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'rgba(190,150,255,0.95)', letterSpacing: '0.05em' }}>
+                {t('calibrage.reserve')}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
+                {t('calibrage.reserveAide')}
+              </div>
+            </div>
+            <div
+              ref={setReserveEl}
+              style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start', gap: 8 }}
+            />
           </>
         ) : showGameMode ? (
           <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={closeGameMode} screenWidth={screenWidth} />

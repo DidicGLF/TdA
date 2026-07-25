@@ -68,6 +68,11 @@ body {
   margin: 0;
 }
 
+@page tdr-voies {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
   html, body, #root {
     background: white !important;
@@ -91,7 +96,8 @@ body {
   }
 
   .print-page-recto,
-  .print-page-verso {
+  .print-page-verso,
+  .print-page-voies {
     display: block;
     width: 210mm;
     height: 297mm;
@@ -105,6 +111,10 @@ body {
 
   .print-page-verso {
     page: tdr-verso;
+  }
+
+  .print-page-voies {
+    page: tdr-voies;
   }
 
   .sheet-bg {
@@ -124,4 +134,13 @@ body {
 
 
 
+}
+
+/* Texte-repère affiché dans les champs vides pendant le calibrage : il matérialise l'emplacement et
+   la ligne de base du texte, un cadre en pointillés seul étant difficile à positionner au pixel près.
+   Purement visuel — il n'entre jamais dans la valeur du champ ni dans l'impression (le calibrage
+   n'étant pas actif à l'impression). */
+.tdr-field::placeholder {
+  color: rgba(160, 90, 230, 0.55);
+  opacity: 1;
 }
