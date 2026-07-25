@@ -8,6 +8,7 @@ import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveForm
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
+import { parseDesc } from '../../utils/parseDesc'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -1497,7 +1498,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                     <span style={{ fontSize: 15, fontWeight: 700, color: GOLD }}>{rangData.nom}</span>
                     <span style={{ fontSize: 12, color: `rgba(245,236,215,0.3)` }}>{t('gameMode.rangVoie', { rang: rangIdx + 1, voie: voieNom })}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)', lineHeight: 1.4 }}>{rangData.desc}</div>
+                  {/* Même rendu que sur la fiche : le texte des capacités contient du balisage
+                      (**gras**, ==surligné==, [formules]) qui doit être interprété, pas affiché brut. */}
+                  <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)', lineHeight: 1.4 }}>
+                    {parseDesc(rangData.desc, character, descriptions, rangIdx + 1)}
+                  </div>
                 </div>
               ))}
             </div>

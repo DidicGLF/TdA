@@ -282,6 +282,65 @@ function renderLiveContent(
   let pos = 0
   const chevauche = (debut: number, fin: number) => !!selection && selection.debut <= fin && selection.fin >= debut
 
+  // Contenu d'un passage en gras/italique : les liens [[...]] et images ![[...]] qu'il contient doivent
+  // rester interprétés, sinon "**[[Ma note]]**" affiche les crochets en clair et le lien n'est plus
+  // cliquable. Le curseur ne peut pas se trouver ici (ce cas est traité en amont par `chevauche`, qui
+  // affiche alors le jeton brut) : aucun marqueur n'a donc à être révélé. Comme ailleurs, les marqueurs
+  // masqués doivent reconstituer le texte source à l'identique.
+  const rendreContenuStyle = (texte: string): ReactNode => {
+    const reInterne = /(!\[\[(.+?)\]\]|\[\[(.+?)\]\])/g
+    const sous: ReactNode[] = []
+    let dernier = 0
+    let mi: RegExpExecArray | null
+    while ((mi = reInterne.exec(texte))) {
+      if (mi.index > dernier) sous.push(<span key={key++}>{texte.slice(dernier, mi.index)}</span>)
+      const jetonI = mi[0]
+      if (jetonI.startsWith('![[')) {
+        const interieur = jetonI.slice(3, -2)
+        const indexPipe = interieur.indexOf('|')
+        const aAlias = indexPipe !== -1
+        const nomImage = (aAlias ? interieur.slice(0, indexPipe) : interieur).trim()
+        const texteAffiche = aAlias ? interieur.slice(indexPipe + 1) : interieur
+        const prefixeCache = jetonI.slice(0, 3 + (aAlias ? indexPipe + 1 : 0))
+        const image = images.find(img => img.nom.toLowerCase() === nomImage.toLowerCase())
+        sous.push(<span key={key++} style={{ display: 'none' }}>{prefixeCache}</span>)
+        sous.push(
+          <span
+            key={key++}
+            onMouseEnter={image ? e => onHoverStart({ type: 'image', image }, e.currentTarget.getBoundingClientRect()) : undefined}
+            onMouseLeave={image ? onHoverEnd : undefined}
+            style={image
+              ? { color: couleurLien, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'text' }
+              : { color: couleurImageManquante, fontStyle: 'italic', textDecoration: 'underline', textDecorationStyle: 'dashed', textUnderlineOffset: 2 }}
+          >
+            {texteAffiche}
+          </span>
+        )
+        sous.push(<span key={key++} style={{ display: 'none' }}>{']]'}</span>)
+      } else {
+        const libelleLien = jetonI.slice(2, -2)
+        const titreLien = libelleLien.trim()
+        sous.push(<span key={key++} style={{ display: 'none' }}>{'[['}</span>)
+        sous.push(
+          <span
+            key={key++}
+            onMouseDown={e => { e.preventDefault(); onLien(titreLien) }}
+            onMouseEnter={e => onHoverStart({ type: 'lien', titre: titreLien }, e.currentTarget.getBoundingClientRect())}
+            onMouseLeave={onHoverEnd}
+            style={{ color: couleurLien, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}
+          >
+            {libelleLien}
+          </span>
+        )
+        sous.push(<span key={key++} style={{ display: 'none' }}>{']]'}</span>)
+      }
+      dernier = mi.index + jetonI.length
+    }
+    if (sous.length === 0) return texte
+    if (dernier < texte.length) sous.push(<span key={key++}>{texte.slice(dernier)}</span>)
+    return sous
+  }
+
   const lignes = contenu.split('\n')
   lignes.forEach((ligne, li) => {
     const ligneDebut = pos
@@ -350,7 +409,8 @@ function renderLiveContent(
       } else if (chevauche(debutAbs, finAbs)) {
         nodes.push(<span key={key++}>{jeton}</span>)
       } else if (jeton.startsWith('[[')) {
-        const titreLien = jeton.slice(2, -2).trim()
+        const libelleLien = jeton.slice(2, -2)
+        const titreLien = libelleLien.trim()
         nodes.push(<span key={key++} style={{ display: 'none' }}>{'[['}</span>)
         nodes.push(
           <span
@@ -360,17 +420,17 @@ function renderLiveContent(
             onMouseLeave={onHoverEnd}
             style={{ color: couleurLien, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}
           >
-            {titreLien}
+            {libelleLien}
           </span>
         )
         nodes.push(<span key={key++} style={{ display: 'none' }}>{']]'}</span>)
       } else if (jeton.startsWith('**')) {
         nodes.push(<span key={key++} style={{ display: 'none' }}>{'**'}</span>)
-        nodes.push(<strong key={key++}>{jeton.slice(2, -2)}</strong>)
+        nodes.push(<strong key={key++}>{rendreContenuStyle(jeton.slice(2, -2))}</strong>)
         nodes.push(<span key={key++} style={{ display: 'none' }}>{'**'}</span>)
       } else {
         nodes.push(<span key={key++} style={{ display: 'none' }}>{'*'}</span>)
-        nodes.push(<em key={key++}>{jeton.slice(1, -1)}</em>)
+        nodes.push(<em key={key++}>{rendreContenuStyle(jeton.slice(1, -1))}</em>)
         nodes.push(<span key={key++} style={{ display: 'none' }}>{'*'}</span>)
       }
       dernierIndex = m.index + jeton.length

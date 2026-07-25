@@ -288,6 +288,10 @@ export default function LevelUpModal({ character, onClose, onConfirm }: Props) {
       pvTotal: character.pvTotal + pvGagnes!,
       pvRestants: (character.pvRestants ?? character.pvTotal) + pvGagnes!,
       pm: character.pm + pmGain,
+      // Les PM gagnés doivent être crédités aux PM restants, comme le sont les PV juste au-dessus :
+      // sans ça, monter de niveau augmentait le maximum sans donner les points correspondants, et le
+      // perso restait bloqué à son ancien total (ex. 8 PM restants sur 20 après plusieurs niveaux).
+      pmRestants: (character.pmRestants ?? character.pm) + pmGain,
       ...recalcAttaques(character, newNiveau),
       ...voiesPatch,
       ...(formationsAchetées.length > 0 ? { formationsMartiales: [...character.formationsMartiales, ...formationsAchetées] } : {}),
