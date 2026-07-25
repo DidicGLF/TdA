@@ -115,29 +115,15 @@ jobs:
         run: npx @tauri-apps/cli@^2 icon src-tauri/icon-manifest.json
 
       - name: Build
-        run: npx @tauri-apps/cli@^2 build --bundles appimage
+        run: npx @tauri-apps/cli@^2 build --bundles deb,rpm
 
-      - name: Strip bundled WebKitGTK (always use the host's, avoids Mesa/EGL version mismatches)
-        run: |
-          set -e
-          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage")
-          chmod +x "$APPIMAGE"
-          "$APPIMAGE" --appimage-extract
-          mv squashfs-root app-extracted
-          rm -f app-extracted/usr/lib/libwebkit2gtk-4.1.so.0
-          rm -f app-extracted/usr/lib/libjavascriptcoregtk-4.1.so.0
-          rm -rf app-extracted/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1
-          curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool
-          ./appimagetool --appimage-extract
-          rm -f "$APPIMAGE"
-          ARCH=x86_64 ./squashfs-root/AppRun app-extracted "$APPIMAGE"
-
-      - name: Upload AppImage
+      - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
           name: TdA-Linux
-          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
           if-no-files-found: error
 
   build-android:
@@ -251,6 +237,7 @@ jobs:
         with:
           files: |
             artifacts/windows/*.exe
-            artifacts/linux/*.AppImage
+            artifacts/linux/**/*.deb
+            artifacts/linux/**/*.rpm
             artifacts/android/**/*.apk
           generate_release_notes: true
