@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
+import { importerImage } from '../utils/imageStore'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
@@ -127,6 +128,43 @@ export function useGameData() {
   const ctx = useContext(GameDataContext)
   if (!ctx) throw new Error('useGameData doit être utilisé dans GameDataProvider')
   return ctx
+}
+
+// Migration unique : les illustrations étaient encodées en base64 dans bestiaire.json (2,6 Mo dont
+// 91 % d'images pour 8 créatures, réécrits à chaque modification). On les sort dans images/ et on ne
+// garde qu'une clé. Silencieuse et sans action de l'utilisateur ; en cas d'échec d'écriture on laisse
+// l'image en place plutôt que de risquer de la perdre.
+async function migrerImagesBestiaire(entrees: BestiaireEntry[]): Promise<BestiaireEntry[]> {
+  const aMigrer = entrees.filter(e => e.image?.startsWith('data:'))
+  if (aMigrer.length === 0) return entrees
+  const migrees = await Promise.all(entrees.map(async e => {
+    if (!e.image?.startsWith('data:')) return e
+    try {
+      return { ...e, image: await importerImage('bestiaire', e.image) }
+    } catch {
+      return e
+    }
+  }))
+  // Réécrit bestiaire.json allégé. On passe par queueSave directement plutôt que par le setter
+  // auto-sauvegardant, déclaré plus bas dans le composant (on ne peut pas y accéder d'ici).
+  queueSave('bestiaire.json', JSON.stringify({ _type: 'bestiaire', data: migrees }, null, 2))
+  return migrees
+}
+
+// Même migration pour les images de notes : 27,8 Mo relus au démarrage et réécrits à chaque ajout,
+// dont 25 Mo de doublons (le même logo stocké 11 fois). L'empreinte de contenu les fusionne.
+async function migrerImagesNotes(images: NoteImage[]): Promise<NoteImage[]> {
+  if (!images.some(i => i.data?.startsWith('data:'))) return images
+  const migrees = await Promise.all(images.map(async i => {
+    if (!i.data?.startsWith('data:')) return i
+    try {
+      return { ...i, data: await importerImage('note', i.data) }
+    } catch {
+      return i
+    }
+  }))
+  queueSave('note-images.json', JSON.stringify({ _type: 'note-images', data: migrees }, null, 2))
+  return migrees
 }
 
 function unwrap(parsed: unknown): unknown {
@@ -272,7 +310,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         const hiddenCompagnonsStr = await loadDataFile('hidden-compagnons.json')
         if (hiddenCompagnonsStr) setHiddenCompagnonsRaw(unwrap(JSON.parse(hiddenCompagnonsStr)) as string[])
         const bestiaireStr = await loadDataFile('bestiaire.json')
-        if (bestiaireStr) setBestiaireRaw(unwrap(JSON.parse(bestiaireStr)) as BestiaireEntry[])
+        if (bestiaireStr) {
+          const brut = unwrap(JSON.parse(bestiaireStr)) as BestiaireEntry[]
+          setBestiaireRaw(await migrerImagesBestiaire(brut))
+        }
         const rencontresStr = await loadDataFile('rencontres-sauvegardees.json')
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])
         const combatsStr = await loadDataFile('combats-sauvegardes.json')
@@ -284,7 +325,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         const campagnesStr = await loadDataFile('campagnes.json')
         if (campagnesStr) setCampagnesRaw(unwrap(JSON.parse(campagnesStr)) as Campaign[])
         const noteImagesStr = await loadDataFile('note-images.json')
-        if (noteImagesStr) setNoteImagesRaw(unwrap(JSON.parse(noteImagesStr)) as NoteImage[])
+        if (noteImagesStr) {
+          const brutes = unwrap(JSON.parse(noteImagesStr)) as NoteImage[]
+          setNoteImagesRaw(await migrerImagesNotes(brutes))
+        }
         const gmNotesStr = await loadDataFile('gm-notes.json')
         if (gmNotesStr) setGmNotesRaw(unwrap(JSON.parse(gmNotesStr)) as Note[])
         const gmCampagnesStr = await loadDataFile('gm-campagnes.json')

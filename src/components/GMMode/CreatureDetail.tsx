@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useImage } from '../../hooks/useImage'
+import { importerImage, oublierImage, estCleImage, chargerImage } from '../../utils/imageStore'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
 import NumberField from '../NumberField'
@@ -87,6 +89,7 @@ interface Props {
 export default function CreatureDetail({ creature, onChange, onDelete }: Props) {
   const { t } = useTranslation()
   const { capacitesBibliotheque, setCapacitesBibliotheque, data: descriptions } = useGameData()
+  const imageSrc = useImage(creature.image)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [biblioMsg, setBiblioMsg] = useState<string | null>(null)
 
@@ -148,7 +151,12 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
   }
 
   const exporterCreature = async () => {
-    const content = JSON.stringify(creature, null, 2)
+    // L'illustration vit dans images/ et la créature n'en garde qu'une clé : on la réincorpore, sans
+    // quoi le fichier partagé pointerait vers un fichier absent de la machine du destinataire.
+    const aExporter = estCleImage(creature.image)
+      ? { ...creature, image: (await chargerImage(creature.image!)) ?? '' }
+      : creature
+    const content = JSON.stringify(aExporter, null, 2)
     const safe = creature.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'creature'
     const filename = `${safe}.json`
     if (isTauri) {
@@ -319,13 +327,27 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
             <span style={labelStyle}>{t('gmMode.creatureDetail.image')}</span>
             <div style={{ flex: 1, minHeight: 0 }}>
               <CreatureImage
-                value={creature.image ?? ''}
+                value={imageSrc ?? ''}
                 scale={creature.imageScale}
                 tx={creature.imageTx}
                 ty={creature.imageTy}
                 fit={creature.imageFit}
                 locked={creature.imageLocked}
-                onChange={image => onChange({ image })}
+                // L'image part dans images/ ; la créature ne garde qu'une clé, pour que le
+                // bestiaire cesse de charrier des mégaoctets de base64.
+                onChange={async dataUrl => {
+                  const ancienne = estCleImage(creature.image) ? creature.image : null
+                  if (!dataUrl) {
+                    if (ancienne) await oublierImage(ancienne)
+                    onChange({ image: '' })
+                    return
+                  }
+                  const cle = await importerImage('bestiaire', dataUrl)
+                  // L'ancien fichier n'est plus référencé : on le libère pour ne pas accumuler
+                  // d'images orphelines à chaque remplacement.
+                  if (ancienne && ancienne !== cle) await oublierImage(ancienne)
+                  onChange({ image: cle })
+                }}
                 onTransformChange={(imageScale, imageTx, imageTy) => onChange({ imageScale, imageTx, imageTy })}
                 onFitChange={imageFit => onChange({ imageFit })}
                 onLockedChange={imageLocked => onChange({ imageLocked })}

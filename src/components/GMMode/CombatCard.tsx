@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import SelecteurCible from './SelecteurCible'
+import { useImage } from '../../hooks/useImage'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from '../GameMode/DiceIcon'
 import StatCell from './StatCell'
@@ -33,6 +34,7 @@ interface Props {
 export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff }: Props) {
   const { t } = useTranslation()
   const { creature, expanded, aJoueCeTour, dernierResultat, buffs, pvActuels, cibleId } = combatant
+  const imageSrc = useImage(creature.image)
   const [flash, setFlash] = useState(false)
   const isDown = pvActuels <= 0
 
@@ -50,8 +52,8 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
         filter: isDown ? 'grayscale(1)' : undefined,
       }}>
         <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          {creature.image
-            ? <img src={creature.image} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: creature.imageFit ?? 'cover' }} />
+          {imageSrc
+            ? <img src={imageSrc} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: creature.imageFit ?? 'cover' }} />
             : <span style={{ fontSize: 28, opacity: 0.3 }}>🐾</span>}
           {isDown && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -83,9 +85,9 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
     }}>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {creature.image && (
+          {imageSrc && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img src={creature.image} alt="" draggable={false} style={{ width: 52, height: 68, objectFit: creature.imageFit ?? 'cover', borderRadius: 4, display: 'block' }} />
+              <img src={imageSrc} alt="" draggable={false} style={{ width: 52, height: 68, objectFit: creature.imageFit ?? 'cover', borderRadius: 4, display: 'block' }} />
               {isDown && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 24 }}>💀</span>

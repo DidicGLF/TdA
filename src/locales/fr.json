@@ -1106,6 +1106,9 @@
     "annuler": "Annuler",
     "sauvegarder": "Sauvegarder",
     "creatureDetail": {
+      "importer": "↑ Importer",
+      "importResultat_one": "{{count}} créature importée",
+      "importResultat_other": "{{count}} créatures importées",
       "nc": "NC",
       "taille": "Taille",
       "tailleAucune": "—",

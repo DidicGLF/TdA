@@ -59,9 +59,18 @@ fn list_locale_dir(app: tauri::AppHandle, dir: String) -> Result<Vec<String>, St
     Ok(names)
 }
 
+// Chemin d'un fichier de données, sous-dossiers autorisés (images/…). Refuse toute remontée de
+// chemin : le nom vient du code de l'app, mais rien ne doit permettre d'écrire hors du dossier.
+fn chemin_donnees(app: &tauri::AppHandle, filename: &str) -> Result<std::path::PathBuf, String> {
+    if filename.contains("..") || filename.starts_with('/') || filename.starts_with('\\') {
+        return Err(format!("Nom de fichier refusé : {filename}"));
+    }
+    Ok(data_dir(app)?.join(filename))
+}
+
 #[tauri::command]
 fn load_data_file(app: tauri::AppHandle, filename: String) -> Result<Option<String>, String> {
-    let path = data_dir(&app)?.join(&filename);
+    let path = chemin_donnees(&app, &filename)?;
     if !path.exists() {
         return Ok(None);
     }
@@ -70,7 +79,12 @@ fn load_data_file(app: tauri::AppHandle, filename: String) -> Result<Option<Stri
 
 #[tauri::command]
 fn save_data_file(app: tauri::AppHandle, filename: String, content: String) -> Result<(), String> {
-    let path = data_dir(&app)?.join(&filename);
+    let path = chemin_donnees(&app, &filename)?;
+    // Les images sont rangées dans un sous-dossier (images/…) : fs::write ne crée pas les dossiers
+    // parents, il faut donc s'en charger ici.
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
     fs::write(path, content).map_err(|e| e.to_string())
 }
 

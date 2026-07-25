@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { saveDataFile } from '../utils/tauriStorage'
 import noteParchmentBg from '../assets/note-parchment.webp'
 import type { Note, Campaign, NoteImage, BestiaireEntry, RencontreSauvegardee, NoteMarque } from '../types/gameData'
+import { importerImage, chargerImage, estCleImage } from '../utils/imageStore'
+import { useImage } from '../hooks/useImage'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -250,6 +252,14 @@ function trouverPointDeCoupure(el: HTMLElement, hauteurMax: number): number {
 // Aperçu au survol d'un lien de note ou d'une image — la modale elle-même (contenu affiché, aller à
 // la note...) est gérée par l'appelant (NoteEditor), renderLiveContent se contente de signaler quoi
 // survoler et où l'ancrer.
+// Un fichier exporté doit rester lisible sur une autre machine : les images y sont réincorporées,
+// les clés locales (images/…) n'ayant aucun sens ailleurs.
+async function imagesAutonomes(images: NoteImage[]): Promise<NoteImage[]> {
+  return Promise.all(images.map(async img => (
+    estCleImage(img.data) ? { ...img, data: (await chargerImage(img.data)) ?? '' } : img
+  )))
+}
+
 export type HoverInfo = { type: 'lien'; titre: string } | { type: 'image'; image: NoteImage }
 
 // ── Rendu « en direct » : le Markdown déjà validé (marqueurs des deux côtés présents) s'affiche mis
@@ -548,6 +558,8 @@ function NoteEditor({
   const [caretPos, setCaretPos] = useState<{ top: number; left: number; ligneHauteur: number } | null>(null)
   const [preview, setPreview] = useState<HoverInfo | null>(null)
   const [previewRect, setPreviewRect] = useState<{ top: number; left: number } | null>(null)
+  // L'aperçu d'image peut porter une clé (images/…) ou une ancienne data URL : useImage résout les deux.
+  const apercuSrc = useImage(preview?.type === 'image' ? preview.image.data : null)
   // Panneau des marque-pages (signets/ancres) de cette note — voir la rangée 🔖 dans l'en-tête.
   const [marquesOuvert, setMarquesOuvert] = useState(false)
   // Aide (mise en forme, liens, marque-pages) — remplace le texte d'exemple qu'affichait auparavant
@@ -645,7 +657,7 @@ function NoteEditor({
     const imagesLiees = noteImages.filter(img => nomsRef.has(img.nom.toLowerCase()))
     const contenuExport = {
       note: { titre, contenu, date: date || undefined, tags: tagsActuels.length ? tagsActuels : undefined, couleur: couleur || undefined },
-      images: imagesLiees,
+      images: await imagesAutonomes(imagesLiees),
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
     const filename = nomFichierExport(titre, 'note')
@@ -700,17 +712,23 @@ function NoteEditor({
   // dédupliqué comme un système de fichiers) puis insère sa référence à la position du curseur.
   const handleImageFile = (file: File) => {
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       const data = reader.result
       if (typeof data !== 'string') return
       const base = file.name.replace(/\.[^./]+$/, '').trim() || 'image'
+      // La clé vient du contenu : réimporter la même image retrouve l'entrée existante au lieu d'en
+      // créer une copie. C'est ce qui manquait — le fichier contenait 11 exemplaires du même logo,
+      // nommés « (2) », « (3) »…, soit 25 Mo de doublons.
+      const cle = await importerImage('note', data)
+      const existante = noteImages.find(img => img.data === cle)
+      if (existante) { inserer(`![[${existante.nom}]]`); return }
       let nom = base
       let n = 2
       while (noteImages.some(img => img.nom.toLowerCase() === nom.toLowerCase())) {
         nom = `${base} (${n})`
         n++
       }
-      setNoteImages(prev => [...prev, { id: genId(), nom, data }])
+      setNoteImages(prev => [...prev, { id: genId(), nom, data: cle }])
       inserer(`![[${nom}]]`)
     }
     reader.readAsDataURL(file)
@@ -1351,7 +1369,7 @@ function NoteEditor({
           }}
         >
           {preview.type === 'image' ? (
-            <img src={preview.image.data} alt={preview.image.nom} style={{ display: 'block', maxWidth: '100%', maxHeight: 340, margin: '0 auto', borderRadius: 4 }} />
+            <img src={apercuSrc ?? undefined} alt={preview.image.nom} style={{ display: 'block', maxWidth: '100%', maxHeight: 340, margin: '0 auto', borderRadius: 4 }} />
           ) : (() => {
             const cible = resoudreLien(preview.titre, notes, bestiaire, rencontres)
             if (cible.type === 'note') {
@@ -1578,7 +1596,7 @@ export default function NotesTab({
     const contenuExport = {
       groupe: nomGroupe ?? undefined,
       notes: notesDuGroupe.map(n => ({ titre: n.titre, contenu: n.contenu, date: n.date, tags: n.tags, couleur: n.couleur })),
-      images: imagesLiees,
+      images: await imagesAutonomes(imagesLiees),
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
     const filename = nomFichierExport(nomGroupe ?? 'export-notes', 'export-notes')
@@ -1655,7 +1673,7 @@ export default function NotesTab({
         n++
       }
       mapping.set(img.nom.toLowerCase(), nom)
-      nouvellesImages.push({ id: genId(), nom, data: img.data })
+      nouvellesImages.push({ id: genId(), nom, data: await importerImage('note', img.data) })
     }
     if (nouvellesImages.length > 0) setNoteImages(prev => [...prev, ...nouvellesImages])
 

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import CreatureDetail from './CreatureDetail'
+import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
 import BatailleTab from './BatailleTab'
 import NotesTab from '../NotesTab'
@@ -231,6 +232,38 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
     setSelectedIdx(bestiaire.length)
   }
 
+  // Import de créatures partagées : le fichier produit par « Exporter » contient l'illustration en
+  // clair (voir CreatureDetail), on la range dans images/ et l'entrée ne garde qu'une clé — même
+  // traitement que pour les créatures créées sur place.
+  const fichierImportRef = useRef<HTMLInputElement>(null)
+  const [messageImport, setMessageImport] = useState<string | null>(null)
+
+  const importerCreatures = async (fichiers: FileList) => {
+    const ajoutees: BestiaireEntry[] = []
+    for (const fichier of Array.from(fichiers)) {
+      try {
+        const brut = JSON.parse(await fichier.text())
+        // Tolère un fichier contenant une créature seule ou une liste.
+        const entrees: BestiaireEntry[] = Array.isArray(brut) ? brut : [brut]
+        for (const e of entrees) {
+          if (!e || typeof e.nom !== 'string') continue
+          const image = typeof e.image === 'string' && e.image.startsWith('data:')
+            ? await importerImage('bestiaire', e.image)
+            : e.image
+          ajoutees.push({ ...e, ...(image ? { image } : {}) })
+        }
+      } catch {
+        // Fichier illisible ou d'un autre type : on l'ignore et on le signale par le décompte final.
+      }
+    }
+    if (ajoutees.length > 0) {
+      setBestiaire(prev => [...prev, ...ajoutees])
+      setSelectedIdx(bestiaire.length)
+    }
+    setMessageImport(t('gmMode.creatureDetail.importResultat', { count: ajoutees.length }))
+    setTimeout(() => setMessageImport(null), 4000)
+  }
+
   const updateSelected = (patch: Partial<BestiaireEntry>) => {
     if (selectedIdx === null) return
     setBestiaire(prev => prev.map((c, i) => i === selectedIdx ? { ...c, ...patch } : c))
@@ -265,11 +298,9 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
             background: 'rgba(255,255,255,0.03)', color: PARCHMENT, fontSize: 14,
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 14, opacity: 0.5 }}>
-            {t('gmMode.bestiaireCompte', { count: filtered.length })}
-          </span>
-          <div style={{ display: 'flex', gap: 8 }}>
+        {/* Boutons sous le champ de recherche, alignés à gauche ; flexWrap car ils dépassaient sur la
+            colonne de droite. Le compteur est descendu juste au-dessus de la liste (voir plus bas). */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
             {import.meta.env.DEV && (
               <button
                 onClick={() => setConfirmSauvegarderBundle(true)}
@@ -287,14 +318,27 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
             }}>
               + {t('gmMode.creatureDetail.nouvelleCreature')}
             </button>
+            <button onClick={() => fichierImportRef.current?.click()} style={{
+              background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
+            }}>
+              {t('gmMode.creatureDetail.importer')}
+            </button>
+            <input ref={fichierImportRef} type="file" accept=".json" multiple style={{ display: 'none' }}
+              onChange={e => { if (e.target.files?.length) importerCreatures(e.target.files); e.target.value = '' }} />
+            {messageImport && (
+              <span style={{ fontSize: 12, color: 'rgba(130,220,140,0.95)', whiteSpace: 'nowrap' }}>{messageImport}</span>
+            )}
             <button onClick={() => setModaleGenererOuverte(true)} style={{
               background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
               color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
             }}>
               🛠 {t('gmMode.genererPNJ')}
             </button>
-          </div>
         </div>
+        <span style={{ fontSize: 14, opacity: 0.5 }}>
+          {t('gmMode.bestiaireCompte', { count: filtered.length })}
+        </span>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
           {/* En-tête de colonnes triable — même marge droite que les lignes ci-dessous (voir plus bas)
               pour rester aligné avec le score de NC malgré la scrollbar. */}
@@ -377,7 +421,14 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
               onClick={async () => {
                 setConfirmSauvegarderBundle(false)
                 await Promise.all([
-                  saveDataFileToBundle('bestiaire.json', bestiaire),
+                  // Le bestiaire livré ne transporte pas d'illustrations : elles pesaient 92 % du
+                  // fichier (2,4 Mo pour 6 images distinctes) et chacun utilise les siennes. Les
+                  // images restent bien sûr dans les données locales de l'utilisateur.
+                  saveDataFileToBundle('bestiaire.json', bestiaire.map(c => {
+                    const reste: Record<string, unknown> = { ...c }
+                    for (const champ of ['image', 'imageScale', 'imageTx', 'imageTy', 'imageFit', 'imageLocked']) delete reste[champ]
+                    return reste
+                  })),
                   saveDataFileToBundle('capacites-bibliotheque.json', capacitesBibliotheque),
                 ])
                 window.location.reload()
