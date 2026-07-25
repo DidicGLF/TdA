@@ -196,6 +196,14 @@
     "nomCampagne": "Group name",
     "renommerGroupe": "Rename",
     "supprimerGroupe": "Delete this group (notes are kept, ungrouped)",
+    "annuler": "Cancel",
+    "supprimerGroupeTitre": "Delete group “{{nom}}”?",
+    "groupeVide": "This group contains no notes.",
+    "groupeContient_one": "It contains {{count}} note.",
+    "groupeContient_other": "It contains {{count}} notes.",
+    "supprimerGroupeSeul": "Delete the group only (notes are kept, ungrouped)",
+    "supprimerGroupeEtNotes_one": "Delete the group AND its note",
+    "supprimerGroupeEtNotes_other": "Delete the group AND its {{count}} notes",
     "confirmerSuppressionGroupe": "Confirm",
     "creer": "Create",
     "allerCreature": "Go to creature",
@@ -220,6 +228,11 @@
     "donneesJeu": "✎ Game Data",
     "deverrouiller": "🔒 Unlock sheet",
     "verrouiller": "🔓 Lock sheet",
+    "sauverCalibrage": "💾 Save calibration to project",
+    "calibrageSauve": "Calibration saved to project",
+    "calibrageErreur": "Failed to save calibration — see console",
+    "calibrageVerrouille": "Calibration is protected",
+    "calibrageVerrouilleDesc": "Calibration aligns fields with the shipped sheet backgrounds. It is reserved for the game author — enter the password to access it.",
     "calibrage": "⊹ Calibrate",
     "calibrageOn": "✕ Calibrate ON",
     "modeDev": "Developer mode",
@@ -236,6 +249,11 @@
     "avertissement": "⚠ The values you enter <strong>replace automatic calculations</strong>. To restore calculations, lock the sheet from the Settings menu.",
     "annuler": "Cancel",
     "confirmer": "I understand, unlock"
+  },
+  "impression": {
+    "consigne": "Click a badge to include or exclude a field from the printed sheet",
+    "lancer": "🖨 Print",
+    "fermer": "Close"
   },
   "calibrage": {
     "survol": "Hover:",
@@ -444,6 +462,7 @@
     "pa": "sp"
   },
   "equipement": {
+    "types": "Types",
     "armes": "Weapons",
     "armures": "Armor",
     "catalogue": "Catalogue",

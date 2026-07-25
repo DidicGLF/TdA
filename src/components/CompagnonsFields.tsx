@@ -121,6 +121,9 @@ export default function CompagnonsFields({
       props: {
         ...p,
         onReserveToggle: (r: boolean) => cbReserve(label, r, p),
+      // Décision d'impression : par défaut le champ figure sur le papier (cf. FieldPosition.imprimer).
+      imprime: ov?.imprimer ?? true,
+      onToggleImpression: () => cbReserve(label, ov?.reserved === true, { imprimer: !(ov?.imprimer ?? true) } as never),
       },
       pos: p,
     }

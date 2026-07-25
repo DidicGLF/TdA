@@ -86,6 +86,101 @@
     "desc": "Au premier tour de combat, si l'environnement permet au crocodile de se dissimuler, la cible doit faire un test de SAG difficulté 15 ou être surprise. S'il attaque avec succès une cible surprise, le crocodile inflige +1d6 DM supplémentaires, et toute créature dont la FOR est inférieure à la sienne est renversée. Il obtient un bonus de +5 à tous les tests de discrétion."
   },
   {
+    "id": "add43980-f17d-4796-baf5-987b8b884a7c",
+    "nom": "Se fondre dans les ombres",
+    "desc": "au prix d'une action de mouvement, le démon mineur peut gagner les ombres et y disparaître. Il peut en ressortir quand bon lui semble, à une distance maximale de 20 m de son point de disparition – toujours au prix d'une action de mouvement. Tant qu'il est dans les ombres, le démon mineur est insensible à tout type de DM – hormis les DM de zone. Il peut cependant être révélé à l'aide d'une source de lumière suffisamment puissante (tel qu'un sort de Lumières dansantes par exemple ou un feu plus important que celui d'une torche)."
+  },
+  {
+    "id": "6f0f5683-323c-4f92-a982-da5ac8ec764f",
+    "nom": "Venin démoniaque",
+    "desc": "Une créature blessée par le démon mineur doit réussir un test de CON difficulté 12 ou être affaiblie (utiliser 1d12) pendant 1d6 minutes."
+  },
+  {
+    "id": "5d3c5b6f-eee3-4b17-9762-430338d51a8a",
+    "nom": "Vol",
+    "desc": "Un démon mineur peut léviter au prix d'une action gratuite et se déplacer en vol de 20 mètres par action de mouvement."
+  },
+  {
+    "id": "712ec99f-f2ce-4c23-9261-b2e155bc0b32",
+    "nom": "Absortion d'énergie (L)",
+    "desc": "Une dominatrice peut aspirer l'énergie vitale de sa victime en l'enlaçant ou en l'embrassant. Si la victime n'est pas consentante, la dominatrice doit auparavant réussir un test d'attaque au contact puis gagner un test opposé de FOR. La victime de l'absorption d'énergie est affaiblie (utilise un d12 aux tests) pour 24 heures mais ressent une jouissance extatique lors de ce contact. Elle ressent le besoin impérieux de le renouveler pendant les 24 heures suivantes à moins de réussir un test de SAG diffi- culté 18. Si la victime résiste, elle est immunisée à cet effet pour les prochaines 24 heures. En plus des autres effets, si la dominatrice le souhaite, à chaque fois qu'elle absorbe l'énergie, elle peut infliger 1d6 DM et guérir d'autant (les points de vie acquis au-delà de son score maximum de PV sont perdus après dix minutes)."
+  },
+  {
+    "id": "3e0e1ad5-0695-4a72-a682-98e812f23710",
+    "nom": "Vitalité surnaturelle",
+    "desc": "Leprince démon guérit à un rythme fantastique : il récupère 5 PV à la fin de chaque tour. Les DM provenant d'armes magiques ou de sorts ne peuvent guérir de cette façon."
+  },
+  {
+    "id": "4f095362-e46d-4126-81a9-9a4c48f6ace4",
+    "nom": "Animer un cadavre L)",
+    "desc": "Ce pouvoir permet d'animer le cadavre d'une créature morte au combat. La créature se relève avec les mêmes caractéristiques mais subit une pénalité de -2 en attaque et en initiative. Lorsque le cadavre est à nouveau vaincu, il ne peut pas être réanimé. Le cadavre de la créature animée ne peut être d'un NC supérieur à 10. Tuer le nécromant met immédiatement fin à l'animation de cadavre. Le nécromant ne peut animer plus de dix cadavres en même temps."
+  },
+  {
+    "id": "a94b3009-afb6-4fab-94be-61b8192f5c21",
+    "nom": "Chair à canon",
+    "desc": "Une fois par tour, le nécromant peut décider qu'une attaque qui le visait touche à la place l'un de ses sous-fifres, situé à moins de 3 m et venu s'interposer (ou derrière lequel il s'est mis à couvert). Le nécromant gagne un bonus de +5 en DEF tant que des sous-fifres sont positionnés à moins de 3 mètres de lui."
+  },
+  {
+    "id": "813f8053-c0be-4e16-a851-80496744304c",
+    "nom": "Déplacement magique (L)",
+    "desc": "Le nécromant peut se téléporter à une distance maximale de 40 mètres. Le lieu d'arrivée doit être en ligne de vue ou parfaitement connu (le lieu doit avoir été étudié au moins dix minutes au préalable)."
+  },
+  {
+    "id": "35e3cf40-91c1-4837-9fbf-a2f90bb67163",
+    "nom": "Immortel",
+    "desc": "Lorsqu'il tombe à 0 PV, seul le corps du nécromant est détruit. Le démon qui l'habite pourra en investir un autre dans les 24 heures et disposer de nouveau de tous ses pouvoirs et facultés. Il faut un rituel spécial et rare pour venir à bout du démon. Retrouver le dépositaire de ce savoir perdu ou le manuscrit décrivant les modalités du rituel doit être le fruit d'une quête à part entière."
+  },
+  {
+    "id": "9504d81d-d77c-418b-8079-c1cc62a2709b",
+    "nom": "Injonction mortelle (L)",
+    "desc": "Une cible située à une distance maximum de 30 mètres doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même [2d6 + 13 DM]. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat"
+  },
+  {
+    "id": "9fa706fb-a602-4e3a-9bef-8b9e2f9a9176",
+    "nom": "Instinct de survie",
+    "desc": "Le nécromant est un adver- saire retors et particulièrement difficile à vaincre. Une fois par tour, au moment de son choix, le PNJ peut utiliser une action de mouvement supplémentaire pour se déplacer. Si un effet ou une créature le paralyse, le ralentit ou restreint ses mouvements, il a droit à un test d'INT difficulté 10 pour s'en débarrasser une fois par tour. Il gagne +5 en DEF lorsqu'il lui reste moins de 60 PV."
+  },
+  {
+    "id": "7470f845-ca2e-45b0-9972-3ef0a4b5f3f8",
+    "nom": "Vampirisation (L)",
+    "desc": "Le nécromant doit réussir une attaque magique sur une cible vivante à une distance maximale de 30 mètres. En cas de réussite, la cible subit [6d6 DM] et le nécromant régénère d'autant de PV que de DM infligés. De plus, à chaque fois qu'une créature meurt à moins de 20 mètres de lui, le nécromant siphonne son énergie vitale et gagne [1d6 + 13 PV]."
+  },
+  {
+    "id": "33c85c28-23e9-4adc-be1f-723beb1bc889",
+    "nom": "Corps enflammé",
+    "desc": "Le prince-démon est nimbé d'une aura de feu noire démoniaque ou peut la faire surgir à volonté. Elle inflige +2d6 DM de feu par attaque de contact réussie. Une créature qui l'attaque au contact subit 2d6 DM pour chaque attaque réussie. Si une victime est saisie ou agrippée par le prince-démon, elle subit à chaque tour +2d6 DM de feu supplémentaires."
+  },
+  {
+    "id": "7e8f1728-c28f-4b0b-99d0-901405330c87",
+    "nom": "Domination (L)",
+    "desc": "Le prince-démon doit gagner un test opposé de SAG contre sa cible pour la dominer (portée : 20 mètres) pendant [1d6 + 7 tours]. En cas de succès, le démon peut contrôler les faits et gestes de sa cible comme s'il s'agissait d'un simple pantin ou lui donner des ordres qu'elle est obligée d'exécuter. Les créatures de niveau 10 et plus sont immunisées à ce pouvoir, de même que les créatures dépourvues d'esprit comme les créatures mécaniques ou certains morts-vivants."
+  },
+  {
+    "id": "0bbb079a-ef94-4d64-b969-11cc9bdc31b2",
+    "nom": "Enchevêment",
+    "desc": "Lorsqu'un prince-démon réussit une attaque avec une liane démoniaque, la victime doit faire un test de FOR ou de DEX au 75 Fabien GARNIER - fabien.garnier@rpgers.fr - 202311/253149/659192choix difficulté 15 ou être immobilisée par la liane pour un tour et subir 4d6 DM de feu au lieu de 2d6. Le prince-démon peut attirer à son contact une victime immobilisée en réussissant un test de FOR opposé. Attaquer avec son arme et ses lianes au même tour demande au prince-démon une action limitée."
+  },
+  {
+    "id": "2cf8c054-1b45-4752-92c2-ae7f1b237d35",
+    "nom": "Épée de feu vorpale",
+    "desc": "Lorsqu'il attaque avec son épée de feu, le prince-démon obtient des critiques sur des résultats de 18 à 20 et, en cas de critique, la victime doit réussir un test de CON difficulté 15 ou être décapitée ! Auquel cas elle meurt…"
+  },
+  {
+    "id": "3a0a5233-8152-41cf-a505-b115e21f807f",
+    "nom": "Explosion finale",
+    "desc": "Lorsque le corps du prince-dé- mon est détruit, il explose violemment en infligeant [7d6+30] DM de feu dans un rayon qui dépend de 20 m. Un test de DEX difficulté 13 permet de diviser les DM par 2. La difficulté passe à 18 pour les créatures en combat au contact au moment de l'explosion."
+  },
+  {
+    "id": "e93bbf07-68eb-4c06-b671-8bbbecfd09d9",
+    "nom": "Souffle enflammé (L)",
+    "desc": "Le souffle est une attaque de zone affectant toutes les créatures dans un cône de 20 m de long sur 10 m de large. L'attaque inflige automatiquement (pas de test d'attaque) [10d6+30] DM. Les DM sont divisés par deux si la victime réussit un test de DEX difficulté 13. Le prince-démon doit attendre 1d4 tours après chaque utilisation avant d'utiliser à nouveau son souffle."
+  },
+  {
+    "id": "57f571af-a5c4-4dec-a781-83f98b23a2e3",
+    "nom": "Vol  2",
+    "desc": "Un prince démon peut se déplacer en vol de 30 mètres par action de mouvement."
+  },
+  {
     "id": "7c430d56-8cac-46ec-ad09-4867d585edeb",
     "nom": "Venin",
     "desc": "En cas d'échec d'un test de CON (difficulté 15), la victime est affaiblie pendant 1d6 heures. Si la victime subit un nouvel empoisonnement du même type durant cette période, elle sombre dans l'inconscience pour 1d6 heures."
@@ -394,5 +489,10 @@
     "id": "027a20e1-5b30-4c37-8652-3c0c954162a4",
     "nom": "Transformation en loup (L)",
     "desc": "La créature peut se transformer à volonté en loup."
+  },
+  {
+    "id": "c521ccc7-417f-4194-91d1-5d4cc31eb9e7",
+    "nom": "Vermine",
+    "desc": "orsque vous créez un insecte géant, il obtient des bonus par rapport à un archétype normal. Si vous utilisez un profil d'insecte décrit ci-dessous, ignorez cette capacité car elle n'est destinée qu'aux MJ souhaitant concevoir ce type de créature. Dans ce cas, augmentez les PV de +10 et le Mod. de FOR et de CON de +3 par rapport à une créature de cette taille."
   }
 ]

@@ -99,7 +99,14 @@ export default function ModeSelector({ onSelect, mjDisabled, languages, currentL
           visible : pas de convention de coin déjà établie ailleurs dans l'app pour ce genre de bouton
           utilitaire, coin haut-droit choisi (convention web habituelle pour un sélecteur de langue).
           Le drapeau de la langue actuelle sert d'icône (voir DRAPEAUX), pas une planète fixe. */}
-      <div ref={menuRef} style={{ position: 'absolute', top: 20, right: 20 }}>
+      {/* Le décalage tient compte de la zone sûre de l'appareil (barre d'état, encoche) : sans lui,
+          le bouton passe sous l'heure et le niveau de batterie sur mobile. */}
+      <div ref={menuRef} style={{
+        position: 'absolute', right: 20,
+        // max() garantit un dégagement même si l'appareil renvoie 0 pour la zone sûre
+        // alors qu'une barre d'état recouvre malgré tout le haut de l'écran.
+        top: 'max(calc(env(safe-area-inset-top, 0px) + 20px), 44px)',
+      }}>
         <button
           onClick={() => setMenuOuvert(o => !o)}
           title={t('menuGestion.langue')}

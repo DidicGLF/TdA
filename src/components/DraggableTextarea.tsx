@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { majusculeInitiale } from '../utils/texte'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { useContext } from 'react'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 import SheetTextarea from './SheetTextarea'
 
 interface Props {
@@ -18,6 +21,10 @@ interface Props {
   lineHeightPct?: number
   paddingTopPct?: number
   autoShrink?: boolean
+  temporaire?: boolean
+  // Décision d'impression pour ce champ, et bascule associée (mode « préparer l'impression »).
+  imprime?: boolean
+  onToggleImpression?: () => void
   // Réserve de calibrage — voir DraggableField.
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
@@ -26,13 +33,14 @@ interface Props {
 
 export default function DraggableTextarea({
   top, left, width: initWidth, height: initHeight, value, onChange,
-  calibrate, label, containerRef, onMoved, lineHeightPct, paddingTopPct, autoShrink,
-  reserved, onReserveToggle, reservePortalTarget,
+  calibrate, label, containerRef, onMoved, lineHeightPct, paddingTopPct, autoShrink, temporaire,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
   const dragging = useRef(false)
+  const modeImpression = useContext(ModeImpressionContext)
 
   useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
   useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
@@ -142,11 +150,14 @@ export default function DraggableTextarea({
     <>
       <SheetTextarea
         top={pos.top} left={pos.left} width={width} height={height}
-        value={value} onChange={onChange} calibrate={calibrate}
+        value={value} onChange={onChange} calibrate={calibrate} temporaire={temporaire}
         placeholder={calibrate && value === '' ? majusculeInitiale(label) : undefined}
         containerRef={containerRef} lineHeightPct={lineHeightPct} paddingTopPct={paddingTopPct}
         autoShrink={autoShrink}
       />
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
       {calibrate && (
         <div
           onMouseDown={handleDragMouseDown}

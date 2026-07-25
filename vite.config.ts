@@ -5,7 +5,7 @@ import { writeFileSync, readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import type { IncomingMessage, ServerResponse } from 'http'
 
-const ALLOWED_FILES = ['descriptions.json', 'traits-magiques.json', 'peuples.json', 'compagnons.json', 'voies.json', 'armes.json', 'armures.json', 'traits-raciaux.json', 'hidden-voies.json', 'hidden-peuples.json', 'hidden-cultures.json', 'hidden-compagnons.json', 'bestiaire.json']
+const ALLOWED_FILES = ['descriptions.json', 'traits-magiques.json', 'peuples.json', 'compagnons.json', 'voies.json', 'armes.json', 'armures.json', 'traits-raciaux.json', 'hidden-voies.json', 'hidden-peuples.json', 'hidden-cultures.json', 'hidden-compagnons.json', 'bestiaire.json', 'capacites-bibliotheque.json', 'field-positions.json']
 
 export default defineConfig({
   plugins: [

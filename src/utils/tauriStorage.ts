@@ -31,9 +31,14 @@ export async function openDataDir(): Promise<void> {
 
 // Alias conservé pour compatibilité — en dev, saveDataFile écrit déjà dans src/data/
 export async function saveDataFileToBundle(filename: string, data: unknown): Promise<void> {
-  await fetch('/api/save-json', {
+  const res = await fetch('/api/save-json', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ file: filename, data }),
   })
+  // Le serveur refuse tout fichier absent de sa liste blanche. Sans cette vérification, l'échec
+  // passait inaperçu et on croyait la sauvegarde faite (cas vécu avec capacites-bibliotheque.json).
+  if (!res.ok) {
+    throw new Error(`Sauvegarde de ${filename} refusée par le serveur (${res.status}) : ${await res.text()}`)
+  }
 }

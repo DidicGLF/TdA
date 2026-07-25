@@ -20,6 +20,9 @@ interface Props {
   onChange: (val: string) => void
   calibrate?: boolean
   placeholder?: string
+  // Donnée de session (PV restants, trésorerie…) : affichée à l'écran mais jamais imprimée, le
+  // joueur la tenant au crayon sur la version papier.
+  temporaire?: boolean
   autoShrink?: boolean
   // Alignement sur les lignes de la fiche (optionnel)
   containerRef?: RefObject<HTMLDivElement | null>
@@ -29,7 +32,7 @@ interface Props {
 
 export default function SheetTextarea({
   top, left, width, height, value, onChange, calibrate = false,
-  autoShrink = false, containerRef, lineHeightPct, paddingTopPct = 0, placeholder,
+  autoShrink = false, containerRef, lineHeightPct, paddingTopPct = 0, placeholder, temporaire,
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const [lhPx, setLhPx] = useState<number | null>(null)
@@ -74,7 +77,7 @@ export default function SheetTextarea({
       ref={ref}
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="tdr-field"
+      className={temporaire ? "tdr-field tdr-temporaire" : "tdr-field"}
       placeholder={placeholder}
       data-lh-pct={lineHeightPct}
       data-pt-pct={paddingTopPct}

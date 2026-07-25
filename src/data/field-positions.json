@@ -1,1 +1,1290 @@
-{}
+{
+  "C2 Atk1 bonus": {
+    "top": 63,
+    "left": 81.3,
+    "width": 8.9
+  },
+  "C2 Atk1 DM": {
+    "top": 63,
+    "left": 90.6,
+    "width": 8.6
+  },
+  "C1 Atk1 DM": {
+    "top": 63,
+    "left": 44.1,
+    "width": 8.8
+  },
+  "C1 Atk1 bonus": {
+    "top": 62.9,
+    "left": 34.8,
+    "width": 8.5
+  },
+  "sangmele-0": {
+    "top": 80.7,
+    "left": 36.5,
+    "reserved": false,
+    "page": "verso"
+  },
+  "sangmele-1": {
+    "top": 85,
+    "left": 36.5,
+    "reserved": false,
+    "page": "verso"
+  },
+  "sangmele-2": {
+    "top": 89.4,
+    "left": 36.6,
+    "reserved": false,
+    "page": "verso"
+  },
+  "sangmele-cap-0": {
+    "top": 80.9,
+    "left": 52.7,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "verso"
+  },
+  "sangmele-cap-1": {
+    "top": 85.2,
+    "left": 52.6,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "verso"
+  },
+  "sangmele-cap-2": {
+    "top": 89.5,
+    "left": 52.8,
+    "width": 23.4,
+    "height": 2,
+    "reserved": false,
+    "page": "verso"
+  },
+  "pvRestants": {
+    "top": 46.6,
+    "left": 38.8,
+    "width": 5.1
+  },
+  "Nom joueur": {
+    "top": 9.1,
+    "left": 74.3,
+    "width": 13
+  },
+  "Nom perso": {
+    "top": 10,
+    "left": 45,
+    "width": 21.2,
+    "imprimer": true,
+    "reserved": false
+  },
+  "Profil": {
+    "top": 13,
+    "left": 37.4,
+    "width": 13.9
+  },
+  "Niveau": {
+    "top": 8.7,
+    "left": 90.7,
+    "width": 5.1
+  },
+  "Famille": {
+    "top": 15.3,
+    "left": 37.6,
+    "width": 11.2
+  },
+  "Peuple": {
+    "top": 12.9,
+    "left": 60.4,
+    "width": 16.6
+  },
+  "Genre": {
+    "top": 15.3,
+    "left": 53.1,
+    "width": 7.9
+  },
+  "Âge": {
+    "top": 15.3,
+    "left": 65.4,
+    "width": 5.2
+  },
+  "Culture": {
+    "top": 12.9,
+    "left": 84.8,
+    "width": 16.6
+  },
+  "Taille": {
+    "top": 15.3,
+    "left": 78.1,
+    "width": 5.7
+  },
+  "Poids": {
+    "top": 15.3,
+    "left": 89.5,
+    "width": 5.4
+  },
+  "FOR mod": {
+    "top": 23.6,
+    "left": 31.8,
+    "width": 5.1
+  },
+  "DEX mod": {
+    "top": 27.2,
+    "left": 31.7,
+    "width": 5.1
+  },
+  "CON mod": {
+    "top": 30.9,
+    "left": 31.8,
+    "width": 5.1
+  },
+  "INT mod": {
+    "top": 34.7,
+    "left": 31.8,
+    "width": 5.1
+  },
+  "SAG mod": {
+    "top": 38.3,
+    "left": 31.9,
+    "width": 5.1
+  },
+  "PV total": {
+    "top": 46.6,
+    "left": 44.5,
+    "width": 5.1
+  },
+  "CHA mod": {
+    "top": 42,
+    "left": 31.8,
+    "width": 5.1
+  },
+  "CHA val": {
+    "top": 42,
+    "left": 24,
+    "width": 6.3
+  },
+  "FOR val": {
+    "top": 23.6,
+    "left": 24,
+    "width": 6.4
+  },
+  "DEX val": {
+    "top": 27.1,
+    "left": 24,
+    "width": 6.5
+  },
+  "CON val": {
+    "top": 30.9,
+    "left": 24,
+    "width": 6.4
+  },
+  "INT val": {
+    "top": 34.6,
+    "left": 24,
+    "width": 6.4
+  },
+  "SAG val": {
+    "top": 38.3,
+    "left": 24,
+    "width": 6.3
+  },
+  "PM": {
+    "top": 92.9,
+    "left": 85.8,
+    "width": 5
+  },
+  "PR 1": {
+    "top": 58.7,
+    "left": 20.7
+  },
+  "PR 2": {
+    "top": 58.7,
+    "left": 22.9
+  },
+  "PR 3": {
+    "top": 58.7,
+    "left": 25.2
+  },
+  "PR 4": {
+    "top": 58.7,
+    "left": 27.4
+  },
+  "PR 5": {
+    "top": 58.7,
+    "left": 29.7
+  },
+  "PR 6": {
+    "top": 58.7,
+    "left": 31.9
+  },
+  "Voie peuple": {
+    "top": 4.2,
+    "left": 23.8,
+    "width": 17.3,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-0 nom": {
+    "top": 6.7,
+    "left": 21.5,
+    "width": 23.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Voie cult.": {
+    "top": 4.2,
+    "left": 56.3,
+    "width": 16.3,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-0 nom": {
+    "top": 6.7,
+    "left": 52.5,
+    "width": 23.7,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-1 nom": {
+    "top": 15.2,
+    "left": 52.6,
+    "width": 23.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-2 nom": {
+    "top": 23.7,
+    "left": 52.7,
+    "width": 23.7,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-3 nom": {
+    "top": 32.2,
+    "left": 52.7,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-0": {
+    "top": 6.8,
+    "left": 36.4,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-1 nom": {
+    "top": 15.2,
+    "left": 21.5,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-2 nom": {
+    "top": 23.7,
+    "left": 21.6,
+    "width": 23.7,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-3 nom": {
+    "top": 32.2,
+    "left": 21.6,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-4 nom": {
+    "top": 40.7,
+    "left": 21.3,
+    "width": 23.5,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Voie 2": {
+    "top": 50.8,
+    "left": 53.3,
+    "width": 22.7,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-0 nom": {
+    "top": 53.1,
+    "left": 52.5,
+    "width": 23.5,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-1 nom": {
+    "top": 61.6,
+    "left": 52.5,
+    "width": 23.5,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-3 nom": {
+    "top": 78.6,
+    "left": 52.6,
+    "width": 23.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-2 nom": {
+    "top": 70.1,
+    "left": 52.5,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-4 nom": {
+    "top": 87.1,
+    "left": 52.6,
+    "width": 23.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-1": {
+    "top": 15.3,
+    "left": 36.4,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-2": {
+    "top": 23.8,
+    "left": 36.5,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-3": {
+    "top": 32.4,
+    "left": 36.4,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-4": {
+    "top": 40.9,
+    "left": 36.4,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voieCult-4 nom": {
+    "top": 40.7,
+    "left": 52.6,
+    "width": 23.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Voie 3": {
+    "top": 50.8,
+    "left": 84.3,
+    "width": 22.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-0 nom": {
+    "top": 53.1,
+    "left": 83.9,
+    "width": 24.1,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-0": {
+    "top": 53.2,
+    "left": 67.6,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-1": {
+    "top": 61.7,
+    "left": 67.6,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-1 nom": {
+    "top": 61.6,
+    "left": 83.9,
+    "width": 23.5,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-2 nom": {
+    "top": 70.1,
+    "left": 84,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-2": {
+    "top": 70.2,
+    "left": 67.7,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-3 nom": {
+    "top": 78.6,
+    "left": 84.1,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-3": {
+    "top": 78.7,
+    "left": 67.6,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-4": {
+    "top": 87.3,
+    "left": 67.7,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie3-4 nom": {
+    "top": 87.2,
+    "left": 83.8,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Total encombrement": {
+    "top": 61.4,
+    "left": 92.8,
+    "width": 5
+  },
+  "Enchantement": {
+    "top": 61.4,
+    "left": 82.5,
+    "width": 8.1
+  },
+  "Encombrement": {
+    "top": 61.4,
+    "left": 71.4,
+    "width": 6
+  },
+  "pcRestants": {
+    "top": 19.2,
+    "left": 46.9,
+    "width": 5.2,
+    "imprimer": false,
+    "reserved": true,
+    "height": 2
+  },
+  "PC": {
+    "top": 41.7,
+    "left": 93,
+    "width": 5.2
+  },
+  "voiePeuple-1": {
+    "top": 15.3,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-2": {
+    "top": 23.8,
+    "left": 5.2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-0": {
+    "top": 6.8,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "pmRestants": {
+    "top": 91.9,
+    "left": 27.4,
+    "width": 2.255,
+    "height": 1.75,
+    "perRow": 25
+  },
+  "Dé de vie": {
+    "top": 46.6,
+    "left": 19.9,
+    "width": 5
+  },
+  "voie1-3 nom": {
+    "top": 78.7,
+    "left": 21.4,
+    "width": 23.7,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-3": {
+    "top": 78.8,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-4": {
+    "top": 87.3,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-4 nom": {
+    "top": 87.1,
+    "left": 21.4,
+    "width": 23.8,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-3": {
+    "top": 78.7,
+    "left": 36.3,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-4": {
+    "top": 87.2,
+    "left": 36.3,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-2": {
+    "top": 70.2,
+    "left": 36.3,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-1": {
+    "top": 61.7,
+    "left": 36.3,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie2-0": {
+    "top": 53.2,
+    "left": 36.3,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-4": {
+    "top": 40.9,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voiePeuple-3": {
+    "top": 32.4,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-0": {
+    "top": 53.2,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-1": {
+    "top": 61.7,
+    "left": 5.1,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-2": {
+    "top": 70.3,
+    "left": 5.2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-2 nom": {
+    "top": 70.1,
+    "left": 21.6,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-1 nom": {
+    "top": 61.6,
+    "left": 21.6,
+    "width": 23.6,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "voie1-0 nom": {
+    "top": 53,
+    "left": 21.4,
+    "width": 24,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Voie 1": {
+    "top": 50.8,
+    "left": 21.9,
+    "width": 22.9,
+    "height": 2,
+    "reserved": false,
+    "page": "voies"
+  },
+  "Trait peuple desc": {
+    "top": 87.4,
+    "left": 25.7,
+    "width": 42.2,
+    "height": 5.6
+  },
+  "Trait peuple": {
+    "top": 84,
+    "left": 31,
+    "width": 24.1
+  },
+  "Déf bouclier": {
+    "top": 52.6,
+    "left": 70.8,
+    "width": 5
+  },
+  "Déf armure": {
+    "top": 49.9,
+    "left": 70.8,
+    "width": 5
+  },
+  "DEF total": {
+    "top": 46.6,
+    "left": 92.8,
+    "width": 5
+  },
+  "Déf mod DEX": {
+    "top": 46.7,
+    "left": 72.9,
+    "width": 5
+  },
+  "Bonus DEF": {
+    "top": 46.6,
+    "left": 79.5,
+    "width": 5
+  },
+  "Arme 1": {
+    "top": 66.6,
+    "left": 65.2,
+    "width": 20
+  },
+  "ATT Arme 1": {
+    "top": 66.7,
+    "left": 83.3,
+    "width": 5
+  },
+  "DM Arme 1": {
+    "top": 66.6,
+    "left": 91.2,
+    "width": 9
+  },
+  "Arme 2": {
+    "top": 72.1,
+    "left": 65.3,
+    "width": 19.9
+  },
+  "ATT Arme 2": {
+    "top": 72.1,
+    "left": 83.3,
+    "width": 5
+  },
+  "DM Arme 2": {
+    "top": 72.1,
+    "left": 91.1,
+    "width": 9.1
+  },
+  "ATT mag total": {
+    "top": 36.8,
+    "left": 92.9,
+    "width": 5
+  },
+  "Bonus fam. magique": {
+    "top": 36.7,
+    "left": 86.3,
+    "width": 5
+  },
+  "ATT mag niv": {
+    "top": 36.8,
+    "left": 73,
+    "width": 5
+  },
+  "ATT mag mod": {
+    "top": 36.9,
+    "left": 66.3,
+    "width": 5.1
+  },
+  "ATT dist total": {
+    "top": 33.4,
+    "left": 92.9,
+    "width": 5
+  },
+  "Bonus fam. distance": {
+    "top": 33.4,
+    "left": 86.3,
+    "width": 5
+  },
+  "ATT dist niv": {
+    "top": 33.4,
+    "left": 73,
+    "width": 5
+  },
+  "ATT dist mod": {
+    "top": 33.4,
+    "left": 66.3,
+    "width": 5.1
+  },
+  "ATT contact total": {
+    "top": 30.1,
+    "left": 92.8,
+    "width": 5
+  },
+  "Bonus fam. contact": {
+    "top": 30.1,
+    "left": 86.3,
+    "width": 5
+  },
+  "ATT contact niv": {
+    "top": 30.1,
+    "left": 73,
+    "width": 5
+  },
+  "ATT contact mod": {
+    "top": 30.1,
+    "left": 66.3,
+    "width": 5.1
+  },
+  "Initiative totale": {
+    "top": 23.6,
+    "left": 92.9,
+    "width": 5
+  },
+  "Enc. init.": {
+    "top": 23.5,
+    "left": 79.6,
+    "width": 5
+  },
+  "Initiative": {
+    "top": 23.6,
+    "left": 66.3,
+    "width": 5.1
+  },
+  "Armures légères": {
+    "top": 64.7,
+    "left": 6.5,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armures lourdes": {
+    "top": 64.7,
+    "left": 25.9,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de jet": {
+    "top": 70.2,
+    "left": 6.4,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de trait": {
+    "top": 72.9,
+    "left": 6.6,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de tir": {
+    "top": 75.4,
+    "left": 6.5,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de guerre": {
+    "top": 67.5,
+    "left": 25.8,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de guerre lourdes": {
+    "top": 70.2,
+    "left": 26,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes de duel": {
+    "top": 72.8,
+    "left": 25.9,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Armes d'hast": {
+    "top": 75.6,
+    "left": 25.7,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Talent magique": {
+    "top": 84,
+    "left": 81.7,
+    "width": 29.6,
+    "height": 2,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Talent magique desc": {
+    "top": 87.5,
+    "left": 74.6,
+    "width": 42.3,
+    "height": 5.6,
+    "reserved": false,
+    "page": "recto"
+  },
+  "Inventaire": {
+    "top": 40.9,
+    "left": 73.3,
+    "width": 44.2,
+    "height": 15.5
+  },
+  "Voie sang-mêlé": {
+    "top": 78.8,
+    "left": 57.6,
+    "width": 14,
+    "height": 2,
+    "reserved": false,
+    "page": "verso"
+  },
+  "voiePeuple-0 desc": {
+    "top": 10.8,
+    "left": 18.8,
+    "width": 28.1,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voiePeuple-1 desc": {
+    "top": 19.3,
+    "left": 18.8,
+    "width": 28.2,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voiePeuple-2 desc": {
+    "top": 27.7,
+    "left": 18.9,
+    "width": 28.2,
+    "height": 6.6,
+    "page": "voies",
+    "reserved": false
+  },
+  "voiePeuple-3 desc": {
+    "top": 36.4,
+    "left": 18.8,
+    "width": 28.3,
+    "height": 6.8,
+    "page": "voies",
+    "reserved": false
+  },
+  "voiePeuple-4 desc": {
+    "top": 44.8,
+    "left": 18.8,
+    "width": 28.2,
+    "height": 6.3,
+    "page": "voies",
+    "reserved": false
+  },
+  "voieCult-0 desc": {
+    "top": 10.7,
+    "left": 50,
+    "width": 28.4,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "voieCult-1 desc": {
+    "top": 19.3,
+    "left": 50,
+    "width": 28.4,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "voieCult-2 desc": {
+    "top": 27.7,
+    "left": 50,
+    "width": 28.4,
+    "height": 6.8,
+    "page": "voies",
+    "reserved": false
+  },
+  "voieCult-3 desc": {
+    "top": 36.3,
+    "left": 50,
+    "width": 28.5,
+    "height": 6.8,
+    "page": "voies",
+    "reserved": false
+  },
+  "voieCult-4 desc": {
+    "top": 44.8,
+    "left": 49.9,
+    "width": 27.8,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "Voie prestige": {
+    "top": 4.8,
+    "left": 79.1,
+    "width": 22.3
+  },
+  "prestige-cap-0": {
+    "top": 6.8,
+    "left": 83.3,
+    "width": 22.5
+  },
+  "prestige-cap-1": {
+    "top": 15.3,
+    "left": 83.9,
+    "width": 23.6
+  },
+  "prestige-cap-2": {
+    "top": 23.8,
+    "left": 83.9,
+    "width": 23.6
+  },
+  "prestige-cap-3": {
+    "top": 32.3,
+    "left": 83.9,
+    "width": 23.6
+  },
+  "prestige-cap-4": {
+    "top": 40.8,
+    "left": 83.8,
+    "width": 23.6
+  },
+  "prestige-0 desc": {
+    "top": 10.8,
+    "left": 81.2,
+    "width": 28.3,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "prestige-0": {
+    "top": 6.9,
+    "left": 67.6
+  },
+  "prestige-1": {
+    "top": 15.5,
+    "left": 67.6
+  },
+  "prestige-2": {
+    "top": 23.9,
+    "left": 67.6
+  },
+  "prestige-3": {
+    "top": 32.4,
+    "left": 67.6
+  },
+  "prestige-4": {
+    "top": 41,
+    "left": 67.5
+  },
+  "voie1-0 desc": {
+    "top": 57.3,
+    "left": 18.7,
+    "width": 28.6,
+    "height": 7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie1-1 desc": {
+    "top": 65.8,
+    "left": 18.8,
+    "width": 28.6,
+    "height": 7.1,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie1-2 desc": {
+    "top": 74.1,
+    "left": 18.8,
+    "width": 29.1,
+    "height": 6.5,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie1-3 desc": {
+    "top": 82.8,
+    "left": 18.7,
+    "width": 28.9,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie1-4 desc": {
+    "top": 91.2,
+    "left": 18.7,
+    "width": 28.5,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie2-0 desc": {
+    "top": 57.2,
+    "left": 50,
+    "width": 28.8,
+    "height": 7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie2-1 desc": {
+    "top": 65.7,
+    "left": 50,
+    "width": 28.8,
+    "height": 7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie2-2 desc": {
+    "top": 74.3,
+    "left": 50,
+    "width": 29,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie2-3 desc": {
+    "top": 82.7,
+    "left": 50,
+    "width": 28.4,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie2-4 desc": {
+    "top": 91.2,
+    "left": 50.1,
+    "width": 28.1,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie3-0 desc": {
+    "top": 57.1,
+    "left": 81.3,
+    "width": 28.4,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie3-1 desc": {
+    "top": 65.7,
+    "left": 81.2,
+    "width": 29.2,
+    "height": 6.6,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie3-2 desc": {
+    "top": 74.2,
+    "left": 81.3,
+    "width": 28.6,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie3-3 desc": {
+    "top": 82.7,
+    "left": 81.3,
+    "width": 28.4,
+    "height": 6.8,
+    "page": "voies",
+    "reserved": false
+  },
+  "voie3-4 desc": {
+    "top": 91.1,
+    "left": 81.2,
+    "width": 28.8,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "prestige-1 desc": {
+    "top": 19.3,
+    "left": 81.2,
+    "width": 28.6,
+    "height": 6.9,
+    "page": "voies",
+    "reserved": false
+  },
+  "prestige-2 desc": {
+    "top": 27.9,
+    "left": 81.2,
+    "width": 28.7,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "prestige-3 desc": {
+    "top": 36.4,
+    "left": 81.2,
+    "width": 28.5,
+    "height": 6.7,
+    "page": "voies",
+    "reserved": false
+  },
+  "prestige-4 desc": {
+    "top": 44.8,
+    "left": 81.2,
+    "width": 28.4,
+    "height": 6.8,
+    "page": "voies",
+    "reserved": false
+  },
+  "Comp nom": {
+    "top": 18.5,
+    "left": 31.7,
+    "width": 30.1,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp image": {
+    "top": 57.9,
+    "left": 25.3,
+    "width": 42.7,
+    "height": 63.4,
+    "reserved": false
+  },
+  "Comp FOR": {
+    "top": 19.1,
+    "left": 61.7,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp DEX": {
+    "top": 24.8,
+    "left": 61.7,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp CON": {
+    "top": 30.4,
+    "left": 61.7,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp INT": {
+    "top": 19.1,
+    "left": 77.1,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp SAG": {
+    "top": 24.6,
+    "left": 77.1,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp CHA": {
+    "top": 30.4,
+    "left": 77.1,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp INIT": {
+    "top": 19.1,
+    "left": 92.9,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp DEF": {
+    "top": 24.6,
+    "left": 92.9,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp PV": {
+    "top": 30.3,
+    "left": 92.8,
+    "width": 4,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp arme": {
+    "top": 37,
+    "left": 65.5,
+    "width": 20.6,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp attaque": {
+    "top": 37.8,
+    "left": 83.1,
+    "width": 8,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp DM": {
+    "top": 37.6,
+    "left": 91.2,
+    "width": 8,
+    "height": 4,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp spécial": {
+    "top": 82.6,
+    "left": 73.5,
+    "width": 44,
+    "height": 12.5,
+    "reserved": false
+  },
+  "Comp notes": {
+    "top": 60.4,
+    "left": 73.5,
+    "width": 44,
+    "height": 21.1,
+    "reserved": false
+  }
+}

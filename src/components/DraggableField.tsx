@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { majusculeInitiale } from '../utils/texte'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { useContext } from 'react'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 import SheetField from './SheetField'
 
 interface Props {
@@ -20,6 +23,10 @@ interface Props {
   onMoved: (label: string, top: number, left: number, width?: number) => void
   title?: string
   readOnly?: boolean
+  temporaire?: boolean
+  // Décision d'impression pour ce champ, et bascule associée (mode « préparer l'impression »).
+  imprime?: boolean
+  onToggleImpression?: () => void
   // Réserve de calibrage (option A) : un champ "reserved" n'est pas affiché sur la feuille (aucune
   // position réelle n'a de sens) mais listé dans reservePortalTarget, un conteneur DOM neutre affiché
   // à la place du wizard en mode calibrage. Cliquer dessus le replace sur la feuille (onReserveToggle).
@@ -30,12 +37,13 @@ interface Props {
 
 export default function DraggableField({
   top, left, width: initWidth, height, value, onChange, type, align, active,
-  calibrate, label, containerRef, onMoved, title, readOnly,
-  reserved, onReserveToggle, reservePortalTarget,
+  calibrate, label, containerRef, onMoved, title, readOnly, temporaire,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const dragging = useRef(false)
+  const modeImpression = useContext(ModeImpressionContext)
 
   useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
   useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
@@ -124,9 +132,12 @@ export default function DraggableField({
       <SheetField
         top={pos.top} left={pos.left} width={width} height={height}
         value={value} onChange={onChange} type={type} align={align} active={active}
-        calibrate={calibrate} title={title} readOnly={readOnly}
+        calibrate={calibrate} title={title} readOnly={readOnly} temporaire={temporaire}
         placeholder={calibrate && String(value ?? '') === '' ? majusculeInitiale(label) : undefined}
       />
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
       {calibrate && (
         <div
           onMouseDown={handleDragMouseDown}

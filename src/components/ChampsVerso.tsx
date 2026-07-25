@@ -67,6 +67,9 @@ export default function ChampsVerso({
       reservePortalTarget,
       // Reposer un champ depuis la réserve l'assigne à la fiche EN COURS (geste de changement de page).
       onReserveToggle: (r: boolean) => cbReserve(label, r, r ? { top, left, width, height } : { top, left, width, height, page }),
+      // Décision d'impression : par défaut le champ figure sur le papier (cf. FieldPosition.imprimer).
+      imprime: ov?.imprimer ?? true,
+      onToggleImpression: () => cbReserve(label, ov?.reserved === true, { imprimer: !(ov?.imprimer ?? true) } as never),
     }
   }
   const { data: rawData } = useGameData()
@@ -239,6 +242,7 @@ export default function ChampsVerso({
       {/* === INVENTAIRE === */}
       {visible("Inventaire") && <DraggableTextarea
         {...fp("Inventaire", 40.9, 73.3, 44.2, 15.5)}
+        temporaire
         value={character.inventaire}
         onChange={v => onChange({ inventaire: v })}
         calibrate={calibrate} label="Inventaire"
@@ -372,6 +376,7 @@ export default function ChampsVerso({
       {/* === TRÉSORERIE === */}
       {visible("Trésorerie") && <DraggableField
         {...fp("Trésorerie", 72.2, 49.9, 29.2, 2.0)}
+        temporaire
         value={character.tresorerie} onChange={v => onChange({ tresorerie: v })}
         calibrate={calibrate} label="Trésorerie"
         containerRef={containerRef} onMoved={cb}

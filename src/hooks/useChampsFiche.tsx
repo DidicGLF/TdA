@@ -1,6 +1,8 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
+import { ModeImpressionContext } from './modeImpression'
+export { ModeImpressionContext }
 import DraggableField from '../components/DraggableField'
 import type { TooltipData, TooltipLine } from '../components/SheetTooltip'
 
@@ -25,6 +27,9 @@ type FProps = Omit<React.ComponentProps<typeof DraggableField>, 'calibrate' | 'c
   // Un champ tout neuf (pas encore d'entrée dans fieldPositions) part directement dans la réserve
   // plutôt que sur la feuille à une position devinée.
   reserveByDefault?: boolean
+  // Donnée de session (PV restants, trésorerie…) : non imprimée PAR DÉFAUT, l'utilisateur pouvant
+  // en décider autrement via le mode « préparer l'impression ».
+  temporaire?: boolean
 }
 
 // Tuyauterie commune à tous les champs de fiche : résolution de la position calibrée, appartenance à
@@ -37,6 +42,13 @@ export function useChampsFiche({
 }: ChampsFicheOptions) {
   const cb = onFieldMoved ?? (() => {})
   const cbReserve = onReserveToggle ?? (() => {})
+
+  // Un champ figure sur le papier sauf décision contraire de l'utilisateur ; à défaut de décision,
+  // on suit le défaut du champ (les données de session ne s'impriment pas).
+  const estImprime = (id: string, temporaire?: boolean) => fieldPositions?.[id]?.imprimer ?? !temporaire
+
+  const basculeImpression = (id: string, temporaire?: boolean) =>
+    cbReserve(id, fieldPositions?.[id]?.reserved === true, { imprimer: !estImprime(id, temporaire) } as never)
 
   const pageDe = (id: string) => fieldPositions?.[id]?.page ?? defaultPage
   const surCettePage = (id: string) => pageDe(id) === page
@@ -89,7 +101,7 @@ export function useChampsFiche({
 
   // Rendu d'un champ. Renvoie null si le champ appartient à l'autre fiche, la pastille s'il est en
   // réserve, sinon le champ complet (avec ses zones d'infobulle formule/description).
-  const f = ({ formula, tooltipDesc, title, tooltipTitle, reserveByDefault, ...p }: FProps) => {
+  const f = ({ formula, tooltipDesc, title, tooltipTitle, reserveByDefault, temporaire, ...p }: FProps) => {
     const fp = fieldPositions?.[p.label]
     if (fp?.reserved === true || (!fp && reserveByDefault === true)) {
       return reserveChip(p.label, { top: p.top, left: p.left, width: p.width, height: p.height })
@@ -105,6 +117,9 @@ export function useChampsFiche({
     return (
       <React.Fragment key={ep.label}>
         <DraggableField {...ep} title={formula || tooltipDesc ? undefined : title} calibrate={calibrate} containerRef={containerRef} onMoved={cb}
+          temporaire={!estImprime(p.label, temporaire)}
+          imprime={estImprime(p.label, temporaire)}
+          onToggleImpression={() => basculeImpression(p.label, temporaire)}
           onReserveToggle={r => cbReserve(p.label, r, { top: ep.top, left: ep.left, width: ep.width, height: ep.height })} />
         {formula && !calibrate && p.readOnly && (
           <div style={zoneStyle}

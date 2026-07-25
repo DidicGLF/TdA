@@ -137,6 +137,13 @@ body {
     display: block;
   }
 
+  /* Données de session : jamais imprimées. La fiche papier doit rester vierge sur tout ce que le
+     joueur fera évoluer en cours de partie (PV/PM restants, équipement, trésorerie…), sinon il ne
+     peut pas le corriger sur le papier. L'emplacement du fond imprimé reste visible et vide. */
+  .tdr-temporaire {
+    display: none !important;
+  }
+
   .tdr-field {
     font-size: 12pt !important;
     overflow: visible !important;

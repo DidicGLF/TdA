@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { MASQUAGE_MOT_DE_PASSE } from '../utils/motDePasse'
 import { useTranslation, Trans } from 'react-i18next'
 import { useVoieName, useCompagnonName, useTraitName, useTraitRacialName, usePeupleName } from '../hooks/useContentTranslation'
 import DESCRIPTIONS_RAW from '../data/descriptions.json'
@@ -18,7 +19,6 @@ const _descUnwrapped: Record<string, unknown[]> = (
 ) as Record<string, unknown[]>
 const VOIES_INIT = Object.keys(_descUnwrapped).sort((a, b) => a.localeCompare(b, 'fr'))
 
-const MASQUAGE_MOT_DE_PASSE = 'TdA-dev'
 
 // ── Helpers de conversion Markdown → HTML (utilisés par aperçu et impression) ──
 
@@ -157,7 +157,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const traitName = useTraitName()
   const traitRacialName = useTraitRacialName()
   const peupleName = usePeupleName()
-  const { data, setData, traits, setTraits, peuples, setPeuples, armes, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, showHidden, setShowHidden, openDataDir } = useGameData()
+  const { data, setData, traits, setTraits, peuples, setPeuples, armes, armures, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, showHidden, setShowHidden, openDataDir } = useGameData()
 
   const cultureKey = (peupleLabel: string, cultureLabel: string) => `${peupleLabel}::${cultureLabel}`
 
@@ -3830,6 +3830,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     saveDataFileToBundle('hidden-peuples.json', hiddenPeuples),
                     saveDataFileToBundle('hidden-cultures.json', hiddenCultures),
                     saveDataFileToBundle('hidden-compagnons.json', hiddenCompagnons),
+                    // Éditées par EquipementModal, qui n'a pas de bouton propre : sans ces deux
+                    // lignes, les notes et catégories saisies ne rejoignaient jamais le projet.
+                    saveDataFileToBundle('armes.json', armes),
+                    saveDataFileToBundle('armures.json', armures),
                   ])
                   window.location.reload()
                 }}

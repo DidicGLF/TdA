@@ -82,6 +82,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const isMobile = window.innerWidth < 700
   const [mobileCatKey, setMobileCatKey] = useState('0-0')
   const [mobileView, setMobileView] = useState<'catalogue' | 'equipe'>('catalogue')
+  // Sur petit écran, la colonne des types deviendrait illisible à côté de la liste des armes : on la
+  // replie dans un menu flottant pour rendre tout l'écran à la liste.
+  const [menuTypesOuvert, setMenuTypesOuvert] = useState(false)
 
   const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
@@ -762,11 +765,18 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         </div>
 
         {/* ── Corps ── */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
 
-          {/* Menu ancres */}
-          <div style={{ width: 'clamp(90px, 28vw, 210px)', flexShrink: 0, borderRight: `1px solid ${S.border}`,
-            display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* Menu ancres — panneau fixe sur grand écran, tiroir flottant sur mobile */}
+          {isMobile && !menuTypesOuvert ? null : (
+          <div style={isMobile ? {
+            position: 'absolute', top: 0, bottom: 0, left: 0, zIndex: 20,
+            width: 'min(76vw, 300px)', background: 'rgba(18,14,9,0.99)',
+            borderRight: `1px solid ${S.border}`, boxShadow: '4px 0 24px rgba(0,0,0,0.7)',
+            display: 'flex', flexDirection: 'column', overflowY: 'auto',
+          } : { width: 'clamp(90px, 28vw, 210px)', flexShrink: 0, borderRight: `1px solid ${S.border}`,
+            display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+            onClick={isMobile ? () => setMenuTypesOuvert(false) : undefined}>
             <div style={{ flex: 1 }}>
               {section === 'armes'
                 ? groupes.map((g, gi) => (
@@ -864,9 +874,24 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               </div>
             )}
           </div>
+          )}
+
+          {/* Voile de fermeture du tiroir */}
+          {isMobile && menuTypesOuvert && (
+            <div onClick={() => setMenuTypesOuvert(false)}
+              style={{ position: 'absolute', inset: 0, zIndex: 15, background: 'rgba(0,0,0,0.5)' }} />
+          )}
 
           {/* Toutes les tables */}
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: '0 18px 24px', minWidth: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: isMobile ? '0 10px 24px' : '0 18px 24px', minWidth: 0 }}>
+            {/* Sur mobile, la liste occupe tout l'écran : ce bouton rappelle le menu des types. */}
+            {isMobile && (
+              <button onClick={() => setMenuTypesOuvert(true)} style={{
+                position: 'sticky', top: 8, zIndex: 10, marginTop: 8,
+                padding: '6px 14px', borderRadius: 5, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                border: `1px solid ${S.border}`, background: 'rgba(30,24,16,0.97)', color: S.gold,
+              }}>☰ {t('equipement.types')}</button>
+            )}
             {section === 'armes'
               ? groupes.map((g, gi) => (
                 <div key={gi}>

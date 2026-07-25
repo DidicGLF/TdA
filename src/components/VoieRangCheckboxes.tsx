@@ -266,6 +266,8 @@ export default function VoieRangCheckboxes({
             active={activeStep === (derive ? 1 : 3)}
             calibrate={calibrate} containerRef={containerRef} onMoved={cb}
             onReserveToggle={r => cbReserve(id, r, { top: tTop, left: tLeft, width: tWidth, height: tHeight })}
+            imprime={fp?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(id, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
           />
         )
       })}
@@ -301,6 +303,8 @@ export default function VoieRangCheckboxes({
               value={nomCap} onChange={() => {}} readOnly={locked} active={activeStep === 3}
               calibrate={calibrate} containerRef={containerRef} onMoved={cb}
               onReserveToggle={r => cbReserve(nomId, r, { top: nTop, left: nLeft, width: nWidth, height: nHeight })}
+              imprime={fp?.imprimer ?? true}
+              onToggleImpression={() => cbReserve(nomId, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
             />
             {desc && !calibrate && (
               <div

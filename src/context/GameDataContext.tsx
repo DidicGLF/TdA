@@ -46,9 +46,17 @@ export type VoieEntry = { nom: string; famille: string; categorie: string }
 // Les fiches sur lesquelles un champ peut être posé. Ajouter une valeur ici suffit à rendre la
 // nouvelle fiche éligible pour tous les champs existants (ils s'y déplacent via la réserve).
 export type SheetPage = 'recto' | 'verso' | 'voies' | 'compagnons'
-export type FieldPosition = { top: number; left: number; width?: number; height?: number; reserved?: boolean; perRow?: number; page?: SheetPage }
+// imprimer : décision de l'utilisateur pour la version papier. Absent = on garde le défaut du champ
+// (les données de session — PV/PM restants, équipement… — ne s'impriment pas, le joueur les tenant au
+// crayon). Ce choix vaut pour tous les personnages, comme les positions.
+export type FieldPosition = { top: number; left: number; width?: number; height?: number; reserved?: boolean; perRow?: number; page?: SheetPage; imprimer?: boolean }
 export type FieldPositions = Record<string, FieldPosition>
 export type SheetImages = Partial<Record<SheetPage, string>>
+
+// Calibrage livré avec l'application. Réinitialiser doit y revenir, et non vider les positions :
+// un fichier vide sur le disque de l'utilisateur écrase le calibrage embarqué et fait retomber tous
+// les champs sur les valeurs par défaut du code, sans retour possible depuis l'interface.
+export const FIELD_POSITIONS_LIVRE = unwrap(JSON.parse(JSON.stringify(FIELD_POSITIONS_RAW))) as FieldPositions
 
 interface GameDataContextValue {
   data: DescMap

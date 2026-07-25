@@ -602,7 +602,7 @@ export default function ChampsRecto({
               {f({ label: "pvRestants", tooltipTitle: t('recto.pvRestants'), top: 38.1, left: 22.8, width: 5.1, height: 2.0,
                 value: pvActuels,
                 onChange: v => onChange({ pvRestants: parseInt(v) || 0 }),
-                type: "number", align: "center", active: activeStep === 4 })}
+                type: "number", align: "center", active: activeStep === 4 , temporaire: true})}
               {f({ label: "PV total", tooltipTitle: t('recto.pvTotal'), top: 38.1, left: 28.8, width: 5.1, height: 2.0,
                 value: locked ? pvTotal : (character.pvRestants ?? pvTotal),
                 onChange: locked ? () => {} : v => onChange({ pvRestants: parseInt(v) || 0 }),
@@ -621,7 +621,7 @@ export default function ChampsRecto({
             return (
               <DraggableCheckboxRow
                 label={label} top={rTop} left={rLeft} perRow={rPerRow} stepX={rStepX} stepY={rStepY}
-                count={pmAffiche} checkedCount={character.pmRestants ?? pmAffiche}
+                count={pmAffiche} checkedCount={character.pmRestants ?? pmAffiche} temporaire
                 onValueChange={v => onChange({ pmRestants: v })}
                 calibrate={calibrate} containerRef={containerRef}
                 onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
@@ -641,7 +641,7 @@ export default function ChampsRecto({
             ], total: pmAffiche } })}
           {f({ label: "pcRestants", tooltipTitle: t('recto.pcRestants'), top: 50.6, left: 22.8, width: 5.2, height: 2.0,
             value: character.pcRestants || character.pc,
-            onChange: v => onChange({ pcRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 })}
+            onChange: v => onChange({ pcRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 , temporaire: true})}
           {f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
             formula: character.famille === 'aventuriers'
               ? { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }, { label: t('recto.tlAventuriers'), value: '+2' }], total: CHA.mod + 4 }
@@ -659,6 +659,7 @@ export default function ChampsRecto({
         return (
           <div key={nom}>
             <div
+              className="tdr-temporaire"
               onClick={() => togglePR(nom, idx)}
               style={{
                 position: 'absolute',

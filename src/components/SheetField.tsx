@@ -13,6 +13,9 @@ interface SheetFieldProps {
   calibrate?: boolean
   // Texte-repère affiché uniquement en calibrage, quand le champ est vide (cf. .tdr-field::placeholder)
   placeholder?: string
+  // Donnée de session (PV restants, trésorerie…) : affichée à l'écran mais jamais imprimée, le
+  // joueur la tenant au crayon sur la version papier.
+  temporaire?: boolean
   title?: string
   readOnly?: boolean
 }
@@ -22,7 +25,7 @@ const MIN_FONT  = 0.45  // vw
 
 export default function SheetField({
   top, left, width, height = 2.2,
-  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false, placeholder,
+  value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false, placeholder, temporaire,
 }: SheetFieldProps) {
   const ref = useRef<HTMLInputElement>(null)
 
@@ -48,7 +51,7 @@ export default function SheetField({
       onChange={e => onChange(e.target.value)}
       readOnly={readOnly}
       title={title}
-      className="tdr-field"
+      className={temporaire ? "tdr-field tdr-temporaire" : "tdr-field"}
       placeholder={placeholder}
       style={{
         position: 'absolute',

@@ -196,6 +196,14 @@
     "nomCampagne": "Nom du groupe",
     "renommerGroupe": "Renommer",
     "supprimerGroupe": "Supprimer ce groupe (les notes sont conservées, sans groupe)",
+    "annuler": "Annuler",
+    "supprimerGroupeTitre": "Supprimer le groupe « {{nom}} » ?",
+    "groupeVide": "Ce groupe ne contient aucune note.",
+    "groupeContient_one": "Il contient {{count}} note.",
+    "groupeContient_other": "Il contient {{count}} notes.",
+    "supprimerGroupeSeul": "Supprimer le groupe seulement (les notes sont conservées, sans groupe)",
+    "supprimerGroupeEtNotes_one": "Supprimer le groupe ET sa note",
+    "supprimerGroupeEtNotes_other": "Supprimer le groupe ET ses {{count}} notes",
     "confirmerSuppressionGroupe": "Confirmer",
     "creer": "Créer",
     "allerCreature": "Aller à la créature",
@@ -220,6 +228,11 @@
     "donneesJeu": "✎ Données du jeu",
     "deverrouiller": "🔒 Déverrouiller la fiche",
     "verrouiller": "🔓 Verrouiller la fiche",
+    "sauverCalibrage": "💾 Sauvegarder le calibrage dans le projet",
+    "calibrageSauve": "Calibrage enregistré dans le projet",
+    "calibrageErreur": "Échec de l'enregistrement du calibrage — voir la console",
+    "calibrageVerrouille": "Calibrage protégé",
+    "calibrageVerrouilleDesc": "Le calibrage aligne les champs sur les fonds de fiche livrés. Il est réservé à l'auteur du jeu — entrez le mot de passe pour y accéder.",
     "calibrage": "⊹ Calibrage",
     "calibrageOn": "✕ Calibrage ON",
     "modeDev": "Mode développeur",
@@ -236,6 +249,11 @@
     "avertissement": "⚠ Les valeurs que vous saisissez <strong>remplacent les calculs automatiques</strong>. Pour rétablir les calculs, reverrouillez la fiche depuis le menu Gestion.",
     "annuler": "Annuler",
     "confirmer": "J'ai compris, déverrouiller"
+  },
+  "impression": {
+    "consigne": "Cliquez sur une pastille pour inclure ou exclure un champ de la version papier",
+    "lancer": "🖨 Imprimer",
+    "fermer": "Fermer"
   },
   "calibrage": {
     "survol": "Survol :",
@@ -444,6 +462,7 @@
     "pa": "pa"
   },
   "equipement": {
+    "types": "Types",
     "armes": "Armes",
     "armures": "Armures",
     "catalogue": "Catalogue",

@@ -44,7 +44,9 @@ export type CombatPJ = {
 
 // Infos normalisées d'une cible potentielle (créature ou PJ), pour le sélecteur de ciblage et la
 // résolution des dégâts sans que l'appelant ait à distinguer les deux types.
-export type CombatEntiteInfo = { id: string; nom: string; def: number; rd: number; pvActuels: number }
+// camp : côté du plateau. Sert à colorer les listes de cibles (alliés en vert, adversaires en rouge)
+// du point de vue de celui qui agit.
+export type CombatEntiteInfo = { id: string; nom: string; def: number; rd: number; pvActuels: number; camp: 'creature' | 'pj' }
 
 export function listerEntites(session: CombatSession, descriptions: DescMap): CombatEntiteInfo[] {
   const creatures = session.combatants.map(c => ({
@@ -53,6 +55,7 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
     def: getStatAvecBuff(c.creature.def, c.buffs, 'DEF').value,
     rd: getStatAvecBuff(c.creature.rd, c.buffs, 'RD').value,
     pvActuels: c.pvActuels,
+    camp: 'creature' as const,
   }))
   const pjs = session.pjs.map(p => {
     const stats = computeCombatStatsPJ(p.character, descriptions)
@@ -62,6 +65,7 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
       def: getStatAvecBuff(stats.def, p.buffs, 'DEF').value,
       rd: getStatAvecBuff(stats.rd, p.buffs, 'RD').value,
       pvActuels: p.pvActuels,
+      camp: 'pj' as const,
     }
   })
   return [...creatures, ...pjs]

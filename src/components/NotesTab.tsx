@@ -1506,13 +1506,15 @@ export default function NotesTab({
     setRenommageId(null)
   }
 
-  // Supprimer un groupe ne supprime jamais les notes qu'il contenait : leur campagneId pointe alors
-  // vers un id inexistant, ce que `sections` (voir plus bas) traite déjà comme "sans groupe" — elles
-  // redeviennent simplement visibles dans cette section plutôt que d'être perdues.
-  const [confirmDeleteGroupId, setConfirmDeleteGroupId] = useState<string | null>(null)
-  const supprimerGroupe = (id: string) => {
+  // Supprimer un groupe laisse par défaut ses notes intactes : leur campagneId pointe alors vers un id
+  // inexistant, ce que `sections` (voir plus bas) traite comme "sans groupe" — elles redeviennent
+  // simplement visibles dans cette section. L'utilisateur peut aussi demander leur suppression, geste
+  // irréversible qui exige donc un choix explicite plutôt qu'une simple confirmation.
+  const [groupeASupprimer, setGroupeASupprimer] = useState<string | null>(null)
+  const supprimerGroupe = (id: string, avecNotes: boolean) => {
+    if (avecNotes) setNotes(prev => prev.filter(n => n.campagneId !== id))
     setCampagnes(prev => prev.filter(c => c.id !== id))
-    setConfirmDeleteGroupId(null)
+    setGroupeASupprimer(null)
   }
 
   // Notes groupées par campagne (dans l'ordre de création des campagnes) + une section "sans
@@ -1884,23 +1886,13 @@ export default function NotesTab({
           </button>
         )}
         {campagneId && renommageId !== campagneId && (
-          confirmDeleteGroupId === campagneId ? (
-            <button
-              onClick={() => supprimerGroupe(campagneId)}
-              title={t('notes.confirmerSuppressionGroupe')}
-              style={{ ...groupeIconBtnStyle, width: 'auto', padding: '0 6px', color: 'rgba(255,110,110,0.9)', fontSize: 11, whiteSpace: 'nowrap' }}
-            >
-              {t('notes.confirmerSuppressionGroupe')}
-            </button>
-          ) : (
-            <button
-              onClick={() => setConfirmDeleteGroupId(campagneId)}
-              title={t('notes.supprimerGroupe')}
-              style={{ ...groupeIconBtnStyle, color: 'rgba(255,110,110,0.7)', fontSize: 15 }}
-            >
-              ✕
-            </button>
-          )
+          <button
+            onClick={() => setGroupeASupprimer(campagneId)}
+            title={t('notes.supprimerGroupe')}
+            style={{ ...groupeIconBtnStyle, color: 'rgba(255,110,110,0.7)', fontSize: 15 }}
+          >
+            ✕
+          </button>
         )}
         <button
           onClick={() => declencherImport(campagneId)}
@@ -2118,10 +2110,52 @@ export default function NotesTab({
     )
   }
 
+  // Suppression d'un groupe : choix explicite entre conserver et supprimer les notes qu'il contient,
+  // cette seconde option étant irréversible.
+  const dialogueSuppressionGroupe = groupeASupprimer && (() => {
+    const groupe = campagnes.find(c => c.id === groupeASupprimer)
+    const nbNotes = notes.filter(n => n.campagneId === groupeASupprimer).length
+    return (
+      <div
+        onClick={() => setGroupeASupprimer(null)}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <div onClick={e => e.stopPropagation()} style={{
+          background: 'rgba(20,15,8,0.98)', border: '1px solid rgba(201,168,76,0.5)', borderRadius: 6,
+          padding: '18px 22px', maxWidth: 420, boxShadow: '0 6px 28px rgba(0,0,0,0.8)',
+        }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tdr-gold)', marginBottom: 8 }}>
+            {t('notes.supprimerGroupeTitre', { nom: groupe?.nom ?? '' })}
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.7)', marginBottom: 16, lineHeight: 1.5 }}>
+            {nbNotes === 0 ? t('notes.groupeVide') : t('notes.groupeContient', { count: nbNotes })}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={() => supprimerGroupe(groupeASupprimer, false)} style={{
+              padding: '7px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+              border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)', color: 'var(--tdr-gold)',
+            }}>{t('notes.supprimerGroupeSeul')}</button>
+            {nbNotes > 0 && (
+              <button onClick={() => supprimerGroupe(groupeASupprimer, true)} style={{
+                padding: '7px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid rgba(220,80,80,0.6)', background: 'rgba(220,80,80,0.12)', color: '#e87070',
+              }}>{t('notes.supprimerGroupeEtNotes', { count: nbNotes })}</button>
+            )}
+            <button onClick={() => setGroupeASupprimer(null)} style={{
+              padding: '7px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+              border: '1px solid rgba(245,236,215,0.15)', background: 'transparent', color: 'rgba(245,236,215,0.55)',
+            }}>{t('notes.annuler')}</button>
+          </div>
+        </div>
+      </div>
+    )
+  })()
+
   return (
     <div style={{ display: 'flex', gap: 16, height: '100%', flex: 1, minWidth: 0, padding: 16, boxSizing: 'border-box' }}>
       {listPanel}
       {detailPanel}
+      {dialogueSuppressionGroupe}
     </div>
   )
 }

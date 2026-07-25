@@ -29,7 +29,11 @@ import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
 import { getCompagnonsDisponibles } from './utils/compagnons'
+import { ModeImpressionContext } from './hooks/useChampsFiche'
+import { saveDataFileToBundle } from './utils/tauriStorage'
+import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
+import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 
 export default function App() {
@@ -97,6 +101,23 @@ function AppContent() {
     return saved ? parseInt(saved) : 60
   })
   const [calibrate, setCalibrate] = useState(false)
+  // Prépare l'impression : la fiche affiche une pastille par champ pour choisir ce qui figure sur
+  // la version papier, avant de lancer réellement l'impression.
+  const [modeImpression, setModeImpression] = useState(false)
+  const [calibrageSauve, setCalibrageSauve] = useState<'ok' | 'erreur' | null>(null)
+  // Le calibrage est réservé à l'auteur du jeu : il conditionne l'alignement des champs sur les fonds
+  // livrés, qu'un utilisateur final n'a aucune raison de modifier (et qu'il casserait sans le vouloir).
+  const [calibrageDeverrouille, setCalibrageDeverrouille] = useState(false)
+  const [demandeMotDePasse, setDemandeMotDePasse] = useState(false)
+  const [motDePasseSaisi, setMotDePasseSaisi] = useState('')
+  const [motDePasseErreur, setMotDePasseErreur] = useState(false)
+  const validerMotDePasse = () => {
+    if (motDePasseSaisi === MASQUAGE_MOT_DE_PASSE) {
+      setCalibrageDeverrouille(true); setDemandeMotDePasse(false)
+      setMotDePasseSaisi(''); setMotDePasseErreur(false)
+      setCalibrate(true); setShowGestion(false)
+    } else setMotDePasseErreur(true)
+  }
   // Conteneur DOM de la réserve de calibrage (option A) — affiché à la place du wizard en mode
   // calibrage ; les champs "reserved" s'y portalent depuis CharacterSheetRecto/Verso.
   const [reserveEl, setReserveEl] = useState<HTMLDivElement | null>(null)
@@ -672,9 +693,92 @@ function AppContent() {
 
   // ─── Layout desktop / tablette (>= 700px) ───────────────────────────────
   return (
+    <ModeImpressionContext.Provider value={modeImpression}>
     <div className="app-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--tdr-dark)' }}>
 
       <SaveStatusIndicator />
+
+      {/* Déverrouillage du calibrage — même mot de passe que les voies masquées. */}
+      {demandeMotDePasse && (
+        <div
+          onClick={() => { setDemandeMotDePasse(false); setMotDePasseSaisi(''); setMotDePasseErreur(false) }}
+          className="no-print"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'rgba(20,15,8,0.98)', border: '1px solid rgba(201,168,76,0.5)', borderRadius: 6,
+            padding: '18px 22px', width: 380, boxShadow: '0 6px 28px rgba(0,0,0,0.8)',
+            display: 'flex', flexDirection: 'column', gap: 12,
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tdr-gold)' }}>
+              {t('menuGestion.calibrageVerrouille')}
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.65)', lineHeight: 1.5 }}>
+              {t('menuGestion.calibrageVerrouilleDesc')}
+            </div>
+            <input
+              type="password" autoFocus value={motDePasseSaisi}
+              onChange={e => { setMotDePasseSaisi(e.target.value); setMotDePasseErreur(false) }}
+              onKeyDown={e => e.key === 'Enter' && validerMotDePasse()}
+              placeholder={t('descEditor.motDePasse')}
+              style={{
+                padding: '8px 12px', borderRadius: 4, fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                border: `1px solid ${motDePasseErreur ? '#c05050' : 'rgba(201,168,76,0.3)'}`,
+                background: 'rgba(255,255,255,0.05)', color: 'rgba(245,236,215,0.9)',
+              }}
+            />
+            {motDePasseErreur && <div style={{ fontSize: 12, color: '#c05050' }}>{t('descEditor.motDePasseIncorrect')}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => { setDemandeMotDePasse(false); setMotDePasseSaisi(''); setMotDePasseErreur(false) }} style={{
+                padding: '7px 16px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid rgba(245,236,215,0.15)', background: 'transparent', color: 'rgba(245,236,215,0.5)',
+              }}>{t('descEditor.annuler')}</button>
+              <button onClick={validerMotDePasse} style={{
+                padding: '7px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.12)', color: 'var(--tdr-gold)',
+              }}>{t('descEditor.confirmer')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {calibrageSauve && (
+        <div className="no-print" style={{
+          position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 900,
+          padding: '8px 18px', borderRadius: 5, fontSize: 13,
+          background: calibrageSauve === 'ok' ? 'rgba(30,80,30,0.96)' : 'rgba(90,25,25,0.96)',
+          border: `1px solid ${calibrageSauve === 'ok' ? 'rgba(120,200,120,0.7)' : 'rgba(220,90,90,0.7)'}`,
+          color: calibrageSauve === 'ok' ? 'rgba(190,240,190,0.95)' : 'rgba(255,180,180,0.95)',
+        }}>
+          {calibrageSauve === 'ok' ? t('menuGestion.calibrageSauve') : t('menuGestion.calibrageErreur')}
+        </div>
+      )}
+
+      {/* Barre du mode « préparer l'impression » : chaque champ de la fiche porte alors une pastille
+          🖨 / 🚫 pour décider s'il figure sur la version papier. Le choix est enregistré avec les
+          positions, donc valable pour tous les personnages. */}
+      {modeImpression && (
+        <div className="no-print" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+          padding: '8px 16px', background: 'rgba(18,14,9,0.97)',
+          borderBottom: '1px solid rgba(201,168,76,0.4)', boxShadow: '0 2px 12px rgba(0,0,0,0.6)',
+        }}>
+          <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>
+            {t('impression.consigne')}
+          </span>
+          <button onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
+            style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
+            {t('impression.lancer')}
+          </button>
+          <button onClick={() => setModeImpression(false)}
+            style={{ padding: '5px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
+              border: '1px solid rgba(245,236,215,0.2)', background: 'transparent', color: 'rgba(245,236,215,0.6)', fontFamily: 'inherit' }}>
+            {t('impression.fermer')}
+          </button>
+        </div>
+      )}
 
       {printContainer}
 
@@ -746,7 +850,7 @@ function AppContent() {
 
             {/* Imprimer */}
             <button
-              onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
+              onClick={() => { setModeImpression(true); setCalibrate(false) }}
               style={{
                 marginBottom: 4, padding: '3px 12px', borderRadius: 4,
                 border: '1px solid rgba(201,168,76,0.3)',
@@ -864,7 +968,7 @@ function AppContent() {
               </div>
 
               {/* Calibrage */}
-              <button onClick={() => { setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
+              <button onClick={() => { if (!calibrageDeverrouille && !calibrate) { setDemandeMotDePasse(true); return } setCalibrate(c => !c); setPinned(null); setLastMoved(null); setShowGestion(false) }} style={{
                 padding: '10px 16px', background: calibrate ? 'rgba(201,168,76,0.15)' : 'transparent',
                 border: 'none',
                 color: calibrate ? 'var(--tdr-gold)' : 'rgba(245,236,215,0.8)',
@@ -872,6 +976,28 @@ function AppContent() {
               }}>
                 {calibrate ? t('menuGestion.calibrageOn') : t('menuGestion.calibrage')}
               </button>
+              {/* Le calibrage n'est fait que par le développeur : il doit être embarqué dans l'app,
+                  sinon les utilisateurs finaux reçoivent des fiches sans positions (tous les champs
+                  retombent alors sur les valeurs par défaut du code). Disponible en dev uniquement,
+                  l'écriture dans src/data passant par le serveur de développement. */}
+              {import.meta.env.DEV && (
+                <button onClick={async () => {
+                  setShowGestion(false)
+                  try {
+                    await saveDataFileToBundle('field-positions.json', fieldPositions)
+                    setCalibrageSauve('ok')
+                  } catch (e) {
+                    console.error(e)
+                    setCalibrageSauve('erreur')
+                  }
+                  setTimeout(() => setCalibrageSauve(null), 4000)
+                }} style={{
+                  padding: '10px 16px', background: 'transparent', border: 'none',
+                  color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                }}>
+                  {t('menuGestion.sauverCalibrage')}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1032,7 +1158,7 @@ function AppContent() {
             </span>
           )}
           <button
-            onClick={() => setFieldPositions({})}
+            onClick={() => setFieldPositions(FIELD_POSITIONS_LIVRE)}
             style={{
               marginLeft: 'auto', padding: '2px 10px', fontSize: 11, borderRadius: 3,
               border: '1px solid rgba(255,80,80,0.4)', background: 'transparent',
@@ -1131,7 +1257,7 @@ function AppContent() {
                 onPrev={() => setStep(s => Math.max(s - 1, 0))}
                 onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                 onSave={() => setShowSave(true)}
-                onPrint={() => { document.body.removeAttribute('data-print'); window.print() }}
+                onPrint={() => { setModeImpression(true); setCalibrate(false) }}
                 onPlay={() => { openGameMode(); setShowGameMode(true) }}
               />
             </div>
@@ -1140,5 +1266,6 @@ function AppContent() {
       </div>
       )}
     </div>
+    </ModeImpressionContext.Provider>
   )
 }

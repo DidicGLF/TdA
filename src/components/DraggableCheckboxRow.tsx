@@ -23,6 +23,8 @@ interface Props {
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onGridChange: (label: string, top: number, left: number, perRow: number, stepX: number, stepY: number) => void
+  // Données de session : les cases cochées ne s'impriment pas (le joueur les coche au crayon).
+  temporaire?: boolean
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
   reservePortalTarget?: HTMLElement | null
@@ -34,7 +36,7 @@ interface Props {
 // personnage.
 export default function DraggableCheckboxRow({
   top, left, perRow: initPerRow, stepX: initStepX, stepY: initStepY, count, checkedCount, onValueChange,
-  calibrate, label, containerRef, onGridChange,
+  calibrate, label, containerRef, onGridChange, temporaire,
   reserved, onReserveToggle, reservePortalTarget,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
@@ -121,6 +123,7 @@ export default function DraggableCheckboxRow({
         return (
           <div
             key={i}
+            className={temporaire ? 'tdr-temporaire' : undefined}
             onClick={() => !calibrate && onValueChange(checked ? i : i + 1)}
             style={{
               position: 'absolute',
