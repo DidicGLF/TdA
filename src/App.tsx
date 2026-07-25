@@ -9,6 +9,7 @@ import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
 import CharacterSheetVerso from './components/CharacterSheetVerso'
 import CharacterSheetVoies from './components/CharacterSheetVoies'
+import CharacterSheetCompagnons from './components/CharacterSheetCompagnons'
 import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
@@ -27,6 +28,7 @@ import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
+import { getCompagnonsDisponibles } from './utils/compagnons'
 import type { SheetPage } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 
@@ -72,7 +74,7 @@ function AppContent() {
   const [appMode, setAppMode] = useState<'joueur' | 'mj' | null>(null)
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
   // Note actuellement ouverte dans l'onglet Notes — levé ici (plutôt que gardé local à NotesTab) pour
   // que le graphe de liaisons (NotesGraph, affiché à côté) puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -82,11 +84,14 @@ function AppContent() {
   const showGolemTab = getGolemVoieRang(character) >= 2
   const showRunesTab = hasVoieEtheree(character)
   const showCristauxTab = hasCristauxVoie(character)
+  // L'onglet compagnons n'apparaît que si une voie du personnage en a effectivement octroyé un.
+  const showCompagnonsTab = getCompagnonsDisponibles(character, descriptions).length > 0
   useEffect(() => {
     if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
     if (!showRunesTab && sheetPage === 'runes') setSheetPage('recto')
     if (!showCristauxTab && sheetPage === 'cristaux') setSheetPage('recto')
-  }, [showGolemTab, showRunesTab, showCristauxTab])
+    if (!showCompagnonsTab && sheetPage === 'compagnons') setSheetPage('recto')
+  }, [showGolemTab, showRunesTab, showCristauxTab, showCompagnonsTab])
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -480,7 +485,7 @@ function AppContent() {
   // ─── Layout mobile (< 700px) ────────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
-      {(['recto', 'verso', 'voies', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+      {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
           padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -601,6 +606,8 @@ function AppContent() {
                     <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step} />
                   ) : sheetPage === 'verso' ? (
                     <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                  ) : sheetPage === 'compagnons' ? (
+                    <CharacterSheetCompagnons character={character} onChange={onChange} fieldPositions={fieldPositions} />
                   ) : sheetPage === 'voies' ? (
                     <CharacterSheetVoies character={character} onChange={onChange} activeStep={step}
                       fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
@@ -689,7 +696,7 @@ function AppContent() {
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
-            {(['recto', 'verso', 'voies', ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+            {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
               <button key={p} onClick={() => setSheetPage(p)} style={{
                 padding: '4px 16px', borderRadius: '4px 4px 0 0',
                 border: '1px solid rgba(201,168,76,0.4)',
@@ -919,6 +926,12 @@ function AppContent() {
                 reservePortalTarget={reserveEl}
                 onReserveToggle={(l, r, pos) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], ...pos, reserved: r } }))}
                 onCheckboxRowMoved={(l, t, lf, perRow, sx, sy) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, width: sx, height: sy, perRow } }))}
+                onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
+            ) : sheetPage === 'compagnons' ? (
+              <CharacterSheetCompagnons character={character} onChange={onChange}
+                calibrate={calibrate} locked={ficheLocked} fieldPositions={fieldPositions}
+                reservePortalTarget={reserveEl}
+                onReserveToggle={(l, r, pos) => setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], ...pos, reserved: r } }))}
                 onFieldMoved={(l, t, lf, w, h) => { setLastMoved({ label: l, top: t, left: lf, width: w, height: h }); setFieldPositions(prev => ({ ...prev, [l]: { ...prev[l], top: t, left: lf, ...(w !== undefined ? { width: w } : {}), ...(h !== undefined ? { height: h } : {}) } })) }} />
             ) : sheetPage === 'runes' ? (
               <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} />

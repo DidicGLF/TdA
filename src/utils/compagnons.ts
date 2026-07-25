@@ -177,3 +177,25 @@ export function resolveCompagnon(
     atk2dmDisplay:entry.attaque2 ? resolveDM(entry.attaque2.dm, entry, niveau, rang, att) : undefined,
   }
 }
+
+// Rang atteint dans la voie qui a octroyé ce compagnon — c'est lui qui détermine ses caractéristiques
+// évolutives (PV, initiative, dégâts). Extrait ici pour être partagé par le bloc du verso et les
+// fiches de compagnon dédiées, qui en avaient chacun besoin.
+export function getRangCompagnon(
+  character: Character,
+  descriptions: DescMap,
+  nomCompagnon: string,
+): number {
+  for (const key of VOIE_KEYS) {
+    const voie = character[key]
+    if (!voie?.nom) continue
+    const rangsData = descriptions[voie.nom]
+    if (!rangsData) continue
+    const octroye = rangsData.some(r => r?.grants?.some(g =>
+      (g.type === 'COMPAGNON' && g.nom === nomCompagnon) ||
+      (g.type === 'COMPAGNON_CHOIX' && g.noms?.includes(nomCompagnon))
+    ))
+    if (octroye) return voie.rangs.filter(Boolean).length
+  }
+  return 1
+}

@@ -73,6 +73,12 @@ body {
   margin: 0;
 }
 
+/* Fiche de compagnon : A5 à l'italienne, deux par feuille A4 portrait. */
+@page tdr-compagnon {
+  size: A5 landscape;
+  margin: 0;
+}
+
 @media print {
   html, body, #root {
     background: white !important;
@@ -115,6 +121,14 @@ body {
 
   .print-page-voies {
     page: tdr-voies;
+  }
+
+  .print-page-compagnon {
+    page: tdr-compagnon;
+    width: 210mm;
+    height: 148mm;
+    overflow: hidden;
+    position: relative;
   }
 
   .sheet-bg {

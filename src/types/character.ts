@@ -19,6 +19,10 @@ export type CompagnonOverride = {
   for?: string; dex?: string; con?: string; int?: string; sag?: string; cha?: string
   init?: string; def?: string; pv?: string
   atk1nom?: string; atk1bonus?: string; atk1dm?: string
+  // Fiche de compagnon dédiée : zones de texte libre du joueur et image du compagnon.
+  special?: string
+  notes?: string
+  image?: string
 }
 
 export type Caracteristique = 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA'
@@ -182,6 +186,11 @@ export interface Character {
   // (ex : "Perfection élémentaliste").
   voieRangChoix?: Record<string, { voie: string; rang: number; avanceeSeulement?: boolean }>
   compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
+  // Saisies du joueur pour les fiches de compagnon, indexées par NOM de compagnon et non par position :
+  // un personnage peut en débloquer plus de deux, et l'ordre de la liste peut changer (une voie qui en
+  // remplace un autre, par exemple) — un index de position ferait alors suivre les saisies au mauvais
+  // compagnon. `compagnonsOverrides` (2 positions) reste lu en repli pour les personnages existants.
+  compagnonsFiches?: Record<string, CompagnonOverride>
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {

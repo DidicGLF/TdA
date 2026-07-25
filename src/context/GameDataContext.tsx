@@ -45,7 +45,7 @@ export type VoieEntry = { nom: string; famille: string; categorie: string }
 // Absent = le champ est resté sur sa fiche d'origine (celle déclarée dans le code du bloc).
 // Les fiches sur lesquelles un champ peut être posé. Ajouter une valeur ici suffit à rendre la
 // nouvelle fiche éligible pour tous les champs existants (ils s'y déplacent via la réserve).
-export type SheetPage = 'recto' | 'verso' | 'voies'
+export type SheetPage = 'recto' | 'verso' | 'voies' | 'compagnons'
 export type FieldPosition = { top: number; left: number; width?: number; height?: number; reserved?: boolean; perRow?: number; page?: SheetPage }
 export type FieldPositions = Record<string, FieldPosition>
 export type SheetImages = Partial<Record<SheetPage, string>>
