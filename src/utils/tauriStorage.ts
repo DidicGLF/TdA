@@ -24,6 +24,19 @@ export async function saveDataFile(filename: string, content: string): Promise<v
   localStorage.setItem(LS_PREFIX + filename, content)
 }
 
+// Charge un fichier rangé dans un sous-dossier (voir le rangement Personnage/Notes/Maitre de jeu de
+// Documents/TdA) ; si le nouveau chemin n'existe pas encore, reprend l'ancien emplacement (racine,
+// nom d'avant le rangement) et le recopie aussitôt au nouveau chemin. Migration silencieuse, faite une
+// seule fois (le nouveau fichier existe ensuite), et réversible : l'ancien fichier n'est jamais
+// supprimé, donc revenir en arrière ne perd rien.
+export async function loadDataFileDossier(nouveauChemin: string, ancienNom: string): Promise<string | null> {
+  const actuel = await loadDataFile(nouveauChemin)
+  if (actuel !== null) return actuel
+  const ancien = await loadDataFile(ancienNom)
+  if (ancien !== null) await saveDataFile(nouveauChemin, ancien)
+  return ancien
+}
+
 export async function openDataDir(): Promise<void> {
   if (!isTauri()) return
   await invoke<void>('open_data_dir', {})

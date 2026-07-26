@@ -172,12 +172,13 @@ export default function CreatureDetail({ creature, onChange, onDelete, lectureSe
     const aExporter = estCleImage(creature.image)
       ? { ...creature, image: (await chargerImage(creature.image!)) ?? '' }
       : creature
-    const content = JSON.stringify(aExporter, null, 2)
+    const content = JSON.stringify({ type: 'creature', data: aExporter }, null, 2)
     const safe = creature.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'creature'
     const filename = `${safe}.json`
+    const chemin = `Maitre de jeu/${filename}`
     if (isTauri) {
-      await saveDataFile(filename, content)
-      setExportMsg(t('gmMode.creatureDetail.exporteVers', { filename }))
+      await saveDataFile(chemin, content)
+      setExportMsg(t('gmMode.creatureDetail.exporteVers', { filename: chemin }))
       setTimeout(() => setExportMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })

@@ -1,5 +1,5 @@
-import type { Character } from '../types/character'
-import type { DescMap, CompanionEntry } from '../types/gameData'
+import type { Character, CompagnonOverride } from '../types/character'
+import type { DescMap, CompanionEntry, BestiaireEntry, CreatureAttaque } from '../types/gameData'
 
 const VOIE_KEYS = [
   'voiePeuple', 'voieCulturelle',
@@ -198,4 +198,98 @@ export function getRangCompagnon(
     if (octroye) return voie.rangs.filter(Boolean).length
   }
   return 1
+}
+
+// Saisies du joueur pour ce compagnon (fiche dédiée) — compagnonsFiches (par nom) prioritaire,
+// compagnonsOverrides (par position, legacy) en repli seulement si ce compagnon occupe encore l'un
+// des 2 emplacements actifs. Même règle que CompagnonsFields/FicheCompagnon.
+function getOverrideCompagnon(character: Character, nom: string): CompagnonOverride {
+  const parFiche = character.compagnonsFiches?.[nom]
+  if (parFiche) return parFiche
+  const slot = character.compagnonsActifs?.indexOf(nom) ?? -1
+  return (slot >= 0 ? character.compagnonsOverrides?.[slot] : undefined) ?? {}
+}
+
+// Substitution pure (sans évaluer l'expression) des tokens [NIV]/[RANG]/[ATT ...] et des modificateurs
+// de caractéristique [FOR]/[DEX]/... par leur valeur numérique — contrairement à resolveNiv/computeNiv,
+// ne touche pas à une éventuelle notation de dés (ex. "1d6+[NIV]" → "1d6+5"), pour rester exploitable
+// telle quelle par resoudreAttaque (combat.ts), qui sait lire "NdS+M" mais pas évaluer une expression.
+function substituerTokens(s: string, entry: CompanionEntry, niveau: number, rang: number, att: AttContext): string {
+  let expr = s
+    .replace(/\[RANG\s*[x×*]\s*(\d+)\]/gi, (_, n) => String(rang * parseInt(n)))
+    .replace(/\[RANG\]/gi, String(rang))
+    .replace(/\[NIV\s*[x×*]\s*(\d+)\]/gi, (_, n) => String(niveau * parseInt(n)))
+    .replace(/\[NIV\]/gi, String(niveau))
+    .replace(/\[ATT\s+contact\]/gi, String(att.contact ?? 0))
+    .replace(/\[ATT\s+distance\]/gi, String(att.distance ?? 0))
+    .replace(/\[ATT\s+magique\]/gi, String(att.magique ?? 0))
+  for (const key of MOD_KEYS) {
+    expr = expr.replace(new RegExp(`\\[${key.toUpperCase()}\\]`, 'gi'), String(entry[key]))
+  }
+  return expr
+}
+
+// Bonus d'attaque : jamais de dés, donc évaluable sans risque une fois les tokens substitués (voir
+// substituerTokens) — contrairement à un montant de dégâts, qui doit garder sa notation "NdS".
+function evaluerBonusAttaque(s: string, entry: CompanionEntry, niveau: number, rang: number, att: AttContext): string {
+  const expr = substituerTokens(s, entry, niveau, rang, att)
+  try {
+    const n = Math.floor(Function(`'use strict'; return (${expr})`)())
+    return n >= 0 ? `+${n}` : String(n)
+  } catch {
+    return expr
+  }
+}
+
+// Convertit le compagnon nommé (débloqué par ce PJ) en fiche de créature exploitable par CombatCard —
+// mêmes contrôles qu'une créature du bestiaire (PV, cible, attaques cliquables), voir CombatTab. Les
+// overrides du joueur (fiche dédiée) priment sur les valeurs calculées, exactement comme sur sa fiche.
+// Retourne null si le nom ne correspond à aucune entrée du catalogue (compagnon supprimé depuis).
+export function compagnonEnCreature(
+  nomCompagnon: string,
+  catalogue: CompanionEntry[],
+  character: Character,
+  descriptions: DescMap,
+): BestiaireEntry | null {
+  const entry = catalogue.find(c => c.nom === nomCompagnon)
+  if (!entry) return null
+  const ov = getOverrideCompagnon(character, nomCompagnon)
+  const rang = getRangCompagnon(character, descriptions, nomCompagnon)
+  const att: AttContext = { contact: character.attaqueContact, distance: character.attaqueDistance, magique: character.attaqueMagique }
+  const niveau = character.niveau
+  const fmtMod = (n: number) => n >= 0 ? `+${n}` : String(n)
+
+  const attaques: CreatureAttaque[] = []
+  if (entry.attaque1) {
+    attaques.push({
+      nom: ov.atk1nom ?? entry.attaque1.nom,
+      bonus: ov.atk1bonus ?? evaluerBonusAttaque(entry.attaque1.bonus, entry, niveau, rang, att),
+      dm: ov.atk1dm ?? substituerTokens(entry.attaque1.dm, entry, niveau, rang, att),
+    })
+  }
+  if (entry.attaque2) {
+    attaques.push({
+      nom: entry.attaque2.nom,
+      bonus: evaluerBonusAttaque(entry.attaque2.bonus, entry, niveau, rang, att),
+      dm: substituerTokens(entry.attaque2.dm, entry, niveau, rang, att),
+    })
+  }
+
+  return {
+    nom: ov.nom ?? entry.nom,
+    nc: 0,
+    livres: [],
+    // Image de la fiche dédiée (saisie du joueur, data URL — voir DraggableImageField) : sans elle,
+    // CombatCard retombe sur l'icône 🐾 générique, comme n'importe quelle créature sans illustration.
+    image: ov.image,
+    def: Number(ov.def ?? entry.def),
+    pv: Number(ov.pv ?? computeNiv(entry.pv, niveau, rang, att)) || 0,
+    init: Number(ov.init ?? computeNiv(entry.init, niveau, rang, att)) || 0,
+    caracteristiques: {
+      FOR: ov.for ?? fmtMod(entry.for), DEX: ov.dex ?? fmtMod(entry.dex), CON: ov.con ?? fmtMod(entry.con),
+      INT: ov.int ?? fmtMod(entry.int), SAG: ov.sag ?? fmtMod(entry.sag), CHA: ov.cha ?? fmtMod(entry.cha),
+    },
+    attaques: attaques.length > 0 ? attaques : undefined,
+    capacites: entry.capacites ? [{ nom: entry.nom, desc: entry.capacites }] : undefined,
+  }
 }

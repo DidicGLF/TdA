@@ -5,6 +5,7 @@ import noteParchmentBg from '../assets/note-parchment.webp'
 import type { Note, Campaign, NoteImage, BestiaireEntry, RencontreSauvegardee, NoteMarque } from '../types/gameData'
 import { importerImage, chargerImage, estCleImage } from '../utils/imageStore'
 import { useImage } from '../hooks/useImage'
+import { detecterTypeFichier, messageMauvaisType } from '../utils/importTypage'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -30,7 +31,8 @@ const NOMS_FICHIERS_RESERVES = new Set([
   'hidden-cultures', 'hidden-compagnons', 'bestiaire', 'bestiaire-perso',
   'bestiaire-illustrations', 'hidden-bestiaire', 'voies-perso', 'descriptions-perso',
   'hidden-voies-perso', 'traits-magiques-perso', 'traits-raciaux-perso', 'compagnons-perso',
-  'hidden-compagnons-perso', 'armes-perso', 'armures-perso', 'rencontres-sauvegardees',
+  'hidden-compagnons-perso', 'armes-perso', 'armures-perso', 'peuples-perso',
+  'hidden-peuples-perso', 'hidden-cultures-perso', 'rencontres-sauvegardees',
   'combats-sauvegardes', 'capacites-bibliotheque', 'notes', 'campagnes', 'note-images',
   'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees', 'batailles-modeles',
 ])
@@ -548,6 +550,9 @@ function NoteEditor({
   curseurInitial, onGoToPage, onAjouterMarque, onSupprimerMarque,
 }: NoteEditorProps) {
   const { t } = useTranslation()
+  // onOpenCreature n'existe que côté MJ (voir NoteEditorProps) : sert à distinguer les notes joueur
+  // (Notes/) des notes MJ (Maitre de jeu/) — même composant, deux dossiers d'export distincts.
+  const dossierExport = onOpenCreature ? 'Maitre de jeu' : 'Notes'
   // Survol du fond de page (parchemin) — la croix de suppression de page ne doit apparaître que
   // pendant ce survol, voir le rendu de la page plus bas.
   const [pageHover, setPageHover] = useState(false)
@@ -659,14 +664,16 @@ function NoteEditor({
     const nomsRef = imagesReferencees(contenu)
     const imagesLiees = noteImages.filter(img => nomsRef.has(img.nom.toLowerCase()))
     const contenuExport = {
+      type: 'note' as const,
       note: { titre, contenu, date: date || undefined, tags: tagsActuels.length ? tagsActuels : undefined, couleur: couleur || undefined },
       images: await imagesAutonomes(imagesLiees),
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
     const filename = nomFichierExport(titre, 'note')
+    const chemin = `${dossierExport}/${filename}`
     if (isTauri) {
-      await saveDataFile(filename, jsonContent)
-      setExportMsg(t('notes.exporteVers', { filename }))
+      await saveDataFile(chemin, jsonContent)
+      setExportMsg(t('notes.exporteVers', { filename: chemin }))
       setTimeout(() => setExportMsg(null), 3000)
     } else {
       const blob = new Blob([jsonContent], { type: 'application/json' })
@@ -1501,6 +1508,9 @@ export default function NotesTab({
   bestiaire, rencontres, onOpenCreature, onEditRencontre, onPlayRencontre,
 }: Props) {
   const { t } = useTranslation()
+  // onOpenCreature n'existe que côté MJ (voir Props) : sert à distinguer les notes joueur (Notes/) des
+  // notes MJ (Maitre de jeu/) — même composant, deux bibliothèques et deux dossiers d'export distincts.
+  const dossierExport = onOpenCreature ? 'Maitre de jeu' : 'Notes'
   const [search, setSearch] = useState('')
   const [nouvelleCampagneOuverte, setNouvelleCampagneOuverte] = useState(false)
   const [nouvelleCampagneNom, setNouvelleCampagneNom] = useState('')
@@ -1607,15 +1617,17 @@ export default function NotesTab({
     notesDuGroupe.forEach(n => imagesReferencees(n.contenu).forEach(nom => nomsRef.add(nom)))
     const imagesLiees = noteImages.filter(img => nomsRef.has(img.nom.toLowerCase()))
     const contenuExport = {
+      type: 'notes-groupe' as const,
       groupe: nomGroupe ?? undefined,
       notes: notesDuGroupe.map(n => ({ titre: n.titre, contenu: n.contenu, date: n.date, tags: n.tags, couleur: n.couleur })),
       images: await imagesAutonomes(imagesLiees),
     }
     const jsonContent = JSON.stringify(contenuExport, null, 2)
     const filename = nomFichierExport(nomGroupe ?? 'export-notes', 'export-notes')
+    const chemin = `${dossierExport}/${filename}`
     if (isTauri) {
-      await saveDataFile(filename, jsonContent)
-      setExportMsg(t('notes.exporteVers', { filename }))
+      await saveDataFile(chemin, jsonContent)
+      setExportMsg(t('notes.exporteVers', { filename: chemin }))
       setTimeout(() => setExportMsg(null), 3000)
     } else {
       const blob = new Blob([jsonContent], { type: 'application/json' })
@@ -1650,7 +1662,10 @@ export default function NotesTab({
     const items = d.notes ?? (d.note ? [d.note] : [])
     const imagesImportees = d.images ?? []
     if (items.length === 0) {
-      setImportMsg(t('notes.importInvalide'))
+      // Fichier reconnu comme un autre type d'export (personnage, créature, ...) : message précis
+      // plutôt que le générique "fichier invalide" quand on peut identifier de quoi il s'agit vraiment.
+      const type = detecterTypeFichier(data)
+      setImportMsg(type ? messageMauvaisType(t, 'note', type) : t('notes.importInvalide'))
       setTimeout(() => setImportMsg(null), 3000)
       return
     }

@@ -508,6 +508,7 @@
     "nouveauPersonnage": "+ New character",
     "enregistreDans": "Saved to Documents/TdA/{{filename}}",
     "fichierNonReconnu": "File not recognized.",
+    "fichierMauvaisType": "This file contains {{trouve}}, not a character.",
     "fichierInvalide": "Invalid file."
   },
   "levelUp": {
@@ -1238,6 +1239,7 @@
       "aucunPJ": "No PC imported yet — use the panel on the right",
       "niveau": "Level {{niveau}}",
       "cible": "Target",
+      "attaquant": "Attacker",
       "aucuneCible": "— None —",
       "attaqueLabel": "Attack",
       "dmLabel": "DM",
@@ -1245,7 +1247,14 @@
       "rateCourt": "Miss",
       "toucheCourt": "Hit",
       "rdLabel": "DR",
-      "degatsAppliques": "→ {{degats}} damage applied to {{nom}}"
+      "degatsAppliques": "→ {{degats}} damage applied to {{nom}}",
+      "dmInfliges": "DMG dealt",
+      "infliger": "Inflict",
+      "attaqueManuelle": "Attack",
+      "dotSection": "Over time",
+      "dotTours": "turns",
+      "dotAjouter": "Add",
+      "compagnonDe": "Companion of {{nom}}"
     },
     "tabs": {
       "bestiaire": "Bestiary",
@@ -1428,5 +1437,18 @@
       "montantSoin": "Amount",
       "soigner": "Heal"
     }
+  },
+  "typeFichier": {
+    "personnage": "a character",
+    "bibliothequePersonnages": "a character library",
+    "creature": "a creature",
+    "rencontre": "an encounter",
+    "bataille": "a battle",
+    "gabaritBataille": "a battle template",
+    "note": "a note",
+    "notesGroupe": "a note group"
+  },
+  "importTypage": {
+    "pasLeBonType": "This file is not {{attendu}} ({{trouve}})."
   }
 }

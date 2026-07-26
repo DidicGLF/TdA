@@ -26,7 +26,7 @@ import GM_CAMPAGNES_RAW from '../data/gm-campagnes.json'
 import GM_NOTE_IMAGES_RAW from '../data/gm-note-images.json'
 import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
-import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
+import { loadDataFile, loadDataFileDossier, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
 import { fusionnerBestiaire, migrerBestiairePerso } from '../utils/bestiairePerso'
 import {
@@ -37,9 +37,12 @@ import {
 import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
 import { fusionnerArmes, migrerArmesPerso, extraireSurchargesArmes, fusionnerArmures, migrerArmuresPerso, extraireSurchargesArmures } from '../utils/armesPerso'
 import type { ArmesPerso, ArmuresPerso } from '../utils/armesPerso'
+import { fusionnerPeuples, migrerPeuplesPerso, extraireSurchargesPeuples } from '../utils/peuplesPerso'
+import type { PeuplesPerso } from '../utils/peuplesPerso'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 export type { VoieEntry } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
+import { normaliserCombatSession } from '../utils/combat'
 import type { BatailleSessionSauvegardee, BatailleTemplate } from '../utils/bataille'
 import { normaliserEvenement } from '../utils/bataille'
 
@@ -83,6 +86,8 @@ interface GameDataContextValue {
   setTraitsPerso: Dispatch<SetStateAction<TraitEntry[]>>
   peuples: PeupleEntry[]
   setPeuples: Dispatch<SetStateAction<PeupleEntry[]>>
+  peuplesPerso: PeuplesPerso
+  setPeuplesPerso: Dispatch<SetStateAction<PeuplesPerso>>
   armes: ArmesData
   setArmes: Dispatch<SetStateAction<ArmesData>>
   armures: ArmuresData
@@ -191,7 +196,7 @@ async function migrerImagesNotes(images: NoteImage[]): Promise<NoteImage[]> {
       return i
     }
   }))
-  queueSave('note-images.json', JSON.stringify({ _type: 'note-images', data: migrees }, null, 2))
+  queueSave('Notes/note-images.json', JSON.stringify({ _type: 'note-images', data: migrees }, null, 2))
   return migrees
 }
 
@@ -240,12 +245,26 @@ export const TRAITS_RACIAUX_LIVRE = unwrap(JSON.parse(JSON.stringify(TRAITS_RACI
 export const COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
 export const HIDDEN_COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
 
+// Bibliothèque de capacités (autocomplétion pour saisir plus vite les capacités d'une créature du
+// bestiaire, voir CreatureDetail) : même principe de catalogue plat identifié par nom, cataloguePerso.ts
+// suffit — aucun verrou par champ ni badge PERSO ici, c'est un simple outil de saisie, pas une fiche
+// que l'utilisateur consulte entrée par entrée (voir la même logique « données seulement » pour
+// l'équipement, plus haut).
+export const CAPACITES_BIBLIOTHEQUE_LIVRE = unwrap(JSON.parse(JSON.stringify(CAPACITES_BIBLIOTHEQUE_RAW))) as CapaciteBibliotheque[]
+
 // ─── Équipement : même principe, à la granularité de la catégorie ──────────────────────────────────
 // Voir src/utils/armesPerso.ts pour le détail et les limites (portée réduite : la structure — groupes/
 // catégories renommés, réordonnés ou supprimés — n'est pas suivie, seuls le contenu des catégories et
 // les notes le sont).
 export const ARMES_LIVRE = unwrap(JSON.parse(JSON.stringify(ARMES_RAW))) as ArmesData
 export const ARMURES_LIVRE = unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
+
+// ─── Peuples/cultures : même principe, à la granularité de la culture ─────────────────────────────
+// Voir src/utils/peuplesPerso.ts. hidden-peuples.json/hidden-cultures.json ont la même particularité
+// ajouts/retraits que hidden-voies.json — gérée par les fonctions déjà génériques de cataloguePerso.ts.
+export const PEUPLES_LIVRE = unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as PeupleEntry[]
+export const HIDDEN_PEUPLES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_PEUPLES_RAW))) as string[]
+export const HIDDEN_CULTURES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_CULTURES_RAW))) as string[]
 
 function unwrap(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
@@ -276,9 +295,7 @@ function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string,
 export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [descriptionsPerso, setDescriptionsPersoRaw] = useState<DescMap>({})
   const [traitsPerso, setTraitsPersoRaw] = useState<TraitEntry[]>([])
-  const [peuples, setPeuplesRaw] = useState<PeupleEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as PeupleEntry[]
-  )
+  const [peuplesPerso, setPeuplesPersoRaw] = useState<PeuplesPerso>({ cultures: [] })
   const [armesPerso, setArmesPersoRaw] = useState<ArmesPerso>({ categories: [] })
   const [armuresPerso, setArmuresPersoRaw] = useState<ArmuresPerso>({ categories: [] })
   const [voiesPerso, setVoiesPersoRaw] = useState<VoieEntry[]>([])
@@ -291,12 +308,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     JSON.parse(JSON.stringify(SHEET_IMAGES_RAW)) as SheetImages
   )
   const [hiddenVoiesDelta, setHiddenVoiesDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
-  const [hiddenPeuples, setHiddenPeuplesRaw] = useState<string[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(HIDDEN_PEUPLES_RAW))) as string[]
-  )
-  const [hiddenCultures, setHiddenCulturesRaw] = useState<string[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(HIDDEN_CULTURES_RAW))) as string[]
-  )
+  const [hiddenPeuplesDelta, setHiddenPeuplesDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
+  const [hiddenCulturesDelta, setHiddenCulturesDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
   const [hiddenCompagnonsDelta, setHiddenCompagnonsDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
   const [bestiairePerso, setBestiairePersoRaw] = useState<BestiaireEntry[]>([])
   const [bestiaireIllustrations, setBestiaireIllustrationsRaw] = useState<BestiaireIllustrations>({})
@@ -307,9 +320,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [combatsSauvegardes, setCombatsSauvegardesRaw] = useState<CombatSessionSauvegardee[]>(() =>
     unwrap(JSON.parse(JSON.stringify(COMBATS_RAW))) as CombatSessionSauvegardee[]
   )
-  const [capacitesBibliotheque, setCapacitesBibliothequeRaw] = useState<CapaciteBibliotheque[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(CAPACITES_BIBLIOTHEQUE_RAW))) as CapaciteBibliotheque[]
-  )
+  const [capacitesBibliothequePerso, setCapacitesBibliothequePersoRaw] = useState<CapaciteBibliotheque[]>([])
   const [notes, setNotesRaw] = useState<Note[]>(() =>
     unwrap(JSON.parse(JSON.stringify(NOTES_RAW))) as Note[]
   )
@@ -341,8 +352,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const peuplesStr = await loadDataFile('peuples.json')
-        if (peuplesStr) setPeuplesRaw(unwrap(JSON.parse(peuplesStr)) as PeupleEntry[])
+        // Peuples/cultures : voir la séparation livré/perso plus haut, granularité de la culture
+        // (peuplesPerso.ts).
+        const peuplesPersoStr = await loadDataFile('peuples-perso.json')
+        if (peuplesPersoStr !== null) {
+          setPeuplesPersoRaw(unwrap(JSON.parse(peuplesPersoStr)) as PeuplesPerso)
+        } else {
+          const ancienStr = await loadDataFile('peuples.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as PeupleEntry[] : []
+          const perso = migrerPeuplesPerso(ancien, PEUPLES_LIVRE)
+          setPeuplesPersoRaw(perso)
+          queueSave('peuples-perso.json', JSON.stringify({ _type: 'peuples-perso', data: perso }, null, 2))
+        }
         // Équipement : voir la séparation livré/perso plus haut. Portée réduite (armesPerso.ts) : seul
         // le contenu des catégories et les notes sont préservés, pas la structure (groupes/catégories
         // renommés/réordonnés/supprimés).
@@ -402,10 +423,26 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           setHiddenVoiesDeltaRaw(delta)
           queueSave('hidden-voies-perso.json', JSON.stringify({ _type: 'hidden-voies-perso', data: delta }, null, 2))
         }
-        const hiddenPeuplesStr = await loadDataFile('hidden-peuples.json')
-        if (hiddenPeuplesStr) setHiddenPeuplesRaw(unwrap(JSON.parse(hiddenPeuplesStr)) as string[])
-        const hiddenCulturesStr = await loadDataFile('hidden-cultures.json')
-        if (hiddenCulturesStr) setHiddenCulturesRaw(unwrap(JSON.parse(hiddenCulturesStr)) as string[])
+        const hiddenPeuplesPersoStr = await loadDataFile('hidden-peuples-perso.json')
+        if (hiddenPeuplesPersoStr !== null) {
+          setHiddenPeuplesDeltaRaw(unwrap(JSON.parse(hiddenPeuplesPersoStr)) as { ajouts: string[]; retraits: string[] })
+        } else {
+          const ancienStr = await loadDataFile('hidden-peuples.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as string[] : []
+          const delta = migrerNomsMasquesPerso(ancien, HIDDEN_PEUPLES_LIVRE)
+          setHiddenPeuplesDeltaRaw(delta)
+          queueSave('hidden-peuples-perso.json', JSON.stringify({ _type: 'hidden-peuples-perso', data: delta }, null, 2))
+        }
+        const hiddenCulturesPersoStr = await loadDataFile('hidden-cultures-perso.json')
+        if (hiddenCulturesPersoStr !== null) {
+          setHiddenCulturesDeltaRaw(unwrap(JSON.parse(hiddenCulturesPersoStr)) as { ajouts: string[]; retraits: string[] })
+        } else {
+          const ancienStr = await loadDataFile('hidden-cultures.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as string[] : []
+          const delta = migrerNomsMasquesPerso(ancien, HIDDEN_CULTURES_LIVRE)
+          setHiddenCulturesDeltaRaw(delta)
+          queueSave('hidden-cultures-perso.json', JSON.stringify({ _type: 'hidden-cultures-perso', data: delta }, null, 2))
+        }
         // Traits magiques, traits raciaux, compagnons : même migration indépendante par fichier que les
         // voies (voir plus haut) — cataloguePerso.ts pour la règle générique.
         const traitsPersoStr = await loadDataFile('traits-magiques-perso.json')
@@ -451,19 +488,21 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         // Bestiaire : voir la séparation livré/perso plus haut. L'existence de bestiaire-perso.json
         // fait office de marqueur « migration déjà faite » — l'ancien bestiaire.json de l'utilisateur
         // n'est alors plus jamais relu ni réécrit, et reste en place comme sauvegarde.
-        const persoStr = await loadDataFile('bestiaire-perso.json')
+        const persoStr = await loadDataFileDossier('Maitre de jeu/bestiaire-perso.json', 'bestiaire-perso.json')
         if (persoStr !== null) {
           const brut = unwrap(JSON.parse(persoStr)) as BestiaireEntry[]
           const migrees = await migrerImagesBestiaire(brut)
-          if (migrees !== brut) queueSave('bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: migrees }, null, 2))
+          if (migrees !== brut) queueSave('Maitre de jeu/bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: migrees }, null, 2))
           setBestiairePersoRaw(migrees)
-          const illustrationsStr = await loadDataFile('bestiaire-illustrations.json')
+          const illustrationsStr = await loadDataFileDossier('Maitre de jeu/bestiaire-illustrations.json', 'bestiaire-illustrations.json')
           if (illustrationsStr) setBestiaireIllustrationsRaw(unwrap(JSON.parse(illustrationsStr)) as BestiaireIllustrations)
-          const hiddenBestiaireStr = await loadDataFile('hidden-bestiaire.json')
+          const hiddenBestiaireStr = await loadDataFileDossier('Maitre de jeu/hidden-bestiaire.json', 'hidden-bestiaire.json')
           if (hiddenBestiaireStr) setHiddenBestiaireRaw(unwrap(JSON.parse(hiddenBestiaireStr)) as string[])
         } else {
           // Les images passent d'abord dans images/ (cas d'une installation restée sur une version
           // antérieure aux deux migrations), pour que le découpage qui suit ne charrie pas de base64.
+          // bestiaire.json est l'ancien fichier plat (pré-scission livré/perso) : il reste toujours à
+          // la racine, jamais déplacé par le rangement en dossiers (voir memory rangement-dossiers).
           const ancienStr = await loadDataFile('bestiaire.json')
           const ancien = ancienStr ? await migrerImagesBestiaire(unwrap(JSON.parse(ancienStr)) as BestiaireEntry[]) : []
           const { perso, illustrations, masquees } = migrerBestiairePerso(ancien, BESTIAIRE_LIVRE)
@@ -471,34 +510,44 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           setBestiaireIllustrationsRaw(illustrations)
           setHiddenBestiaireRaw(masquees)
           // Écrit même à vide : c'est ce fichier qui marque la migration comme faite.
-          queueSave('bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: perso }, null, 2))
-          if (Object.keys(illustrations).length > 0) queueSave('bestiaire-illustrations.json', JSON.stringify({ _type: 'bestiaire-illustrations', data: illustrations }, null, 2))
-          if (masquees.length > 0) queueSave('hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: masquees }, null, 2))
+          queueSave('Maitre de jeu/bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: perso }, null, 2))
+          if (Object.keys(illustrations).length > 0) queueSave('Maitre de jeu/bestiaire-illustrations.json', JSON.stringify({ _type: 'bestiaire-illustrations', data: illustrations }, null, 2))
+          if (masquees.length > 0) queueSave('Maitre de jeu/hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: masquees }, null, 2))
         }
-        const rencontresStr = await loadDataFile('rencontres-sauvegardees.json')
+        const rencontresStr = await loadDataFileDossier('Maitre de jeu/rencontres-sauvegardees.json', 'rencontres-sauvegardees.json')
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])
-        const combatsStr = await loadDataFile('combats-sauvegardes.json')
-        if (combatsStr) setCombatsSauvegardesRaw(unwrap(JSON.parse(combatsStr)) as CombatSessionSauvegardee[])
-        const capacitesBiblioStr = await loadDataFile('capacites-bibliotheque.json')
-        if (capacitesBiblioStr) setCapacitesBibliothequeRaw(unwrap(JSON.parse(capacitesBiblioStr)) as CapaciteBibliotheque[])
-        const notesStr = await loadDataFile('notes.json')
+        const combatsStr = await loadDataFileDossier('Maitre de jeu/combats-sauvegardes.json', 'combats-sauvegardes.json')
+        if (combatsStr) setCombatsSauvegardesRaw((unwrap(JSON.parse(combatsStr)) as CombatSessionSauvegardee[]).map(normaliserCombatSession))
+        const capacitesBiblioPersoStr = await loadDataFile('Maitre de jeu/capacites-bibliotheque-perso.json')
+        if (capacitesBiblioPersoStr !== null) {
+          setCapacitesBibliothequePersoRaw(unwrap(JSON.parse(capacitesBiblioPersoStr)) as CapaciteBibliotheque[])
+        } else {
+          // L'ancien fichier plat a déjà été déplacé dans Maitre de jeu/ par le rangement en dossiers
+          // (voir loadDataFileDossier plus haut) : c'est là qu'on va chercher la version pré-scission.
+          const ancienStr = await loadDataFileDossier('Maitre de jeu/capacites-bibliotheque.json', 'capacites-bibliotheque.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as CapaciteBibliotheque[] : []
+          const perso = extraireSurchargesCatalogue(ancien, CAPACITES_BIBLIOTHEQUE_LIVRE)
+          setCapacitesBibliothequePersoRaw(perso)
+          queueSave('Maitre de jeu/capacites-bibliotheque-perso.json', JSON.stringify({ _type: 'capacites-bibliotheque-perso', data: perso }, null, 2))
+        }
+        const notesStr = await loadDataFileDossier('Notes/notes.json', 'notes.json')
         if (notesStr) setNotesRaw(unwrap(JSON.parse(notesStr)) as Note[])
-        const campagnesStr = await loadDataFile('campagnes.json')
+        const campagnesStr = await loadDataFileDossier('Notes/campagnes.json', 'campagnes.json')
         if (campagnesStr) setCampagnesRaw(unwrap(JSON.parse(campagnesStr)) as Campaign[])
-        const noteImagesStr = await loadDataFile('note-images.json')
+        const noteImagesStr = await loadDataFileDossier('Notes/note-images.json', 'note-images.json')
         if (noteImagesStr) {
           const brutes = unwrap(JSON.parse(noteImagesStr)) as NoteImage[]
           setNoteImagesRaw(await migrerImagesNotes(brutes))
         }
-        const gmNotesStr = await loadDataFile('gm-notes.json')
+        const gmNotesStr = await loadDataFileDossier('Maitre de jeu/gm-notes.json', 'gm-notes.json')
         if (gmNotesStr) setGmNotesRaw(unwrap(JSON.parse(gmNotesStr)) as Note[])
-        const gmCampagnesStr = await loadDataFile('gm-campagnes.json')
+        const gmCampagnesStr = await loadDataFileDossier('Maitre de jeu/gm-campagnes.json', 'gm-campagnes.json')
         if (gmCampagnesStr) setGmCampagnesRaw(unwrap(JSON.parse(gmCampagnesStr)) as Campaign[])
-        const gmNoteImagesStr = await loadDataFile('gm-note-images.json')
+        const gmNoteImagesStr = await loadDataFileDossier('Maitre de jeu/gm-note-images.json', 'gm-note-images.json')
         if (gmNoteImagesStr) setGmNoteImagesRaw(unwrap(JSON.parse(gmNoteImagesStr)) as NoteImage[])
-        const bataillesStr = await loadDataFile('batailles-sauvegardees.json')
+        const bataillesStr = await loadDataFileDossier('Maitre de jeu/batailles-sauvegardees.json', 'batailles-sauvegardees.json')
         if (bataillesStr) setBataillesRaw(normaliserEvenementsBatailles(unwrap(JSON.parse(bataillesStr)) as BatailleSessionSauvegardee[]))
-        const batailleTemplatesStr = await loadDataFile('batailles-modeles.json')
+        const batailleTemplatesStr = await loadDataFileDossier('Maitre de jeu/batailles-modeles.json', 'batailles-modeles.json')
         if (batailleTemplatesStr) setBatailleTemplatesRaw(normaliserEvenementsBatailles(unwrap(JSON.parse(batailleTemplatesStr)) as BatailleTemplate[]))
       } catch { /* données du bundle utilisées par défaut */ }
       setLoaded(true)
@@ -540,7 +589,17 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextPerso
     })
   }, [])
-  const setPeuples = useMemo(() => makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'), [])
+  const setPeuplesPerso = useMemo(() => makeAutoSaver<PeuplesPerso>(setPeuplesPersoRaw, 'peuples-perso.json', 'peuples-perso'), [])
+  const setPeuples = useCallback<Dispatch<SetStateAction<PeupleEntry[]>>>((updater) => {
+    setPeuplesPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: PeupleEntry[]) => PeupleEntry[])(fusionnerPeuples(PEUPLES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesPeuples(next, PEUPLES_LIVRE)
+      queueSave('peuples-perso.json', JSON.stringify({ _type: 'peuples-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   // EquipementModal appelle toujours ces setters avec un instantané complet (jamais une fonction) —
   // le générique gère les deux formes quand même, par cohérence avec les autres setters de ce fichier.
   const setArmes = useCallback<Dispatch<SetStateAction<ArmesData>>>((updater) => {
@@ -609,8 +668,28 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextDelta
     })
   }, [])
-  const setHiddenPeuples = useMemo(() => makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'), [])
-  const setHiddenCultures = useMemo(() => makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'), [])
+  // Même particularité que hiddenVoies/hiddenCompagnons (voir plus haut) : masquer est libre, démasquer
+  // exige le mot de passe — d'où le modèle ajouts/retraits par rapport au livré.
+  const setHiddenPeuples = useCallback<Dispatch<SetStateAction<string[]>>>((updater) => {
+    setHiddenPeuplesDeltaRaw(prevDelta => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: string[]) => string[])(fusionnerNomsMasques(HIDDEN_PEUPLES_LIVRE, prevDelta.ajouts, prevDelta.retraits))
+        : updater
+      const nextDelta = migrerNomsMasquesPerso(next, HIDDEN_PEUPLES_LIVRE)
+      queueSave('hidden-peuples-perso.json', JSON.stringify({ _type: 'hidden-peuples-perso', data: nextDelta }, null, 2))
+      return nextDelta
+    })
+  }, [])
+  const setHiddenCultures = useCallback<Dispatch<SetStateAction<string[]>>>((updater) => {
+    setHiddenCulturesDeltaRaw(prevDelta => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: string[]) => string[])(fusionnerNomsMasques(HIDDEN_CULTURES_LIVRE, prevDelta.ajouts, prevDelta.retraits))
+        : updater
+      const nextDelta = migrerNomsMasquesPerso(next, HIDDEN_CULTURES_LIVRE)
+      queueSave('hidden-cultures-perso.json', JSON.stringify({ _type: 'hidden-cultures-perso', data: nextDelta }, null, 2))
+      return nextDelta
+    })
+  }, [])
   // Même particularité que hiddenVoies (voir plus haut) : masquer un compagnon est déjà libre, le
   // démasquer non (mot de passe), d'où le même modèle ajouts/retraits par rapport au livré.
   const setHiddenCompagnons = useCallback<Dispatch<SetStateAction<string[]>>>((updater) => {
@@ -623,20 +702,31 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextDelta
     })
   }, [])
-  const setBestiairePerso = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiairePersoRaw, 'bestiaire-perso.json', 'bestiaire-perso'), [])
-  const setBestiaireIllustrations = useMemo(() => makeAutoSaver<BestiaireIllustrations>(setBestiaireIllustrationsRaw, 'bestiaire-illustrations.json', 'bestiaire-illustrations'), [])
-  const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'hidden-bestiaire.json', 'hidden-bestiaire'), [])
-  const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'rencontres-sauvegardees.json', 'rencontres'), [])
-  const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'combats-sauvegardes.json', 'combats'), [])
-  const setCapacitesBibliotheque = useMemo(() => makeAutoSaver<CapaciteBibliotheque[]>(setCapacitesBibliothequeRaw, 'capacites-bibliotheque.json', 'capacites-bibliotheque'), [])
-  const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'notes.json', 'notes'), [])
-  const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'campagnes.json', 'campagnes'), [])
-  const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'note-images.json', 'note-images'), [])
-  const setGmNotes = useMemo(() => makeAutoSaver<Note[]>(setGmNotesRaw, 'gm-notes.json', 'gm-notes'), [])
-  const setGmCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setGmCampagnesRaw, 'gm-campagnes.json', 'gm-campagnes'), [])
-  const setGmNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setGmNoteImagesRaw, 'gm-note-images.json', 'gm-note-images'), [])
-  const setBatailles = useMemo(() => makeAutoSaver<BatailleSessionSauvegardee[]>(setBataillesRaw, 'batailles-sauvegardees.json', 'batailles'), [])
-  const setBatailleTemplates = useMemo(() => makeAutoSaver<BatailleTemplate[]>(setBatailleTemplatesRaw, 'batailles-modeles.json', 'batailles-modeles'), [])
+  const setBestiairePerso = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiairePersoRaw, 'Maitre de jeu/bestiaire-perso.json', 'bestiaire-perso'), [])
+  const setBestiaireIllustrations = useMemo(() => makeAutoSaver<BestiaireIllustrations>(setBestiaireIllustrationsRaw, 'Maitre de jeu/bestiaire-illustrations.json', 'bestiaire-illustrations'), [])
+  const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'Maitre de jeu/hidden-bestiaire.json', 'hidden-bestiaire'), [])
+  const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'Maitre de jeu/rencontres-sauvegardees.json', 'rencontres'), [])
+  const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'Maitre de jeu/combats-sauvegardes.json', 'combats'), [])
+  // Générique comme setTraits/setTraitsRaciaux/setCompagnons ci-dessus : reçoit la vue fusionnée (même
+  // signature qu'avant la scission), en déduit la surcharge perso par différence avec le livré.
+  const setCapacitesBibliotheque = useCallback<Dispatch<SetStateAction<CapaciteBibliotheque[]>>>((updater) => {
+    setCapacitesBibliothequePersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: CapaciteBibliotheque[]) => CapaciteBibliotheque[])(fusionnerCatalogue(CAPACITES_BIBLIOTHEQUE_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCatalogue(next, CAPACITES_BIBLIOTHEQUE_LIVRE)
+      queueSave('Maitre de jeu/capacites-bibliotheque-perso.json', JSON.stringify({ _type: 'capacites-bibliotheque-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
+  const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'Notes/notes.json', 'notes'), [])
+  const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'Notes/campagnes.json', 'campagnes'), [])
+  const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'Notes/note-images.json', 'note-images'), [])
+  const setGmNotes = useMemo(() => makeAutoSaver<Note[]>(setGmNotesRaw, 'Maitre de jeu/gm-notes.json', 'gm-notes'), [])
+  const setGmCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setGmCampagnesRaw, 'Maitre de jeu/gm-campagnes.json', 'gm-campagnes'), [])
+  const setGmNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setGmNoteImagesRaw, 'Maitre de jeu/gm-note-images.json', 'gm-note-images'), [])
+  const setBatailles = useMemo(() => makeAutoSaver<BatailleSessionSauvegardee[]>(setBataillesRaw, 'Maitre de jeu/batailles-sauvegardees.json', 'batailles'), [])
+  const setBatailleTemplates = useMemo(() => makeAutoSaver<BatailleTemplate[]>(setBatailleTemplatesRaw, 'Maitre de jeu/batailles-modeles.json', 'batailles-modeles'), [])
 
   const bestiaire = useMemo(
     () => fusionnerBestiaire(BESTIAIRE_LIVRE, bestiairePerso, bestiaireIllustrations, hiddenBestiaire),
@@ -652,12 +742,22 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const traits = useMemo(() => fusionnerCatalogue(TRAITS_MAGIQUES_LIVRE, traitsPerso), [traitsPerso])
   const traitsRaciaux = useMemo(() => fusionnerCatalogue(TRAITS_RACIAUX_LIVRE, traitsRaciauxPerso), [traitsRaciauxPerso])
   const compagnons = useMemo(() => fusionnerCatalogue(COMPAGNONS_LIVRE, compagnonsPerso), [compagnonsPerso])
+  const capacitesBibliotheque = useMemo(() => fusionnerCatalogue(CAPACITES_BIBLIOTHEQUE_LIVRE, capacitesBibliothequePerso), [capacitesBibliothequePerso])
   const hiddenCompagnons = useMemo(
     () => fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, hiddenCompagnonsDelta.ajouts, hiddenCompagnonsDelta.retraits),
     [hiddenCompagnonsDelta],
   )
   const armes = useMemo(() => fusionnerArmes(ARMES_LIVRE, armesPerso), [armesPerso])
   const armures = useMemo(() => fusionnerArmures(ARMURES_LIVRE, armuresPerso), [armuresPerso])
+  const peuples = useMemo(() => fusionnerPeuples(PEUPLES_LIVRE, peuplesPerso), [peuplesPerso])
+  const hiddenPeuples = useMemo(
+    () => fusionnerNomsMasques(HIDDEN_PEUPLES_LIVRE, hiddenPeuplesDelta.ajouts, hiddenPeuplesDelta.retraits),
+    [hiddenPeuplesDelta],
+  )
+  const hiddenCultures = useMemo(
+    () => fusionnerNomsMasques(HIDDEN_CULTURES_LIVRE, hiddenCulturesDelta.ajouts, hiddenCulturesDelta.retraits),
+    [hiddenCulturesDelta],
+  )
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -668,6 +768,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       traits, setTraits,
       traitsPerso, setTraitsPerso,
       peuples, setPeuples,
+      peuplesPerso, setPeuplesPerso,
       armes, setArmes,
       armures, setArmures,
       voies, setVoies,

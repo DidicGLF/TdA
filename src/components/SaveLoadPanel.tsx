@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import { saveDataFile } from '../utils/tauriStorage'
 import type { Character } from '../types/character'
+import { desenvelopper, CLE_LABEL_TYPE } from '../utils/importTypage'
 
 export interface SavedEntry {
   id: string
@@ -60,26 +61,29 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
 
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
-  const downloadJson = async (filename: string, payload: unknown) => {
+  // chemin peut inclure un sous-dossier (voir Personnage/, le rangement de Documents/TdA) : le nom de
+  // fichier proposé au téléchargement navigateur (a.download) n'en garde que la partie finale, un « / »
+  // n'y étant pas interprété comme un chemin.
+  const downloadJson = async (chemin: string, payload: unknown) => {
     const content = JSON.stringify(payload, null, 2)
     if (isTauri) {
-      await saveDataFile(filename, content)
-      setSaveMsg(t('saveLoad.enregistreDans', { filename }))
+      await saveDataFile(chemin, content)
+      setSaveMsg(t('saveLoad.enregistreDans', { filename: chemin }))
       setTimeout(() => setSaveMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = filename; a.click()
+      a.href = url; a.download = chemin.split('/').pop() ?? chemin; a.click()
       URL.revokeObjectURL(url)
     }
   }
 
-  const exportLibrary = () => downloadJson('personnages-tdr.json', library)
+  const exportLibrary = () => downloadJson('Personnage/personnages-tdr.json', { type: 'bibliotheque-personnages', data: library })
 
   const exportCharacter = (entry: SavedEntry) => {
     const safe = entry.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-')
-    downloadJson(`${safe}.json`, entry)
+    downloadJson(`Personnage/${safe}.json`, { type: 'personnage', data: entry })
   }
 
   const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,28 +92,37 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
     const reader = new FileReader()
     reader.onload = ev => {
       try {
-        const data = JSON.parse(ev.target?.result as string)
-        if (Array.isArray(data)) {
-          onLibraryChange(data)
-        } else if (data.character !== undefined && data.nom !== undefined) {
-          // Format SavedEntry exporté individuellement
-          const entry: SavedEntry = {
-            id: data.id ?? crypto.randomUUID(),
-            nom: data.nom,
-            date: data.date ?? new Date().toISOString(),
-            maxStep: data.maxStep,
-            character: data.character,
+        const raw = JSON.parse(ev.target?.result as string)
+        const { type, contenu } = desenvelopper(raw)
+        if (type === 'bibliotheque-personnages') {
+          // Le repli structurel de desenvelopper a déjà vérifié que chaque entrée a bien {nom, character}.
+          onLibraryChange(contenu as SavedEntry[])
+        } else if (type === 'personnage') {
+          const data = contenu as Partial<SavedEntry> & Partial<Character>
+          if (data.character !== undefined && data.nom !== undefined) {
+            // Format SavedEntry exporté individuellement
+            const entry: SavedEntry = {
+              id: data.id ?? crypto.randomUUID(),
+              nom: data.nom,
+              date: data.date ?? new Date().toISOString(),
+              maxStep: data.maxStep,
+              character: data.character,
+            }
+            onLibraryChange([...library, entry])
+          } else {
+            // Ancien format (personnage nu sans enveloppe SavedEntry)
+            const entry: SavedEntry = {
+              id: crypto.randomUUID(),
+              nom: data.nomPersonnage?.trim() || data.nomJoueur?.trim() || t('saveLoad.nomImporte'),
+              date: new Date().toISOString(),
+              character: data as Character,
+            }
+            onLibraryChange([...library, entry])
           }
-          onLibraryChange([...library, entry])
-        } else if (data.nomPersonnage !== undefined || data.nomJoueur !== undefined) {
-          // Ancien format (personnage nu sans enveloppe SavedEntry)
-          const entry: SavedEntry = {
-            id: crypto.randomUUID(),
-            nom: data.nomPersonnage?.trim() || data.nomJoueur?.trim() || t('saveLoad.nomImporte'),
-            date: new Date().toISOString(),
-            character: data,
-          }
-          onLibraryChange([...library, entry])
+        } else if (type) {
+          // Un fichier reconnu d'un autre type d'export (créature, rencontre, ...) — jamais accepté
+          // tel quel comme personnage/bibliothèque, pour éviter d'écraser silencieusement la bibliothèque.
+          alert(t('saveLoad.fichierMauvaisType', { trouve: t(`typeFichier.${CLE_LABEL_TYPE[type]}`) }))
         } else {
           alert(t('saveLoad.fichierNonReconnu'))
         }

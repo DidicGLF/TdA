@@ -185,7 +185,7 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   }
 
   const reprendreCombat = (c: CombatSessionSauvegardee) => {
-    const session: CombatSession = { nomRencontre: c.nomRencontre, combatants: c.combatants, pjs: c.pjs }
+    const session: CombatSession = { nomRencontre: c.nomRencontre, combatants: c.combatants, pjs: c.pjs, compagnons: c.compagnons }
     setCombatSession(JSON.parse(JSON.stringify(session)) as CombatSession)
     setCombatSnapshotId(c.id)
   }
@@ -196,12 +196,13 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   }
 
   const exporter = async (r: RencontreSauvegardee) => {
-    const content = JSON.stringify(r, null, 2)
+    const content = JSON.stringify({ type: 'rencontre', data: r }, null, 2)
     const safe = r.nom.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'rencontre'
     const filename = `${safe}.json`
+    const chemin = `Maitre de jeu/${filename}`
     if (isTauri) {
-      await saveDataFile(filename, content)
-      setSaveMsg(t('gmMode.adversite.exporteVers', { filename }))
+      await saveDataFile(chemin, content)
+      setSaveMsg(t('gmMode.adversite.exporteVers', { filename: chemin }))
       setTimeout(() => setSaveMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })
@@ -449,8 +450,10 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   return (
     <div style={{ position: 'relative', height: '100%' }}>
       {backgroundLayer}
-      {/* Zone de combat — décalée à droite pour ne jamais passer sous la poignée du tiroir, même fermé */}
-      <div style={{ position: 'relative', zIndex: 1, height: '100%', paddingLeft: 38 }}>
+      {/* Zone de combat — décalée à gauche pour ne jamais passer sous la poignée du tiroir Paramètres
+          (côté droit), même fermé. La colonne PJ de CombatTab a son propre tiroir à gauche, avec sa
+          propre marge interne — les deux ne se chevauchent pas puisqu'ils sont sur des bords opposés. */}
+      <div style={{ position: 'relative', zIndex: 1, height: '100%', paddingRight: 38 }}>
         <CombatTab
           session={combatSession}
           onSessionChange={setCombatSession}
@@ -459,20 +462,40 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
         />
       </div>
 
-      {/* Tiroir latéral — fixe à gauche, s'ouvre au survol ou au clic, glisse par-dessus la zone de combat */}
+      {/* Tiroir latéral — fixe à droite (symétrique du tiroir PJ de CombatTab, passé à gauche), s'ouvre
+          au survol ou au clic, glisse par-dessus la zone de combat */}
       <div
         onMouseLeave={() => setPanelOpen(false)}
         style={{
-          position: 'absolute', top: 0, left: 0, height: '100%', zIndex: 20,
+          position: 'absolute', top: 0, right: 0, height: '100%', zIndex: 20,
           display: 'flex', alignItems: 'stretch',
-          transform: panelOpen ? 'translateX(0)' : 'translateX(-520px)',
+          transform: panelOpen ? 'translateX(0)' : 'translateX(520px)',
           transition: 'transform 0.2s ease',
         }}
       >
+        {/* Poignée — reste collée au bord gauche du tiroir (côté intérieur, toujours visible même
+            fermé). Le texte pivote via transform (plus fiable entre moteurs de rendu que writing-mode,
+            qui peut ne pas tourner les caractères latins selon le WebKit utilisé et se contenter de
+            retourner à la ligne). */}
+        <button
+          onMouseEnter={() => setPanelOpen(true)}
+          onClick={() => setPanelOpen(o => !o)}
+          style={{
+            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '10px 0', background: 'rgba(15,12,8,0.95)',
+            border: `1px solid ${SECTION_BORDER}`, borderRight: 'none', borderRadius: '6px 0 0 6px',
+            color: GOLD, cursor: 'pointer', boxShadow: '-4px 0 16px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.05em', transform: 'rotate(-90deg)' }}>
+            ⚙ {t('gmMode.adversite.parametresCourt')}
+          </span>
+        </button>
+
         <div style={{
           width: 520, flexShrink: 0, display: 'flex', flexDirection: 'column',
-          background: 'rgba(15,12,8,0.97)', border: `1px solid ${SECTION_BORDER}`, borderLeft: 'none',
-          boxShadow: '6px 0 24px rgba(0,0,0,0.5)', overflow: 'hidden',
+          background: 'rgba(15,12,8,0.97)', border: `1px solid ${SECTION_BORDER}`, borderRight: 'none',
+          boxShadow: '-6px 0 24px rgba(0,0,0,0.5)', overflow: 'hidden',
         }}>
           <div style={{
             flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -485,24 +508,6 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
             {builderContent}
           </div>
         </div>
-
-        {/* Poignée — reste collée au bord droit du tiroir, visible même fermé. Le texte pivote via
-            transform (plus fiable entre moteurs de rendu que writing-mode, qui peut ne pas tourner
-            les caractères latins selon le WebKit utilisé et se contenter de retourner à la ligne). */}
-        <button
-          onMouseEnter={() => setPanelOpen(true)}
-          onClick={() => setPanelOpen(o => !o)}
-          style={{
-            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '10px 0', background: 'rgba(15,12,8,0.95)',
-            border: `1px solid ${SECTION_BORDER}`, borderLeft: 'none', borderRadius: '0 6px 6px 0',
-            color: GOLD, cursor: 'pointer', boxShadow: '4px 0 16px rgba(0,0,0,0.4)',
-          }}
-        >
-          <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.05em', transform: 'rotate(-90deg)' }}>
-            ⚙ {t('gmMode.adversite.parametresCourt')}
-          </span>
-        </button>
       </div>
     </div>
   )

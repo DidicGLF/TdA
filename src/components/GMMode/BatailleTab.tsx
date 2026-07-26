@@ -18,6 +18,7 @@ import type {
 } from '../../utils/bataille'
 import type { Character } from '../../types/character'
 import type { BestiaireEntry, RencontreSauvegardee } from '../../types/gameData'
+import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -314,18 +315,23 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
 
   const handleFiles = async (files: FileList) => {
     const nouveaux: PionPJ[] = []
+    const rejets: string[] = []
     for (const file of Array.from(files)) {
       try {
         const text = await file.text()
         const parsed = JSON.parse(text)
         const entries = Array.isArray(parsed) ? parsed : [parsed]
         for (const entry of entries) {
-          const character: Character | undefined = entry?.character ?? (entry?.caracteristiques ? entry : undefined)
+          const { type, contenu } = desenvelopper(entry)
+          if (type && type !== 'personnage') { rejets.push(messageMauvaisType(t, 'personnage', type)); continue }
+          const c = contenu as { character?: Character; caracteristiques?: unknown } | undefined
+          const character: Character | undefined = c?.character ?? (c?.caracteristiques ? (c as Character) : undefined)
           if (character) nouveaux.push(importerPionPJ(character, descriptions))
         }
       } catch { /* fichier invalide, ignoré */ }
     }
     if (nouveaux.length > 0) setPionsEnConstruction(prev => [...prev, ...nouveaux])
+    if (rejets.length > 0) { setSaveMsg(rejets.join(' ')); setTimeout(() => setSaveMsg(null), 5000) }
   }
 
   // Import de renfort en pleine session active (bouton « Renfort » de l'en-tête) — même lecture de
@@ -338,13 +344,17 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
   // le champ de bataille (voir envoyerRenfort ci-dessous).
   const handleFilesRenfort = async (files: FileList) => {
     const nouveaux: PionPJ[] = []
+    const rejets: string[] = []
     for (const file of Array.from(files)) {
       try {
         const text = await file.text()
         const parsed = JSON.parse(text)
         const entries = Array.isArray(parsed) ? parsed : [parsed]
         for (const entry of entries) {
-          const character: Character | undefined = entry?.character ?? (entry?.caracteristiques ? entry : undefined)
+          const { type, contenu } = desenvelopper(entry)
+          if (type && type !== 'personnage') { rejets.push(messageMauvaisType(t, 'personnage', type)); continue }
+          const c = contenu as { character?: Character; caracteristiques?: unknown } | undefined
+          const character: Character | undefined = c?.character ?? (c?.caracteristiques ? (c as Character) : undefined)
           if (character) nouveaux.push(importerPionPJ(character, descriptions))
         }
       } catch { /* fichier invalide, ignoré */ }
@@ -352,6 +362,7 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
     if (nouveaux.length > 0) {
       setRenfortsEnAttente(prev => [...prev, ...nouveaux.map(pion => ({ id: genId(), pion }))])
     }
+    if (rejets.length > 0) { setSaveMsg(rejets.join(' ')); setTimeout(() => setSaveMsg(null), 5000) }
   }
 
   const changerPositionRenfortEnAttente = (id: string, position: PositionBataille) => {
@@ -466,13 +477,14 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
 
   // Export générique (fichier local via Tauri, sinon téléchargement navigateur) — partagé par les
   // instantanés de session (exporter) et les gabarits de bataille (exporterTemplate) ci-dessous.
-  const exporterJSON = async (contenu: unknown, nomPourFichier: string) => {
-    const content = JSON.stringify(contenu, null, 2)
+  const exporterJSON = async (contenu: unknown, nomPourFichier: string, type: 'bataille' | 'gabarit-bataille') => {
+    const content = JSON.stringify({ type, data: contenu }, null, 2)
     const safe = nomPourFichier.replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'bataille'
     const filename = `${safe}.json`
+    const chemin = `Maitre de jeu/${filename}`
     if (isTauri) {
-      await saveDataFile(filename, content)
-      setSaveMsg(t('gmMode.batailleMasse.exporteVers', { filename }))
+      await saveDataFile(chemin, content)
+      setSaveMsg(t('gmMode.batailleMasse.exporteVers', { filename: chemin }))
       setTimeout(() => setSaveMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })
@@ -520,7 +532,7 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
     setConfirmDeleteId(null)
   }
 
-  const exporter = (b: BatailleSessionSauvegardee) => exporterJSON(b, b.nom)
+  const exporter = (b: BatailleSessionSauvegardee) => exporterJSON(b, b.nom, 'bataille')
 
   // ── Gabarits de bataille : configuration réutilisable (voir BatailleTemplate), distincte des
   // instantanés ci-dessus qui figent une bataille déjà lancée. Même principe que les rencontres du
@@ -575,7 +587,7 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
     setConfirmDeleteTemplateId(null)
   }
 
-  const exporterTemplate = (tpl: BatailleTemplate) => exporterJSON(tpl, tpl.nom)
+  const exporterTemplate = (tpl: BatailleTemplate) => exporterJSON(tpl, tpl.nom, 'gabarit-bataille')
 
   const jouerTemplate = (tpl: BatailleTemplate) => {
     setSession(creerBataille({

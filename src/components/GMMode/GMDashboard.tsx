@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData, BESTIAIRE_LIVRE } from '../../context/GameDataContext'
 import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature } from '../../utils/bestiairePerso'
+import { publierCapacitesBibliothequeLivre } from '../../utils/cataloguePerso'
 import CreatureDetail from './CreatureDetail'
 import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
@@ -18,6 +19,7 @@ import { VARIANTES_MYSTIQUE, genererPNJMystique } from '../../utils/pnjMystique'
 import type { VarianteMystiqueId } from '../../utils/pnjMystique'
 import type { BestiaireEntry, RencontreSauvegardee } from '../../types/gameData'
 import type { BatailleSessionSauvegardee } from '../../utils/bataille'
+import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -307,12 +309,21 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
 
   const importerCreatures = async (fichiers: FileList) => {
     const ajoutees: BestiaireEntry[] = []
+    const rejets: string[] = []
     for (const fichier of Array.from(fichiers)) {
       try {
         const brut = JSON.parse(await fichier.text())
         // Tolère un fichier contenant une créature seule ou une liste.
-        const entrees: BestiaireEntry[] = Array.isArray(brut) ? brut : [brut]
-        for (const e of entrees) {
+        const entrees: unknown[] = Array.isArray(brut) ? brut : [brut]
+        for (const entree of entrees) {
+          // Un fichier reconnu comme un autre type d'export (personnage, rencontre, ...) est signalé
+          // précisément plutôt que d'être accepté silencieusement comme une créature difforme.
+          const { type, contenu } = desenvelopper(entree)
+          if (type && type !== 'creature') {
+            rejets.push(messageMauvaisType(t, 'creature', type))
+            continue
+          }
+          const e = contenu as BestiaireEntry
           if (!e || typeof e.nom !== 'string') continue
           const image = typeof e.image === 'string' && e.image.startsWith('data:')
             ? await importerImage('bestiaire', e.image)
@@ -320,7 +331,7 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
           ajoutees.push({ ...e, ...(image ? { image } : {}) })
         }
       } catch {
-        // Fichier illisible ou d'un autre type : on l'ignore et on le signale par le décompte final.
+        // Fichier illisible : on l'ignore et on le signale par le décompte final.
       }
     }
     if (ajoutees.length > 0) {
@@ -330,8 +341,12 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
       setSelectedNom(ajoutees[0].nom)
       setSelectedOccurrence(0)
     }
-    setMessageImport(t('gmMode.creatureDetail.importResultat', { count: ajoutees.length }))
-    setTimeout(() => setMessageImport(null), 4000)
+    const message = [
+      ajoutees.length > 0 || rejets.length === 0 ? t('gmMode.creatureDetail.importResultat', { count: ajoutees.length }) : null,
+      ...rejets,
+    ].filter(Boolean).join(' ')
+    setMessageImport(message)
+    setTimeout(() => setMessageImport(null), 5000)
   }
 
   const updateSelected = (patch: Partial<BestiaireEntry>) => {
@@ -642,8 +657,12 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                   saveDataFileToBundle('capacites-bibliotheque.json', capacitesBibliotheque),
                 ])
                 // Ce qui vient d'être publié EST le livré : sans cette remise à zéro, chaque créature
-                // perso resterait en surcharge d'elle-même et ne recevrait plus jamais de mise à jour.
-                await publierBestiaireLivre(bestiaire, bestiaireIllustrations)
+                // (et chaque capacité) perso resterait en surcharge d'elle-même et ne recevrait plus
+                // jamais de mise à jour.
+                await Promise.all([
+                  publierBestiaireLivre(bestiaire, bestiaireIllustrations),
+                  publierCapacitesBibliothequeLivre(),
+                ])
                 window.location.reload()
               }}
               style={{

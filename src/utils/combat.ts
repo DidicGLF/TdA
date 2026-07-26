@@ -19,6 +19,20 @@ export type RollResult = {
   degatsAppliques?: number   // dégâts réellement appliqués à la cible après réduction par sa RD
   rdAppliquee?: number       // RD de la cible utilisée pour ce calcul, conservée pour l'affichage
   cibleDef?: number          // DEF de la cible utilisée pour le test de touche, conservée pour l'affichage
+  // Type de dégâts choisi pour une attaque manuelle de PJ (voir handleAttaquePJ) — purement informatif,
+  // comme creature.rdTypes : combat.ts n'applique jamais de RD par type, le MJ a déjà tout décidé en
+  // choisissant le montant final. '' ou absent = générique.
+  typeDegats?: string
+}
+
+// Dégâts sur la durée (poison, brûlure, ...) posés par une attaque manuelle de PJ (voir
+// handleAjouterDotPJ) — même principe que ActiveDot dans GameModePanel, en plus simple : pas de calcul
+// d'immunité/div2/RD par type ici, juste `amount` retiré des PV à chaque tour suivant jusqu'à expiration.
+export type DotActif = {
+  id: string
+  type: string   // '' | un code de DAMAGE_TYPES (voir utils/damageTypes.ts) — juste pour l'icône affichée
+  amount: number
+  remainingTurns: number
 }
 
 export type CombatCreature = {
@@ -30,6 +44,11 @@ export type CombatCreature = {
   expanded: boolean
   dernierResultat: RollResult | null
   cibleId: string | null
+  dotsActifs: DotActif[]
+  // Renseigné uniquement pour un compagnon dérivé d'un PJ importé (voir compagnonEnCreature dans
+  // utils/compagnons.ts) : id du PJ propriétaire — sert à afficher le lien sur la carte et à retirer
+  // le compagnon quand son PJ quitte le combat (voir removePJ dans CombatTab).
+  pjProprietaireId?: string
 }
 
 export type CombatPJ = {
@@ -39,13 +58,19 @@ export type CombatPJ = {
   pmActuels: number
   buffs: StatBuff[]
   expanded: boolean
+  // Un PJ n'a pas de moteur de jet propre (le MJ gère l'attaque à la main, voir CombatTab) : seuls
+  // cibleNom/degatsAppliques sont renseignés, jamais jetTotal/degatsTotal/rdAppliquee — ResultatCartouche
+  // s'adapte à cette forme réduite (voir sa propre note).
+  dernierResultat: RollResult | null
   cibleId: string | null
+  dotsActifs: DotActif[]
 }
 
-// Infos normalisées d'une cible potentielle (créature ou PJ), pour le sélecteur de ciblage et la
-// résolution des dégâts sans que l'appelant ait à distinguer les deux types.
-// camp : côté du plateau. Sert à colorer les listes de cibles (alliés en vert, adversaires en rouge)
-// du point de vue de celui qui agit.
+// Infos normalisées d'une cible potentielle (créature, PJ ou compagnon), pour le sélecteur de ciblage
+// et la résolution des dégâts sans que l'appelant ait à distinguer les trois.
+// camp : côté du plateau. Sert à colorer les listes de cibles (alliés en vert, adversaires en rouge) du
+// point de vue de celui qui agit — un compagnon est allié des PJ, donc camp 'pj' malgré sa forme de
+// CombatCreature (voir pjProprietaireId).
 export type CombatEntiteInfo = { id: string; nom: string; def: number; rd: number; pvActuels: number; camp: 'creature' | 'pj' }
 
 export function listerEntites(session: CombatSession, descriptions: DescMap): CombatEntiteInfo[] {
@@ -68,13 +93,24 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
       camp: 'pj' as const,
     }
   })
-  return [...creatures, ...pjs]
+  const compagnons = session.compagnons.map(c => ({
+    id: c.id,
+    nom: c.creature.nom,
+    def: getStatAvecBuff(c.creature.def, c.buffs, 'DEF').value,
+    rd: getStatAvecBuff(c.creature.rd, c.buffs, 'RD').value,
+    pvActuels: c.pvActuels,
+    camp: 'pj' as const,
+  }))
+  return [...creatures, ...pjs, ...compagnons]
 }
 
 export type CombatSession = {
   nomRencontre: string
   combatants: CombatCreature[]
   pjs: CombatPJ[]
+  // Compagnons des PJ importés (voir compagnonEnCreature) : même forme qu'une créature (stats, jet
+  // d'attaque propre), mais alliés des PJ — rendus dans la colonne PJ, jamais dans celle des créatures.
+  compagnons: CombatCreature[]
   // Part (0 à 1) de la largeur attribuée à la colonne Créatures dans CombatTab — ajustée en glissant
   // la barre de séparation, conservée avec la session pour survivre à un instantané sauvegardé/rechargé.
   splitRatio?: number
@@ -84,6 +120,18 @@ export type CombatSession = {
 // PV/buffs/cibles, PJ importés avec les leurs) + un identifiant pour la retrouver et la mettre à
 // jour dans la bibliothèque, afin de pouvoir reprendre un combat interrompu.
 export type CombatSessionSauvegardee = CombatSession & { id: string; creeLe: string }
+
+// Complète dotsActifs et compagnons (absents des sessions sauvegardées avant leur ajout respectif) —
+// à appliquer au chargement depuis le disque, avant tout rendu (CombatCard/PJCard lisent .length/.map
+// sans vérifier que les champs existent).
+export function normaliserCombatSession<T extends CombatSession>(session: T): T {
+  return {
+    ...session,
+    combatants: session.combatants.map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [] })),
+    pjs: session.pjs.map(p => ({ ...p, dotsActifs: p.dotsActifs ?? [] })),
+    compagnons: (session.compagnons ?? []).map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [] })),
+  }
+}
 
 // Construit une session de combat éphémère à partir d'une rencontre enregistrée : copie de travail,
 // jamais persistée, jamais réécrite sur la rencontre ou le bestiaire d'origine.
@@ -108,12 +156,13 @@ export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: Besti
       expanded: false,
       dernierResultat: null,
       cibleId: null,
+      dotsActifs: [],
     })
   })
   // Classées par initiative décroissante par défaut — celles sans INIT renseignée passent en dernier
   // plutôt que de casser le tri (undefined traité comme -Infinity).
   combatants.sort((a, b) => (b.creature.init ?? -Infinity) - (a.creature.init ?? -Infinity))
-  return { nomRencontre: rencontre.nom, combatants, pjs: [] }
+  return { nomRencontre: rencontre.nom, combatants, pjs: [], compagnons: [] }
 }
 
 // Importe un personnage joueur (depuis le JSON de sauvegarde de fiche) dans la session de combat.
@@ -128,8 +177,23 @@ export function importPJ(character: Character, descriptions: DescMap): CombatPJ 
     pmActuels: character.pmRestants ?? pmTotal,
     buffs: [],
     expanded: false,
+    dernierResultat: null,
     cibleId: null,
+    dotsActifs: [],
   }
+}
+
+// Décompte d'un tour pour les DoT actifs d'une créature ou d'un PJ (voir handleAjouterDotPJ dans
+// CombatTab) : chaque effet encore actif retire son montant des PV avant que son compteur ne baisse,
+// puis les effets expirés (0 tour restant) disparaissent — même ordre que handleEndTurn/activeDots dans
+// GameModePanel, en plus simple (pas de RD/div2/immunité par type, montant flat).
+export function tickerDots<T extends { pvActuels: number; dotsActifs: DotActif[] }>(entite: T): T {
+  if (entite.dotsActifs.length === 0) return entite
+  const degats = entite.dotsActifs.reduce((somme, d) => somme + d.amount, 0)
+  const dotsRestants = entite.dotsActifs
+    .map(d => ({ ...d, remainingTurns: d.remainingTurns - 1 }))
+    .filter(d => d.remainingTurns > 0)
+  return { ...entite, pvActuels: Math.max(0, entite.pvActuels - degats), dotsActifs: dotsRestants }
 }
 
 function parseSigned(s: string | undefined): number {

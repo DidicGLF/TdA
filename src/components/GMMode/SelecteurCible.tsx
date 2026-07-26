@@ -71,7 +71,7 @@ export default function SelecteurCible({ value, onChange, cibles, monCamp, label
         }}
       >
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {choisie ? choisie.nom : labelAucune}
+          {choisie ? <>{choisie.nom}{choisie.pvActuels <= 0 && ' 💀'}</> : labelAucune}
         </span>
         <span style={{ opacity: 0.5, fontSize: 10 }}>▼</span>
       </button>
@@ -108,7 +108,7 @@ export default function SelecteurCible({ value, onChange, cibles, monCamp, label
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}{c.pvActuels <= 0 && ' 💀'}</span>
               <span style={{ opacity: 0.6, fontSize: 11, flexShrink: 0 }}>{c.pvActuels} PV</span>
             </button>
           ))}

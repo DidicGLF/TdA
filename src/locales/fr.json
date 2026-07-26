@@ -508,6 +508,7 @@
     "nouveauPersonnage": "+ Nouveau personnage",
     "enregistreDans": "Enregistré dans Documents/TdA/{{filename}}",
     "fichierNonReconnu": "Fichier non reconnu.",
+    "fichierMauvaisType": "Ce fichier contient {{trouve}}, pas un personnage.",
     "fichierInvalide": "Fichier invalide."
   },
   "levelUp": {
@@ -1238,6 +1239,7 @@
       "aucunPJ": "Aucun PJ importé — utilise le panneau à droite",
       "niveau": "Niveau {{niveau}}",
       "cible": "Cible",
+      "attaquant": "Attaquant",
       "aucuneCible": "— Aucune —",
       "attaqueLabel": "Attaque",
       "dmLabel": "DM",
@@ -1245,7 +1247,14 @@
       "rateCourt": "Raté",
       "toucheCourt": "Touché",
       "rdLabel": "RD",
-      "degatsAppliques": "→ {{degats}} dégâts appliqués à {{nom}}"
+      "degatsAppliques": "→ {{degats}} dégâts appliqués à {{nom}}",
+      "dmInfliges": "DM infligés",
+      "infliger": "Infliger",
+      "attaqueManuelle": "Attaque",
+      "dotSection": "Sur la durée",
+      "dotTours": "tours",
+      "dotAjouter": "Ajouter",
+      "compagnonDe": "Compagnon de {{nom}}"
     },
     "tabs": {
       "bestiaire": "Bestiaire",
@@ -1428,6 +1437,19 @@
       "montantSoin": "Montant",
       "soigner": "Soigner"
     }
+  },
+  "typeFichier": {
+    "personnage": "un personnage",
+    "bibliothequePersonnages": "une bibliothèque de personnages",
+    "creature": "une créature",
+    "rencontre": "une rencontre",
+    "bataille": "une bataille",
+    "gabaritBataille": "un gabarit de bataille",
+    "note": "une note",
+    "notesGroupe": "un groupe de notes"
+  },
+  "importTypage": {
+    "pasLeBonType": "Ce fichier n'est pas {{attendu}} ({{trouve}})."
   }
 }
 

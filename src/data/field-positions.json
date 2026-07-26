@@ -62,7 +62,7 @@
     "page": "verso"
   },
   "pvRestants": {
-    "top": 46.6,
+    "top": 46.7,
     "left": 38.8,
     "width": 5.1
   },
@@ -73,7 +73,7 @@
   },
   "Nom perso": {
     "top": 10,
-    "left": 45,
+    "left": 45.3,
     "width": 21.2,
     "imprimer": true,
     "reserved": false
@@ -90,7 +90,7 @@
   },
   "Famille": {
     "top": 15.3,
-    "left": 37.6,
+    "left": 37.7,
     "width": 11.2
   },
   "Peuple": {
@@ -105,7 +105,7 @@
   },
   "Âge": {
     "top": 15.3,
-    "left": 65.4,
+    "left": 65.8,
     "width": 5.2
   },
   "Culture": {
@@ -115,12 +115,12 @@
   },
   "Taille": {
     "top": 15.3,
-    "left": 78.1,
+    "left": 78.2,
     "width": 5.7
   },
   "Poids": {
     "top": 15.3,
-    "left": 89.5,
+    "left": 89.7,
     "width": 5.4
   },
   "FOR mod": {
@@ -149,7 +149,7 @@
     "width": 5.1
   },
   "PV total": {
-    "top": 46.6,
+    "top": 46.7,
     "left": 44.5,
     "width": 5.1
   },
@@ -470,17 +470,17 @@
     "page": "voies"
   },
   "Total encombrement": {
-    "top": 61.4,
+    "top": 61.5,
     "left": 92.8,
     "width": 5
   },
   "Enchantement": {
-    "top": 61.4,
+    "top": 61.5,
     "left": 82.5,
     "width": 8.1
   },
   "Encombrement": {
-    "top": 61.4,
+    "top": 61.5,
     "left": 71.4,
     "width": 6
   },
@@ -684,17 +684,17 @@
     "width": 5
   },
   "Arme 1": {
-    "top": 66.6,
-    "left": 65.2,
+    "top": 66.9,
+    "left": 64.1,
     "width": 20
   },
   "ATT Arme 1": {
-    "top": 66.7,
+    "top": 66.9,
     "left": 83.3,
     "width": 5
   },
   "DM Arme 1": {
-    "top": 66.6,
+    "top": 66.9,
     "left": 91.2,
     "width": 9
   },
@@ -790,49 +790,49 @@
   },
   "Armures légères": {
     "top": 64.7,
-    "left": 6.5,
+    "left": 6.2,
     "reserved": false,
     "page": "recto"
   },
   "Armures lourdes": {
-    "top": 64.7,
-    "left": 25.9,
+    "top": 64.8,
+    "left": 25.7,
     "reserved": false,
     "page": "recto"
   },
   "Armes de jet": {
     "top": 70.2,
-    "left": 6.4,
+    "left": 6.2,
     "reserved": false,
     "page": "recto"
   },
   "Armes de trait": {
     "top": 72.9,
-    "left": 6.6,
+    "left": 6.2,
     "reserved": false,
     "page": "recto"
   },
   "Armes de tir": {
     "top": 75.4,
-    "left": 6.5,
+    "left": 6.2,
     "reserved": false,
     "page": "recto"
   },
   "Armes de guerre": {
     "top": 67.5,
-    "left": 25.8,
+    "left": 25.7,
     "reserved": false,
     "page": "recto"
   },
   "Armes de guerre lourdes": {
     "top": 70.2,
-    "left": 26,
+    "left": 25.7,
     "reserved": false,
     "page": "recto"
   },
   "Armes de duel": {
     "top": 72.8,
-    "left": 25.9,
+    "left": 25.7,
     "reserved": false,
     "page": "recto"
   },

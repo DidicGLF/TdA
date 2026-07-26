@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next'
 import { DiceIcon } from '../GameMode/DiceIcon'
 import StatCell from './StatCell'
 import NumberField from '../NumberField'
-import type { CombatCreature, CombatEntiteInfo } from '../../utils/combat'
+import type { CombatCreature, CombatEntiteInfo, RollResult } from '../../utils/combat'
+import ResultatCartouche from './ResultatCartouche'
+import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -14,26 +16,29 @@ const RED = 'rgba(255,150,150,0.95)'
 const PURPLE = 'rgba(200,170,255,0.9)'
 
 const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
-// Icônes des types de dégâts (voir creature.rdTypes) — mêmes codes que CreatureDetail/GameModePanel.
-const ICONES_TYPES_DEGATS: Record<string, string> = {
-  FEU: '🔥', FROID: '❄️', FOUDRE: '⚡', ACIDE: '🧪', POISON: '☠️', NECROTIQUE: '🪦',
-  TENEBRES: '🌑', LUMIERE: '☀️', MENTAL: '🧠', TRANCHANT: '🗡️', PERFORANT: '🏹', CONTONDANT: '🔨',
-}
 
 interface Props {
   combatant: CombatCreature
   cibles: CombatEntiteInfo[]
+  // Entités (créatures ET PJ, voir CombatTab.attaquantsDe) qui visent CETTE créature, avec leur dernier
+  // résultat contre elle — un PJ peut désormais lui infliger des dégâts (voir PJCard/handleAttaquePJ).
+  attaquants: { nom: string; resultat: RollResult | null }[]
   onToggleExpand: () => void
   onSetPV: (pv: number) => void
   onAttaque: (attaque: NonNullable<CombatCreature['creature']['attaques']>[number]) => void
   onSetCible: (id: string | null) => void
   onSetBuff: (stat: string, valeur: number) => void
   onClearBuff: (stat: string) => void
+  // Retrait anticipé d'un DoT actif sur CETTE créature (posé par un PJ, voir handleAjouterDotPJ).
+  onRetirerDot: (dotId: string) => void
+  // Remplace la ligne "NC X" par ce texte — utilisé pour un compagnon (voir compagnonEnCreature dans
+  // CombatTab), dont le nc:0 n'a aucun sens affiché tel quel : on montre plutôt son lien au PJ.
+  sousTitre?: string
 }
 
-export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff }: Props) {
+export default function CombatCard({ combatant, cibles, attaquants, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff, onRetirerDot, sousTitre }: Props) {
   const { t } = useTranslation()
-  const { creature, expanded, aJoueCeTour, dernierResultat, buffs, pvActuels, cibleId } = combatant
+  const { creature, expanded, aJoueCeTour, dernierResultat, buffs, pvActuels, cibleId, dotsActifs } = combatant
   const imageSrc = useImage(creature.image)
   const [flash, setFlash] = useState(false)
   const isDown = pvActuels <= 0
@@ -45,9 +50,14 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
   }
 
   if (!expanded) {
+    // Résumé du ciblage propre à cette créature — remplace le lien SVG plein écran (réservé aux
+    // cartes dépliées, voir CombatTab.recomputeLinks) tant que la carte reste repliée. Le résultat ne
+    // vaut que s'il concerne la cible actuellement assignée (voir la même règle dans pushLink).
+    const cibleActuelle = cibleId ? cibles.find(c => c.id === cibleId) : null
+    const resultatValide = dernierResultat && cibleActuelle && dernierResultat.cibleNom === cibleActuelle.nom ? dernierResultat : null
     return (
       <div data-combat-id={combatant.id} onClick={onToggleExpand} style={{
-        width: 140, cursor: 'pointer', border: `1px solid ${isDown ? 'rgba(150,150,150,0.4)' : SECTION_BORDER}`, borderRadius: 8,
+        width: 180, cursor: 'pointer', border: `1px solid ${isDown ? 'rgba(150,150,150,0.4)' : SECTION_BORDER}`, borderRadius: 8,
         overflow: 'hidden', background: 'rgba(15,12,8,0.95)', flexShrink: 0,
         filter: isDown ? 'grayscale(1)' : undefined,
       }}>
@@ -58,6 +68,21 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
           {isDown && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 40 }}>💀</span>
+            </div>
+          )}
+          {/* Bandeau posé sur l'image (pas une bande ajoutée en plus) : la carte garde sa hauteur
+              habituelle, seul un lien d'origine se superpose au lieu de s'additionner. */}
+          {sousTitre && (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+              fontSize: 13, color: GOLD, padding: '3px 6px',
+              background: 'rgba(15,12,8,0.9)', borderBottom: `1px solid ${SECTION_BORDER}`,
+            }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sousTitre}</span>
+              {/* 🐾 est un émoji couleur : la propriété CSS color n'a aucune prise dessus, il faut un
+                  filtre pour le teinter doré (sepia rapproche du ton, saturate/brightness l'accentuent). */}
+              <span style={{ fontSize: 18, opacity: 0.85, flexShrink: 0, filter: 'sepia(1) saturate(4) brightness(1.15)' }}>🐾</span>
             </div>
           )}
         </div>
@@ -71,6 +96,24 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
               <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {creature.init}</span>
             )}
           </div>
+          {cibleActuelle && <ResultatCartouche autrePartie={cibleActuelle.nom} role="cible" resultat={resultatValide} />}
+          {attaquants.map((a, i) => (
+            <ResultatCartouche key={i} autrePartie={a.nom} role="attaquant" resultat={a.resultat} />
+          ))}
+          {dotsActifs.length > 0 && (
+            <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }} onClick={e => e.stopPropagation()}>
+              {dotsActifs.map(dot => (
+                <span key={dot.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11,
+                  background: 'rgba(180,30,30,0.15)', border: '1px solid rgba(220,50,50,0.4)',
+                  borderRadius: 10, padding: '2px 6px', color: 'rgba(255,150,150,0.9)',
+                }}>
+                  {ICONES_TYPES_DEGATS[dot.type]} {dot.amount}·{dot.remainingTurns}
+                  <button onClick={() => onRetirerDot(dot.id)} style={{ background: 'none', border: 'none', color: 'rgba(245,236,215,0.4)', cursor: 'pointer', padding: 0, fontSize: 10, lineHeight: 1 }}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -99,7 +142,9 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
             <div style={{ fontSize: 20, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif" }}>
               {isDown && '💀 '}{creature.nom}
             </div>
-            <div style={{ fontSize: 13, opacity: 0.5 }}>{t('gmMode.creatureDetail.nc')} {creature.nc}{creature.taille ? ` · ${creature.taille}` : ''}</div>
+            <div style={{ fontSize: 13, opacity: 0.5 }}>
+              {sousTitre ?? <>{t('gmMode.creatureDetail.nc')} {creature.nc}{creature.taille ? ` · ${creature.taille}` : ''}</>}
+            </div>
           </div>
           <button onClick={onToggleExpand} style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.5)', cursor: 'pointer', fontSize: 19 }}>✕</button>
         </div>
@@ -124,6 +169,23 @@ export default function CombatCard({ combatant, cibles, onToggleExpand, onSetPV,
             bordure={SECTION_BORDER}
           />
         </div>
+
+        {/* Effets sur la durée actifs sur cette créature (posés par un PJ, voir handleAjouterDotPJ) —
+            décomptés automatiquement à chaque « Tour suivant » (voir tickerDots). */}
+        {dotsActifs.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {dotsActifs.map(dot => (
+              <span key={dot.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12,
+                background: 'rgba(180,30,30,0.12)', border: '1px solid rgba(220,50,50,0.4)',
+                borderRadius: 12, padding: '3px 8px', color: 'rgba(255,150,150,0.9)',
+              }}>
+                {ICONES_TYPES_DEGATS[dot.type]} {dot.amount} · {t('gameMode.turn', { count: dot.remainingTurns })}
+                <button onClick={() => onRetirerDot(dot.id)} style={{ background: 'none', border: 'none', color: 'rgba(245,236,215,0.4)', cursor: 'pointer', padding: '0 0 0 3px', fontSize: 10, lineHeight: 1 }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Caractéristiques + stats de combat */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, paddingTop: 8, borderTop: `1px solid ${SECTION_BORDER}` }}>

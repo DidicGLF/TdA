@@ -8,11 +8,12 @@ import PEUPLES_RAW from '../data/peuples.json'
 import { VOIES as VOIES_BUNDLE } from '../data/voies'
 import {
   useGameData, VOIES_LIVRE, DESCRIPTIONS_LIVRE,
-  TRAITS_MAGIQUES_LIVRE, TRAITS_RACIAUX_LIVRE, COMPAGNONS_LIVRE,
+  TRAITS_MAGIQUES_LIVRE, TRAITS_RACIAUX_LIVRE, COMPAGNONS_LIVRE, PEUPLES_LIVRE,
 } from '../context/GameDataContext'
 import { publierVoiesLivre } from '../utils/voiesPerso'
 import { publierAutresCataloguesLivre } from '../utils/cataloguePerso'
 import { publierEquipementLivre } from '../utils/armesPerso'
+import { publierPeuplesLivre } from '../utils/peuplesPerso'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
 import EquipementModal from './EquipementModal'
@@ -172,7 +173,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const peupleName = usePeupleName()
   const {
     data, setData, descriptionsPerso, setDescriptionsPerso,
-    traits, setTraits, traitsPerso, setTraitsPerso, peuples, setPeuples, armes, armures,
+    traits, setTraits, traitsPerso, setTraitsPerso, peuples, setPeuples, peuplesPerso, setPeuplesPerso, armes, armures,
     voies, setVoies, voiesPerso, setVoiesPerso, compagnons, setCompagnons, compagnonsPerso, setCompagnonsPerso,
     traitsRaciaux, setTraitsRaciaux, traitsRaciauxPerso, setTraitsRaciauxPerso, hiddenVoies, setHiddenVoies,
     hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons,
@@ -717,13 +718,39 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setPeuplesExported(false)
   }
 
+  // Un peuple livré n'est jamais supprimé — masqué à la place, surcharges perso de ses cultures
+  // effacées au passage (repart d'un état propre). Voir removeVoie pour le principe général.
   const removePeuple = (idx: number) => {
-    setPeuples(prev => prev.filter((_, i) => i !== idx))
+    const peuple = peuples[idx]
+    if (!peuple) return
+    if (PEUPLES_LIVRE.some(lp => lp.label === peuple.label)) {
+      setHiddenPeuples(prev => prev.includes(peuple.label) ? prev : [...prev, peuple.label])
+      setPeuplesPerso(prev => ({ cultures: prev.cultures.filter(c => c.peupleLabel !== peuple.label) }))
+      return
+    }
+    setPeuplesPerso(prev => ({ cultures: prev.cultures.filter(c => c.peupleLabel !== peuple.label) }))
     setSelectedPeuple(i => Math.min(i, peuples.length - 2))
     setPeuplesExported(false)
   }
 
   const updatePeuple = (idx: number, patch: Partial<PeupleEntry>) => {
+    const peuple = peuples[idx]
+    if (!peuple) return
+    if (PEUPLES_LIVRE.some(lp => lp.label === peuple.label) && patch.label !== undefined && patch.label !== peuple.label) {
+      // Verrouillé pour l'utilisateur final (champ désactivé, normalement inatteignable). En mode
+      // auteur : renommer un peuple livré change l'identité de TOUTES ses cultures (elle inclut le
+      // label du peuple) — on les recrée sous le nouveau label et on masque l'ancien peuple, pour ne
+      // pas laisser les deux visibles à la fois. Même principe que renameVoie.
+      if (!modeAuteur) return
+      const nouveauLabel = patch.label
+      setPeuplesPerso(prev => ({
+        cultures: [...prev.cultures, ...peuple.cultures.map(c => ({ peupleLabel: nouveauLabel, culture: c }))],
+      }))
+      setHiddenPeuples(prev => prev.includes(peuple.label) ? prev : [...prev, peuple.label])
+      setSelectedPeuple(peuples.length)
+      setPeuplesExported(false)
+      return
+    }
     setPeuples(prev => prev.map((p, i) => i === idx ? { ...p, ...patch } : p))
     setPeuplesExported(false)
   }
@@ -737,11 +764,19 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setPeuplesExported(false)
   }
 
+  // Même principe que removePeuple, à la granularité de la culture (hidden-cultures.json existe déjà).
   const removeCulture = (pIdx: number, cIdx: number) => {
-    setPeuples(prev => prev.map((p, i) => i === pIdx
-      ? { ...p, cultures: p.cultures.filter((_, j) => j !== cIdx) }
-      : p
-    ))
+    const peuple = peuples[pIdx]
+    const culture = peuple?.cultures[cIdx]
+    if (!peuple || !culture) return
+    const estLivre = PEUPLES_LIVRE.find(lp => lp.label === peuple.label)?.cultures.some(c => c.label === culture.label) ?? false
+    if (estLivre) {
+      const k = cultureKey(peuple.label, culture.label)
+      setHiddenCultures(prev => prev.includes(k) ? prev : [...prev, k])
+      setPeuplesPerso(prev => ({ cultures: prev.cultures.filter(c => !(c.peupleLabel === peuple.label && c.culture.label === culture.label)) }))
+      return
+    }
+    setPeuplesPerso(prev => ({ cultures: prev.cultures.filter(c => !(c.peupleLabel === peuple.label && c.culture.label === culture.label)) }))
     setSelectedCulture(c => Math.min(c, (peuples[pIdx]?.cultures.length ?? 1) - 2))
     setPeuplesExported(false)
   }
@@ -3278,6 +3313,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         {t('descEditor.masquee')}
                       </span>
                     )}
+                    {peuplesPerso.cultures.some(c => c.peupleLabel === p.label) && (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', flexShrink: 0 }}>
+                        {PEUPLES_LIVRE.some(lp => lp.label === p.label) ? t('descEditor.modifiee') : t('descEditor.perso')}
+                      </span>
+                    )}
                     <button
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'peuple', data: p }, `peuple-${safeName(p.label)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -3351,10 +3391,24 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             {/* Éditeur peuple */}
             {peuples[selectedPeuple] && (() => {
               const peuple = peuples[selectedPeuple]
+              const peupleEstLivre = PEUPLES_LIVRE.some(lp => lp.label === peuple.label)
+              const peupleVerrouille = peupleEstLivre && !modeAuteur
               return (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {peupleEstLivre && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                      border: `1px solid ${S.border}`, borderRadius: 6, padding: '10px 14px',
+                      background: 'rgba(201,168,76,0.05)',
+                    }}>
+                      <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                        {modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                      </span>
+                    </div>
+                  )}
                   {/* Nom du peuple */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <fieldset disabled={peupleVerrouille} style={fieldsetStyle}>
                     <input
                       type="text"
                       value={peuple.label}
@@ -3367,6 +3421,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    </fieldset>
                     <button
                       onClick={() => setHiddenPeuples(prev =>
                         prev.includes(peuple.label) ? prev.filter(n => n !== peuple.label) : [...prev, peuple.label]
@@ -3384,10 +3439,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         <span style={{ position: 'absolute', top: '50%', left: '-8px', right: '-8px', height: '2px', background: 'currentColor', transform: 'rotate(-35deg)', transformOrigin: 'center', pointerEvents: 'none' }} />
                       )}
                     </button>
-                    <button onClick={() => askConfirm(t('descEditor.confirmSupprimerPeuple', { nom: peuple.label }), () => removePeuple(selectedPeuple))} style={{
-                      padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
-                      border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
-                    }}>🗑</button>
+                    {/* Le 👁 ci-dessus couvre déjà le masquage d'un peuple livré. */}
+                    {!peupleEstLivre && (
+                      <button onClick={() => askConfirm(t('descEditor.confirmSupprimerPeuple', { nom: peuple.label }), () => removePeuple(selectedPeuple))} style={{
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                        border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0,
+                      }}>🗑</button>
+                    )}
                   </div>
 
                   {/* Cultures */}
@@ -3403,10 +3461,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         pi === selectedPeuple && cj === ci ? [] : [c.voieCulturelle]
                       )).filter(Boolean)
                     )
+                    const cultureEstLivre = (PEUPLES_LIVRE.find(lp => lp.label === peuple.label)?.cultures.some(c => c.label === culture.label) ?? false)
+                      && !peuplesPerso.cultures.some(c => c.peupleLabel === peuple.label && c.culture.label === culture.label)
+                    const cultureVerrouillee = cultureEstLivre && !modeAuteur
                     return (
                     <div key={ci} style={{ border: `1px solid rgba(201,168,76,0.45)`, borderRadius: 5, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, color: S.gold, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('descEditor.culture')}</span>
+                        <fieldset disabled={cultureVerrouillee} style={fieldsetStyle}>
                         <input
                           type="text"
                           value={culture.label}
@@ -3415,6 +3477,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                           onBlur={e => (e.target.style.borderColor = S.border)}
                         />
+                        </fieldset>
+                        {cultureEstLivre && (
+                          <span
+                            title={modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                            style={{ fontSize: 13, opacity: 0.5, cursor: 'help', flexShrink: 0 }}
+                          >🔒</span>
+                        )}
+                        {peuplesPerso.cultures.some(c => c.peupleLabel === peuple.label && c.culture.label === culture.label) && (
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', flexShrink: 0 }}>
+                            {(PEUPLES_LIVRE.find(lp => lp.label === peuple.label)?.cultures.some(c => c.label === culture.label)) ? t('descEditor.modifiee') : t('descEditor.perso')}
+                          </span>
+                        )}
                         <button
                           onClick={() => {
                             const k = cultureKey(peuple.label, culture.label)
@@ -3437,12 +3511,16 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
                           border: '1px solid rgba(201,168,76,0.35)', background: 'transparent', color: 'rgba(201,168,76,0.7)',
                         }}>⎘</button>
-                        <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCulture', { nom: culture.label }), () => removeCulture(selectedPeuple, ci))} style={{
-                          padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
-                          border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
-                        }}>🗑</button>
+                        {/* Le 👁 ci-dessus couvre déjà le masquage d'une culture livrée. */}
+                        {!cultureEstLivre && (
+                          <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCulture', { nom: culture.label }), () => removeCulture(selectedPeuple, ci))} style={{
+                            padding: '2px 8px', borderRadius: 3, fontSize: 13, cursor: 'pointer',
+                            border: '1px solid rgba(220,80,80,0.35)', background: 'transparent', color: '#e05555',
+                          }}>🗑</button>
+                        )}
                       </div>
 
+                      <fieldset disabled={cultureVerrouillee} style={fieldsetStyle}>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, color: S.parchment, opacity: 0.5, marginBottom: 3 }}>{t('descEditor.voieDuPeuple')}</div>
@@ -3523,6 +3601,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           />
                         </div>
                       </div>
+                      </fieldset>
                     </div>
                   )})}
 
@@ -4051,7 +4130,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   // hidden-voies.json et pour traits-magiques/traits-raciaux/compagnons : sans cette
                   // remise à zéro, chaque entrée perso resterait en surcharge d'elle-même et ne
                   // recevrait plus jamais de mise à jour (voir voiesPerso.ts/cataloguePerso.ts).
-                  await Promise.all([publierVoiesLivre(), publierAutresCataloguesLivre(), publierEquipementLivre()])
+                  await Promise.all([publierVoiesLivre(), publierAutresCataloguesLivre(), publierEquipementLivre(), publierPeuplesLivre()])
                   window.location.reload()
                 }}
                 style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}

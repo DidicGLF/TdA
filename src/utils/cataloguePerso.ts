@@ -56,3 +56,11 @@ export async function publierAutresCataloguesLivre(): Promise<void> {
   queueSave('hidden-compagnons-perso.json', JSON.stringify({ _type: 'hidden-compagnons-perso', data: { ajouts: [], retraits: [] } }, null, 2))
   await flushAllSaves()
 }
+
+/** Publie l'état affiché comme nouveau contenu livré pour la bibliothèque de capacités (bouton auteur
+ *  du tableau de bord MJ, à côté du bestiaire, voir GMDashboard) : le fichier perso repart à vide,
+ *  puisque ce qu'il contenait EST désormais le livré. */
+export async function publierCapacitesBibliothequeLivre(): Promise<void> {
+  queueSave('Maitre de jeu/capacites-bibliotheque-perso.json', JSON.stringify({ _type: 'capacites-bibliotheque-perso', data: [] }, null, 2))
+  await flushAllSaves()
+}

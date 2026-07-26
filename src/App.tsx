@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { useLocaleContext } from './context/LocaleContext'
-import { loadDataFile, saveDataFile } from './utils/tauriStorage'
+import { loadDataFileDossier, saveDataFile } from './utils/tauriStorage'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { Character } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
@@ -257,10 +257,10 @@ function AppContent() {
   useEffect(() => {
     async function load() {
       try {
-        const raw = await loadDataFile('library.json')
+        const raw = await loadDataFileDossier('Personnage/library.json', 'library.json')
         if (raw) {
           const parsed: SavedEntry[] = JSON.parse(raw)
-          const portraitsRaw = await loadDataFile('portraits.json')
+          const portraitsRaw = await loadDataFileDossier('Personnage/portraits.json', 'portraits.json')
           const portraits: Record<string, string> = portraitsRaw ? JSON.parse(portraitsRaw) : {}
           setLibrary(parsed.map(e => ({ ...e, character: { ...e.character, portrait: portraits[e.id] ?? e.character.portrait ?? '' } })))
         }
@@ -288,9 +288,9 @@ function AppContent() {
         if (e.character.portrait) portraits[e.id] = e.character.portrait
         return { ...e, character: { ...e.character, portrait: '' } }
       })
-      await saveDataFile('library.json', JSON.stringify(compact))
+      await saveDataFile('Personnage/library.json', JSON.stringify(compact))
       try {
-        await saveDataFile('portraits.json', JSON.stringify(portraits))
+        await saveDataFile('Personnage/portraits.json', JSON.stringify(portraits))
       } catch { /* portrait trop grand */ }
     } catch { /* quota dépassé */ }
   }, [])
@@ -785,7 +785,17 @@ function AppContent() {
       )}
 
       {/* === FEUILLE (gauche, ou plein écran si runes full) === */}
-      <div className="no-print" style={{ width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
+      <div className="no-print"
+        onWheel={e => {
+          // Ctrl+molette = zoom (comme un navigateur), pas le défilement habituel — sans preventDefault,
+          // le navigateur zoomerait toute la page en plus de notre propre zoom sur la feuille.
+          if (!e.ctrlKey) return
+          e.preventDefault()
+          const n = Math.min(82, Math.max(30, zoom - Math.sign(e.deltaY) * 5))
+          localStorage.setItem('tdr-zoom', String(n))
+          setZoom(n)
+        }}
+        style={{ width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
 
         {/* Toolbar — outer sticky shell (contenant block pour le dropdown Gestion) */}
         <div ref={gestionRef} style={{
