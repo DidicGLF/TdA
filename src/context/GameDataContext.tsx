@@ -28,14 +28,20 @@ import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
 import { loadDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
-import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, BestiaireEntry, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
+import { fusionnerBestiaire, migrerBestiairePerso } from '../utils/bestiairePerso'
+import {
+  fusionnerVoies, migrerVoiesPerso, extraireSurchargesVoies,
+  fusionnerDescriptions, migrerDescriptionsPerso, extraireSurchargesDescriptions,
+  fusionnerHiddenVoies, migrerHiddenVoiesPerso, deriverAjoutsRetraits,
+} from '../utils/voiesPerso'
+import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
+export type { VoieEntry } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
 import type { BatailleSessionSauvegardee, BatailleTemplate } from '../utils/bataille'
 import { normaliserEvenement } from '../utils/bataille'
 
 export type ArmesData = typeof ARMES_RAW
 export type ArmuresData = typeof ARMURES_RAW
-export type VoieEntry = { nom: string; famille: string; categorie: string }
 // reserved : le champ est actuellement stocké dans la réserve de calibrage plutôt qu'affiché sur la
 // feuille — top/left/width/height sont conservés tels quels pour reprendre leur valeur telle quelle
 // une fois replacé sur la feuille (pas de perte de position en cas d'aller-retour par la réserve).
@@ -60,8 +66,14 @@ export type SheetImages = Partial<Record<SheetPage, string>>
 export const FIELD_POSITIONS_LIVRE = unwrap(JSON.parse(JSON.stringify(FIELD_POSITIONS_RAW))) as FieldPositions
 
 interface GameDataContextValue {
+  // Vue fusionnée (livré + perso), comme avant la séparation — voir VOIES_LIVRE/DESCRIPTIONS_LIVRE
+  // plus haut pour le détail. setData/setVoies acceptent la vue fusionnée et redirigent seuls vers le
+  // perso ; voiesPerso/descriptionsPerso (bruts) ne servent qu'aux suppressions/renommages, qui ne
+  // peuvent pas passer par ce mécanisme générique (voir extraireSurchargesDescriptions).
   data: DescMap
   setData: Dispatch<SetStateAction<DescMap>>
+  descriptionsPerso: DescMap
+  setDescriptionsPerso: Dispatch<SetStateAction<DescMap>>
   traits: TraitEntry[]
   setTraits: Dispatch<SetStateAction<TraitEntry[]>>
   peuples: PeupleEntry[]
@@ -72,6 +84,8 @@ interface GameDataContextValue {
   setArmures: Dispatch<SetStateAction<ArmuresData>>
   voies: VoieEntry[]
   setVoies: Dispatch<SetStateAction<VoieEntry[]>>
+  voiesPerso: VoieEntry[]
+  setVoiesPerso: Dispatch<SetStateAction<VoieEntry[]>>
   compagnons: CompanionEntry[]
   setCompagnons: Dispatch<SetStateAction<CompanionEntry[]>>
   traitsRaciaux: TraitEntry[]
@@ -88,8 +102,15 @@ interface GameDataContextValue {
   setHiddenCultures: Dispatch<SetStateAction<string[]>>
   hiddenCompagnons: string[]
   setHiddenCompagnons: Dispatch<SetStateAction<string[]>>
+  // Bestiaire tel qu'il s'affiche : livré (moins les masquées, plus les illustrations) + perso.
+  // Dérivé, donc en lecture seule — pour modifier, passer par les trois sources ci-dessous.
   bestiaire: BestiaireEntry[]
-  setBestiaire: Dispatch<SetStateAction<BestiaireEntry[]>>
+  bestiairePerso: BestiaireEntry[]
+  setBestiairePerso: Dispatch<SetStateAction<BestiaireEntry[]>>
+  bestiaireIllustrations: BestiaireIllustrations
+  setBestiaireIllustrations: Dispatch<SetStateAction<BestiaireIllustrations>>
+  hiddenBestiaire: string[]
+  setHiddenBestiaire: Dispatch<SetStateAction<string[]>>
   rencontres: RencontreSauvegardee[]
   setRencontres: Dispatch<SetStateAction<RencontreSauvegardee[]>>
   combatsSauvegardes: CombatSessionSauvegardee[]
@@ -134,10 +155,12 @@ export function useGameData() {
 // 91 % d'images pour 8 créatures, réécrits à chaque modification). On les sort dans images/ et on ne
 // garde qu'une clé. Silencieuse et sans action de l'utilisateur ; en cas d'échec d'écriture on laisse
 // l'image en place plutôt que de risquer de la perdre.
+// Renvoie le tableau reçu **tel quel** quand il n'y a rien à migrer : l'appelant s'en sert pour ne
+// réécrire le fichier que si quelque chose a effectivement bougé.
 async function migrerImagesBestiaire(entrees: BestiaireEntry[]): Promise<BestiaireEntry[]> {
   const aMigrer = entrees.filter(e => e.image?.startsWith('data:'))
   if (aMigrer.length === 0) return entrees
-  const migrees = await Promise.all(entrees.map(async e => {
+  return Promise.all(entrees.map(async e => {
     if (!e.image?.startsWith('data:')) return e
     try {
       return { ...e, image: await importerImage('bestiaire', e.image) }
@@ -145,10 +168,6 @@ async function migrerImagesBestiaire(entrees: BestiaireEntry[]): Promise<Bestiai
       return e
     }
   }))
-  // Réécrit bestiaire.json allégé. On passe par queueSave directement plutôt que par le setter
-  // auto-sauvegardant, déclaré plus bas dans le composant (on ne peut pas y accéder d'ici).
-  queueSave('bestiaire.json', JSON.stringify({ _type: 'bestiaire', data: migrees }, null, 2))
-  return migrees
 }
 
 // Même migration pour les images de notes : 27,8 Mo relus au démarrage et réécrits à chaque ajout,
@@ -166,6 +185,40 @@ async function migrerImagesNotes(images: NoteImage[]): Promise<NoteImage[]> {
   queueSave('note-images.json', JSON.stringify({ _type: 'note-images', data: migrees }, null, 2))
   return migrees
 }
+
+// ─── Bestiaire : contenu livré (lecture seule) vs ajouts de l'utilisateur ──────────────────────────
+//
+// Le bestiaire livré avec l'application n'est plus jamais réécrit sur le disque de l'utilisateur.
+// Avant, le chargement faisait « fichier sur disque → on remplace intégralement l'état livré » : la
+// première créature ajoutée figeait bestiaire.json et rendait TOUTES les mises à jour ultérieures du
+// bestiaire invisibles pour cet utilisateur, définitivement et sans le moindre avertissement.
+//
+// Ce qu'il voit = livré (moins ce qu'il a masqué, plus ses illustrations) + ses ajouts :
+//   src/data/bestiaire.json       le livré — lecture seule, mis à jour à chaque version de l'app
+//   bestiaire-perso.json          ses créatures, et ses surcharges complètes d'une créature livrée
+//   bestiaire-illustrations.json  ses illustrations posées sur des créatures livrées
+//   hidden-bestiaire.json         les créatures livrées qu'il a masquées
+//
+// L'illustration a son fichier à part exprès : poser sa propre image sur une créature livrée est le
+// geste le plus courant, et il ne doit surtout pas figer les statistiques de la fiche — sinon on
+// recrée le problème qu'on vient de résoudre, à l'échelle de la créature.
+export const BESTIAIRE_LIVRE = unwrap(JSON.parse(JSON.stringify(BESTIAIRE_RAW))) as BestiaireEntry[]
+
+// ─── Voies : même principe, sur deux fichiers ──────────────────────────────────────────────────────
+//
+// voies.json (catalogue : nom/famille/catégorie) et descriptions.json (contenu des rangs, qui sert
+// aussi aux voies de peuple/culture — protégées au passage, sans logique séparée) ne sont plus jamais
+// réécrits. Ce que l'utilisateur voit = livré + ses ajouts :
+//   src/data/voies.json           le catalogue livré
+//   voies-perso.json               ses voies, et ses surcharges complètes d'une voie livrée
+//   src/data/descriptions.json    le contenu des rangs livré
+//   descriptions-perso.json        ses rangs, et ses surcharges d'une voie livrée
+//   hidden-voies.json              masquage livré (auteur) — hidden-voies-perso.json en ajoute/retranche
+//
+// Détail des règles dans src/utils/voiesPerso.ts.
+export const VOIES_LIVRE = unwrap(JSON.parse(JSON.stringify(VOIES_RAW))) as VoieEntry[]
+export const DESCRIPTIONS_LIVRE = unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as DescMap
+export const HIDDEN_VOIES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_VOIES_RAW))) as string[]
 
 function unwrap(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
@@ -194,9 +247,7 @@ function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string,
 }
 
 export function GameDataProvider({ children }: { children: React.ReactNode }) {
-  const [data, setDataRaw] = useState<DescMap>(() =>
-    unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as DescMap
-  )
+  const [descriptionsPerso, setDescriptionsPersoRaw] = useState<DescMap>({})
   const [traits, setTraitsRaw] = useState<TraitEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(TRAITS_RAW))) as TraitEntry[]
   )
@@ -209,9 +260,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [armures, setArmuresRaw] = useState<ArmuresData>(() =>
     unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
   )
-  const [voies, setVoiesRaw] = useState<VoieEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(VOIES_RAW))) as VoieEntry[]
-  )
+  const [voiesPerso, setVoiesPersoRaw] = useState<VoieEntry[]>([])
   const [compagnons, setCompagnonsRaw] = useState<CompanionEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
   )
@@ -224,9 +273,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [sheetImages, setSheetImagesRaw] = useState<SheetImages>(() =>
     JSON.parse(JSON.stringify(SHEET_IMAGES_RAW)) as SheetImages
   )
-  const [hiddenVoies, setHiddenVoiesRaw] = useState<string[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(HIDDEN_VOIES_RAW))) as string[]
-  )
+  const [hiddenVoiesDelta, setHiddenVoiesDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
   const [hiddenPeuples, setHiddenPeuplesRaw] = useState<string[]>(() =>
     unwrap(JSON.parse(JSON.stringify(HIDDEN_PEUPLES_RAW))) as string[]
   )
@@ -236,9 +283,9 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCompagnons, setHiddenCompagnonsRaw] = useState<string[]>(() =>
     unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
   )
-  const [bestiaire, setBestiaireRaw] = useState<BestiaireEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(BESTIAIRE_RAW))) as BestiaireEntry[]
-  )
+  const [bestiairePerso, setBestiairePersoRaw] = useState<BestiaireEntry[]>([])
+  const [bestiaireIllustrations, setBestiaireIllustrationsRaw] = useState<BestiaireIllustrations>({})
+  const [hiddenBestiaire, setHiddenBestiaireRaw] = useState<string[]>([])
   const [rencontres, setRencontresRaw] = useState<RencontreSauvegardee[]>(() =>
     unwrap(JSON.parse(JSON.stringify(RENCONTRES_RAW))) as RencontreSauvegardee[]
   )
@@ -279,21 +326,17 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [descStr, traitsStr, peuplesStr, armesStr, armuresStr, voiesStr, compagnonsStr] = await Promise.all([
-          loadDataFile('descriptions.json'),
+        const [traitsStr, peuplesStr, armesStr, armuresStr, compagnonsStr] = await Promise.all([
           loadDataFile('traits-magiques.json'),
           loadDataFile('peuples.json'),
           loadDataFile('armes.json'),
           loadDataFile('armures.json'),
-          loadDataFile('voies.json'),
           loadDataFile('compagnons.json'),
         ])
-        if (descStr) setDataRaw(unwrap(JSON.parse(descStr)) as DescMap)
         if (traitsStr) setTraitsRaw(unwrap(JSON.parse(traitsStr)) as TraitEntry[])
         if (peuplesStr) setPeuplesRaw(unwrap(JSON.parse(peuplesStr)) as PeupleEntry[])
         if (armesStr) setArmesRaw(unwrap(JSON.parse(armesStr)) as ArmesData)
         if (armuresStr) setArmuresRaw(unwrap(JSON.parse(armuresStr)) as ArmuresData)
-        if (voiesStr) setVoiesRaw(unwrap(JSON.parse(voiesStr)) as VoieEntry[])
         if (compagnonsStr) setCompagnonsRaw(unwrap(JSON.parse(compagnonsStr)) as CompanionEntry[])
         const traitsRaciauxStr = await loadDataFile('traits-raciaux.json')
         if (traitsRaciauxStr) setTraitsRaciauxRaw(unwrap(JSON.parse(traitsRaciauxStr)) as TraitEntry[])
@@ -301,18 +344,70 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
         const sheetImagesStr = await loadDataFile('sheet-images.json')
         if (sheetImagesStr) setSheetImagesRaw(unwrap(JSON.parse(sheetImagesStr)) as SheetImages)
-        const hiddenVoiesStr = await loadDataFile('hidden-voies.json')
-        if (hiddenVoiesStr) setHiddenVoiesRaw(unwrap(JSON.parse(hiddenVoiesStr)) as string[])
+        // Voies : voir la séparation livré/perso plus haut. Chaque fichier perso migre indépendamment
+        // (son existence marque sa propre migration comme faite), sur le même principe que le bestiaire.
+        const voiesPersoStr = await loadDataFile('voies-perso.json')
+        if (voiesPersoStr !== null) {
+          setVoiesPersoRaw(unwrap(JSON.parse(voiesPersoStr)) as VoieEntry[])
+        } else {
+          const ancienVoiesStr = await loadDataFile('voies.json')
+          const ancienVoies = ancienVoiesStr ? unwrap(JSON.parse(ancienVoiesStr)) as VoieEntry[] : []
+          const perso = migrerVoiesPerso(ancienVoies, VOIES_LIVRE)
+          setVoiesPersoRaw(perso)
+          queueSave('voies-perso.json', JSON.stringify({ _type: 'voies-perso', data: perso }, null, 2))
+        }
+        const descriptionsPersoStr = await loadDataFile('descriptions-perso.json')
+        if (descriptionsPersoStr !== null) {
+          setDescriptionsPersoRaw(unwrap(JSON.parse(descriptionsPersoStr)) as DescMap)
+        } else {
+          const ancienDescStr = await loadDataFile('descriptions.json')
+          const ancienDesc = ancienDescStr ? unwrap(JSON.parse(ancienDescStr)) as DescMap : {}
+          const perso = migrerDescriptionsPerso(ancienDesc, DESCRIPTIONS_LIVRE)
+          setDescriptionsPersoRaw(perso)
+          queueSave('descriptions-perso.json', JSON.stringify({ _type: 'descriptions-perso', data: perso }, null, 2))
+        }
+        const hiddenVoiesPersoStr = await loadDataFile('hidden-voies-perso.json')
+        if (hiddenVoiesPersoStr !== null) {
+          setHiddenVoiesDeltaRaw(unwrap(JSON.parse(hiddenVoiesPersoStr)) as { ajouts: string[]; retraits: string[] })
+        } else {
+          const ancienHiddenStr = await loadDataFile('hidden-voies.json')
+          const ancienHidden = ancienHiddenStr ? unwrap(JSON.parse(ancienHiddenStr)) as string[] : []
+          const delta = migrerHiddenVoiesPerso(ancienHidden, HIDDEN_VOIES_LIVRE)
+          setHiddenVoiesDeltaRaw(delta)
+          queueSave('hidden-voies-perso.json', JSON.stringify({ _type: 'hidden-voies-perso', data: delta }, null, 2))
+        }
         const hiddenPeuplesStr = await loadDataFile('hidden-peuples.json')
         if (hiddenPeuplesStr) setHiddenPeuplesRaw(unwrap(JSON.parse(hiddenPeuplesStr)) as string[])
         const hiddenCulturesStr = await loadDataFile('hidden-cultures.json')
         if (hiddenCulturesStr) setHiddenCulturesRaw(unwrap(JSON.parse(hiddenCulturesStr)) as string[])
         const hiddenCompagnonsStr = await loadDataFile('hidden-compagnons.json')
         if (hiddenCompagnonsStr) setHiddenCompagnonsRaw(unwrap(JSON.parse(hiddenCompagnonsStr)) as string[])
-        const bestiaireStr = await loadDataFile('bestiaire.json')
-        if (bestiaireStr) {
-          const brut = unwrap(JSON.parse(bestiaireStr)) as BestiaireEntry[]
-          setBestiaireRaw(await migrerImagesBestiaire(brut))
+        // Bestiaire : voir la séparation livré/perso plus haut. L'existence de bestiaire-perso.json
+        // fait office de marqueur « migration déjà faite » — l'ancien bestiaire.json de l'utilisateur
+        // n'est alors plus jamais relu ni réécrit, et reste en place comme sauvegarde.
+        const persoStr = await loadDataFile('bestiaire-perso.json')
+        if (persoStr !== null) {
+          const brut = unwrap(JSON.parse(persoStr)) as BestiaireEntry[]
+          const migrees = await migrerImagesBestiaire(brut)
+          if (migrees !== brut) queueSave('bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: migrees }, null, 2))
+          setBestiairePersoRaw(migrees)
+          const illustrationsStr = await loadDataFile('bestiaire-illustrations.json')
+          if (illustrationsStr) setBestiaireIllustrationsRaw(unwrap(JSON.parse(illustrationsStr)) as BestiaireIllustrations)
+          const hiddenBestiaireStr = await loadDataFile('hidden-bestiaire.json')
+          if (hiddenBestiaireStr) setHiddenBestiaireRaw(unwrap(JSON.parse(hiddenBestiaireStr)) as string[])
+        } else {
+          // Les images passent d'abord dans images/ (cas d'une installation restée sur une version
+          // antérieure aux deux migrations), pour que le découpage qui suit ne charrie pas de base64.
+          const ancienStr = await loadDataFile('bestiaire.json')
+          const ancien = ancienStr ? await migrerImagesBestiaire(unwrap(JSON.parse(ancienStr)) as BestiaireEntry[]) : []
+          const { perso, illustrations, masquees } = migrerBestiairePerso(ancien, BESTIAIRE_LIVRE)
+          setBestiairePersoRaw(perso)
+          setBestiaireIllustrationsRaw(illustrations)
+          setHiddenBestiaireRaw(masquees)
+          // Écrit même à vide : c'est ce fichier qui marque la migration comme faite.
+          queueSave('bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: perso }, null, 2))
+          if (Object.keys(illustrations).length > 0) queueSave('bestiaire-illustrations.json', JSON.stringify({ _type: 'bestiaire-illustrations', data: illustrations }, null, 2))
+          if (masquees.length > 0) queueSave('hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: masquees }, null, 2))
         }
         const rencontresStr = await loadDataFile('rencontres-sauvegardees.json')
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])
@@ -348,21 +443,62 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   // Setters avec auto-save : chaque modification écrit dans Documents/TdA/.
   // useMemo crée le saver une seule fois (les setters useState et les chemins
   // sont stables), ce qui préserve la stabilité référentielle.
-  const setData = useMemo(() => makeAutoSaver<DescMap>(setDataRaw, 'descriptions.json', 'descriptions'), [])
+  // setData/setVoies/setHiddenVoies sont génériques : ils reçoivent la vue FUSIONNÉE (comme avant),
+  // en déduisent la surcharge perso par différence avec le livré, et écrivent uniquement celle-ci —
+  // aucun appelant existant (DescriptionsEditor) n'a besoin de savoir que ces trois catalogues sont
+  // maintenant scindés livré/perso. Seules les suppressions/renommages d'une entrée livrée doivent
+  // passer par les setters perso directement (voir extraireSurchargesDescriptions plus haut).
+  const setData = useCallback<Dispatch<SetStateAction<DescMap>>>((updater) => {
+    setDescriptionsPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: DescMap) => DescMap)(fusionnerDescriptions(DESCRIPTIONS_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesDescriptions(next, DESCRIPTIONS_LIVRE)
+      queueSave('descriptions-perso.json', JSON.stringify({ _type: 'descriptions-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
+  // Accès direct au perso brut, réservé aux suppressions/renommages (voir removeVoie/renameVoie dans
+  // DescriptionsEditor) : le setter générique ci-dessus ne sait qu'ajouter/modifier, jamais retirer
+  // une clé livrée de la vue affichée.
+  const setDescriptionsPerso = useMemo(() => makeAutoSaver<DescMap>(setDescriptionsPersoRaw, 'descriptions-perso.json', 'descriptions-perso'), [])
+  const setVoiesPerso = useMemo(() => makeAutoSaver<VoieEntry[]>(setVoiesPersoRaw, 'voies-perso.json', 'voies-perso'), [])
   const setTraits = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json', 'traits-magiques'), [])
   const setPeuples = useMemo(() => makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'), [])
   const setArmes = useMemo(() => makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'), [])
   const setArmures = useMemo(() => makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'), [])
-  const setVoies = useMemo(() => makeAutoSaver<VoieEntry[]>(setVoiesRaw, 'voies.json', 'voies'), [])
+  const setVoies = useCallback<Dispatch<SetStateAction<VoieEntry[]>>>((updater) => {
+    setVoiesPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: VoieEntry[]) => VoieEntry[])(fusionnerVoies(VOIES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesVoies(next, VOIES_LIVRE)
+      queueSave('voies-perso.json', JSON.stringify({ _type: 'voies-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setCompagnons = useMemo(() => makeAutoSaver<CompanionEntry[]>(setCompagnonsRaw, 'compagnons.json', 'compagnons'), [])
   const setTraitsRaciaux = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'), [])
   const setFieldPositions = useMemo(() => makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'), [])
   const setSheetImages = useMemo(() => makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'), [])
-  const setHiddenVoies = useMemo(() => makeAutoSaver<string[]>(setHiddenVoiesRaw, 'hidden-voies.json', 'hidden-voies'), [])
+  // hiddenVoies a deux façons de diverger du livré (voir voiesPerso.ts) : des ajouts ET des retraits —
+  // un setter à deux fichiers, mais qui reste un simple tableau du point de vue de l'appelant.
+  const setHiddenVoies = useCallback<Dispatch<SetStateAction<string[]>>>((updater) => {
+    setHiddenVoiesDeltaRaw(prevDelta => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: string[]) => string[])(fusionnerHiddenVoies(HIDDEN_VOIES_LIVRE, prevDelta.ajouts, prevDelta.retraits))
+        : updater
+      const nextDelta = deriverAjoutsRetraits(next, HIDDEN_VOIES_LIVRE)
+      queueSave('hidden-voies-perso.json', JSON.stringify({ _type: 'hidden-voies-perso', data: nextDelta }, null, 2))
+      return nextDelta
+    })
+  }, [])
   const setHiddenPeuples = useMemo(() => makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'), [])
   const setHiddenCultures = useMemo(() => makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'), [])
   const setHiddenCompagnons = useMemo(() => makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'), [])
-  const setBestiaire = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiaireRaw, 'bestiaire.json', 'bestiaire'), [])
+  const setBestiairePerso = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiairePersoRaw, 'bestiaire-perso.json', 'bestiaire-perso'), [])
+  const setBestiaireIllustrations = useMemo(() => makeAutoSaver<BestiaireIllustrations>(setBestiaireIllustrationsRaw, 'bestiaire-illustrations.json', 'bestiaire-illustrations'), [])
+  const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'hidden-bestiaire.json', 'hidden-bestiaire'), [])
   const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'rencontres-sauvegardees.json', 'rencontres'), [])
   const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'combats-sauvegardes.json', 'combats'), [])
   const setCapacitesBibliotheque = useMemo(() => makeAutoSaver<CapaciteBibliotheque[]>(setCapacitesBibliothequeRaw, 'capacites-bibliotheque.json', 'capacites-bibliotheque'), [])
@@ -375,16 +511,30 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setBatailles = useMemo(() => makeAutoSaver<BatailleSessionSauvegardee[]>(setBataillesRaw, 'batailles-sauvegardees.json', 'batailles'), [])
   const setBatailleTemplates = useMemo(() => makeAutoSaver<BatailleTemplate[]>(setBatailleTemplatesRaw, 'batailles-modeles.json', 'batailles-modeles'), [])
 
+  const bestiaire = useMemo(
+    () => fusionnerBestiaire(BESTIAIRE_LIVRE, bestiairePerso, bestiaireIllustrations, hiddenBestiaire),
+    [bestiairePerso, bestiaireIllustrations, hiddenBestiaire],
+  )
+
+  const voies = useMemo(() => fusionnerVoies(VOIES_LIVRE, voiesPerso), [voiesPerso])
+  const data = useMemo(() => fusionnerDescriptions(DESCRIPTIONS_LIVRE, descriptionsPerso), [descriptionsPerso])
+  const hiddenVoies = useMemo(
+    () => fusionnerHiddenVoies(HIDDEN_VOIES_LIVRE, hiddenVoiesDelta.ajouts, hiddenVoiesDelta.retraits),
+    [hiddenVoiesDelta],
+  )
+
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
   return (
     <GameDataContext.Provider value={{
       data, setData,
+      descriptionsPerso, setDescriptionsPerso,
       traits, setTraits,
       peuples, setPeuples,
       armes, setArmes,
       armures, setArmures,
       voies, setVoies,
+      voiesPerso, setVoiesPerso,
       compagnons, setCompagnons,
       traitsRaciaux, setTraitsRaciaux,
       fieldPositions, setFieldPositions,
@@ -393,7 +543,10 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       hiddenPeuples, setHiddenPeuples,
       hiddenCultures, setHiddenCultures,
       hiddenCompagnons, setHiddenCompagnons,
-      bestiaire, setBestiaire,
+      bestiaire,
+      bestiairePerso, setBestiairePerso,
+      bestiaireIllustrations, setBestiaireIllustrations,
+      hiddenBestiaire, setHiddenBestiaire,
       rencontres, setRencontres,
       combatsSauvegardes, setCombatsSauvegardes,
       capacitesBibliotheque, setCapacitesBibliotheque,

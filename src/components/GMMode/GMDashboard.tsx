@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGameData } from '../../context/GameDataContext'
+import { useGameData, BESTIAIRE_LIVRE } from '../../context/GameDataContext'
+import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature } from '../../utils/bestiairePerso'
 import CreatureDetail from './CreatureDetail'
 import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
@@ -179,9 +180,25 @@ export default function GMDashboard({ onBack }: Props) {
 
 function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
   const { t } = useTranslation()
-  const { bestiaire, setBestiaire, capacitesBibliotheque } = useGameData()
+  // Le bestiaire livré est en lecture seule (voir la séparation livré/perso dans GameDataContext) :
+  // toute modification part soit dans les créatures perso, soit dans le calque d'illustrations, soit
+  // dans la liste des masquées. La sélection se fait par nom, l'identifiant des créatures partout
+  // ailleurs (rencontres, batailles, liens de notes) — un index dans la liste fusionnée désignerait
+  // une autre créature dès qu'on masque ou ajoute quelque chose.
+  const {
+    bestiaire, bestiairePerso, setBestiairePerso,
+    bestiaireIllustrations, setBestiaireIllustrations,
+    hiddenBestiaire, setHiddenBestiaire, capacitesBibliotheque,
+  } = useGameData()
   const [search, setSearch] = useState('')
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const [selectedNom, setSelectedNom] = useState<string | null>(null)
+  // Le bestiaire livré contient un doublon de nom (« Orc (guerrier) », NC 4 et NC 0.5 : deux fiches
+  // distinctes que l'auteur a choisi de ne pas renommer). Le nom seul ne suffit donc pas à identifier
+  // LA fiche cliquée — sans ce compteur, cliquer sur l'une des deux sélectionnait toujours la même
+  // (la première trouvée). C'est la position parmi les homonymes, dans l'ordre stable de `bestiaire`
+  // (indépendant du tri/recherche de la liste), qui distingue les deux.
+  const [selectedOccurrence, setSelectedOccurrence] = useState(0)
+  const [afficherMasquees, setAfficherMasquees] = useState(false)
   // Sauvegarde à la fois le bestiaire ET la bibliothèque de capacités (voir CreatureDetail, bouton
   // Bibliothèque) : les deux vivent dans Documents/TdA en dev et ne rejoignent src/data/ (la base
   // livrée à tout le monde) que via ce bouton — la bibliothèque est intimement liée au bestiaire
@@ -208,28 +225,78 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
   const [dernierForcerNom, setDernierForcerNom] = useState<string | null | undefined>(undefined)
   if (forcerNom !== dernierForcerNom) {
     setDernierForcerNom(forcerNom)
-    if (forcerNom) {
-      const idx = bestiaire.findIndex(c => c.nom === forcerNom)
-      if (idx !== -1) setSelectedIdx(idx)
-    }
+    if (forcerNom && bestiaire.some(c => c.nom === forcerNom)) { setSelectedNom(forcerNom); setSelectedOccurrence(0) }
   }
+
+  // Identité (nom, NC) : le bestiaire livré comporte volontairement plusieurs fiches de même nom à des
+  // NC différents (même base de PNJ déclinée à chaque niveau, ex. « Orc (guerrier) » de NC 0,5 à 20).
+  // Le nom seul ne distingue donc rien ; voir cleCreature dans bestiairePerso.ts.
+  const clesPerso = useMemo(() => new Set(bestiairePerso.map(cleCreature)), [bestiairePerso])
+  const clesLivre = useMemo(() => new Set(BESTIAIRE_LIVRE.map(cleCreature)), [])
+  const masquees = useMemo(() => new Set(hiddenBestiaire), [hiddenBestiaire])
+
+  // Les créatures livrées masquées ne sont pas dans `bestiaire` : on les rajoute en fin de liste
+  // (le tri les replacera) quand l'utilisateur demande à les revoir, pour pouvoir les restaurer.
+  const listeComplete = useMemo(() => {
+    if (!afficherMasquees) return bestiaire
+    const visibles = new Set(bestiaire.map(cleCreature))
+    return [...bestiaire, ...BESTIAIRE_LIVRE.filter(c => !visibles.has(cleCreature(c)))]
+  }, [bestiaire, afficherMasquees])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const liste = bestiaire
-      .map((c, idx) => ({ c, idx }))
-      .filter(({ c }) => !q || c.nom.toLowerCase().includes(q))
+    const liste = listeComplete.filter(c => !q || c.nom.toLowerCase().includes(q))
     const signe = tri.sens === 'asc' ? 1 : -1
-    liste.sort((a, b) => tri.champ === 'nc' ? (a.c.nc - b.c.nc) * signe : a.c.nom.localeCompare(b.c.nom) * signe)
+    liste.sort((a, b) => tri.champ === 'nc' ? (a.nc - b.nc) * signe : a.nom.localeCompare(b.nom) * signe)
     return liste
-  }, [search, bestiaire, tri])
+  }, [search, listeComplete, tri])
 
-  const selected = selectedIdx !== null ? bestiaire[selectedIdx] : null
+  const homonymesSelection = useMemo(
+    () => selectedNom !== null ? listeComplete.filter(c => c.nom === selectedNom) : [],
+    [listeComplete, selectedNom],
+  )
+  const selected = homonymesSelection[selectedOccurrence] ?? homonymesSelection[0] ?? null
+  const selectionLivree = selected !== null && !clesPerso.has(cleCreature(selected))
+  // En dev, l'application tourne chez l'auteur du jeu : c'est là qu'il ÉCRIT le contenu livré. Lui
+  // doit donc pouvoir corriger une fiche livrée sur place — le passage obligé par un clone renommé
+  // n'a de sens que pour l'utilisateur final, qui ne peut pas publier. Même condition que le bouton
+  // « Sauvegarder dans le projet », qui est l'autre moitié de ce circuit.
+  const modeAuteur = import.meta.env.DEV
+  const selectionVerrouillee = selectionLivree && !modeAuteur
+
+  // Deux créatures de même (nom, NC) seraient indiscernables l'une de l'autre — mais le même nom à
+  // des NC différents est un usage normal (voir plus haut), donc on ne renomme QUE sur une collision
+  // exacte des deux, pas sur le nom seul.
+  const cleLibre = (nom: string, nc: number) => {
+    const pris = new Set(listeComplete.map(cleCreature))
+    let n = nom
+    for (let i = 2; pris.has(cleCreature({ nom: n, nc })); i++) n = `${nom} ${i}`
+    return n
+  }
 
   const addCreature = () => {
-    const nouvelle: BestiaireEntry = { nom: t('gmMode.creatureDetail.nouvelleCreature'), nc: 1, livres: [] }
-    setBestiaire(prev => [...prev, nouvelle])
-    setSelectedIdx(bestiaire.length)
+    const nom = cleLibre(t('gmMode.creatureDetail.nouvelleCreature'), 1)
+    setBestiairePerso(prev => [...prev, { nom, nc: 1, livres: [] } as BestiaireEntry])
+    setSelectedNom(nom)
+    setSelectedOccurrence(0)
+  }
+
+  // Recopie une créature livrée pour pouvoir la modifier : le livré reste intact et continue de
+  // recevoir les mises à jour de l'application, la copie appartient à l'utilisateur. Le NC de la
+  // copie reste celui de l'original (seul le nom change, pour ne pas entrer en collision avec lui) ;
+  // le modifier ensuite pour en faire une variante à un autre NC est un geste normal et volontaire.
+  const clonerSelected = () => {
+    if (!selected) return
+    const nom = cleLibre(`${selected.nom} (copie)`, selected.nc)
+    setBestiairePerso(prev => [...prev, { ...JSON.parse(JSON.stringify(selected)), nom }])
+    setSelectedNom(nom)
+    setSelectedOccurrence(0)
+  }
+
+  const restaurerSelected = () => {
+    if (!selected) return
+    const cle = cleCreature(selected)
+    setHiddenBestiaire(prev => prev.filter(c => c !== cle))
   }
 
   // Import de créatures partagées : le fichier produit par « Exporter » contient l'illustration en
@@ -257,29 +324,77 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
       }
     }
     if (ajoutees.length > 0) {
-      setBestiaire(prev => [...prev, ...ajoutees])
-      setSelectedIdx(bestiaire.length)
+      // Une créature importée qui porte le nom d'une créature livrée la remplace (l'utilisateur
+      // partage sa version) ; c'est la règle générale de fusion, voir GameDataContext.
+      setBestiairePerso(prev => [...prev, ...ajoutees])
+      setSelectedNom(ajoutees[0].nom)
+      setSelectedOccurrence(0)
     }
     setMessageImport(t('gmMode.creatureDetail.importResultat', { count: ajoutees.length }))
     setTimeout(() => setMessageImport(null), 4000)
   }
 
   const updateSelected = (patch: Partial<BestiaireEntry>) => {
-    if (selectedIdx === null) return
-    setBestiaire(prev => prev.map((c, i) => i === selectedIdx ? { ...c, ...patch } : c))
+    if (!selected) return
+    if (!selectionLivree) {
+      setBestiairePerso(prev => prev.map(c => c.nom === selected.nom ? { ...c, ...patch } : c))
+      if (patch.nom !== undefined && patch.nom !== selected.nom) { setSelectedNom(patch.nom); setSelectedOccurrence(0) }
+      return
+    }
+    // Créature livrée. Une retouche qui ne porte QUE sur l'illustration part dans le calque à part —
+    // en mode auteur comme pour l'utilisateur final : chacun ses images, et poser la sienne ne doit
+    // pas compter comme une modification de la fiche.
+    const champsContenu = Object.keys(patch).filter(k => !(CHAMPS_ILLUSTRATION as readonly string[]).includes(k))
+    if (champsContenu.length === 0) {
+      const illu = illustrationDe(patch)
+      if (Object.keys(illu).length === 0) return
+      const cle = cleCreature(selected)
+      setBestiaireIllustrations(prev => ({ ...prev, [cle]: { ...prev[cle], ...illu } }))
+      return
+    }
+    if (modeAuteur) {
+      // Première vraie retouche d'une fiche livrée par l'auteur : on la recopie dans les surcharges
+      // SOUS LE MÊME NOM (pas un clone renommé — il corrige la fiche, il n'en crée pas une deuxième).
+      // Elle porte alors la pastille MODIFIÉE ; « Sauvegarder dans le projet » la replie dans le livré
+      // et vide les surcharges. Les retouches suivantes passent par la branche du dessus, la créature
+      // n'étant alors plus « livrée ».
+      setBestiairePerso(prev => [...prev, { ...selected, ...patch }])
+      if (patch.nom !== undefined && patch.nom !== selected.nom) { setSelectedNom(patch.nom); setSelectedOccurrence(0) }
+      return
+    }
+    // Utilisateur final : le reste est ignoré ici plutôt que d'être seulement grisé dans l'UI — c'est
+    // le garde-fou qui garantit qu'aucun widget ne passe au travers.
   }
 
   const deleteSelected = () => {
-    if (selectedIdx === null) return
-    setBestiaire(prev => prev.filter((_, i) => i !== selectedIdx))
-    setSelectedIdx(null)
+    if (!selected) return
+    if (!selectionLivree) {
+      const cle = cleCreature(selected)
+      setBestiairePerso(prev => prev.filter(c => cleCreature(c) !== cle))
+      // Supprimer une surcharge perso redonne la créature livrée d'origine, pas rien du tout — sauf
+      // si le NC a été changé en cours d'édition : la fiche est alors une variante à part entière,
+      // sans original livré à retrouver sous cette clé.
+      setSelectedNom(clesLivre.has(cle) ? selected.nom : null)
+      setSelectedOccurrence(0)
+      return
+    }
+    // Le livré n'est jamais supprimé, seulement masqué : il est en lecture seule, et la remettre
+    // doit rester possible (bouton « afficher les masquées »).
+    const cle = cleCreature(selected)
+    setHiddenBestiaire(prev => prev.includes(cle) ? prev : [...prev, cle])
+    setSelectedNom(null)
   }
 
   const pnjApercu = CATEGORIES_PNJ[pnjCategorie].generer(pnjVariante, pnjNC, pnjNom.trim() || t('gmMode.creatureDetail.nouvelleCreature'))
 
   const ajouterPNJGenere = () => {
-    setBestiaire(prev => [...prev, pnjApercu])
-    setSelectedIdx(bestiaire.length)
+    // Sur (nom, NC) et non sur le nom seul : construire une série de PNJ partageant un nom de base à
+    // des NC croissants (le cas d'usage qui a motivé cette identité) ne doit PAS renommer chaque
+    // nouvelle variante — seule une collision exacte (même nom ET même NC) force un suffixe.
+    const nom = cleLibre(pnjApercu.nom, pnjApercu.nc)
+    setBestiairePerso(prev => [...prev, { ...pnjApercu, nom }])
+    setSelectedNom(nom)
+    setSelectedOccurrence(0)
     setModaleGenererOuverte(false)
     setPnjNom('')
   }
@@ -336,9 +451,22 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
               🛠 {t('gmMode.genererPNJ')}
             </button>
         </div>
-        <span style={{ fontSize: 14, opacity: 0.5 }}>
-          {t('gmMode.bestiaireCompte', { count: filtered.length })}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14, opacity: 0.5 }}>
+            {t('gmMode.bestiaireCompte', { count: filtered.length })}
+          </span>
+          {hiddenBestiaire.length > 0 && (
+            <button onClick={() => setAfficherMasquees(v => !v)} style={{
+              background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 13, textDecoration: 'underline',
+              color: afficherMasquees ? GOLD : 'rgba(245,236,215,0.45)',
+            }}>
+              {afficherMasquees
+                ? t('gmMode.bestiaireCacherMasquees')
+                : t('gmMode.bestiaireVoirMasquees', { count: hiddenBestiaire.length })}
+            </button>
+          )}
+        </div>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
           {/* En-tête de colonnes triable — même marge droite que les lignes ci-dessous (voir plus bas)
               pour rester aligné avec le score de NC malgré la scrollbar. */}
@@ -363,10 +491,24 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
             </button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-            {filtered.map(({ c, idx }, i) => {
-              const isSelected = selectedIdx === idx
+            {filtered.map((c, i) => {
+              // Comparaison par référence, pas par nom : le bestiaire livré contient un doublon de
+              // nom (« Orc (guerrier) », deux fiches distinctes) — comparer par nom sélectionnerait
+              // les deux lignes à la fois.
+              const isSelected = c === selected
+              const cleC = cleCreature(c)
+              const estPerso = clesPerso.has(cleC)
+              const estMasquee = masquees.has(cleC)
               return (
-                <div key={idx} onClick={() => setSelectedIdx(idx)} style={{
+                // Clé sur la position, pas sur le nom, pour la même raison : une clé React non unique
+                // fait perdre à React le fil de qui est qui au tri/filtrage — deux lignes s'affichaient
+                // l'une à la place de l'autre.
+                <div key={i} onClick={() => {
+                  setSelectedNom(c.nom)
+                  // Laquelle des fiches de même nom a été cliquée, dans l'ordre stable de `bestiaire`
+                  // (indépendant du tri/recherche affichés) : c'est ce qui distingue les deux Orcs.
+                  setSelectedOccurrence(listeComplete.filter(x => x.nom === c.nom).indexOf(c))
+                }} style={{
                   // Marge droite un peu plus large que les autres côtés : la scrollbar (overlay, s'épaissit
                   // au survol) sinon passe par-dessus le score de NC, collé trop près du bord.
                   display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px 8px 12px', cursor: 'pointer',
@@ -374,7 +516,22 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                   borderLeft: isSelected ? `2px solid ${GOLD}` : '2px solid transparent',
                   borderBottom: i < filtered.length - 1 ? `1px solid ${SECTION_BORDER}` : 'none',
                 }}>
-                  <span style={{ flex: 1, fontSize: 16, color: isSelected ? GOLD : PARCHMENT }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
+                  <span style={{
+                    flex: 1, fontSize: 16, color: isSelected ? GOLD : PARCHMENT,
+                    opacity: estMasquee ? 0.4 : 1, textDecoration: estMasquee ? 'line-through' : 'none',
+                  }}>{c.nom || t('gmMode.creatureDetail.nouvelleCreature')}</span>
+                  {/* Distingue d'un coup d'œil ce qui appartient à l'utilisateur (modifiable) de ce
+                      qui est livré avec l'application (lecture seule, mis à jour à chaque version). */}
+                  {/* En mode auteur, une surcharge portant le nom d'une créature livrée n'est pas un
+                      ajout mais une correction en attente de « Sauvegarder dans le projet » — le dire
+                      évite de prendre ses propres retouches pour des créatures ajoutées. */}
+                  {estPerso && (
+                    <span title={modeAuteur && clesLivre.has(cleC) ? t('gmMode.bestiaireModifieeTitre') : t('gmMode.bestiairePersoTitre')} style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', padding: '1px 5px',
+                      borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)',
+                      color: 'rgba(140,215,160,0.9)', flexShrink: 0,
+                    }}>{modeAuteur && clesLivre.has(cleC) ? t('gmMode.bestiaireModifiee') : t('gmMode.bestiairePerso')}</span>
+                  )}
                   <span style={{ fontSize: 14, color: GOLD, fontWeight: 700, minWidth: 24, textAlign: 'right' }}>{c.nc}</span>
                 </div>
               )
@@ -385,7 +542,52 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
 
       {/* Détail — colonne droite */}
       <div style={{ flex: 1, minWidth: 0, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 20, overflowY: 'auto' }}>
-        {selected ? <CreatureDetail creature={selected} onChange={updateSelected} onDelete={deleteSelected} /> : (
+        {selected ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Bandeau des créatures livrées. Deux cas seulement : la fiche est verrouillée (on dit
+                pourquoi, sinon elle passe pour une panne), ou elle est masquée (on offre de la
+                réafficher). En mode auteur sur une fiche visible, il n'y a rien à annoncer. */}
+            {selectionLivree && (selectionVerrouillee || masquees.has(selected.nom)) && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: '10px 14px',
+                background: 'rgba(201,168,76,0.05)',
+              }}>
+                <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                  {masquees.has(selected.nom) ? t('gmMode.bestiaireLivreeMasquee') : t('gmMode.bestiaireLivreeInfo')}
+                </span>
+                {/* Copier n'a de sens que sur une fiche visible et verrouillée : sur une fiche
+                    masquée, la seule action attendue est de la réafficher. */}
+                {selectionVerrouillee && !masquees.has(selected.nom) && (
+                  <button onClick={clonerSelected} style={{
+                    background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+                    color: GOLD, cursor: 'pointer', fontSize: 14, padding: '4px 10px', whiteSpace: 'nowrap',
+                    fontFamily: 'inherit',
+                  }}>
+                    ⎘ {t('gmMode.bestiaireClonerPourModifier')}
+                  </button>
+                )}
+                {masquees.has(selected.nom) && (
+                  <button onClick={restaurerSelected} style={{
+                    background: 'transparent', border: '1px solid rgba(120,200,140,0.5)', borderRadius: 4,
+                    color: 'rgba(140,215,160,0.9)', cursor: 'pointer', fontSize: 14, padding: '4px 10px',
+                    whiteSpace: 'nowrap', fontFamily: 'inherit',
+                  }}>
+                    {t('gmMode.bestiaireRestaurer')}
+                  </button>
+                )}
+              </div>
+            )}
+            <CreatureDetail
+              creature={selected}
+              onChange={updateSelected}
+              onDelete={deleteSelected}
+              lectureSeule={selectionVerrouillee}
+              masquageAuLieuDeSuppression={selectionLivree}
+              suppressionDesactivee={selectionLivree && masquees.has(selected.nom)}
+            />
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', minHeight: 0 }}>
             <div style={{ flex: '1 1 0', minHeight: 0, minWidth: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img src={bestiaireIllustration} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', opacity: 0.08, userSelect: 'none', pointerEvents: 'none' }} />
@@ -431,6 +633,9 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                   })),
                   saveDataFileToBundle('capacites-bibliotheque.json', capacitesBibliotheque),
                 ])
+                // Ce qui vient d'être publié EST le livré : sans cette remise à zéro, chaque créature
+                // perso resterait en surcharge d'elle-même et ne recevrait plus jamais de mise à jour.
+                await publierBestiaireLivre(bestiaire, bestiaireIllustrations)
                 window.location.reload()
               }}
               style={{

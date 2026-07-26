@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from 'react'
 import { MASQUAGE_MOT_DE_PASSE } from '../utils/motDePasse'
 import { useTranslation, Trans } from 'react-i18next'
 import { useVoieName, useCompagnonName, useTraitName, useTraitRacialName, usePeupleName } from '../hooks/useContentTranslation'
@@ -6,7 +6,8 @@ import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
 import { VOIES as VOIES_BUNDLE } from '../data/voies'
-import { useGameData } from '../context/GameDataContext'
+import { useGameData, VOIES_LIVRE, DESCRIPTIONS_LIVRE } from '../context/GameDataContext'
+import { publierVoiesLivre } from '../utils/voiesPerso'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
 import EquipementModal from './EquipementModal'
@@ -145,6 +146,13 @@ type PendingItem =
   | { id: string; type: 'trait-racial'; data: TraitEntry; expanded: boolean }
   | { id: string; type: 'compagnon'; data: CompanionEntry; expanded: boolean }
 
+// display:contents fait disparaître le fieldset de la mise en page (ses enfants restent des enfants
+// directs du flex/de la grille qui l'entoure), alors que l'attribut disabled continue de désactiver
+// tous les champs qu'il contient — permet de verrouiller une section entière (nom, famille/catégorie,
+// tous les rangs et leurs effets/accès) sans toucher à sa disposition ni ajouter `disabled` un par un
+// sur des dizaines de champs. Même trick que CreatureDetail (bestiaire).
+const fieldsetStyle: CSSProperties = { display: 'contents', border: 'none', margin: 0, padding: 0 }
+
 export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const [showLangNotice, setShowLangNotice] = useState(() => {
@@ -157,7 +165,24 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const traitName = useTraitName()
   const traitRacialName = useTraitRacialName()
   const peupleName = usePeupleName()
-  const { data, setData, traits, setTraits, peuples, setPeuples, armes, armures, voies, setVoies, compagnons, setCompagnons, traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies, hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons, showHidden, setShowHidden, openDataDir } = useGameData()
+  const {
+    data, setData, descriptionsPerso, setDescriptionsPerso,
+    traits, setTraits, peuples, setPeuples, armes, armures,
+    voies, setVoies, voiesPerso, setVoiesPerso, compagnons, setCompagnons,
+    traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies,
+    hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons,
+    showHidden, setShowHidden, openDataDir,
+  } = useGameData()
+
+  // En dev, l'application tourne chez l'auteur du jeu : il doit pouvoir corriger une voie livrée sur
+  // place (c'est cet éditeur qui a servi à écrire les 89 voies + 112 descriptions au départ) — le
+  // passage obligé par un clone n'a de sens que pour l'utilisateur final, qui ne peut rien publier.
+  // Même condition que le bouton « Enregistrer dans le projet » plus bas, l'autre moitié du circuit.
+  const modeAuteur = import.meta.env.DEV
+  // Une voie livrée dont ni la description ni le catalogue n'ont de surcharge perso : c'est le livré
+  // tel quel, à protéger. Dès qu'une surcharge existe (retouche en mode auteur), elle bascule côté
+  // « perso/modifiée » — même logique que le bestiaire.
+  const estPerso = (nom: string) => nom in descriptionsPerso || voiesPerso.some(v => v.nom === nom)
 
   const cultureKey = (peupleLabel: string, cultureLabel: string) => `${peupleLabel}::${cultureLabel}`
 
@@ -177,6 +202,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const [selected, setSelected] = useState(VOIES_INIT[0] ?? '')
   const [editingName, setEditingName] = useState(VOIES_INIT[0] ?? '')
   useEffect(() => { setEditingName(selected) }, [selected])
+  // Une voie livrée dont ni la description ni le catalogue n'ont de surcharge perso : c'est le livré
+  // tel quel, à protéger. Dès qu'une surcharge existe (retouche en mode auteur), elle bascule côté
+  // « perso/modifiée » — même logique que le bestiaire.
+  const selectionEstLivree = DESCRIPTIONS_LIVRE[selected] !== undefined && !estPerso(selected)
+  const selectionVerrouillee = selectionEstLivree && !modeAuteur
   const [printPreviewNom, setPrintPreviewNom] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
@@ -606,20 +636,46 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
+  // Une voie livrée n'est jamais supprimée (setData/setVoies génériques ne savent d'ailleurs pas
+  // retirer une clé livrée de la vue affichée, voir extraireSurchargesDescriptions) : si elle a un
+  // catalogue (une vraie voie, pas un nom de peuple/culture), on la masque à la place — et on efface
+  // une éventuelle surcharge perso au passage, pour repartir d'un état propre. Un nom de peuple/culture
+  // livré (pas de catalogue) n'a pas d'équivalent au masquage ici : rien à faire, on l'ignore.
   const removeVoie = (nom: string) => {
-    setData(prev => { const { [nom]: _, ...rest } = prev; return rest })
-    setVoies(prev => prev.filter(v => v.nom !== nom))
+    if (DESCRIPTIONS_LIVRE[nom] !== undefined) {
+      if (VOIES_LIVRE.some(v => v.nom === nom) || voiesPerso.some(v => v.nom === nom)) {
+        setHiddenVoies(prev => prev.includes(nom) ? prev : [...prev, nom])
+        setDescriptionsPerso(prev => { const { [nom]: _, ...rest } = prev; return rest })
+        setVoiesPerso(prev => prev.filter(v => v.nom !== nom))
+      }
+      return
+    }
+    setDescriptionsPerso(prev => { const { [nom]: _, ...rest } = prev; return rest })
+    setVoiesPerso(prev => prev.filter(v => v.nom !== nom))
     setSelected(voiesList.find(v => v !== nom) ?? '')
     setExported(false)
   }
 
   const renameVoie = (oldNom: string, newNom: string) => {
     if (!newNom.trim() || newNom === oldNom || data[newNom]) return
-    setData(prev => {
+    if (DESCRIPTIONS_LIVRE[oldNom] !== undefined) {
+      // Verrouillé pour l'utilisateur final (le champ nom est de toute façon désactivé, donc
+      // normalement inatteignable) ; en mode auteur, la retouche crée une variante sous le nouveau nom
+      // et masque l'ancienne, pour ne pas laisser les deux visibles à la fois dans la liste.
+      if (!modeAuteur) return
+      setDescriptionsPerso(prev => ({ ...prev, [newNom]: data[oldNom] ?? emptyRangs() }))
+      const ancienCatalogue = voies.find(v => v.nom === oldNom)
+      if (ancienCatalogue) setVoiesPerso(prev => [...prev, { ...ancienCatalogue, nom: newNom }])
+      setHiddenVoies(prev => prev.includes(oldNom) ? prev : [...prev, oldNom])
+      setSelected(newNom)
+      setExported(false)
+      return
+    }
+    setDescriptionsPerso(prev => {
       const { [oldNom]: voieData, ...rest } = prev
       return { ...rest, [newNom]: voieData ?? emptyRangs() }
     })
-    setVoies(prev => prev.map(v => v.nom === oldNom ? { ...v, nom: newNom } : v))
+    setVoiesPerso(prev => prev.map(v => v.nom === oldNom ? { ...v, nom: newNom } : v))
     setSelected(newNom)
     setExported(false)
   }
@@ -1576,6 +1632,13 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                         {t('descEditor.masquee')}
                       </span>
                     )}
+                    {/* Distingue le contenu livré (protégé) de ce que l'utilisateur a ajouté ou
+                        retouché — même principe que le bestiaire. */}
+                    {estPerso(voie) && (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', whiteSpace: 'nowrap' }}>
+                        {DESCRIPTIONS_LIVRE[voie] !== undefined ? t('descEditor.modifiee') : t('descEditor.perso')}
+                      </span>
+                    )}
                     <button
                       className="voie-delete-btn"
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'voie', nom: voie, data: data[voie] }, `voie-${safeName(voie)}.json`) }}
@@ -1585,15 +1648,32 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       }}
                       title={t('descEditor.exporterVoieTitle')}
                     >↓</button>
-                    <button
-                      className="voie-delete-btn"
-                      onClick={e => { e.stopPropagation(); askConfirm(t('descEditor.confirmSupprimerVoie', { nom: voie }), () => removeVoie(voie)) }}
-                      style={{
-                        background: 'none', border: 'none', color: '#c05050', cursor: 'pointer',
-                        fontSize: 14, padding: '0 2px', lineHeight: 1, opacity: 0, transition: 'opacity 0.15s',
-                      }}
-                      title={t('descEditor.supprimerVoieTitle')}
-                    >✕</button>
+                    {/* Sur une voie livrée : masque directement (comme le 👁 du panneau de droite,
+                        pas de confirmation) si elle a un catalogue, sinon rien de sensé à faire (un
+                        nom de voie de peuple/culture n'a pas d'équivalent au masquage) — désactivé. */}
+                    {DESCRIPTIONS_LIVRE[voie] !== undefined ? (
+                      VOIES_LIVRE.some(v => v.nom === voie) || voiesPerso.some(v => v.nom === voie) ? (
+                        <button
+                          className="voie-delete-btn"
+                          onClick={e => { e.stopPropagation(); removeVoie(voie) }}
+                          style={{
+                            background: 'none', border: 'none', color: 'rgba(255,160,50,0.75)', cursor: 'pointer',
+                            fontSize: 14, padding: '0 2px', lineHeight: 1, opacity: 0, transition: 'opacity 0.15s',
+                          }}
+                          title={t('descEditor.masquer')}
+                        >👁</button>
+                      ) : null
+                    ) : (
+                      <button
+                        className="voie-delete-btn"
+                        onClick={e => { e.stopPropagation(); askConfirm(t('descEditor.confirmSupprimerVoie', { nom: voie }), () => removeVoie(voie)) }}
+                        style={{
+                          background: 'none', border: 'none', color: '#c05050', cursor: 'pointer',
+                          fontSize: 14, padding: '0 2px', lineHeight: 1, opacity: 0, transition: 'opacity 0.15s',
+                        }}
+                        title={t('descEditor.supprimerVoieTitle')}
+                      >✕</button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1658,6 +1738,30 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
 
             {/* Éditeur rangs */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Bandeau voie livrée : verrouillée pour l'utilisateur final (nom/famille/catégorie/
+                  rangs désactivés plus bas), éditable sur place pour l'auteur en dev — mais dans les
+                  deux cas on dit pourquoi, sinon les champs grisés passent pour une panne. */}
+              {selectionEstLivree && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  border: `1px solid ${S.border}`, borderRadius: 6, padding: '10px 14px',
+                  background: 'rgba(201,168,76,0.05)',
+                }}>
+                  <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                    {modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                  </span>
+                  {!modeAuteur && (
+                    <button onClick={cloneVoie} style={{
+                      background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+                      color: S.gold, cursor: 'pointer', fontSize: 14, padding: '4px 10px', whiteSpace: 'nowrap',
+                      fontFamily: 'inherit',
+                    }}>
+                      ⎘ {t('descEditor.cloneVoieTitle')}
+                    </button>
+                  )}
+                </div>
+              )}
+              <fieldset disabled={selectionVerrouillee} style={fieldsetStyle}>
               <input
                 type="text"
                 value={editingName}
@@ -1678,12 +1782,14 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                 }}
                 onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
               />
+              </fieldset>
               {(() => {
                 const famille = voies.find(v => v.nom === selected)?.famille ?? ''
                 const categorie = voies.find(v => v.nom === selected)?.categorie ?? 'profil'
                 const isPrestige = categorie === 'prestige'
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <fieldset disabled={selectionVerrouillee} style={fieldsetStyle}>
                     <span style={{ fontSize: 12, color: S.gold, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>
                       {t('descEditor.famille')}
                     </span>
@@ -1713,6 +1819,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     >
                       {t('descEditor.categoriePrestige')} ★
                     </button>
+                    </fieldset>
                     <button
                       onClick={() => setHiddenVoies(prev =>
                         prev.includes(selected) ? prev.filter(v => v !== selected) : [...prev, selected]
@@ -1756,6 +1863,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   </div>
                 )
               })()}
+              <fieldset disabled={selectionVerrouillee} style={fieldsetStyle}>
               {[0,1,2,3,4].map(i => (
                 <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px dashed rgba(201,168,76,0.35)', paddingTop: i === 0 ? 0 : 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -2740,6 +2848,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   })()}
                 </div>
               ))}
+              </fieldset>
             </div>
           </>) : section === 'traits' ? (<>
             {/* Colonne traits */}
@@ -3835,6 +3944,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     saveDataFileToBundle('armes.json', armes),
                     saveDataFileToBundle('armures.json', armures),
                   ])
+                  // Ce qui vient d'être publié EST le livré pour voies.json/descriptions.json/
+                  // hidden-voies.json : sans cette remise à zéro, chaque voie perso resterait en
+                  // surcharge d'elle-même et ne recevrait plus jamais de mise à jour (voir voiesPerso.ts).
+                  await publierVoiesLivre()
                   window.location.reload()
                 }}
                 style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}

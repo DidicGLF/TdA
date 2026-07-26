@@ -91,7 +91,13 @@ export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: Besti
   const combatants: CombatCreature[] = []
   rencontre.adversaires.forEach((a, i) => {
     if (!a.creatureNom) return
-    const creature = bestiaire.find(c => c.nom === a.creatureNom)
+    // Par (nom, NC) d'abord : le bestiaire contient volontairement plusieurs fiches de même nom à des
+    // NC différents (une même base de PNJ déclinée par niveau), et le NC choisi pour ce slot est déjà
+    // connu (a.nc) — l'ignorer résoudrait au hasard la première créature de ce nom trouvée, pas
+    // forcément celle sélectionnée dans le constructeur de rencontre. Repli sur le nom seul si la
+    // fiche exacte a disparu depuis (renommée/NC changé) plutôt que d'abandonner le combattant.
+    const creature = bestiaire.find(c => c.nom === a.creatureNom && c.nc === a.nc)
+      ?? bestiaire.find(c => c.nom === a.creatureNom)
     if (!creature) return
     combatants.push({
       id: `${i}-${creature.nom}`,

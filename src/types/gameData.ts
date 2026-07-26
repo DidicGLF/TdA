@@ -39,6 +39,9 @@ export type Grant =
 export type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 export type DescMap = Record<string, RangEntry[]>
 export type TraitEntry = { nom: string; desc: string }
+// Entrée du catalogue des voies (voies.json) : uniquement les métadonnées de classement. Le contenu
+// des rangs (nom+desc de chaque rang) vit à part, dans DescMap, indexé par le même nom.
+export type VoieEntry = { nom: string; famille: string; categorie: string }
 
 export type Culture = {
   label: string
@@ -153,6 +156,17 @@ export type BestiaireEntry = {
   capacites?: CreatureCapacite[]
   voies?: CreatureVoie[]
 }
+
+// Les champs d'illustration d'une créature, isolés du reste de la fiche.
+// Voir CHAMPS_ILLUSTRATION et bestiaire-illustrations.json (GameDataContext) : poser sa propre image
+// sur une créature livrée ne doit pas figer ses statistiques, donc l'illustration se range à part.
+export type BestiaireIllustration = Pick<
+  BestiaireEntry,
+  'image' | 'imageScale' | 'imageTx' | 'imageTy' | 'imageFit' | 'imageLocked'
+>
+// Illustrations posées par l'utilisateur sur des créatures livrées, indexées par nom de créature
+// (le nom est déjà l'identifiant des créatures partout : rencontres, batailles, liens de notes).
+export type BestiaireIllustrations = Record<string, BestiaireIllustration>
 
 export type Difficulte = 'facile' | 'ordinaire' | 'difficile' | 'extreme'
 

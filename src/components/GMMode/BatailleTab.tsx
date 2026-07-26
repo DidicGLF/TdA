@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import { saveDataFile } from '../../utils/tauriStorage'
+import { cleCreature } from '../../utils/bestiairePerso'
 import NumberField from '../NumberField'
 import batailleBg from '../../assets/bataille-gold.png'
 import {
@@ -292,14 +293,24 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
     return bonus.length > 0 ? Math.max(...bonus) : null
   }
 
-  const selectionnerCreatureType = (nom: string) => {
-    setCreatureTypeNom(nom)
-    const creature = bestiaire.find(c => c.nom === nom)
+  // Sélectionné par (nom, NC) et non par nom seul : cette liste mélange TOUTES les créatures du
+  // bestiaire (contrairement au constructeur de rencontre, qui filtre déjà par NC), et le bestiaire
+  // comporte volontairement plusieurs fiches de même nom à des NC différents. `creatureTypeNom` reste
+  // un simple nom en persistance (compatible avec les gabarits/sessions déjà sauvegardés) ; c'est la
+  // clé composite du <select> qui garantit que cliquer une option précise résout CETTE créature-là,
+  // pas la première du même nom trouvée dans le bestiaire.
+  const selectionnerCreatureType = (cle: string) => {
+    const creature = creaturesTriees.find(c => cleCreature(c) === cle)
+    setCreatureTypeNom(creature?.nom ?? '')
     if (!creature) return
     if (creature.def !== undefined) setDefEnnemieMoyenne(creature.def)
     const bonus = bonusAttaqueCreature(creature.attaques)
     if (bonus !== null) setBonusAtqEnnemiMoyen(bonus)
   }
+  const cleCreatureTypeSelectionnee = useMemo(() => {
+    const c = creaturesTriees.find(x => x.nom === creatureTypeNom)
+    return c ? cleCreature(c) : ''
+  }, [creaturesTriees, creatureTypeNom])
 
   const handleFiles = async (files: FileList) => {
     const nouveaux: PionPJ[] = []
@@ -828,9 +839,11 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <span style={builderLabelStyle}>{t('gmMode.batailleMasse.creatureType')}</span>
-                <select value={creatureTypeNom} onChange={e => selectionnerCreatureType(e.target.value)} style={selectStyle}>
+                <select value={cleCreatureTypeSelectionnee} onChange={e => selectionnerCreatureType(e.target.value)} style={selectStyle}>
                   <option value="" style={optionStyle}>{t('gmMode.batailleMasse.creatureTypeManuelle')}</option>
-                  {creaturesTriees.map(c => <option key={c.nom} value={c.nom} style={optionStyle}>{c.nom}</option>)}
+                  {creaturesTriees.map(c => (
+                    <option key={cleCreature(c)} value={cleCreature(c)} style={optionStyle}>{c.nom} (NC {c.nc})</option>
+                  ))}
                 </select>
               </div>
               <div>

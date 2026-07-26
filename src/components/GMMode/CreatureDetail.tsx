@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useImage } from '../../hooks/useImage'
 import { importerImage, oublierImage, estCleImage, chargerImage } from '../../utils/imageStore'
+import { imageEncoreUtilisee } from '../../utils/bestiairePerso'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
 import NumberField from '../NumberField'
@@ -84,11 +85,26 @@ interface Props {
   creature: BestiaireEntry
   onChange: (patch: Partial<BestiaireEntry>) => void
   onDelete: () => void
+  // Créature livrée avec l'application : la fiche n'est pas modifiable (pour la changer, l'utilisateur
+  // la clone), **sauf son illustration** — chacun met la sienne, et ça ne doit pas figer les
+  // statistiques de la fiche. Voir la séparation livré/perso dans GameDataContext.
+  lectureSeule?: boolean
+  // Créature livrée : elle n'est jamais supprimée, seulement masquée — y compris quand elle reste
+  // modifiable (mode auteur), d'où un drapeau distinct de lectureSeule.
+  masquageAuLieuDeSuppression?: boolean
+  // Créature livrée déjà masquée : le bouton de suppression n'aurait plus rien à faire.
+  suppressionDesactivee?: boolean
 }
 
-export default function CreatureDetail({ creature, onChange, onDelete }: Props) {
+// display:contents fait disparaître le fieldset de la mise en page (ses enfants restent des enfants
+// directs de la grille/flexbox qui l'entoure), alors que l'attribut disabled continue de désactiver
+// tous les champs qu'il contient — c'est ce qui permet de rendre la fiche non modifiable sans
+// toucher à sa disposition ni ajouter un `disabled` sur la cinquantaine de champs qu'elle contient.
+const fieldsetStyle: CSSProperties = { display: 'contents', border: 'none', margin: 0, padding: 0, minWidth: 0 }
+
+export default function CreatureDetail({ creature, onChange, onDelete, lectureSeule = false, masquageAuLieuDeSuppression = false, suppressionDesactivee = false }: Props) {
   const { t } = useTranslation()
-  const { capacitesBibliotheque, setCapacitesBibliotheque, data: descriptions } = useGameData()
+  const { capacitesBibliotheque, setCapacitesBibliotheque, data: descriptions, bestiaire, bestiaireIllustrations } = useGameData()
   const imageSrc = useImage(creature.image)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [biblioMsg, setBiblioMsg] = useState<string | null>(null)
@@ -176,16 +192,20 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {/* Identité */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <input
-          value={creature.nom}
-          onChange={e => onChange({ nom: e.target.value })}
-          style={{ ...inputStyle, fontSize: 20, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif", letterSpacing: '0.03em' }}
-        />
+        <fieldset disabled={lectureSeule} style={fieldsetStyle}>
+          <input
+            value={creature.nom}
+            onChange={e => onChange({ nom: e.target.value })}
+            style={{ ...inputStyle, fontSize: 20, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif", letterSpacing: '0.03em' }}
+          />
+        </fieldset>
         {/* Grille 4 colonnes (NC / Taille / Aperçue dans / Image) : la colonne Image chevauche les 3
             lignes de gauche (NC-row / Description / Caractéristiques-StatsCombat), ce qui aligne son
             label "Image" avec NC/Taille/Aperçue dans tout en lui donnant toute la hauteur disponible —
             sans espaceur artificiel, la grille calcule ça nativement. */}
         <div style={{ display: 'grid', gridTemplateColumns: '70px 110px 1fr 80px auto', gridAutoRows: 'auto', columnGap: 20, rowGap: 10 }}>
+          {/* Tout sauf l'image : c'est la seule chose qu'on laisse modifier sur une créature livrée. */}
+          <fieldset disabled={lectureSeule} style={fieldsetStyle}>
           <div style={{ gridColumn: 1, gridRow: 1 }}>
             <span style={labelStyle}>{t('gmMode.creatureDetail.nc')}</span>
             <NumberField parseAs="float" value={creature.nc}
@@ -321,6 +341,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
               </button>
             </div>
           </div>
+          </fieldset>
 
           {/* Image : chevauche les 3 lignes de gauche, largeur dérivée de sa hauteur (voir CreatureImage) */}
           <div style={{ gridColumn: 5, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -337,15 +358,21 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
                 // bestiaire cesse de charrier des mégaoctets de base64.
                 onChange={async dataUrl => {
                   const ancienne = estCleImage(creature.image) ? creature.image : null
+                  // On ne libère l'ancien fichier que s'il ne sert plus à personne d'autre : la même
+                  // image partagée par plusieurs créatures est UN seul fichier (empreinte de contenu),
+                  // et l'effacer ici les priverait toutes de leur illustration.
+                  const libererAncienne = async (remplacantePar?: string) => {
+                    if (!ancienne || ancienne === remplacantePar) return
+                    if (imageEncoreUtilisee(ancienne, creature, bestiaire, bestiaireIllustrations)) return
+                    await oublierImage(ancienne)
+                  }
                   if (!dataUrl) {
-                    if (ancienne) await oublierImage(ancienne)
+                    await libererAncienne()
                     onChange({ image: '' })
                     return
                   }
                   const cle = await importerImage('bestiaire', dataUrl)
-                  // L'ancien fichier n'est plus référencé : on le libère pour ne pas accumuler
-                  // d'images orphelines à chaque remplacement.
-                  if (ancienne && ancienne !== cle) await oublierImage(ancienne)
+                  await libererAncienne(cle)
                   onChange({ image: cle })
                 }}
                 onTransformChange={(imageScale, imageTx, imageTy) => onChange({ imageScale, imageTx, imageTy })}
@@ -357,6 +384,7 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
         </div>
       </div>
 
+      <fieldset disabled={lectureSeule} style={fieldsetStyle}>
       {/* Capacités */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -463,15 +491,19 @@ export default function CreatureDetail({ creature, onChange, onDelete }: Props) 
           + {t('gmMode.creatureDetail.ajouterVoie')}
         </button>
       </div>
+      </fieldset>
 
-      {/* Export & Suppression */}
+      {/* Export & Suppression — hors des fieldsets ci-dessus : exporter une créature livrée reste
+          utile, et sur celles-ci « Supprimer » devient « Masquer » (le livré n'est pas modifiable). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={exporterCreature} style={{ ...addBtnStyle, alignSelf: undefined, padding: '6px 12px' }}>
           {t('gmMode.creatureDetail.exporter')}
         </button>
-        <button onClick={onDelete} style={{ ...removeBtnStyle, alignSelf: 'flex-start', padding: '6px 12px' }}>
-          {t('gmMode.creatureDetail.supprimer')}
-        </button>
+        {!suppressionDesactivee && (
+          <button onClick={onDelete} style={{ ...removeBtnStyle, alignSelf: 'flex-start', padding: '6px 12px' }}>
+            {masquageAuLieuDeSuppression ? t('gmMode.creatureDetail.masquer') : t('gmMode.creatureDetail.supprimer')}
+          </button>
+        )}
         {exportMsg && <span style={{ fontSize: 12, opacity: 0.7, color: GOLD }}>{exportMsg}</span>}
       </div>
     </div>

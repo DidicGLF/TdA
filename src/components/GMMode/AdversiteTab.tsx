@@ -306,7 +306,12 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
                   </button>
                   <select value={a.creatureNom ?? ''} onChange={e => setSlotCreature(i, e.target.value)} style={{ ...selectStyle, flex: 1 }}>
                     <option value="" style={optionStyle}>{t('gmMode.adversite.selectionner')}</option>
-                    {options.map(c => <option key={c.nom} value={c.nom} style={optionStyle}>{c.nom}</option>)}
+                    {/* Le NC s'affiche même si toutes les options de ce menu le partagent déjà (il est
+                        fixé par le budget du slot) : deux créatures peuvent aussi partager nom ET NC,
+                        et la clé React doit alors distinguer les options plutôt que de les confondre. */}
+                    {options.map((c, k) => (
+                      <option key={`${c.nom}-${k}`} value={c.nom} style={optionStyle}>{c.nom} (NC {c.nc})</option>
+                    ))}
                   </select>
                   <button onClick={() => removeSlot(i)} style={removeBtnStyle}>✕</button>
                 </div>

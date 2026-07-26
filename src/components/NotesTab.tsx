@@ -27,9 +27,11 @@ const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 const NOMS_FICHIERS_RESERVES = new Set([
   'descriptions', 'traits-magiques', 'peuples', 'armes', 'armures', 'voies', 'compagnons',
   'traits-raciaux', 'field-positions', 'sheet-images', 'hidden-voies', 'hidden-peuples',
-  'hidden-cultures', 'hidden-compagnons', 'bestiaire', 'rencontres-sauvegardees',
+  'hidden-cultures', 'hidden-compagnons', 'bestiaire', 'bestiaire-perso',
+  'bestiaire-illustrations', 'hidden-bestiaire', 'voies-perso', 'descriptions-perso',
+  'hidden-voies-perso', 'rencontres-sauvegardees',
   'combats-sauvegardes', 'capacites-bibliotheque', 'notes', 'campagnes', 'note-images',
-  'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees',
+  'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees', 'batailles-modeles',
 ])
 
 function nomFichierExport(base: string, secours: string): string {
@@ -923,7 +925,14 @@ function NoteEditor({
     if (lienQuery === null) return []
     const q = normaliser(lienQuery)
     if (bestiaire && q.length >= 3 && normaliser('créature').startsWith(q)) {
-      return bestiaire.map(c => ({ type: 'creature' as const, titre: c.nom, key: `creature-${c.nom}` })).slice(0, 30)
+      // Le bestiaire comporte volontairement plusieurs fiches de même nom à des NC différents (une
+      // même base de PNJ déclinée par niveau) : `key` doit distinguer les entrées (deux créatures de
+      // même nom auraient sinon la même clé React), et `sousLabel` affiche le NC pour que l'utilisateur
+      // sache lesquelles choisir. Le lien inséré ([[Nom]]) reste néanmoins le nom seul — un lien texte
+      // ne peut pas encoder le NC, donc la résolution du lien reste ambiguë entre homonymes malgré tout.
+      return bestiaire.map((c, i) => ({
+        type: 'creature' as const, titre: c.nom, key: `creature-${i}`, sousLabel: `NC ${c.nc}`,
+      })).slice(0, 30)
     }
     if (rencontres && q.length >= 3 && normaliser('rencontre').startsWith(q)) {
       return rencontres.map(r => ({ type: 'rencontre' as const, titre: r.nom, key: `rencontre-${r.id}` })).slice(0, 30)
@@ -1346,6 +1355,9 @@ function NoteEditor({
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                     >
                       {s.type === 'creature' ? '🐉 ' : s.type === 'rencontre' ? '⚔ ' : ''}{s.titre}
+                      {'sousLabel' in s && s.sousLabel && (
+                        <span style={{ opacity: 0.5, fontSize: 12 }}> · {s.sousLabel}</span>
+                      )}
                     </button>
                   ))}
                 </div>

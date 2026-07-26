@@ -25,7 +25,6 @@ import GameModePanel from './components/GameMode/GameModePanel'
 import NotesTab from './components/NotesTab'
 import NotesGraph from './components/NotesGraph'
 import SaveStatusIndicator from './components/SaveStatusIndicator'
-import { calcPointsCapacite } from './utils/levelUp'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
 import { getCompagnonsDisponibles } from './utils/compagnons'
@@ -142,11 +141,8 @@ function AppContent() {
   const mobileGestionRef = useRef<HTMLDivElement>(null)
   const rectoInputRef = useRef<HTMLInputElement>(null)
   const versoInputRef = useRef<HTMLInputElement>(null)
-  const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const [library, setLibrary] = useState<SavedEntry[]>([])
   const [libraryLoaded, setLibraryLoaded] = useState(false)
-  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null)
-  const [voieHovered, setVoieHovered] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
   const [pinned, setPinned] = useState<{ x: number; y: number } | null>(null)
   const [lastMoved, setLastMoved] = useState<{ label: string; top: number; left: number; width?: number; height?: number } | null>(null)
@@ -1024,12 +1020,8 @@ function AppContent() {
           <div
             ref={sheetRef}
             style={{ width: '100%', minWidth: 320, cursor: calibrate ? 'crosshair' : 'auto', position: 'relative' }}
-            onMouseMove={e => {
-              if (calibrate) setHover(getCoords(e))
-              setCursor({ x: e.clientX, y: e.clientY })
-              setVoieHovered(!!(e.target as Element).closest('[data-voie]'))
-            }}
-            onMouseLeave={() => { setHover(null); setCursor(null); setVoieHovered(false) }}
+            onMouseMove={e => { if (calibrate) setHover(getCoords(e)) }}
+            onMouseLeave={() => setHover(null)}
             onClick={calibrate ? e => { e.stopPropagation(); setPinned(getCoords(e)) } : undefined}
           >
             {sheetPage === 'recto' ? (
@@ -1167,28 +1159,6 @@ function AppContent() {
           >
             {t('calibrage.reinitialiser')}
           </button>
-        </div>
-      )}
-
-      {/* Badge points de capacité — suit le curseur sur la feuille */}
-      {cursor && voieHovered && ptsDisponibles !== 0 && (
-        <div style={{
-          position: 'fixed',
-          left: cursor.x + 16,
-          top: cursor.y + 16,
-          zIndex: 40,
-          pointerEvents: 'none',
-          background: ptsDisponibles > 0 ? 'rgba(18,14,9,0.95)' : 'rgba(40,10,10,0.95)',
-          border: `1px solid ${ptsDisponibles > 0 ? 'rgba(201,168,76,0.6)' : 'rgba(255,80,80,0.5)'}`,
-          borderRadius: 6, padding: '5px 12px',
-          color: ptsDisponibles > 0 ? 'var(--tdr-gold)' : 'rgba(255,110,110,0.9)',
-          fontSize: 13, fontWeight: 600, letterSpacing: '0.04em',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.7)',
-          whiteSpace: 'nowrap',
-        }}>
-          {ptsDisponibles > 0
-            ? t('capacite.disponible', { count: ptsDisponibles })
-            : t('capacite.enTrop', { count: Math.abs(ptsDisponibles) })}
         </div>
       )}
 
