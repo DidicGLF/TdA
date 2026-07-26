@@ -12,6 +12,7 @@ import {
 } from '../context/GameDataContext'
 import { publierVoiesLivre } from '../utils/voiesPerso'
 import { publierAutresCataloguesLivre } from '../utils/cataloguePerso'
+import { publierEquipementLivre } from '../utils/armesPerso'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
 import EquipementModal from './EquipementModal'
@@ -4050,7 +4051,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   // hidden-voies.json et pour traits-magiques/traits-raciaux/compagnons : sans cette
                   // remise à zéro, chaque entrée perso resterait en surcharge d'elle-même et ne
                   // recevrait plus jamais de mise à jour (voir voiesPerso.ts/cataloguePerso.ts).
-                  await Promise.all([publierVoiesLivre(), publierAutresCataloguesLivre()])
+                  await Promise.all([publierVoiesLivre(), publierAutresCataloguesLivre(), publierEquipementLivre()])
                   window.location.reload()
                 }}
                 style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}

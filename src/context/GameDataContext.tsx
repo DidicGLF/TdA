@@ -35,6 +35,8 @@ import {
   fusionnerHiddenVoies, migrerHiddenVoiesPerso, deriverAjoutsRetraits,
 } from '../utils/voiesPerso'
 import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
+import { fusionnerArmes, migrerArmesPerso, extraireSurchargesArmes, fusionnerArmures, migrerArmuresPerso, extraireSurchargesArmures } from '../utils/armesPerso'
+import type { ArmesPerso, ArmuresPerso } from '../utils/armesPerso'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 export type { VoieEntry } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
@@ -238,6 +240,13 @@ export const TRAITS_RACIAUX_LIVRE = unwrap(JSON.parse(JSON.stringify(TRAITS_RACI
 export const COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
 export const HIDDEN_COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
 
+// ─── Équipement : même principe, à la granularité de la catégorie ──────────────────────────────────
+// Voir src/utils/armesPerso.ts pour le détail et les limites (portée réduite : la structure — groupes/
+// catégories renommés, réordonnés ou supprimés — n'est pas suivie, seuls le contenu des catégories et
+// les notes le sont).
+export const ARMES_LIVRE = unwrap(JSON.parse(JSON.stringify(ARMES_RAW))) as ArmesData
+export const ARMURES_LIVRE = unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
+
 function unwrap(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
     return (parsed as Record<string, unknown>).data
@@ -270,12 +279,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [peuples, setPeuplesRaw] = useState<PeupleEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as PeupleEntry[]
   )
-  const [armes, setArmesRaw] = useState<ArmesData>(() =>
-    unwrap(JSON.parse(JSON.stringify(ARMES_RAW))) as ArmesData
-  )
-  const [armures, setArmuresRaw] = useState<ArmuresData>(() =>
-    unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
-  )
+  const [armesPerso, setArmesPersoRaw] = useState<ArmesPerso>({ categories: [] })
+  const [armuresPerso, setArmuresPersoRaw] = useState<ArmuresPerso>({ categories: [] })
   const [voiesPerso, setVoiesPersoRaw] = useState<VoieEntry[]>([])
   const [compagnonsPerso, setCompagnonsPersoRaw] = useState<CompanionEntry[]>([])
   const [traitsRaciauxPerso, setTraitsRaciauxPersoRaw] = useState<TraitEntry[]>([])
@@ -336,14 +341,31 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [peuplesStr, armesStr, armuresStr] = await Promise.all([
-          loadDataFile('peuples.json'),
-          loadDataFile('armes.json'),
-          loadDataFile('armures.json'),
-        ])
+        const peuplesStr = await loadDataFile('peuples.json')
         if (peuplesStr) setPeuplesRaw(unwrap(JSON.parse(peuplesStr)) as PeupleEntry[])
-        if (armesStr) setArmesRaw(unwrap(JSON.parse(armesStr)) as ArmesData)
-        if (armuresStr) setArmuresRaw(unwrap(JSON.parse(armuresStr)) as ArmuresData)
+        // Équipement : voir la séparation livré/perso plus haut. Portée réduite (armesPerso.ts) : seul
+        // le contenu des catégories et les notes sont préservés, pas la structure (groupes/catégories
+        // renommés/réordonnés/supprimés).
+        const armesPersoStr = await loadDataFile('armes-perso.json')
+        if (armesPersoStr !== null) {
+          setArmesPersoRaw(unwrap(JSON.parse(armesPersoStr)) as ArmesPerso)
+        } else {
+          const ancienStr = await loadDataFile('armes.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as ArmesData : ARMES_LIVRE
+          const perso = migrerArmesPerso(ancien, ARMES_LIVRE)
+          setArmesPersoRaw(perso)
+          queueSave('armes-perso.json', JSON.stringify({ _type: 'armes-perso', data: perso }, null, 2))
+        }
+        const armuresPersoStr = await loadDataFile('armures-perso.json')
+        if (armuresPersoStr !== null) {
+          setArmuresPersoRaw(unwrap(JSON.parse(armuresPersoStr)) as ArmuresPerso)
+        } else {
+          const ancienStr = await loadDataFile('armures.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as ArmuresData : ARMURES_LIVRE
+          const perso = migrerArmuresPerso(ancien, ARMURES_LIVRE)
+          setArmuresPersoRaw(perso)
+          queueSave('armures-perso.json', JSON.stringify({ _type: 'armures-perso', data: perso }, null, 2))
+        }
         const fieldPositionsStr = await loadDataFile('field-positions.json')
         if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
         const sheetImagesStr = await loadDataFile('sheet-images.json')
@@ -519,8 +541,28 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
   const setPeuples = useMemo(() => makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'), [])
-  const setArmes = useMemo(() => makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'), [])
-  const setArmures = useMemo(() => makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'), [])
+  // EquipementModal appelle toujours ces setters avec un instantané complet (jamais une fonction) —
+  // le générique gère les deux formes quand même, par cohérence avec les autres setters de ce fichier.
+  const setArmes = useCallback<Dispatch<SetStateAction<ArmesData>>>((updater) => {
+    setArmesPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: ArmesData) => ArmesData)(fusionnerArmes(ARMES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesArmes(next, ARMES_LIVRE)
+      queueSave('armes-perso.json', JSON.stringify({ _type: 'armes-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
+  const setArmures = useCallback<Dispatch<SetStateAction<ArmuresData>>>((updater) => {
+    setArmuresPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: ArmuresData) => ArmuresData)(fusionnerArmures(ARMURES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesArmures(next, ARMURES_LIVRE)
+      queueSave('armures-perso.json', JSON.stringify({ _type: 'armures-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setVoies = useCallback<Dispatch<SetStateAction<VoieEntry[]>>>((updater) => {
     setVoiesPersoRaw(prevPerso => {
       const next = typeof updater === 'function'
@@ -614,6 +656,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     () => fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, hiddenCompagnonsDelta.ajouts, hiddenCompagnonsDelta.retraits),
     [hiddenCompagnonsDelta],
   )
+  const armes = useMemo(() => fusionnerArmes(ARMES_LIVRE, armesPerso), [armesPerso])
+  const armures = useMemo(() => fusionnerArmures(ARMURES_LIVRE, armuresPerso), [armuresPerso])
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 

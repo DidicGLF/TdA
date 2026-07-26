@@ -30,7 +30,7 @@ const NOMS_FICHIERS_RESERVES = new Set([
   'hidden-cultures', 'hidden-compagnons', 'bestiaire', 'bestiaire-perso',
   'bestiaire-illustrations', 'hidden-bestiaire', 'voies-perso', 'descriptions-perso',
   'hidden-voies-perso', 'traits-magiques-perso', 'traits-raciaux-perso', 'compagnons-perso',
-  'hidden-compagnons-perso', 'rencontres-sauvegardees',
+  'hidden-compagnons-perso', 'armes-perso', 'armures-perso', 'rencontres-sauvegardees',
   'combats-sauvegardes', 'capacites-bibliotheque', 'notes', 'campagnes', 'note-images',
   'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees', 'batailles-modeles',
 ])
