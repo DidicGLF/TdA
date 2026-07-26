@@ -359,7 +359,15 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
       // et vide les surcharges. Les retouches suivantes passent par la branche du dessus, la créature
       // n'étant alors plus « livrée ».
       setBestiairePerso(prev => [...prev, { ...selected, ...patch }])
-      if (patch.nom !== undefined && patch.nom !== selected.nom) { setSelectedNom(patch.nom); setSelectedOccurrence(0) }
+      if (patch.nom !== undefined && patch.nom !== selected.nom) {
+        // Renommer change l'identité (nom, NC) : la surcharge ci-dessus atterrit sous une clé
+        // DIFFÉRENTE de l'originale livrée, qui resterait donc visible à côté sans ce masquage —
+        // même correctif que renameVoie pour les voies.
+        const cleAncienne = cleCreature(selected)
+        setHiddenBestiaire(prev => prev.includes(cleAncienne) ? prev : [...prev, cleAncienne])
+        setSelectedNom(patch.nom)
+        setSelectedOccurrence(0)
+      }
       return
     }
     // Utilisateur final : le reste est ignoré ici plutôt que d'être seulement grisé dans l'UI — c'est

@@ -16,44 +16,21 @@
 // au cas où — c'est l'auteur, via ce même mot de passe, qui exerce le retrait en pratique.
 import { queueSave, flushAllSaves } from './saveManager'
 import { empreinte } from './empreinte'
+import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from './cataloguePerso'
 import type { DescMap, VoieEntry } from '../types/gameData'
 
-// ─── Catalogue (voies.json) ─────────────────────────────────────────────────────────────────────
+// ─── Catalogue (voies.json) — règle générique (voir cataloguePerso.ts), noms déjà uniques ────────
 
 /** Ce que l'utilisateur voit : livré + ses ajouts, une surcharge perso remplaçant l'entrée livrée de
  *  même nom (les noms sont déjà uniques dans voies.json, aucune ambiguïté à lever). */
-export function fusionnerVoies(livre: VoieEntry[], perso: VoieEntry[]): VoieEntry[] {
-  const surcharges = new Map(perso.map(v => [v.nom, v]))
-  const clesLivre = new Set(livre.map(v => v.nom))
-  const fusion = livre.map(v => surcharges.get(v.nom) ?? v)
-  for (const v of perso) if (!clesLivre.has(v.nom)) fusion.push(v)
-  return fusion
-}
+export const fusionnerVoies = fusionnerCatalogue<VoieEntry>
 
 /** Migration unique : compare l'ancien voies.json de l'utilisateur au livré et n'en garde que les
- *  écarts (ajouts ou entrées réellement différentes) — le reste continuera de suivre les mises à jour. */
-export function migrerVoiesPerso(ancien: VoieEntry[], livre: VoieEntry[]): VoieEntry[] {
-  const parNom = new Map(livre.map(v => [v.nom, v]))
-  const perso: VoieEntry[] = []
-  for (const v of ancien) {
-    const l = parNom.get(v.nom)
-    if (!l || empreinte(v) !== empreinte(l)) perso.push(v)
-  }
-  return perso
-}
-
-/** Recalcule la surcharge perso d'un catalogue à partir de son état affiché complet (livré+perso) —
- *  utilisé par le setter générique côté contexte : n'importe quelle fonction de l'éditeur peut continuer
- *  à faire `setVoies(prev => ...)` sur la liste FUSIONNÉE, sans savoir où atterrit le résultat. */
-export function extraireSurchargesVoies(next: VoieEntry[], livre: VoieEntry[]): VoieEntry[] {
-  const parNom = new Map(livre.map(v => [v.nom, v]))
-  const perso: VoieEntry[] = []
-  for (const v of next) {
-    const l = parNom.get(v.nom)
-    if (!l || empreinte(v) !== empreinte(l)) perso.push(v)
-  }
-  return perso
-}
+ *  écarts (ajouts ou entrées réellement différentes) — le reste continuera de suivre les mises à jour.
+ *  Recalcule aussi la surcharge perso d'un catalogue à partir de son état affiché complet (livré+perso)
+ *  pour le setter générique côté contexte — le même calcul sert aux deux usages. */
+export const migrerVoiesPerso = extraireSurchargesCatalogue<VoieEntry>
+export const extraireSurchargesVoies = extraireSurchargesCatalogue<VoieEntry>
 
 // ─── Contenu des rangs (descriptions.json) ──────────────────────────────────────────────────────
 
@@ -84,28 +61,14 @@ export function extraireSurchargesDescriptions(next: DescMap, livre: DescMap): D
   return perso
 }
 
-// ─── Masquage (hidden-voies.json) : ajouts ET retraits par rapport au livré ─────────────────────
+// ─── Masquage (hidden-voies.json) : ajouts ET retraits par rapport au livré (voir cataloguePerso.ts) ─
 
-export function fusionnerHiddenVoies(livre: string[], ajouts: string[], retraits: string[]): string[] {
-  const retraitSet = new Set(retraits)
-  return [...new Set([...livre, ...ajouts])].filter(n => !retraitSet.has(n))
-}
-
-export function migrerHiddenVoiesPerso(ancien: string[], livre: string[]): { ajouts: string[]; retraits: string[] } {
-  const livreSet = new Set(livre)
-  const ancienSet = new Set(ancien)
-  return {
-    ajouts: ancien.filter(n => !livreSet.has(n)),
-    retraits: livre.filter(n => !ancienSet.has(n)),
-  }
-}
-
+export const fusionnerHiddenVoies = fusionnerNomsMasques
+export const migrerHiddenVoiesPerso = migrerNomsMasquesPerso
 /** Décompose une prochaine valeur affichée (ce que produirait `setHiddenVoies(updater)`) en ajouts et
  *  retraits par rapport au livré — permet à l'éditeur de continuer à traiter `hiddenVoies` comme un
  *  simple tableau qu'on toggle, sans savoir qu'il est en réalité composé de deux fichiers. */
-export function deriverAjoutsRetraits(next: string[], livre: string[]): { ajouts: string[]; retraits: string[] } {
-  return migrerHiddenVoiesPerso(next, livre)
-}
+export const deriverAjoutsRetraits = migrerNomsMasquesPerso
 
 /** Publie l'état affiché comme nouveau contenu livré (bouton auteur « Enregistrer dans le projet »,
  *  déjà existant dans DescriptionsEditor pour tous les catalogues) : les trois fichiers perso liés aux

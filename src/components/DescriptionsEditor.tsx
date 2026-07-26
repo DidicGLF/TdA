@@ -6,8 +6,12 @@ import DESCRIPTIONS_RAW from '../data/descriptions.json'
 import TRAITS_RAW from '../data/traits-magiques.json'
 import PEUPLES_RAW from '../data/peuples.json'
 import { VOIES as VOIES_BUNDLE } from '../data/voies'
-import { useGameData, VOIES_LIVRE, DESCRIPTIONS_LIVRE } from '../context/GameDataContext'
+import {
+  useGameData, VOIES_LIVRE, DESCRIPTIONS_LIVRE,
+  TRAITS_MAGIQUES_LIVRE, TRAITS_RACIAUX_LIVRE, COMPAGNONS_LIVRE,
+} from '../context/GameDataContext'
 import { publierVoiesLivre } from '../utils/voiesPerso'
+import { publierAutresCataloguesLivre } from '../utils/cataloguePerso'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
 import EquipementModal from './EquipementModal'
@@ -167,9 +171,9 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const peupleName = usePeupleName()
   const {
     data, setData, descriptionsPerso, setDescriptionsPerso,
-    traits, setTraits, peuples, setPeuples, armes, armures,
-    voies, setVoies, voiesPerso, setVoiesPerso, compagnons, setCompagnons,
-    traitsRaciaux, setTraitsRaciaux, hiddenVoies, setHiddenVoies,
+    traits, setTraits, traitsPerso, setTraitsPerso, peuples, setPeuples, armes, armures,
+    voies, setVoies, voiesPerso, setVoiesPerso, compagnons, setCompagnons, compagnonsPerso, setCompagnonsPerso,
+    traitsRaciaux, setTraitsRaciaux, traitsRaciauxPerso, setTraitsRaciauxPerso, hiddenVoies, setHiddenVoies,
     hiddenPeuples, setHiddenPeuples, hiddenCultures, setHiddenCultures, hiddenCompagnons, setHiddenCompagnons,
     showHidden, setShowHidden, openDataDir,
   } = useGameData()
@@ -566,8 +570,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setTraitsExported(false)
   }
 
+  // traits-magiques.json n'a pas de mécanisme de masquage (contrairement aux voies/compagnons) : une
+  // entrée livrée n'a donc rien de sensé à faire ici, ni pour un joueur ni pour l'auteur — supprimer
+  // reste réservé au perso pur.
   const removeTrait = (idx: number) => {
-    setTraits(prev => prev.filter((_, i) => i !== idx))
+    if (TRAITS_MAGIQUES_LIVRE.some(t => t.nom === traits[idx]?.nom)) return
+    setTraitsPerso(prev => prev.filter(t => t.nom !== traits[idx].nom))
     setSelectedTrait(i => Math.min(i, traits.length - 2))
     setTraitsExported(false)
   }
@@ -581,8 +589,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setSelectedTraitRacial(traitsRaciaux.length)
     setTraitsRaciauxExported(false)
   }
+  // Même chose que removeTrait : traits-raciaux.json n'a pas de masquage, une entrée livrée est bloquée.
   const removeTraitRacial = (idx: number) => {
-    setTraitsRaciaux(prev => prev.filter((_, i) => i !== idx))
+    if (TRAITS_RACIAUX_LIVRE.some(t => t.nom === traitsRaciaux[idx]?.nom)) return
+    setTraitsRaciauxPerso(prev => prev.filter(t => t.nom !== traitsRaciaux[idx].nom))
     setSelectedTraitRacial(i => Math.min(i, traitsRaciaux.length - 2))
     setTraitsRaciauxExported(false)
   }
@@ -604,8 +614,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setCompagnonsExported(false)
   }
 
+  // compagnons.json a un masquage (hiddenCompagnons, comme les voies) : une entrée livrée est masquée
+  // plutôt que supprimée, avec sa surcharge perso éventuelle effacée au passage.
   const removeCompagnon = (idx: number) => {
-    setCompagnons(prev => prev.filter((_, i) => i !== idx))
+    const nom = compagnons[idx]?.nom
+    if (nom === undefined) return
+    if (COMPAGNONS_LIVRE.some(c => c.nom === nom)) {
+      setHiddenCompagnons(prev => prev.includes(nom) ? prev : [...prev, nom])
+      setCompagnonsPerso(prev => prev.filter(c => c.nom !== nom))
+      return
+    }
+    setCompagnonsPerso(prev => prev.filter(c => c.nom !== nom))
     setSelectedCompagnon(i => Math.min(i, compagnons.length - 2))
     setCompagnonsExported(false)
   }
@@ -2899,6 +2918,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                   }}>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitName(trait.nom)}</span>
+                    {traitsPerso.some(pt => pt.nom === trait.nom) && (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', flexShrink: 0 }}>
+                        {TRAITS_MAGIQUES_LIVRE.some(lt => lt.nom === trait.nom) ? t('descEditor.modifiee') : t('descEditor.perso')}
+                      </span>
+                    )}
                     <button
                       onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait', data: trait }, `trait-${safeName(trait.nom)}.json`) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -2950,9 +2974,25 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             </div>
 
             {/* Éditeur trait */}
-            {traits[selectedTrait] && (
+            {traits[selectedTrait] && (() => {
+              const traitEstLivre = TRAITS_MAGIQUES_LIVRE.some(lt => lt.nom === traits[selectedTrait].nom)
+                && !traitsPerso.some(pt => pt.nom === traits[selectedTrait].nom)
+              const traitVerrouille = traitEstLivre && !modeAuteur
+              return (
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {traitEstLivre && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                    border: `1px solid ${S.border}`, borderRadius: 6, padding: '10px 14px',
+                    background: 'rgba(201,168,76,0.05)',
+                  }}>
+                    <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                      {modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <fieldset disabled={traitVerrouille} style={fieldsetStyle}>
                   <input
                     type="text"
                     value={traits[selectedTrait].nom}
@@ -2966,21 +3006,28 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                     onBlur={e => (e.target.style.borderColor = S.border)}
                   />
+                  </fieldset>
                   <button
                     onClick={cloneTrait}
                     title={t('descEditor.cloneTraitTitle')}
                     style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
                   >⎘</button>
-                  <button
-                    onClick={() => askConfirm(t('descEditor.confirmSupprimerTrait', { nom: traits[selectedTrait]?.nom }), () => removeTrait(selectedTrait))}
-                    title={t('descEditor.supprimer')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
-                      border: '1px solid rgba(220,80,80,0.4)', background: 'transparent',
-                      color: '#e05555', flexShrink: 0,
-                    }}
-                  >🗑</button>
+                  {/* Pas de masquage pour ce catalogue (voir removeTrait) : sur une entrée livrée,
+                      supprimer n'a rien de sensé à faire, le bouton disparaît plutôt que d'être
+                      grisé sans explication. */}
+                  {!traitEstLivre && (
+                    <button
+                      onClick={() => askConfirm(t('descEditor.confirmSupprimerTrait', { nom: traits[selectedTrait]?.nom }), () => removeTrait(selectedTrait))}
+                      title={t('descEditor.supprimer')}
+                      style={{
+                        padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                        border: '1px solid rgba(220,80,80,0.4)', background: 'transparent',
+                        color: '#e05555', flexShrink: 0,
+                      }}
+                    >🗑</button>
+                  )}
                 </div>
+                <fieldset disabled={traitVerrouille} style={fieldsetStyle}>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {[
                     { label: 'G', title: 'Gras (**texte**)', before: '**', after: '**', style: { fontWeight: 700 } },
@@ -3017,8 +3064,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                   onBlur={e => (e.target.style.borderColor = S.border)}
                 />
+                </fieldset>
               </div>
-            )}
+              )
+            })()}
           </>) : section === 'traitsRaciaux' ? (<>
             {/* Colonne traits raciaux */}
             <div style={isMobile ? {
@@ -3060,6 +3109,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traitRacialName(traitR.nom)}</span>
+                      {traitsRaciauxPerso.some(pt => pt.nom === traitR.nom) && (
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', flexShrink: 0 }}>
+                          {TRAITS_RACIAUX_LIVRE.some(lt => lt.nom === traitR.nom) ? t('descEditor.modifiee') : t('descEditor.perso')}
+                        </span>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'trait-racial', data: traitR }, `trait-racial-${safeName(traitR.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -3111,9 +3165,25 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             </div>
 
             {/* Éditeur trait racial */}
-            {traitsRaciaux[selectedTraitRacial] && (
+            {traitsRaciaux[selectedTraitRacial] && (() => {
+              const traitREstLivre = TRAITS_RACIAUX_LIVRE.some(lt => lt.nom === traitsRaciaux[selectedTraitRacial].nom)
+                && !traitsRaciauxPerso.some(pt => pt.nom === traitsRaciaux[selectedTraitRacial].nom)
+              const traitRVerrouille = traitREstLivre && !modeAuteur
+              return (
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {traitREstLivre && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                    border: `1px solid ${S.border}`, borderRadius: 6, padding: '10px 14px',
+                    background: 'rgba(201,168,76,0.05)',
+                  }}>
+                    <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                      {modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <fieldset disabled={traitRVerrouille} style={fieldsetStyle}>
                   <input
                     type="text"
                     value={traitsRaciaux[selectedTraitRacial].nom}
@@ -3122,16 +3192,20 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                     onBlur={e => (e.target.style.borderColor = S.border)}
                   />
+                  </fieldset>
                   <button
                     onClick={cloneTraitRacial}
                     title={t('descEditor.cloneTraitRacialTitle')}
                     style={{ padding: '5px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}
                   >⎘</button>
-                  <button
-                    onClick={() => askConfirm(t('descEditor.confirmSupprimerTraitRacial', { nom: traitsRaciaux[selectedTraitRacial]?.nom }), () => removeTraitRacial(selectedTraitRacial))}
-                    style={{ padding: '5px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
-                  >🗑</button>
+                  {!traitREstLivre && (
+                    <button
+                      onClick={() => askConfirm(t('descEditor.confirmSupprimerTraitRacial', { nom: traitsRaciaux[selectedTraitRacial]?.nom }), () => removeTraitRacial(selectedTraitRacial))}
+                      style={{ padding: '5px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}
+                    >🗑</button>
+                  )}
                 </div>
+                <fieldset disabled={traitRVerrouille} style={fieldsetStyle}>
                 <textarea
                   ref={traitRacialDescRef}
                   value={traitsRaciaux[selectedTraitRacial].desc}
@@ -3145,8 +3219,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                   onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                   onBlur={e => (e.target.style.borderColor = S.border)}
                 />
+                </fieldset>
               </div>
-            )}
+              )
+            })()}
           </>) : section === 'peuples' ? (<>
             {/* Colonne peuples */}
             <div style={isMobile ? {
@@ -3511,6 +3587,11 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           {t('descEditor.masquee')}
                         </span>
                       )}
+                      {compagnonsPerso.some(pc => pc.nom === c.nom) && (
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(120,200,140,0.45)', color: 'rgba(140,215,160,0.9)', flexShrink: 0 }}>
+                          {COMPAGNONS_LIVRE.some(lc => lc.nom === c.nom) ? t('descEditor.modifiee') : t('descEditor.perso')}
+                        </span>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); exportSingleItem({ type: 'compagnon', data: c }, `compagnon-${safeName(c.nom)}.json`) }}
                         style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.9)', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 3px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 }}
@@ -3586,6 +3667,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
             {/* Éditeur compagnon */}
             {compagnons[selectedCompagnon] && (() => {
               const c = compagnons[selectedCompagnon]
+              const compagnonEstLivre = COMPAGNONS_LIVRE.some(lc => lc.nom === c.nom) && !compagnonsPerso.some(pc => pc.nom === c.nom)
+              const compagnonVerrouille = compagnonEstLivre && !modeAuteur
               const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
               const numIn = (field: keyof typeof c, label: string, showSign = false) => (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
@@ -3673,8 +3756,20 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
               }
               return (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {compagnonEstLivre && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                      border: `1px solid ${S.border}`, borderRadius: 6, padding: '10px 14px',
+                      background: 'rgba(201,168,76,0.05)',
+                    }}>
+                      <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
+                        {modeAuteur ? t('descEditor.voieLivreeAuteurInfo') : t('descEditor.voieLivreeInfo')}
+                      </span>
+                    </div>
+                  )}
                   {/* Nom + supprimer */}
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <fieldset disabled={compagnonVerrouille} style={fieldsetStyle}>
                     <input
                       value={c.nom}
                       onChange={e => updateCompagnon(selectedCompagnon, { nom: e.target.value })}
@@ -3682,6 +3777,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
                       onBlur={e => (e.target.style.borderColor = S.border)}
                     />
+                    </fieldset>
                     <button
                       onClick={() => setHiddenCompagnons(prev =>
                         prev.includes(c.nom) ? prev.filter(n => n !== c.nom) : [...prev, c.nom]
@@ -3703,12 +3799,17 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: `1px solid rgba(201,168,76,0.35)`, background: 'transparent', color: 'rgba(201,168,76,0.7)', flexShrink: 0 }}>
                       ⎘
                     </button>
-                    <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCompagnon', { nom: c.nom }), () => removeCompagnon(selectedCompagnon))}
-                      style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
-                      🗑
-                    </button>
+                    {/* Le 👁 ci-dessus couvre déjà le masquage d'une livrée : pas la peine d'un
+                        deuxième bouton qui ferait la même chose. */}
+                    {!compagnonEstLivre && (
+                      <button onClick={() => askConfirm(t('descEditor.confirmSupprimerCompagnon', { nom: c.nom }), () => removeCompagnon(selectedCompagnon))}
+                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 15, cursor: 'pointer', border: '1px solid rgba(220,80,80,0.4)', background: 'transparent', color: '#e05555', flexShrink: 0 }}>
+                        🗑
+                      </button>
+                    )}
                   </div>
 
+                  <fieldset disabled={compagnonVerrouille} style={fieldsetStyle}>
                   {/* Modificateurs + Stats sur une seule ligne */}
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -3896,6 +3997,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                       </div>
                     )}
                   </div>
+                  </fieldset>
                 </div>
               )
             })()}
@@ -3945,9 +4047,10 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                     saveDataFileToBundle('armures.json', armures),
                   ])
                   // Ce qui vient d'être publié EST le livré pour voies.json/descriptions.json/
-                  // hidden-voies.json : sans cette remise à zéro, chaque voie perso resterait en
-                  // surcharge d'elle-même et ne recevrait plus jamais de mise à jour (voir voiesPerso.ts).
-                  await publierVoiesLivre()
+                  // hidden-voies.json et pour traits-magiques/traits-raciaux/compagnons : sans cette
+                  // remise à zéro, chaque entrée perso resterait en surcharge d'elle-même et ne
+                  // recevrait plus jamais de mise à jour (voir voiesPerso.ts/cataloguePerso.ts).
+                  await Promise.all([publierVoiesLivre(), publierAutresCataloguesLivre()])
                   window.location.reload()
                 }}
                 style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(100,200,120,0.5)', background: 'transparent', color: 'rgba(100,200,120,0.8)', fontFamily: 'inherit' }}

@@ -34,6 +34,7 @@ import {
   fusionnerDescriptions, migrerDescriptionsPerso, extraireSurchargesDescriptions,
   fusionnerHiddenVoies, migrerHiddenVoiesPerso, deriverAjoutsRetraits,
 } from '../utils/voiesPerso'
+import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
 import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
 export type { VoieEntry } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
@@ -76,6 +77,8 @@ interface GameDataContextValue {
   setDescriptionsPerso: Dispatch<SetStateAction<DescMap>>
   traits: TraitEntry[]
   setTraits: Dispatch<SetStateAction<TraitEntry[]>>
+  traitsPerso: TraitEntry[]
+  setTraitsPerso: Dispatch<SetStateAction<TraitEntry[]>>
   peuples: PeupleEntry[]
   setPeuples: Dispatch<SetStateAction<PeupleEntry[]>>
   armes: ArmesData
@@ -88,8 +91,12 @@ interface GameDataContextValue {
   setVoiesPerso: Dispatch<SetStateAction<VoieEntry[]>>
   compagnons: CompanionEntry[]
   setCompagnons: Dispatch<SetStateAction<CompanionEntry[]>>
+  compagnonsPerso: CompanionEntry[]
+  setCompagnonsPerso: Dispatch<SetStateAction<CompanionEntry[]>>
   traitsRaciaux: TraitEntry[]
   setTraitsRaciaux: Dispatch<SetStateAction<TraitEntry[]>>
+  traitsRaciauxPerso: TraitEntry[]
+  setTraitsRaciauxPerso: Dispatch<SetStateAction<TraitEntry[]>>
   fieldPositions: FieldPositions
   setFieldPositions: Dispatch<SetStateAction<FieldPositions>>
   sheetImages: SheetImages
@@ -220,6 +227,17 @@ export const VOIES_LIVRE = unwrap(JSON.parse(JSON.stringify(VOIES_RAW))) as Voie
 export const DESCRIPTIONS_LIVRE = unwrap(JSON.parse(JSON.stringify(DESCRIPTIONS_RAW))) as DescMap
 export const HIDDEN_VOIES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_VOIES_RAW))) as string[]
 
+// ─── Traits magiques, traits raciaux, compagnons : même principe, catalogues simples ───────────────
+// Trois tableaux plats indépendants, chacun identifié par un nom déjà unique — voir cataloguePerso.ts
+// pour la règle générique. traits-magiques.json et traits-raciaux.json n'ont pas de mécanisme de
+// masquage (contrairement aux voies/compagnons) : y supprimer une entrée livrée n'a donc pas
+// d'équivalent « masquer », c'est bloqué (voir DescriptionsEditor). hidden-compagnons.json a la même
+// particularité ajouts/retraits que hidden-voies.json (masquer libre, démasquer au mot de passe).
+export const TRAITS_MAGIQUES_LIVRE = unwrap(JSON.parse(JSON.stringify(TRAITS_RAW))) as TraitEntry[]
+export const TRAITS_RACIAUX_LIVRE = unwrap(JSON.parse(JSON.stringify(TRAITS_RACIAUX_RAW))) as TraitEntry[]
+export const COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
+export const HIDDEN_COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
+
 function unwrap(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
     return (parsed as Record<string, unknown>).data
@@ -248,9 +266,7 @@ function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string,
 
 export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [descriptionsPerso, setDescriptionsPersoRaw] = useState<DescMap>({})
-  const [traits, setTraitsRaw] = useState<TraitEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(TRAITS_RAW))) as TraitEntry[]
-  )
+  const [traitsPerso, setTraitsPersoRaw] = useState<TraitEntry[]>([])
   const [peuples, setPeuplesRaw] = useState<PeupleEntry[]>(() =>
     unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as PeupleEntry[]
   )
@@ -261,12 +277,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     unwrap(JSON.parse(JSON.stringify(ARMURES_RAW))) as ArmuresData
   )
   const [voiesPerso, setVoiesPersoRaw] = useState<VoieEntry[]>([])
-  const [compagnons, setCompagnonsRaw] = useState<CompanionEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(COMPAGNONS_RAW))) as CompanionEntry[]
-  )
-  const [traitsRaciaux, setTraitsRaciauxRaw] = useState<TraitEntry[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(TRAITS_RACIAUX_RAW))) as TraitEntry[]
-  )
+  const [compagnonsPerso, setCompagnonsPersoRaw] = useState<CompanionEntry[]>([])
+  const [traitsRaciauxPerso, setTraitsRaciauxPersoRaw] = useState<TraitEntry[]>([])
   const [fieldPositions, setFieldPositionsRaw] = useState<FieldPositions>(() =>
     unwrap(JSON.parse(JSON.stringify(FIELD_POSITIONS_RAW))) as FieldPositions
   )
@@ -280,9 +292,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [hiddenCultures, setHiddenCulturesRaw] = useState<string[]>(() =>
     unwrap(JSON.parse(JSON.stringify(HIDDEN_CULTURES_RAW))) as string[]
   )
-  const [hiddenCompagnons, setHiddenCompagnonsRaw] = useState<string[]>(() =>
-    unwrap(JSON.parse(JSON.stringify(HIDDEN_COMPAGNONS_RAW))) as string[]
-  )
+  const [hiddenCompagnonsDelta, setHiddenCompagnonsDeltaRaw] = useState<{ ajouts: string[]; retraits: string[] }>({ ajouts: [], retraits: [] })
   const [bestiairePerso, setBestiairePersoRaw] = useState<BestiaireEntry[]>([])
   const [bestiaireIllustrations, setBestiaireIllustrationsRaw] = useState<BestiaireIllustrations>({})
   const [hiddenBestiaire, setHiddenBestiaireRaw] = useState<string[]>([])
@@ -326,20 +336,14 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [traitsStr, peuplesStr, armesStr, armuresStr, compagnonsStr] = await Promise.all([
-          loadDataFile('traits-magiques.json'),
+        const [peuplesStr, armesStr, armuresStr] = await Promise.all([
           loadDataFile('peuples.json'),
           loadDataFile('armes.json'),
           loadDataFile('armures.json'),
-          loadDataFile('compagnons.json'),
         ])
-        if (traitsStr) setTraitsRaw(unwrap(JSON.parse(traitsStr)) as TraitEntry[])
         if (peuplesStr) setPeuplesRaw(unwrap(JSON.parse(peuplesStr)) as PeupleEntry[])
         if (armesStr) setArmesRaw(unwrap(JSON.parse(armesStr)) as ArmesData)
         if (armuresStr) setArmuresRaw(unwrap(JSON.parse(armuresStr)) as ArmuresData)
-        if (compagnonsStr) setCompagnonsRaw(unwrap(JSON.parse(compagnonsStr)) as CompanionEntry[])
-        const traitsRaciauxStr = await loadDataFile('traits-raciaux.json')
-        if (traitsRaciauxStr) setTraitsRaciauxRaw(unwrap(JSON.parse(traitsRaciauxStr)) as TraitEntry[])
         const fieldPositionsStr = await loadDataFile('field-positions.json')
         if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
         const sheetImagesStr = await loadDataFile('sheet-images.json')
@@ -380,8 +384,48 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (hiddenPeuplesStr) setHiddenPeuplesRaw(unwrap(JSON.parse(hiddenPeuplesStr)) as string[])
         const hiddenCulturesStr = await loadDataFile('hidden-cultures.json')
         if (hiddenCulturesStr) setHiddenCulturesRaw(unwrap(JSON.parse(hiddenCulturesStr)) as string[])
-        const hiddenCompagnonsStr = await loadDataFile('hidden-compagnons.json')
-        if (hiddenCompagnonsStr) setHiddenCompagnonsRaw(unwrap(JSON.parse(hiddenCompagnonsStr)) as string[])
+        // Traits magiques, traits raciaux, compagnons : même migration indépendante par fichier que les
+        // voies (voir plus haut) — cataloguePerso.ts pour la règle générique.
+        const traitsPersoStr = await loadDataFile('traits-magiques-perso.json')
+        if (traitsPersoStr !== null) {
+          setTraitsPersoRaw(unwrap(JSON.parse(traitsPersoStr)) as TraitEntry[])
+        } else {
+          const ancienStr = await loadDataFile('traits-magiques.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as TraitEntry[] : []
+          const perso = extraireSurchargesCatalogue(ancien, TRAITS_MAGIQUES_LIVRE)
+          setTraitsPersoRaw(perso)
+          queueSave('traits-magiques-perso.json', JSON.stringify({ _type: 'traits-magiques-perso', data: perso }, null, 2))
+        }
+        const traitsRaciauxPersoStr = await loadDataFile('traits-raciaux-perso.json')
+        if (traitsRaciauxPersoStr !== null) {
+          setTraitsRaciauxPersoRaw(unwrap(JSON.parse(traitsRaciauxPersoStr)) as TraitEntry[])
+        } else {
+          const ancienStr = await loadDataFile('traits-raciaux.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as TraitEntry[] : []
+          const perso = extraireSurchargesCatalogue(ancien, TRAITS_RACIAUX_LIVRE)
+          setTraitsRaciauxPersoRaw(perso)
+          queueSave('traits-raciaux-perso.json', JSON.stringify({ _type: 'traits-raciaux-perso', data: perso }, null, 2))
+        }
+        const compagnonsPersoStr = await loadDataFile('compagnons-perso.json')
+        if (compagnonsPersoStr !== null) {
+          setCompagnonsPersoRaw(unwrap(JSON.parse(compagnonsPersoStr)) as CompanionEntry[])
+        } else {
+          const ancienStr = await loadDataFile('compagnons.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as CompanionEntry[] : []
+          const perso = extraireSurchargesCatalogue(ancien, COMPAGNONS_LIVRE)
+          setCompagnonsPersoRaw(perso)
+          queueSave('compagnons-perso.json', JSON.stringify({ _type: 'compagnons-perso', data: perso }, null, 2))
+        }
+        const hiddenCompagnonsPersoStr = await loadDataFile('hidden-compagnons-perso.json')
+        if (hiddenCompagnonsPersoStr !== null) {
+          setHiddenCompagnonsDeltaRaw(unwrap(JSON.parse(hiddenCompagnonsPersoStr)) as { ajouts: string[]; retraits: string[] })
+        } else {
+          const ancienStr = await loadDataFile('hidden-compagnons.json')
+          const ancien = ancienStr ? unwrap(JSON.parse(ancienStr)) as string[] : []
+          const delta = migrerNomsMasquesPerso(ancien, HIDDEN_COMPAGNONS_LIVRE)
+          setHiddenCompagnonsDeltaRaw(delta)
+          queueSave('hidden-compagnons-perso.json', JSON.stringify({ _type: 'hidden-compagnons-perso', data: delta }, null, 2))
+        }
         // Bestiaire : voir la séparation livré/perso plus haut. L'existence de bestiaire-perso.json
         // fait office de marqueur « migration déjà faite » — l'ancien bestiaire.json de l'utilisateur
         // n'est alors plus jamais relu ni réécrit, et reste en place comme sauvegarde.
@@ -463,7 +507,17 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   // une clé livrée de la vue affichée.
   const setDescriptionsPerso = useMemo(() => makeAutoSaver<DescMap>(setDescriptionsPersoRaw, 'descriptions-perso.json', 'descriptions-perso'), [])
   const setVoiesPerso = useMemo(() => makeAutoSaver<VoieEntry[]>(setVoiesPersoRaw, 'voies-perso.json', 'voies-perso'), [])
-  const setTraits = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaw, 'traits-magiques.json', 'traits-magiques'), [])
+  const setTraitsPerso = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsPersoRaw, 'traits-magiques-perso.json', 'traits-magiques-perso'), [])
+  const setTraits = useCallback<Dispatch<SetStateAction<TraitEntry[]>>>((updater) => {
+    setTraitsPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: TraitEntry[]) => TraitEntry[])(fusionnerCatalogue(TRAITS_MAGIQUES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCatalogue(next, TRAITS_MAGIQUES_LIVRE)
+      queueSave('traits-magiques-perso.json', JSON.stringify({ _type: 'traits-magiques-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setPeuples = useMemo(() => makeAutoSaver<PeupleEntry[]>(setPeuplesRaw, 'peuples.json', 'peuples'), [])
   const setArmes = useMemo(() => makeAutoSaver<ArmesData>(setArmesRaw, 'armes.json', 'armes'), [])
   const setArmures = useMemo(() => makeAutoSaver<ArmuresData>(setArmuresRaw, 'armures.json', 'armures'), [])
@@ -477,8 +531,28 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextPerso
     })
   }, [])
-  const setCompagnons = useMemo(() => makeAutoSaver<CompanionEntry[]>(setCompagnonsRaw, 'compagnons.json', 'compagnons'), [])
-  const setTraitsRaciaux = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaciauxRaw, 'traits-raciaux.json', 'traits-raciaux'), [])
+  const setCompagnonsPerso = useMemo(() => makeAutoSaver<CompanionEntry[]>(setCompagnonsPersoRaw, 'compagnons-perso.json', 'compagnons-perso'), [])
+  const setCompagnons = useCallback<Dispatch<SetStateAction<CompanionEntry[]>>>((updater) => {
+    setCompagnonsPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: CompanionEntry[]) => CompanionEntry[])(fusionnerCatalogue(COMPAGNONS_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCatalogue(next, COMPAGNONS_LIVRE)
+      queueSave('compagnons-perso.json', JSON.stringify({ _type: 'compagnons-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
+  const setTraitsRaciauxPerso = useMemo(() => makeAutoSaver<TraitEntry[]>(setTraitsRaciauxPersoRaw, 'traits-raciaux-perso.json', 'traits-raciaux-perso'), [])
+  const setTraitsRaciaux = useCallback<Dispatch<SetStateAction<TraitEntry[]>>>((updater) => {
+    setTraitsRaciauxPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: TraitEntry[]) => TraitEntry[])(fusionnerCatalogue(TRAITS_RACIAUX_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCatalogue(next, TRAITS_RACIAUX_LIVRE)
+      queueSave('traits-raciaux-perso.json', JSON.stringify({ _type: 'traits-raciaux-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setFieldPositions = useMemo(() => makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'), [])
   const setSheetImages = useMemo(() => makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'), [])
   // hiddenVoies a deux façons de diverger du livré (voir voiesPerso.ts) : des ajouts ET des retraits —
@@ -495,7 +569,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   }, [])
   const setHiddenPeuples = useMemo(() => makeAutoSaver<string[]>(setHiddenPeuplesRaw, 'hidden-peuples.json', 'hidden-peuples'), [])
   const setHiddenCultures = useMemo(() => makeAutoSaver<string[]>(setHiddenCulturesRaw, 'hidden-cultures.json', 'hidden-cultures'), [])
-  const setHiddenCompagnons = useMemo(() => makeAutoSaver<string[]>(setHiddenCompagnonsRaw, 'hidden-compagnons.json', 'hidden-compagnons'), [])
+  // Même particularité que hiddenVoies (voir plus haut) : masquer un compagnon est déjà libre, le
+  // démasquer non (mot de passe), d'où le même modèle ajouts/retraits par rapport au livré.
+  const setHiddenCompagnons = useCallback<Dispatch<SetStateAction<string[]>>>((updater) => {
+    setHiddenCompagnonsDeltaRaw(prevDelta => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: string[]) => string[])(fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, prevDelta.ajouts, prevDelta.retraits))
+        : updater
+      const nextDelta = migrerNomsMasquesPerso(next, HIDDEN_COMPAGNONS_LIVRE)
+      queueSave('hidden-compagnons-perso.json', JSON.stringify({ _type: 'hidden-compagnons-perso', data: nextDelta }, null, 2))
+      return nextDelta
+    })
+  }, [])
   const setBestiairePerso = useMemo(() => makeAutoSaver<BestiaireEntry[]>(setBestiairePersoRaw, 'bestiaire-perso.json', 'bestiaire-perso'), [])
   const setBestiaireIllustrations = useMemo(() => makeAutoSaver<BestiaireIllustrations>(setBestiaireIllustrationsRaw, 'bestiaire-illustrations.json', 'bestiaire-illustrations'), [])
   const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'hidden-bestiaire.json', 'hidden-bestiaire'), [])
@@ -522,6 +607,13 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     () => fusionnerHiddenVoies(HIDDEN_VOIES_LIVRE, hiddenVoiesDelta.ajouts, hiddenVoiesDelta.retraits),
     [hiddenVoiesDelta],
   )
+  const traits = useMemo(() => fusionnerCatalogue(TRAITS_MAGIQUES_LIVRE, traitsPerso), [traitsPerso])
+  const traitsRaciaux = useMemo(() => fusionnerCatalogue(TRAITS_RACIAUX_LIVRE, traitsRaciauxPerso), [traitsRaciauxPerso])
+  const compagnons = useMemo(() => fusionnerCatalogue(COMPAGNONS_LIVRE, compagnonsPerso), [compagnonsPerso])
+  const hiddenCompagnons = useMemo(
+    () => fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, hiddenCompagnonsDelta.ajouts, hiddenCompagnonsDelta.retraits),
+    [hiddenCompagnonsDelta],
+  )
 
   const openDataDir = useCallback(() => { openDir().catch(console.error) }, [])
 
@@ -530,13 +622,16 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       data, setData,
       descriptionsPerso, setDescriptionsPerso,
       traits, setTraits,
+      traitsPerso, setTraitsPerso,
       peuples, setPeuples,
       armes, setArmes,
       armures, setArmures,
       voies, setVoies,
       voiesPerso, setVoiesPerso,
       compagnons, setCompagnons,
+      compagnonsPerso, setCompagnonsPerso,
       traitsRaciaux, setTraitsRaciaux,
+      traitsRaciauxPerso, setTraitsRaciauxPerso,
       fieldPositions, setFieldPositions,
       sheetImages, setSheetImages,
       hiddenVoies, setHiddenVoies,
