@@ -142,6 +142,17 @@ pub async fn arreter_serveur(state: State<'_, Mutex<EtatReseau>>) -> Result<(), 
         tache.abort();
     }
     etat.port = None;
+    // Ne pas se contenter de vider la liste de suivi : chaque client déjà connecté a sa propre tâche
+    // (gerer_client) qui continue de tourner indépendamment de la boucle d'acceptation qu'on vient
+    // d'arrêter — sans lui envoyer explicitement une trame Close, elle restait active indéfiniment en
+    // arrière-plan (le serveur "arrêté" continuait de relayer les messages des clients déjà connectés).
+    // Recevant Close, la boucle de lecture de gerer_client se termine d'elle-même (reception_ws.next()
+    // finit par renvoyer None une fois la connexion fermée) et se retire proprement de la liste.
+    let clients = etat.clients.lock().await;
+    for tx in clients.values() {
+        let _ = tx.send(Message::Close(None));
+    }
+    drop(clients);
     etat.clients.lock().await.clear();
     Ok(())
 }
