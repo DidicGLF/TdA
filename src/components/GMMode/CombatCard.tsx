@@ -55,6 +55,11 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
     // vaut que s'il concerne la cible actuellement assignée (voir la même règle dans pushLink).
     const cibleActuelle = cibleId ? cibles.find(c => c.id === cibleId) : null
     const resultatValide = dernierResultat && cibleActuelle && dernierResultat.cibleNom === cibleActuelle.nom ? dernierResultat : null
+    // Ciblage réciproque (cibleActuelle vise aussi cette carte en retour) : regroupé dans un seul
+    // cartouche « mutuel » plutôt que d'empiler un cartouche cible et un cartouche attaquant quasi
+    // identiques (même nom en tête) pour la même relation — voir ResultatCartouche.
+    const attaquantMutuel = cibleActuelle ? attaquants.find(a => a.nom === cibleActuelle.nom) : undefined
+    const autresAttaquants = attaquantMutuel ? attaquants.filter(a => a !== attaquantMutuel) : attaquants
     return (
       <div data-combat-id={combatant.id} onClick={onToggleExpand} style={{
         width: 180, cursor: 'pointer', border: `1px solid ${isDown ? 'rgba(150,150,150,0.4)' : SECTION_BORDER}`, borderRadius: 8,
@@ -96,8 +101,12 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
               <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {creature.init}</span>
             )}
           </div>
-          {cibleActuelle && <ResultatCartouche autrePartie={cibleActuelle.nom} role="cible" resultat={resultatValide} />}
-          {attaquants.map((a, i) => (
+          {cibleActuelle && (
+            attaquantMutuel
+              ? <ResultatCartouche autrePartie={cibleActuelle.nom} role="mutuel" resultat={resultatValide} resultatInverse={attaquantMutuel.resultat} />
+              : <ResultatCartouche autrePartie={cibleActuelle.nom} role="cible" resultat={resultatValide} />
+          )}
+          {autresAttaquants.map((a, i) => (
             <ResultatCartouche key={i} autrePartie={a.nom} role="attaquant" resultat={a.resultat} />
           ))}
           {dotsActifs.length > 0 && (

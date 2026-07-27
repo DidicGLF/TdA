@@ -262,7 +262,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       // repousse le coude sous chaque carte tierce dont la largeur croise la bande horizontale traversée
       // à cette hauteur — en boucle, pour gérer plusieurs rangées de cartes empilées.
       const minX = Math.min(x1, x2), maxX = Math.max(x1, x2)
-      let midY = Math.max(y1, y2) + 20 + idx * 14
+      // Le pas vertical entre liens simultanés doit dépasser la hauteur de leur encart résultat (jusqu'à
+      // 50px avec ATK+DM, cf. le rendu SVG plus bas), sinon deux liens d'index consécutifs — typiquement
+      // un ciblage réciproque (PJ→créature ET créature→PJ, poussés l'un juste après l'autre) — se
+      // retrouvent avec des encarts qui se chevauchent malgré cet écart. 14px (l'ancienne valeur) ne
+      // séparait que les SEGMENTS de lien, pas leurs encarts, bien plus hauts.
+      let midY = Math.max(y1, y2) + 20 + idx * 60
       const toutesLesCartes = areaRef.current!.querySelectorAll('[data-combat-id]')
       let aAjuste = true
       while (aAjuste) {

@@ -130,7 +130,8 @@ export default function DraggableCheckboxRow({
               top: `${pos.top + row * stepY}%`,
               left: `${pos.left + col * stepX}%`,
               transform: 'translate(-50%, -50%)',
-              width: '0.85vw', height: '0.85vw',
+              // calc(...) — voir la note sur --zoom-scale dans App.tsx/SheetField.tsx.
+              width: 'calc(0.85vw * var(--zoom-scale, 1))', height: 'calc(0.85vw * var(--zoom-scale, 1))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: calibrate ? 'default' : 'pointer',
               background: 'transparent',

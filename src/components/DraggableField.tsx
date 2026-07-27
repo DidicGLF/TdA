@@ -6,6 +6,7 @@ import { useContext } from 'react'
 import { ModeImpressionContext } from '../hooks/modeImpression'
 import PastilleImpression from './PastilleImpression'
 import SheetField from './SheetField'
+import { calculerAccroche } from '../utils/calibrateSnap'
 
 interface Props {
   top: number
@@ -44,6 +45,9 @@ export default function DraggableField({
   const [width, setWidth] = useState(initWidth)
   const dragging = useRef(false)
   const modeImpression = useContext(ModeImpressionContext)
+  // Lignes-repères affichées pendant un glisser accroché à un champ voisin (voir calculerAccroche) —
+  // null quand rien n'est accroché, ce qui fait aussi disparaître les lignes dès le relâchement.
+  const [guides, setGuides] = useState<{ v: number | null; h: number | null }>({ v: null, h: null })
 
   useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
   useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
@@ -56,21 +60,25 @@ export default function DraggableField({
     const startY = e.clientY
     const startTop = pos.top
     const startLeft = pos.left
+    const handleEl = e.currentTarget as HTMLElement
 
     const onMove = (ev: MouseEvent) => {
       const rect = containerRef.current!.getBoundingClientRect()
-      setPos({
-        top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
-        left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
-      })
+      const brutTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const brutLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      // Accroche désactivée avec Shift (au cas où le calibreur veut positionner finement sans
+      // s'accrocher malgré lui à un voisin proche) — pas Alt, souvent intercepté par le gestionnaire
+      // de fenêtres Linux (Alt+glisser déplace la fenêtre chez GNOME/KDE), ce qui casserait le glisser.
+      const { left, top, guideV, guideH } = ev.shiftKey
+        ? { left: brutLeft, top: brutTop, guideV: null, guideH: null }
+        : calculerAccroche(containerRef.current!, handleEl, brutTop, brutLeft, width)
+      setPos({ top, left })
+      setGuides({ v: guideV, h: guideH })
     }
-    const onUp = (ev: MouseEvent) => {
-      const rect = containerRef.current!.getBoundingClientRect()
-      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
-      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
-      setPos({ top: newTop, left: newLeft })
+    const onUp = () => {
       dragging.current = false
-      onMoved(label, newTop, newLeft, width)
+      setGuides({ v: null, h: null })
+      setPos(p => { onMoved(label, p.top, p.left, width); return p })
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
     }
@@ -138,9 +146,25 @@ export default function DraggableField({
       {modeImpression && onToggleImpression && (
         <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
       )}
+      {calibrate && guides.v !== null && (
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0, left: `${guides.v}%`, width: 1,
+          background: 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
+        }} />
+      )}
+      {calibrate && guides.h !== null && (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, top: `${guides.h}%`, height: 1,
+          background: 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
+        }} />
+      )}
       {calibrate && (
         <div
           onMouseDown={handleDragMouseDown}
+          data-calib-handle
+          data-calib-left={pos.left}
+          data-calib-top={pos.top}
+          data-calib-width={width}
           style={{
             position: 'absolute',
             top: `${pos.top}%`,

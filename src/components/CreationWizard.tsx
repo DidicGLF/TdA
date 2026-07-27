@@ -1590,6 +1590,15 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const isMobile = window.innerWidth < 1200
   const [mobileSlotPicker, setMobileSlotPicker] = React.useState<null | 'mainD' | 'mainG' | 'corps'>(null)
+  // Un bouclier n'est pas une pièce de corps : il occupe une main, comme une arme (cf. utilisateur —
+  // "un bouclier se place en main gauche ou droite, un point c'est tout"), pas un emplacement à part.
+  // Simplification retenue : le bouclier équipé occupe toujours la main gauche (arme2) côté données,
+  // quelle que soit la case sur laquelle il a été déposé (mainD ou mainG acceptent toutes les deux le
+  // glisser, par souci de confort) — ça évite de devoir mémoriser "dans quelle main précise" en plus de
+  // savoir s'il est équipé, sans changer la mécanique (une seule main libre est nécessaire dans tous les
+  // cas). Bloqué si une arme à 2 mains est en main (aucune main libre).
+  const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+  const shieldNom = character.armuresEquipees.find(a => isBouclier(a.nom) && a.equipe)?.nom ?? null
   const totalArmes = character.armes.length + character.armuresEquipees.length
 
   const showTip = (lines: string[], e: React.MouseEvent) => {
@@ -1617,18 +1626,40 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     e.dataTransfer.setData('cat', cat)
     e.dataTransfer.setData('nom', nom)
   }
+  // Équipe une armure de corps (jamais un bouclier) en déséquipant l'éventuelle autre armure de corps
+  // déjà portée — un bouclier peut être porté en plus, indépendamment (cf. equipeArmure dans
+  // EquipementModal).
+  const equiperCorps = (nom: string) => {
+    onChange({ armuresEquipees: character.armuresEquipees.map(a =>
+      isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }
+    ) })
+  }
+  // Équipe le bouclier nom (déséquipant l'éventuel autre bouclier) et libère la main gauche (arme2) où
+  // il vient se placer — voir la note sur shieldNom plus haut. Aucun effet si aucune main n'est libre.
+  const equiperBouclier = (nom: string) => {
+    if (character.arme1 && is2H(character.arme1)) return
+    onChange({ arme2: '', dmArme2: '',
+      armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? { ...a, equipe: a.nom === nom } : a) })
+  }
+  // Déséquipe le bouclier porté, le cas échéant — utilisé quand une arme prend sa main.
+  const desequiperBouclier = () => {
+    if (!shieldNom) return {}
+    return { armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? { ...a, equipe: false } : a) }
+  }
   const assignToSlot = (slot: 'mainD' | 'mainG' | 'corps', nom: string, cat: 'arme' | 'armure') => {
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '' })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
       } else if (slot === 'mainD') {
         onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
       } else {
         if (character.arme1 && is2H(character.arme1)) return
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom) })
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
       }
-    } else if (slot === 'corps' && cat === 'armure') {
-      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
+    } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
+      equiperCorps(nom)
+    } else if ((slot === 'mainD' || slot === 'mainG') && cat === 'armure' && isBouclier(nom)) {
+      equiperBouclier(nom)
     }
     setMobileSlotPicker(null)
   }
@@ -1638,21 +1669,26 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const nom = e.dataTransfer.getData('nom')
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '' })
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
       } else if (slot === 'mainD') {
         onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
       } else {
         if (character.arme1 && is2H(character.arme1)) { setDragOver(null); return }
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom) })
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
       }
-    } else if (slot === 'corps' && cat === 'armure') {
-      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: true } : a) })
+    } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
+      equiperCorps(nom)
+    } else if ((slot === 'mainD' || slot === 'mainG') && cat === 'armure' && isBouclier(nom)) {
+      equiperBouclier(nom)
     }
     setDragOver(null)
   }
   const clearSlot = (slot: 'mainD' | 'mainG' | 'corps', nom?: string) => {
     if (slot === 'mainD') onChange({ arme1: '', dmArme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '', dmArme2: '' } : {}) })
-    else if (slot === 'mainG') onChange({ arme2: '', dmArme2: '' })
+    else if (slot === 'mainG') {
+      if (nom && isBouclier(nom)) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
+      else onChange({ arme2: '', dmArme2: '' })
+    }
     else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
   }
 
@@ -1741,12 +1777,15 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 } else if (slot === 'mainG') {
                   if (mainGBlocked) {
                     items = [{ nom: character.arme1, sub: t('wizard.step5.deuxMains'), ghost: true }]
+                  } else if (shieldNom) {
+                    const a = character.armuresEquipees.find(x => x.nom === shieldNom)
+                    items = [{ nom: shieldNom, sub: a ? `DEF +${a.def}` : undefined }]
                   } else if (character.arme2) {
                     const a = character.armes.find(x => x.nom === character.arme2)
                     items = [{ nom: character.arme2, sub: a ? `DM ${a.dm}` : undefined }]
                   }
                 } else if (slot === 'corps') {
-                  items = character.armuresEquipees.filter(a => a.equipe).map(a => ({ nom: a.nom, sub: `DEF +${a.def}` }))
+                  items = character.armuresEquipees.filter(a => a.equipe && !isBouclier(a.nom)).map(a => ({ nom: a.nom, sub: `DEF +${a.def}` }))
                 }
                 return (
                   <div key={slot}
@@ -1909,8 +1948,8 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                   onClick={() => { clearSlot(mobileSlotPicker); setMobileSlotPicker(null) }}>
                   <input type="radio" readOnly checked={
                     mobileSlotPicker === 'mainD' ? !character.arme1 :
-                    mobileSlotPicker === 'mainG' ? !character.arme2 :
-                    character.armuresEquipees.every(a => !a.equipe)
+                    mobileSlotPicker === 'mainG' ? (!character.arme2 && !shieldNom) :
+                    character.armuresEquipees.every(a => isBouclier(a.nom) || !a.equipe)
                   } style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
                   <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{t('wizard.step5.aucune')}</span>
                 </div>
@@ -1935,8 +1974,30 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     </div>
                   )
                 })}
-                {/* Armures pour corps */}
-                {mobileSlotPicker === 'corps' && character.armuresEquipees.map((a, i) => (
+                {/* Boucliers pour mainD/mainG — un bouclier occupe une main, comme une arme (bloqué si
+                    une arme à 2 mains est équipée, cf. equiperBouclier). */}
+                {(mobileSlotPicker === 'mainD' || mobileSlotPicker === 'mainG') && character.armuresEquipees
+                  .filter(a => isBouclier(a.nom))
+                  .map((a, i) => {
+                    const bloque = !!character.arme1 && is2H(character.arme1)
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                        borderBottom: '1px solid rgba(201,168,76,0.08)',
+                        cursor: bloque ? 'not-allowed' : 'pointer', opacity: bloque ? 0.4 : 1 }}
+                        onClick={() => !bloque && assignToSlot(mobileSlotPicker, a.nom, 'armure')}>
+                        <input type="radio" readOnly checked={a.nom === shieldNom}
+                          style={{ width: 20, height: 20, accentColor: 'rgba(100,160,255,0.8)', flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{a.nom}</div>
+                          <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)' }}>DEF +{a.def}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                {/* Armures de corps */}
+                {mobileSlotPicker === 'corps' && character.armuresEquipees
+                  .filter(a => !isBouclier(a.nom))
+                  .map((a, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
                     borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer' }}
                     onClick={() => assignToSlot('corps', a.nom, 'armure')}>

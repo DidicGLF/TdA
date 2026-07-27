@@ -46,11 +46,12 @@ export default function DraggableRangDesc({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el || el.clientHeight === 0) return
+    // calc(...vw * var(--zoom-scale, 1)) — voir la note dans App.tsx (conteneur zoomable) et SheetField.
     let size = BASE_FONT
-    el.style.fontSize = `${size}vw`
+    el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     while (el.scrollHeight > el.clientHeight + 1 && size > MIN_FONT) {
       size = +(size - 0.03).toFixed(2)
-      el.style.fontSize = `${size}vw`
+      el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     }
   }, [texteBrut, width, height])
 

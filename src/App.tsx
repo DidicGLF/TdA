@@ -170,7 +170,13 @@ function AppContent() {
     reader.readAsDataURL(file)
   }
 
+  // Suit la progression du wizard de création (étapes 5+ concernent le verso) pour y basculer
+  // automatiquement — mais PAS quand handleLoad restaure step d'un coup à savedMaxStep (7 pour un
+  // personnage terminé) : sans ce garde-fou, charger n'importe quel personnage sauvegardé atterrissait
+  // systématiquement sur le verso au lieu du recto.
+  const skipAutoSheetPage = useRef(false)
   useEffect(() => {
+    if (skipAutoSheetPage.current) { skipAutoSheetPage.current = false; return }
     setSheetPage(step >= 5 ? 'verso' : 'recto')
   }, [step])
 
@@ -339,8 +345,10 @@ function AppContent() {
       dmArme2: c.dmArme2 ?? '',
     }
     setCharacter(normalized)
+    skipAutoSheetPage.current = true
     setStep(savedMaxStep)
     setMaxStep(savedMaxStep)
+    setSheetPage('recto')
   }
 
   const printContainer = (
@@ -804,7 +812,18 @@ function AppContent() {
           localStorage.setItem('tdr-zoom', String(n))
           setZoom(n)
         }}
-        style={{ width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined, flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', background: '#111' }}>
+        style={{
+          width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined,
+          flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto',
+          display: 'flex', flexDirection: 'column', background: '#111',
+          // Les tailles de police des champs de la feuille sont exprimées en vw (relatif à TOUTE la
+          // fenêtre), pas en % de ce conteneur — dézoomer (réduire zoom%) réduit donc la largeur du
+          // conteneur (et des champs, positionnés/dimensionnés en %) sans réduire le texte, qui déborde
+          // ou paraît disproportionné. --zoom-scale (1 à zoom par défaut = 60) est multiplié dans les
+          // calc() de police de SheetField/SheetTextarea/DraggableRangDesc/DraggableCheckboxRow pour que
+          // le texte suive la même mise à l'échelle que la boîte qui le contient.
+          '--zoom-scale': zoom / 60,
+        } as React.CSSProperties}>
 
         {/* Toolbar — outer sticky shell (contenant block pour le dropdown Gestion) */}
         <div ref={gestionRef} style={{

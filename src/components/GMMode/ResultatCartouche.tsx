@@ -18,15 +18,15 @@ interface Props {
   // CombatTab, un PJ n'ayant pas de jet propre). Un PJ peut avoir plusieurs attaquants simultanés
   // (plusieurs cartouches empilées) : le nom affiché doit donc toujours être celui de l'autre partie,
   // jamais un mot générique, sous peine de rendre les cartouches empilés indistinguables entre eux.
-  role: 'cible' | 'attaquant'
+  // 'mutuel' : ciblage réciproque (cette carte vise autrePartie ET autrePartie vise cette carte) — les
+  // deux résultats (resultat + resultatInverse) sont regroupés dans UN SEUL cartouche plutôt que d'en
+  // empiler deux quasi identiques (même nom en tête, l'un juste sous l'autre) pour la même relation.
+  role: 'cible' | 'attaquant' | 'mutuel'
   resultat: RollResult | null
+  resultatInverse?: RollResult | null
 }
 
-// Résumé compact d'une relation de ciblage + son dernier résultat, affiché SOUS une carte repliée (voir
-// CombatCard/PJCard) — remplace pour ces cartes le lien SVG plein écran de CombatTab, réservé aux cartes
-// dépliées : avec beaucoup de cibles simultanées, ces lignes se croisaient et sortaient du cadre au
-// scroll, alors qu'un encart posé directement sous chaque carte suit naturellement sa mise en page.
-export default function ResultatCartouche({ autrePartie, role, resultat }: Props) {
+function BlocResultat({ resultat }: { resultat: RollResult | null | undefined }) {
   const { t } = useTranslation()
   const ligneAtk = resultat?.jetTotal !== undefined
   // degatsAppliques (pas degatsTotal) : un PJ n'a pas de jet propre, seul le montant final infligé à
@@ -34,16 +34,9 @@ export default function ResultatCartouche({ autrePartie, role, resultat }: Props
   // ligne se réduit au montant seul, sans le détail « brut — RD = appliqué » d'une créature.
   const ligneDm = !!resultat && !resultat.toucheRate && resultat.degatsAppliques !== undefined
   const detailDm = !!resultat && resultat.degatsTotal !== undefined
-  const label = t(role === 'cible' ? 'gmMode.bataille.cible' : 'gmMode.bataille.attaquant')
-
+  if (!ligneAtk && !ligneDm) return null
   return (
-    <div style={{
-      marginTop: 6, padding: '4px 7px', borderRadius: 5,
-      background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(201,168,76,0.15)',
-    }}>
-      <div style={{ fontSize: 11, color: PARCHMENT, opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {role === 'cible' ? <>{label} → {autrePartie}</> : <>{autrePartie} → {label}</>}
-      </div>
+    <>
       {ligneAtk && (
         <div style={{ fontSize: 11, lineHeight: 1.4 }}>
           <span style={{ color: LINK_COLOR, fontWeight: 700 }}>ATK {resultat!.jetTotal}</span>
@@ -70,6 +63,32 @@ export default function ResultatCartouche({ autrePartie, role, resultat }: Props
               {resultat!.typeDegats !== undefined && `${ICONES_TYPES_DEGATS[resultat!.typeDegats]} `}{resultat!.degatsAppliques} DM
             </span>
           )}
+        </div>
+      )}
+    </>
+  )
+}
+
+// Résumé compact d'une relation de ciblage + son dernier résultat, affiché SOUS une carte repliée (voir
+// CombatCard/PJCard) — remplace pour ces cartes le lien SVG plein écran de CombatTab, réservé aux cartes
+// dépliées : avec beaucoup de cibles simultanées, ces lignes se croisaient et sortaient du cadre au
+// scroll, alors qu'un encart posé directement sous chaque carte suit naturellement sa mise en page.
+export default function ResultatCartouche({ autrePartie, role, resultat, resultatInverse }: Props) {
+  const { t } = useTranslation()
+  const label = t(role === 'cible' ? 'gmMode.bataille.cible' : 'gmMode.bataille.attaquant')
+
+  return (
+    <div style={{
+      marginTop: 6, padding: '4px 7px', borderRadius: 5,
+      background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(201,168,76,0.15)',
+    }}>
+      <div style={{ fontSize: 11, color: PARCHMENT, opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {role === 'cible' ? <>{label} → {autrePartie}</> : role === 'attaquant' ? <>{autrePartie} → {label}</> : <>⇄ {autrePartie}</>}
+      </div>
+      <BlocResultat resultat={resultat} />
+      {role === 'mutuel' && resultatInverse !== undefined && (
+        <div style={{ marginTop: 3, paddingTop: 3, borderTop: '1px solid rgba(201,168,76,0.12)' }}>
+          <BlocResultat resultat={resultatInverse} />
         </div>
       )}
     </div>

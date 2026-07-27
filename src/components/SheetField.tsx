@@ -32,12 +32,16 @@ export default function SheetField({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.fontSize = `${BASE_FONT}vw`
+    // calc(...vw * var(--zoom-scale, 1)) plutôt que Xvw seul : voir la note sur le conteneur zoomable
+    // dans App.tsx. Boîte et police sont alors proportionnelles au même facteur (--zoom-scale ∝ zoom%),
+    // donc ce calcul (mesuré en pixels réels via clientWidth/scrollWidth) reste valable à tout niveau de
+    // zoom sans avoir besoin d'être relancé quand zoom change.
+    el.style.fontSize = `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`
     if (el.clientWidth === 0) return
     let size = BASE_FONT
     while (el.scrollWidth > el.clientWidth + 1 && size > MIN_FONT) {
       size = +(size - 0.05).toFixed(2)
-      el.style.fontSize = `${size}vw`
+      el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     }
     // width/height dans les dépendances : sans eux, redimensionner un champ en calibrage ne
     // recalculait pas la police, qui restait ajustée à l'ancienne largeur.
@@ -61,7 +65,7 @@ export default function SheetField({
         height: `${height}%`,
         transform: 'translate(-50%, -50%)',
         textAlign: align,
-        fontSize: `${BASE_FONT}vw`,
+        fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
         fontFamily: "'Crimson Text', Georgia, serif",
         background: active ? 'rgba(201,168,76,0.18)' : 'transparent',
         border: active

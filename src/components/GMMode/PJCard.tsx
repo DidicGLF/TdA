@@ -96,6 +96,9 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
     // tout en étant lui-même visé par une autre).
     const cibleActuelle = cibleId ? cibles.find(c => c.id === cibleId) : null
     const resultatValide = dernierResultat && cibleActuelle && dernierResultat.cibleNom === cibleActuelle.nom ? dernierResultat : null
+    // Ciblage réciproque — voir la même note dans CombatCard.tsx.
+    const attaquantMutuel = cibleActuelle ? attaquants.find(a => a.nom === cibleActuelle.nom) : undefined
+    const autresAttaquants = attaquantMutuel ? attaquants.filter(a => a !== attaquantMutuel) : attaquants
     return (
       <div data-combat-id={pj.id} onClick={onToggleExpand} style={{
         width: 180, cursor: 'pointer', border: `1px solid ${isDown ? 'rgba(150,150,150,0.4)' : SECTION_BORDER}`, borderRadius: 8,
@@ -120,8 +123,12 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
             <span style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {stats.pvTotal}</span>
             <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {character.initiative}</span>
           </div>
-          {cibleActuelle && <ResultatCartouche autrePartie={cibleActuelle.nom} role="cible" resultat={resultatValide} />}
-          {attaquants.map((a, i) => (
+          {cibleActuelle && (
+            attaquantMutuel
+              ? <ResultatCartouche autrePartie={cibleActuelle.nom} role="mutuel" resultat={resultatValide} resultatInverse={attaquantMutuel.resultat} />
+              : <ResultatCartouche autrePartie={cibleActuelle.nom} role="cible" resultat={resultatValide} />
+          )}
+          {autresAttaquants.map((a, i) => (
             <ResultatCartouche key={i} autrePartie={a.nom} role="attaquant" resultat={a.resultat} />
           ))}
           {dotsActifs.length > 0 && (

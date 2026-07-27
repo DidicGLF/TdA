@@ -37,6 +37,11 @@ export default function SheetTextarea({
   const ref = useRef<HTMLTextAreaElement>(null)
   const [lhPx, setLhPx] = useState<number | null>(null)
   const [ptPx, setPtPx] = useState<number>(2)
+  // Facteur --zoom-scale actuel (voir App.tsx) : lu en JS uniquement pour le plafond ci-dessous, qui vise
+  // une hauteur de ligne en PIXELS RÉELS (lhPx, mesurée) — il faut donc convertir ce plafond en un nombre
+  // de vw compensé par l'échelle, puisque le rendu final applique déjà calc(...vw * var(--zoom-scale)).
+  // Ailleurs (fontSize directe plus bas), le calc() suffit seul, sans lecture JS.
+  const [zoomScale, setZoomScale] = useState(1)
 
   useLayoutEffect(() => {
     if (!autoShrink) return
@@ -45,17 +50,17 @@ export default function SheetTextarea({
     if (el.clientHeight === 0) return
     // On part du plus grand corps autorisé puis on réduit jusqu'à ce que le texte tienne : ainsi la
     // police occupe la place disponible au lieu d'être bloquée à BASE_FONT quand le cadre est large.
-    const vwEnPx = window.innerWidth / 100
+    const vwEnPx = window.innerWidth / 100 * zoomScale
     const plafond = lhPx
       ? Math.max(MIN_FONT, Math.min(MAX_FONT, (lhPx * RATIO_INTERLIGNE) / vwEnPx))
       : BASE_FONT
     let size = plafond
-    el.style.fontSize = `${size}vw`
+    el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     while (el.scrollHeight > el.clientHeight + 1 && size > MIN_FONT) {
       size = +(size - 0.05).toFixed(2)
-      el.style.fontSize = `${size}vw`
+      el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     }
-  }, [value, autoShrink, width, height, lhPx])
+  }, [value, autoShrink, width, height, lhPx, zoomScale])
 
   useEffect(() => {
     if (!containerRef?.current || !lineHeightPct) return
@@ -65,6 +70,10 @@ export default function SheetTextarea({
       if (!h) return
       setLhPx(lineHeightPct / 100 * h)
       setPtPx(paddingTopPct / 100 * h)
+      // Le conteneur se redimensionne réellement quand zoom% change (d'où ce ResizeObserver) : c'est
+      // aussi le bon moment pour relire --zoom-scale, qui a changé en même temps.
+      const scale = parseFloat(getComputedStyle(containerRef.current).getPropertyValue('--zoom-scale'))
+      setZoomScale(Number.isFinite(scale) && scale > 0 ? scale : 1)
     }
     update()
     const ro = new ResizeObserver(update)
@@ -88,7 +97,7 @@ export default function SheetTextarea({
         width: `${width}%`,
         height: `${height}%`,
         transform: 'translate(-50%, -50%)',
-        fontSize: '1.15vw',
+        fontSize: 'calc(1.15vw * var(--zoom-scale, 1))',
         fontFamily: "'Crimson Text', Georgia, serif",
         background: 'transparent',
         border: calibrate ? '2px dashed rgba(160,90,230,0.95)' : '1px solid transparent',

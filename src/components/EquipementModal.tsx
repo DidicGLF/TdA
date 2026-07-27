@@ -276,8 +276,18 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     onChange(patch)
   }
 
+  // Arme à 2 mains : même détection que dans le wizard de création (CreationWizard.tsx) — flag explicite
+  // pour les armes personnalisées (nom hors convention), sinon le nom pour le catalogue officiel.
+  const is2H = (nom: string) => {
+    if (character?.armes.find(a => a.nom === nom)?.deuxMains) return true
+    const n = nom.toLowerCase()
+    return n.includes('deux mains') || n.includes('arc')
+  }
   const equipeArmeSlot = (nom: string | null, slot: 1 | 2) => {
     if (!character || !onChange) return
+    // Une arme à 2 mains occupe les deux mains : rien ne peut aller en emplacement 2 tant que
+    // l'emplacement 1 en tient une.
+    if (slot === 2 && character.arme1 && is2H(character.arme1)) return
     const arme = nom ? character.armes.find(a => a.nom === nom) : null
     const prevNom = slot === 1 ? character.arme1 : character.arme2
     const stripped = nom ? stripExposants(nom) : null
@@ -285,8 +295,23 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     if (prevNom) inv = unmarkEquipe(inv, prevNom)
     if (nom)     inv = markEquipe(inv, nom)
     const dm = arme ? [arme.dm, arme.attaque].filter(Boolean).join(' ') : ''
-    if (slot === 1) onChange({ arme1: stripped ?? '', dmArme1: dm, inventaire: inv })
-    else            onChange({ arme2: stripped ?? '', dmArme2: dm, inventaire: inv })
+    const patch: Partial<Character> = slot === 1
+      ? { arme1: stripped ?? '', dmArme1: dm }
+      : { arme2: stripped ?? '', dmArme2: dm }
+    // Poser une arme à 2 mains en emplacement 1 libère l'emplacement 2 (plus de main disponible) ; poser
+    // une arme (n'importe laquelle) en emplacement 2, ou une arme à 2 mains en emplacement 1, prend la
+    // main que le bouclier porté occupait — il est donc déséquipé (cf. equipeBouclier, même logique
+    // inverse : l'équiper libère l'emplacement 2).
+    if (slot === 1 && nom && is2H(nom)) {
+      if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+      patch.arme2 = ''
+      patch.dmArme2 = ''
+    }
+    if (nom && (slot === 2 || (slot === 1 && is2H(nom))) && bouclierPorte) {
+      patch.armuresEquipees = character.armuresEquipees.map(a => isBouclier(a.nom) ? { ...a, equipe: false } : a)
+    }
+    patch.inventaire = inv
+    onChange(patch)
   }
   const addArmure = (e: EntreeArmure) => {
     if (!character || !onChange) return
@@ -334,15 +359,26 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   }
   const equipeBouclier = (nom: string | null) => {
     if (!character || !onChange) return
+    // Le bouclier prend une main, comme une arme : pas de main libre si l'emplacement 1 tient une arme
+    // à 2 mains (voir equipeArmeSlot, symétrique).
+    if (nom && character.arme1 && is2H(character.arme1)) return
     let inv = character.inventaire
     if (bouclierPorte) inv = unmarkEquipe(inv, bouclierPorte)
     if (nom)           inv = markEquipe(inv, nom)
-    onChange({
+    const patch: Partial<Character> = {
       armuresEquipees: character.armuresEquipees.map(a =>
         !isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }
       ),
-      inventaire: inv,
-    })
+    }
+    // Équiper le bouclier prend la main que l'emplacement 2 occupait — le libère (cf. equipeArmeSlot,
+    // même logique inverse).
+    if (nom && character.arme2) {
+      inv = unmarkEquipe(inv, character.arme2)
+      patch.arme2 = ''
+      patch.dmArme2 = ''
+    }
+    patch.inventaire = inv
+    onChange(patch)
   }
 
   const armuresSeules  = character?.armuresEquipees.filter(a => !isBouclier(a.nom)) ?? []
@@ -615,8 +651,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 {([1, 2] as const).map(slot => {
                   const current = slot === 1 ? character.arme1 : character.arme2
                   const color = 'rgba(100,160,255,0.8)'
+                  // Emplacement 2 entièrement indisponible si l'emplacement 1 tient une arme à 2 mains
+                  // (plus de main libre) — cf. equipeArmeSlot.
+                  const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
                   return (
-                    <div key={slot} style={{ marginBottom: 12 }}>
+                    <div key={slot} style={{ marginBottom: 12, opacity: slotBloque ? 0.4 : 1 }}>
                       <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.emplacement', { n: slot })}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
@@ -627,13 +666,16 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                           const otherSlot = slot === 1 ? character.arme2 : character.arme1
                           const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
                           const isCurrent = stripExposants(current) === stripExposants(a.nom)
+                          // Une arme à 2 mains ne peut jamais aller en emplacement 2 (elle occupe les
+                          // deux mains, donc toujours placée en emplacement 1 — cf. wizard de création).
+                          const disabled = takenByOther || slotBloque || (slot === 2 && is2H(a.nom))
                           return (
                             <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15,
-                              cursor: takenByOther ? 'not-allowed' : 'pointer',
-                              opacity: takenByOther ? 0.4 : 1,
+                              cursor: disabled ? 'not-allowed' : 'pointer',
+                              opacity: disabled && !takenByOther ? 0.4 : 1,
                               color: isCurrent ? color : S.parchment }}>
                               <input type="radio" name={`arme-slot-${slot}`}
-                                checked={isCurrent} disabled={takenByOther}
+                                checked={isCurrent} disabled={disabled}
                                 onChange={() => equipeArmeSlot(a.nom, slot)}
                                 style={{ accentColor: color, width: 18, height: 18 }} />
                               {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
@@ -668,8 +710,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               </div>
             )}
 
-            {/* Bouclier porté */}
-            {boucliersSeuls.length > 0 && (
+            {/* Bouclier porté — occupe une main, comme une arme : indisponible si l'emplacement 1 tient
+                une arme à 2 mains (cf. equipeBouclier). */}
+            {boucliersSeuls.length > 0 && (() => {
+              const boucliersBloques = !!character.arme1 && is2H(character.arme1)
+              return (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.bouclierPorte')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -678,16 +723,20 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     {t('equipement.aucun')}
                   </label>
                   {boucliersSeuls.map((a, i) => (
-                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer',
+                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15,
+                      cursor: boucliersBloques ? 'not-allowed' : 'pointer',
+                      opacity: boucliersBloques && bouclierPorte !== a.nom ? 0.4 : 1,
                       color: bouclierPorte === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
-                      <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
+                      <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} disabled={boucliersBloques}
+                        onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)', width: 18, height: 18 }} />
                       {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>DEF +{a.def}</span>
                       <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0 }}>✕</button>
                     </label>
                   ))}
                 </div>
               </div>
-            )}
+              )
+            })()}
 
             {character.armes.length === 0 && character.armuresEquipees.length === 0 && (
               <div style={{ color: 'rgba(245,236,215,0.35)', fontSize: 15, textAlign: 'center', marginTop: 40 }}>
@@ -1050,8 +1099,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   const current = slot === 1 ? character.arme1 : character.arme2
                   const label   = t('equipement.emplacement', { n: slot })
                   const color   = 'rgba(100,160,255,0.8)'
+                  const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
                   return (
-                    <div key={slot} style={{ marginBottom: 4 }}>
+                    <div key={slot} style={{ marginBottom: 4, opacity: slotBloque ? 0.4 : 1 }}>
                       <div style={{ fontSize: 11, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer', color: S.parchment }}>
@@ -1062,14 +1112,15 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                           const otherSlot = slot === 1 ? character.arme2 : character.arme1
                           const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
                           const isCurrent   = stripExposants(current) === stripExposants(a.nom)
+                          const disabled = takenByOther || slotBloque || (slot === 2 && is2H(a.nom))
                           return (
                             <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13,
-                              cursor: takenByOther ? 'not-allowed' : 'pointer',
-                              opacity: takenByOther ? 0.4 : 1,
+                              cursor: disabled ? 'not-allowed' : 'pointer',
+                              opacity: disabled && !takenByOther ? 0.4 : 1,
                               color: isCurrent ? color : S.parchment }}>
                               <input type="radio" name={`arme-slot-${slot}`}
                                 checked={isCurrent}
-                                disabled={takenByOther}
+                                disabled={disabled}
                                 onChange={() => equipeArmeSlot(a.nom, slot)}
                                 style={{ accentColor: color }} />
                               {a.nom} <span style={{ opacity: 0.5, fontSize: 12 }}>{a.dm}</span>
@@ -1105,7 +1156,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             )}
 
             {/* Bouclier porté */}
-            {boucliersSeuls.length > 0 && (
+            {boucliersSeuls.length > 0 && (() => {
+              const boucliersBloques = !!character.arme1 && is2H(character.arme1)
+              return (
               <div>
                 <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.8)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{t('equipement.bouclierPorte')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -1114,16 +1167,20 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     {t('equipement.aucun')}
                   </label>
                   {boucliersSeuls.map((a, i) => (
-                    <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
+                    <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13,
+                      cursor: boucliersBloques ? 'not-allowed' : 'pointer',
+                      opacity: boucliersBloques && bouclierPorte !== a.nom ? 0.4 : 1,
                       color: bouclierPorte === a.nom ? 'rgba(100,160,255,0.9)' : S.parchment }}>
-                      <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)' }} />
+                      <input type="radio" name="bouclier-porte" checked={bouclierPorte === a.nom} disabled={boucliersBloques}
+                        onChange={() => equipeBouclier(a.nom)} style={{ accentColor: 'rgba(100,160,255,0.8)' }} />
                       {a.nom} <span style={{ opacity: 0.5, fontSize: 12 }}>DEF +{a.def}</span>
                       <button onClick={() => removeArmure(character.armuresEquipees.indexOf(a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 12, padding: 0, lineHeight: 1 }}>✕</button>
                     </label>
                   ))}
                 </div>
               </div>
-            )}
+              )
+            })()}
           </div>
         )}
 

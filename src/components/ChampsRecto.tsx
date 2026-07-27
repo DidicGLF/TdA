@@ -421,6 +421,16 @@ export default function ChampsRecto({
             />
           )}
 
+          {/* Nom de l'armure/du bouclier actuellement équipé (un seul possible à la fois, cf.
+              equipeArmure/equipeBouclier dans EquipementModal) — dérivé, pas de position d'origine sur
+              la maquette : part en réserve de calibrage tant qu'il n'a pas été placé. */}
+          {f({ label: "Nom armure", top: 34.0, left: 66.2, width: 12.0, height: 2.0,
+            value: character.armuresEquipees.find(a => !isBouclier(a.nom) && a.equipe)?.nom ?? '',
+            onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+          {f({ label: "Nom bouclier", top: 34.0, left: 78.8, width: 12.0, height: 2.0,
+            value: character.armuresEquipees.find(a => isBouclier(a.nom) && a.equipe)?.nom ?? '',
+            onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+
           {/* Défense : bonus — l'affichage inclut les effets de voies/cristaux et les bonus temporaires actuellement
               actifs en Mode de jeu (activeBoostContributions), en plus du bonus manuel stocké ; la valeur brute
               stockée (bonusDefense) n'est modifiée que par une saisie manuelle, donc pas de double-comptage sur
