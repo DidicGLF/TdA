@@ -8,6 +8,10 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 const isTauri = () =>
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
+// Port fixe du serveur (voir la même constante côté Rust, src-tauri/src/reseau.rs) — partagé ici pour
+// que le client (useReseauClient) n'ait pas à le redevenir en dur une seconde fois.
+export const PORT_RESEAU = 47821
+
 export interface EtatServeurReseau {
   demarre: boolean
   port: number | null
@@ -26,6 +30,11 @@ export async function demarrerServeurReseau(): Promise<number | null> {
 export async function arreterServeurReseau(): Promise<void> {
   if (!isTauri()) return
   await invoke<void>('arreter_serveur')
+}
+
+export async function envoyerATousReseau(contenu: string): Promise<void> {
+  if (!isTauri()) return
+  await invoke<void>('envoyer_a_tous', { contenu })
 }
 
 export async function etatServeurReseau(): Promise<EtatServeurReseau> {

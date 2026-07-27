@@ -968,6 +968,17 @@
   "gameMode": {
     "title": "Game Mode",
     "clickToFull": "Click to restore to full",
+    "reseau": {
+      "titre": "Network",
+      "ipPlaceholder": "GM's IP (e.g. 192.168.1.42)",
+      "connecter": "Connect",
+      "deconnecter": "Disconnect",
+      "connecte": "Connected",
+      "deconnecte": "Disconnected",
+      "envoyerPlaceholder": "Test message…",
+      "envoyer": "Send",
+      "journalVide": "No messages received yet."
+    },
     "pvCardTitle": "Hit Points",
     "pmCardTitle": "Magic Points",
     "defCardTitle": "DEF",
@@ -1277,7 +1288,9 @@
       "connexionEvt": "Client #{{id}} connected",
       "deconnexionEvt": "Client #{{id}} disconnected",
       "messageEvt": "#{{id}} → {{contenu}}",
-      "horsTauri": "Network is only available in the installed app (not in the browser preview)."
+      "horsTauri": "Network is only available in the installed app (not in the browser preview).",
+      "envoyerATousPlaceholder": "Test message to broadcast…",
+      "envoyerATous": "Send to all"
     },
     "batailleMasse": {
       "intro": "Manage a mass battle turn by turn: position the PJs, automate the tests and damage based on the battle's intensity.",

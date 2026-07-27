@@ -122,6 +122,19 @@ async fn gerer_client(flux: TcpStream, app: AppHandle, clients: Arc<Mutex<HashMa
     let _ = app.emit("reseau:deconnexion", InfoConnexion { id });
 }
 
+// Diffuse contenu à tous les clients actuellement connectés (test manuel côté MJ pour cette étape —
+// voir ReseauTab.tsx) via les canaux mpsc déjà stockés par client (voir gerer_client) : aucune nouvelle
+// plomberie, juste un envoi sur ce qui existe déjà.
+#[tauri::command]
+pub async fn envoyer_a_tous(contenu: String, state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
+    let etat = state.lock().await;
+    let clients = etat.clients.lock().await;
+    for tx in clients.values() {
+        let _ = tx.send(Message::Text(contenu.clone().into()));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn arreter_serveur(state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
     let mut etat = state.lock().await;

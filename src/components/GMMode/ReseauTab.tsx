@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { demarrerServeurReseau, arreterServeurReseau, etatServeurReseau, ecouterReseau } from '../../utils/reseau'
+import { demarrerServeurReseau, arreterServeurReseau, etatServeurReseau, envoyerATousReseau, ecouterReseau } from '../../utils/reseau'
 import type { EvenementReseau } from '../../utils/reseau'
 
 const GOLD = '#c9a84c'
@@ -26,6 +26,7 @@ export default function ReseauTab() {
   const [clients, setClients] = useState(0)
   const [journal, setJournal] = useState<LigneJournal[]>([])
   const prochainIdJournal = useRef(0)
+  const [messageATous, setMessageATous] = useState('')
 
   const ajouterJournal = (texte: string) => {
     prochainIdJournal.current += 1
@@ -92,9 +93,31 @@ export default function ReseauTab() {
           </div>
 
           {demarre && (
-            <div style={{ fontSize: 13, color: GOLD, marginBottom: 12 }}>
-              {t('gmMode.reseau.clients', { count: clients })}
-            </div>
+            <>
+              <div style={{ fontSize: 13, color: GOLD, marginBottom: 12 }}>
+                {t('gmMode.reseau.clients', { count: clients })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <input
+                  value={messageATous}
+                  onChange={e => setMessageATous(e.target.value)}
+                  placeholder={t('gmMode.reseau.envoyerATousPlaceholder')}
+                  style={{
+                    flex: 1, padding: '6px 10px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,
+                    background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 13,
+                  }}
+                />
+                <button
+                  onClick={() => { if (messageATous.trim()) { envoyerATousReseau(messageATous); setMessageATous('') } }}
+                  style={{
+                    padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                    border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                  }}
+                >
+                  {t('gmMode.reseau.envoyerATous')}
+                </button>
+              </div>
+            </>
           )}
 
           <div style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>

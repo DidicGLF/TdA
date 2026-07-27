@@ -968,6 +968,17 @@
   "gameMode": {
     "title": "Mode Jeu",
     "clickToFull": "Cliquer pour remettre à plein",
+    "reseau": {
+      "titre": "Réseau",
+      "ipPlaceholder": "IP du MJ (ex. 192.168.1.42)",
+      "connecter": "Connecter",
+      "deconnecter": "Déconnecter",
+      "connecte": "Connecté",
+      "deconnecte": "Déconnecté",
+      "envoyerPlaceholder": "Message de test…",
+      "envoyer": "Envoyer",
+      "journalVide": "Aucun message reçu pour l'instant."
+    },
     "pvCardTitle": "Points de vie",
     "pmCardTitle": "Points de magie",
     "defCardTitle": "DEF",
@@ -1277,7 +1288,9 @@
       "connexionEvt": "Client #{{id}} connecté",
       "deconnexionEvt": "Client #{{id}} déconnecté",
       "messageEvt": "#{{id}} → {{contenu}}",
-      "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur)."
+      "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur).",
+      "envoyerATousPlaceholder": "Message de test à diffuser…",
+      "envoyerATous": "Envoyer à tous"
     },
     "batailleMasse": {
       "intro": "Gère une bataille de masse tour par tour : positionne les PJ, automatise les tests et les dégâts selon l'intensité du combat.",

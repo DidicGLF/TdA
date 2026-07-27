@@ -129,6 +129,7 @@ pub fn run() {
             reseau::demarrer_serveur,
             reseau::arreter_serveur,
             reseau::etat_serveur,
+            reseau::envoyer_a_tous,
         ])
         .setup(|app| {
             tauri::WebviewWindowBuilder::new(

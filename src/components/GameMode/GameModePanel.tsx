@@ -9,6 +9,7 @@ import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 import { parseDesc } from '../../utils/parseDesc'
+import { useReseauClient } from '../../hooks/useReseauClient'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -179,6 +180,13 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const [dotDurationInput, setDotDurationInput] = useState('')
   const [dotTypeInput, setDotTypeInput] = useState('')
   const [gmTooltip, setGmTooltip] = useState<{ title: string; desc?: string; x: number; y: number; below: boolean } | null>(null)
+  // Panneau réseau — étape de test du chantier réseau local (voir useReseauClient et
+  // src/components/GMMode/ReseauTab.tsx côté MJ) : connexion au serveur du MJ par IP saisie à la main,
+  // pas encore de code de partie ni de découverte réseau.
+  const [reseauPanelOuvert, setReseauPanelOuvert] = useState(false)
+  const [reseauIp, setReseauIp] = useState('')
+  const [reseauMessage, setReseauMessage] = useState('')
+  const reseau = useReseauClient()
 
 
   const voiesPerso = useMemo(() => [
@@ -882,9 +890,78 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   return (
     <div style={panelStyle}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, gap: 8, position: 'relative' }}>
         <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, flex: 1, fontFamily: "'Cinzel', serif" }}>{t('gameMode.title')}</span>
+        <button onClick={() => setReseauPanelOuvert(o => !o)} title={t('gameMode.reseau.titre')} style={{
+          background: reseau.connecte ? 'rgba(120,220,140,0.15)' : 'transparent',
+          border: `1px solid ${reseau.connecte ? 'rgba(120,220,140,0.4)' : 'transparent'}`,
+          borderRadius: 4, color: reseau.connecte ? 'rgba(120,220,140,0.95)' : 'rgba(245,236,215,0.5)',
+          cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '4px 6px',
+        }}>🌐</button>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: `rgba(245,236,215,0.5)`, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>✕</button>
+
+        {reseauPanelOuvert && (
+          <div style={{
+            position: 'absolute', top: '100%', right: 8, zIndex: 40, width: 260,
+            background: BG, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
+            boxShadow: '0 6px 20px rgba(0,0,0,0.5)', padding: 12,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {t('gameMode.reseau.titre')} — {reseau.connecte ? t('gameMode.reseau.connecte') : t('gameMode.reseau.deconnecte')}
+            </div>
+
+            {!reseau.connecte ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={reseauIp}
+                  onChange={e => setReseauIp(e.target.value)}
+                  placeholder={t('gameMode.reseau.ipPlaceholder')}
+                  style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                />
+                <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim()) }} style={{
+                  padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                  border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                }}>
+                  {t('gameMode.reseau.connecter')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={reseauMessage}
+                    onChange={e => setReseauMessage(e.target.value)}
+                    placeholder={t('gameMode.reseau.envoyerPlaceholder')}
+                    style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                  />
+                  <button onClick={() => { if (reseauMessage.trim()) { reseau.envoyer(reseauMessage); setReseauMessage('') } }} style={{
+                    padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                    border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                  }}>
+                    {t('gameMode.reseau.envoyer')}
+                  </button>
+                </div>
+                <button onClick={reseau.deconnecter} style={{
+                  padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, alignSelf: 'flex-start',
+                  border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
+                }}>
+                  {t('gameMode.reseau.deconnecter')}
+                </button>
+              </>
+            )}
+
+            <div style={{
+              maxHeight: 140, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3,
+              fontFamily: 'monospace', fontSize: 11, color: 'rgba(245,236,215,0.8)',
+              borderTop: `1px solid ${SECTION_BORDER}`, paddingTop: 6,
+            }}>
+              {reseau.journal.length === 0
+                ? <span style={{ opacity: 0.4 }}>{t('gameMode.reseau.journalVide')}</span>
+                : reseau.journal.map(l => <div key={l.id}>{l.texte}</div>)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Barre PV / PM */}
