@@ -1,6 +1,8 @@
 use std::fs;
 use tauri::Manager;
 
+mod reseau;
+
 fn data_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     // Android n'a pas de dossier Documents accessible — on utilise le répertoire privé de l'app
     #[cfg(target_os = "android")]
@@ -114,6 +116,7 @@ fn open_data_dir(app: tauri::AppHandle) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(tokio::sync::Mutex::new(reseau::EtatReseau::default()))
         .invoke_handler(tauri::generate_handler![
             load_data_file,
             save_data_file,
@@ -123,6 +126,9 @@ pub fn run() {
             read_locale_file,
             write_locale_file,
             list_locale_dir,
+            reseau::demarrer_serveur,
+            reseau::arreter_serveur,
+            reseau::etat_serveur,
         ])
         .setup(|app| {
             tauri::WebviewWindowBuilder::new(

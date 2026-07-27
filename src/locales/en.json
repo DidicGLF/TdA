@@ -1260,7 +1260,24 @@
       "bestiaire": "Bestiary",
       "adversite": "Encounter generator",
       "bataille": "Battle management",
-      "notes": "Notes"
+      "notes": "Notes",
+      "reseau": "Network"
+    },
+    "reseau": {
+      "titre": "Local network server",
+      "intro": "Test step: starts a small local WebSocket server and shows raw connections/messages received. No game protocol yet.",
+      "demarrer": "Start server",
+      "arreter": "Stop server",
+      "arrete": "Server stopped",
+      "demarre": "Server started on port {{port}}",
+      "clients_one": "{{count}} client connected",
+      "clients_other": "{{count}} clients connected",
+      "journal": "Log",
+      "journalVide": "No events yet.",
+      "connexionEvt": "Client #{{id}} connected",
+      "deconnexionEvt": "Client #{{id}} disconnected",
+      "messageEvt": "#{{id}} → {{contenu}}",
+      "horsTauri": "Network is only available in the installed app (not in the browser preview)."
     },
     "batailleMasse": {
       "intro": "Manage a mass battle turn by turn: position the PJs, automate the tests and damage based on the battle's intensity.",

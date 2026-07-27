@@ -1,0 +1,54 @@
+// Mini serveur réseau local côté Maître de Jeu — plomberie de test (voir src-tauri/src/reseau.rs) :
+// démarrer/arrêter le serveur, suivre son état, écouter les messages bruts reçus. Aucun protocole de
+// jeu ici, c'est la première étape du chantier réseau (branche feature/reseau-local).
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+
+const isTauri = () =>
+  typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+export interface EtatServeurReseau {
+  demarre: boolean
+  port: number | null
+  clients: number
+}
+
+// Hors Tauri (dev navigateur pur, cf. tauriStorage.ts), le réseau n'existe pas : on renvoie un état
+// "à l'arrêt" plutôt que de faire planter l'appelant.
+const ETAT_INDISPONIBLE: EtatServeurReseau = { demarre: false, port: null, clients: 0 }
+
+export async function demarrerServeurReseau(): Promise<number | null> {
+  if (!isTauri()) return null
+  return invoke<number>('demarrer_serveur')
+}
+
+export async function arreterServeurReseau(): Promise<void> {
+  if (!isTauri()) return
+  await invoke<void>('arreter_serveur')
+}
+
+export async function etatServeurReseau(): Promise<EtatServeurReseau> {
+  if (!isTauri()) return ETAT_INDISPONIBLE
+  return invoke<EtatServeurReseau>('etat_serveur')
+}
+
+export interface EvenementReseau {
+  type: 'connexion' | 'message' | 'deconnexion'
+  id: number
+  contenu?: string
+}
+
+// Abonnement groupé aux 3 événements émis par reseau.rs — retourne la fonction de désabonnement
+// (à appeler dans le cleanup d'un useEffect). Pas d'effet hors Tauri : listen() n'y recevrait jamais
+// rien, mais autant éviter l'appel pour rester cohérent avec le reste du fichier.
+export async function ecouterReseau(callback: (e: EvenementReseau) => void): Promise<UnlistenFn> {
+  if (!isTauri()) return () => {}
+  const unlistens = await Promise.all([
+    listen<{ id: number }>('reseau:connexion', e => callback({ type: 'connexion', id: e.payload.id })),
+    listen<{ id: number; contenu: string }>('reseau:message', e =>
+      callback({ type: 'message', id: e.payload.id, contenu: e.payload.contenu })),
+    listen<{ id: number }>('reseau:deconnexion', e => callback({ type: 'deconnexion', id: e.payload.id })),
+  ])
+  return () => unlistens.forEach(u => u())
+}

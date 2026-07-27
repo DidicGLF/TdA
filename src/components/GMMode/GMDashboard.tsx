@@ -7,6 +7,7 @@ import CreatureDetail from './CreatureDetail'
 import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
 import BatailleTab from './BatailleTab'
+import ReseauTab from './ReseauTab'
 import NotesTab from '../NotesTab'
 import NotesGraph from '../NotesGraph'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
@@ -30,7 +31,7 @@ const pnjSectionTitreStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 }
 
-type Tab = 'bestiaire' | 'adversite' | 'bataille' | 'notes'
+type Tab = 'bestiaire' | 'adversite' | 'bataille' | 'reseau' | 'notes'
 
 // Générateur de PNJ (voir BestiaireTab) — une catégorie = une table de stats par NC (voir utils/pnj*.ts)
 // partagée par plusieurs variantes ; ce lookup permet au formulaire de rester générique face aux 3
@@ -124,7 +125,7 @@ export default function GMDashboard({ onBack }: Props) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, overflowX: 'auto' }}>
-        {(['bestiaire', 'adversite', 'bataille', 'notes'] as Tab[]).map(tb => (
+        {(['bestiaire', 'adversite', 'bataille', 'reseau', 'notes'] as Tab[]).map(tb => (
           <button key={tb} onClick={() => setTab(tb)} style={{
             padding: '6px 16px', borderRadius: '4px 4px 0 0',
             border: '1px solid rgba(201,168,76,0.4)',
@@ -185,6 +186,7 @@ export default function GMDashboard({ onBack }: Props) {
               onReprendreAutoConsomme={() => setBatailleARepredre(null)}
             />
           )}
+          {tab === 'reseau' && <ReseauTab />}
         </div>
       )}
     </div>

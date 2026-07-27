@@ -1260,7 +1260,24 @@
       "bestiaire": "Bestiaire",
       "adversite": "Générateur de rencontre",
       "bataille": "Gestion de bataille",
-      "notes": "Notes"
+      "notes": "Notes",
+      "reseau": "Réseau"
+    },
+    "reseau": {
+      "titre": "Serveur réseau local",
+      "intro": "Étape de test : démarre un petit serveur WebSocket local et affiche les connexions/messages bruts reçus. Aucun protocole de jeu pour l'instant.",
+      "demarrer": "Démarrer le serveur",
+      "arreter": "Arrêter le serveur",
+      "arrete": "Serveur arrêté",
+      "demarre": "Serveur démarré sur le port {{port}}",
+      "clients_one": "{{count}} client connecté",
+      "clients_other": "{{count}} clients connectés",
+      "journal": "Journal",
+      "journalVide": "Aucun événement pour l'instant.",
+      "connexionEvt": "Client #{{id}} connecté",
+      "deconnexionEvt": "Client #{{id}} déconnecté",
+      "messageEvt": "#{{id}} → {{contenu}}",
+      "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur)."
     },
     "batailleMasse": {
       "intro": "Gère une bataille de masse tour par tour : positionne les PJ, automatise les tests et les dégâts selon l'intensité du combat.",
