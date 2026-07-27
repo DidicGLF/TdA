@@ -1620,7 +1620,10 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   // dans le catalogue officiel armes.json.
   const dmPourArme = (nom: string) => {
     const a = character.armes.find(x => x.nom === nom)
-    return a ? [a.dm, a.attaque].filter(Boolean).join(' ') : ''
+    // a.attaque est une clé de stat brute ('FOR'/'DEX') : l'écrire en "Mod.FOR", reconnue par
+    // rollDmFormula (Mode de jeu) — pas telle quelle, sinon le jet ignore silencieusement ce token et
+    // ne lance que le dé (même bug que equipeArmeSlot dans EquipementModal.tsx).
+    return a ? `${a.dm}${a.attaque ? ` Mod.${a.attaque}` : ''}` : ''
   }
   const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
     e.dataTransfer.setData('cat', cat)

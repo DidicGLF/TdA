@@ -294,7 +294,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     let inv = character.inventaire
     if (prevNom) inv = unmarkEquipe(inv, prevNom)
     if (nom)     inv = markEquipe(inv, nom)
-    const dm = arme ? [arme.dm, arme.attaque].filter(Boolean).join(' ') : ''
+    // arme.attaque est une clé de stat brute ('FOR'/'DEX', voir addArme) : l'écrire ici sous la forme
+    // "Mod.FOR" reconnue par rollDmFormula (Mode de jeu), pas telle quelle — sinon le jet ignore
+    // silencieusement ce token non numérique et ne lance que le dé (voir ChampsRecto.tsx pour le même
+    // souci côté affichage de la fiche).
+    const dm = arme ? `${arme.dm}${arme.attaque ? ` Mod.${arme.attaque}` : ''}` : ''
     const patch: Partial<Character> = slot === 1
       ? { arme1: stripped ?? '', dmArme1: dm }
       : { arme2: stripped ?? '', dmArme2: dm }
