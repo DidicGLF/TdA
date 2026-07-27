@@ -152,7 +152,8 @@ function boostKey(ab: { voieNom: string; rangIdx: number; grantIdx: number }): s
 export default function GameModePanel({ character, descriptions, onChange, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
   const { armes, armures } = useGameData()
-  const isMobile = screenWidth < 700
+  // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
+  const isMobile = screenWidth < 1200
   const [result, setResult] = useState<RollResult | null>(null)
   const [history, setHistory] = useState<RollResult[]>([])
   // Le "character" reçu est déjà la copie de session créée par App.tsx à l'ouverture du Mode de jeu (jamais

@@ -71,7 +71,8 @@ export default function GMDashboard({ onBack }: Props) {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const mobile = screenWidth < 700
+  // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
+  const mobile = screenWidth < 1200
   const [tab, setTab] = useState<Tab>('bestiaire')
   // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
   // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.

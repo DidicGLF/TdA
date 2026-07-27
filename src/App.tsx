@@ -308,7 +308,15 @@ function AppContent() {
     }
   }
 
-  const isMobile = screenWidth < 700
+  // 700px ne couvrait que les téléphones — une vraie tablette Android en paysage (ex. 1138px de large,
+  // observé en test) restait en mise en page desktop malgré un usage tactile. 1200 reste sous les
+  // résolutions courantes d'ordinateur portable (1366+), donc ne bascule pas un petit écran d'ordi.
+  const isMobile = screenWidth < 1200
+  // Distinct de isMobile : sert UNIQUEMENT à bloquer l'accès au mode MJ (voir plus bas), pas les mises
+  // en page. Une tablette (700-1200px) doit rester bloquée par un accueil tactile plus petit qu'un
+  // ordinateur mais garder accès au mode MJ pour tester ses écrans adaptés (tiroirs, etc.) — seul un
+  // téléphone (< 700px) est jugé trop petit pour le mode MJ.
+  const isPhone = screenWidth < 700
 
   const handleLoad = (c: Character, savedMaxStep: number) => {
     const tm = c.talentMagique
@@ -499,7 +507,7 @@ function AppContent() {
     </>
   )
 
-  // ─── Layout mobile (< 700px) ────────────────────────────────────────────
+  // ─── Layout mobile (< 1200px) ───────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
       {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
@@ -545,14 +553,15 @@ function AppContent() {
     </>
   )
 
-  // Mode MJ trop complexe pour un petit écran : si aucun mode n'est choisi, ou si la fenêtre est
-  // redescendue sous le seuil mobile alors qu'on était déjà en MJ, on (re)montre le sélecteur avec
-  // la carte MJ désactivée plutôt que de laisser l'interface MJ s'afficher sur mobile.
-  if (!appMode || (appMode === 'mj' && isMobile)) {
+  // Mode MJ trop complexe pour un téléphone : si aucun mode n'est choisi, ou si la fenêtre est
+  // redescendue sous le seuil téléphone alors qu'on était déjà en MJ, on (re)montre le sélecteur avec
+  // la carte MJ désactivée plutôt que de laisser l'interface MJ s'afficher sur un si petit écran.
+  // Une tablette (isMobile mais pas isPhone) garde l'accès, pour tester les écrans MJ adaptés au tactile.
+  if (!appMode || (appMode === 'mj' && isPhone)) {
     return (
       <>
         <ModeSelector
-          onSelect={setAppMode} mjDisabled={isMobile}
+          onSelect={setAppMode} mjDisabled={isPhone}
           languages={languages} currentLanguage={i18n.language}
           onChangeLanguage={code => { i18n.changeLanguage(code); localStorage.setItem('tda-lang', code) }}
           onOpenTranslations={isAndroid ? undefined : () => setShowTranslationEditor(true)}

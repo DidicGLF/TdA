@@ -474,21 +474,26 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
         }}
       >
         {/* Poignée — reste collée au bord gauche du tiroir (côté intérieur, toujours visible même
-            fermé). Le texte pivote via transform (plus fiable entre moteurs de rendu que writing-mode,
-            qui peut ne pas tourner les caractères latins selon le WebKit utilisé et se contenter de
-            retourner à la ligne). */}
+            fermé). Voir la note détaillée sur le tiroir Personnages de CombatTab : writing-mode plutôt
+            que transform sur le texte (bonne boîte de mise en page, pas de troncature), et l'icône
+            sortie du span vertical car WebKitGTK la décale mal quand elle est insérée dans un flux
+            vertical-rl (constaté sur tablette). */}
         <button
           onMouseEnter={() => setPanelOpen(true)}
           onClick={() => setPanelOpen(o => !o)}
           style={{
-            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '10px 0', background: 'rgba(15,12,8,0.95)',
             border: `1px solid ${SECTION_BORDER}`, borderRight: 'none', borderRadius: '6px 0 0 6px',
             color: GOLD, cursor: 'pointer', boxShadow: '-4px 0 16px rgba(0,0,0,0.4)',
           }}
         >
-          <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.05em', transform: 'rotate(-90deg)' }}>
-            ⚙ {t('gmMode.adversite.parametresCourt')}
+          <span style={{ fontSize: 16 }}>⚙</span>
+          <span style={{
+            writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)',
+            whiteSpace: 'nowrap', fontSize: 13, letterSpacing: '0.05em', marginTop: 4,
+          }}>
+            {t('gmMode.adversite.parametresCourt')}
           </span>
         </button>
 

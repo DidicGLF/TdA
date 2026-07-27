@@ -88,6 +88,11 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     // champ, select) — sinon impossible d'interagir avec la carte sans déclencher un glisser accidentel.
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) return
+    // Sans ça, glisser le pointeur au-dessus du texte des AUTRES cartes pendant le survol sélectionne
+    // ce texte (comportement par défaut du navigateur pour un bouton maintenu en mouvement) — moche et
+    // gênant. preventDefault ici bloque uniquement la sélection/le focus, pas le clic synthétique React
+    // (qui dépend de la paire down/up, pas de ce preventDefault).
+    e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
     pointerDragRef.current = {
       liste, id, width: rect.width, height: rect.height,
@@ -321,8 +326,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     const handleMove = (e: PointerEvent) => {
       const drag = resizeRef.current
       if (!drag || drag.areaWidth <= 0) return
+      // Signe inversé par rapport à avant l'inversion des colonnes : splitRatio pilote maintenant la
+      // colonne de DROITE (créatures) et non plus celle de gauche, donc un déplacement du curseur vers
+      // la droite doit désormais RÉDUIRE splitRatio (agrandir la colonne PJ à gauche, repousser la barre
+      // vers la droite) plutôt que l'augmenter.
       const deltaRatio = (e.clientX - drag.startX) / drag.areaWidth
-      const next = Math.min(0.8, Math.max(0.2, drag.startRatio + deltaRatio))
+      const next = Math.min(0.8, Math.max(0.2, drag.startRatio - deltaRatio))
       onSessionChange({ ...session, splitRatio: next })
     }
     const handleUp = () => { resizeRef.current = null; setIsResizingSplit(false) }
@@ -844,14 +853,27 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
           onMouseEnter={() => setPjPanelOpen(true)}
           onClick={() => setPjPanelOpen(o => !o)}
           style={{
-            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 30, height: 140, flexShrink: 0, alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '10px 0', background: 'rgba(15,12,8,0.95)',
             border: `1px solid ${SECTION_BORDER}`, borderLeft: 'none', borderRadius: '0 6px 6px 0',
             color: GOLD, cursor: 'pointer', boxShadow: '4px 0 16px rgba(0,0,0,0.4)',
           }}
         >
-          <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.05em', transform: 'rotate(-90deg)' }}>
-            🧑 {t('gmMode.bataille.personnages')}
+          {/* writing-mode plutôt que transform: rotate() sur le texte — un texte pivoté par transform
+              garde la boîte de mise en page de sa version NON pivotée (le transform ne change que le
+              dessin, pas la mise en page), donc son espace réservé ne correspond pas à sa taille réelle
+              une fois pivoté : texte coupé (constaté sur tablette). writing-mode empile le texte
+              verticalement nativement, avec la bonne taille de boîte ; rotate(180deg) en plus est sans
+              risque pour la mise en page (contrairement à 90°/-90°, ça ne change pas largeur/hauteur).
+              L'émoji est sorti du span vertical et empilé à part : dans le moteur WebKitGTK, un émoji
+              inséré DANS un flux vertical-rl ne se positionne pas correctement (décalage constaté sur
+              tablette) — en tant qu'élément normal séparé, il n'est pas concerné par la bascule. */}
+          <span style={{ fontSize: 16 }}>🧑</span>
+          <span style={{
+            writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)',
+            whiteSpace: 'nowrap', fontSize: 13, letterSpacing: '0.05em', marginTop: 4,
+          }}>
+            {t('gmMode.bataille.personnages')}
           </span>
         </button>
       </div>

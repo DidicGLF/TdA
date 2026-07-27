@@ -1587,7 +1587,8 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const [showEquipement, setShowEquipement] = React.useState(false)
   const [eqTip, setEqTip] = React.useState<EqTooltip | null>(null)
   const [dragOver, setDragOver] = React.useState<'mainD' | 'mainG' | 'corps' | null>(null)
-  const isMobile = window.innerWidth < 700
+  // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
+  const isMobile = window.innerWidth < 1200
   const [mobileSlotPicker, setMobileSlotPicker] = React.useState<null | 'mainD' | 'mainG' | 'corps'>(null)
   const totalArmes = character.armes.length + character.armuresEquipees.length
 

@@ -79,7 +79,8 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)
-  const isMobile = window.innerWidth < 700
+  // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
+  const isMobile = window.innerWidth < 1200
   const [mobileCatKey, setMobileCatKey] = useState('0-0')
   const [mobileView, setMobileView] = useState<'catalogue' | 'equipe'>('catalogue')
   // Sur petit écran, la colonne des types deviendrait illisible à côté de la liste des armes : on la
