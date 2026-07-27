@@ -28,7 +28,7 @@ import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
 import { loadDataFile, loadDataFileDossier, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
-import { fusionnerBestiaire, migrerBestiairePerso } from '../utils/bestiairePerso'
+import { fusionnerBestiaire, migrerBestiairePerso, cleCreature } from '../utils/bestiairePerso'
 import {
   fusionnerVoies, migrerVoiesPerso, extraireSurchargesVoies,
   fusionnerDescriptions, migrerDescriptionsPerso, extraireSurchargesDescriptions,
@@ -497,22 +497,46 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           const illustrationsStr = await loadDataFileDossier('Maitre de jeu/bestiaire-illustrations.json', 'bestiaire-illustrations.json')
           if (illustrationsStr) setBestiaireIllustrationsRaw(unwrap(JSON.parse(illustrationsStr)) as BestiaireIllustrations)
           const hiddenBestiaireStr = await loadDataFileDossier('Maitre de jeu/hidden-bestiaire.json', 'hidden-bestiaire.json')
-          if (hiddenBestiaireStr) setHiddenBestiaireRaw(unwrap(JSON.parse(hiddenBestiaireStr)) as string[])
+          const hiddenChargees = hiddenBestiaireStr ? unwrap(JSON.parse(hiddenBestiaireStr)) as string[] : []
+          // Réparation d'un bug de migration passé : un nouvel utilisateur (jamais eu de bestiaire.json)
+          // se retrouvait avec la TOTALITÉ du catalogue livré masquée (voir plus bas, branche `else` —
+          // comparer un « ancien » vide au catalogue complet masquait tout, au lieu de ne rien masquer).
+          // Le marqueur : le fichier masqué contient exactement les mêmes clés que le catalogue livré au
+          // complet, rien de plus, rien de moins — un MJ ne masque jamais la totalité de son bestiaire.
+          const clesLivreCompletes = new Set(BESTIAIRE_LIVRE.map(cleCreature))
+          const ressembleAuBugToutMasque = hiddenChargees.length === BESTIAIRE_LIVRE.length
+            && hiddenChargees.every(cle => clesLivreCompletes.has(cle))
+          if (ressembleAuBugToutMasque) {
+            setHiddenBestiaireRaw([])
+            queueSave('Maitre de jeu/hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: [] }, null, 2))
+          } else if (hiddenChargees.length > 0) {
+            setHiddenBestiaireRaw(hiddenChargees)
+          }
         } else {
           // Les images passent d'abord dans images/ (cas d'une installation restée sur une version
           // antérieure aux deux migrations), pour que le découpage qui suit ne charrie pas de base64.
           // bestiaire.json est l'ancien fichier plat (pré-scission livré/perso) : il reste toujours à
           // la racine, jamais déplacé par le rangement en dossiers (voir memory rangement-dossiers).
           const ancienStr = await loadDataFile('bestiaire.json')
-          const ancien = ancienStr ? await migrerImagesBestiaire(unwrap(JSON.parse(ancienStr)) as BestiaireEntry[]) : []
-          const { perso, illustrations, masquees } = migrerBestiairePerso(ancien, BESTIAIRE_LIVRE)
-          setBestiairePersoRaw(perso)
-          setBestiaireIllustrationsRaw(illustrations)
-          setHiddenBestiaireRaw(masquees)
-          // Écrit même à vide : c'est ce fichier qui marque la migration comme faite.
-          queueSave('Maitre de jeu/bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: perso }, null, 2))
-          if (Object.keys(illustrations).length > 0) queueSave('Maitre de jeu/bestiaire-illustrations.json', JSON.stringify({ _type: 'bestiaire-illustrations', data: illustrations }, null, 2))
-          if (masquees.length > 0) queueSave('Maitre de jeu/hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: masquees }, null, 2))
+          if (ancienStr === null) {
+            // Vraiment nouvel utilisateur, jamais eu de bestiaire.json : rien à migrer, et surtout pas
+            // de masquage — migrerBestiairePerso([], livre) masquerait le catalogue entier en comparant
+            // un « ancien » vide au catalogue complet (voir le bug corrigé au chargement, juste au-dessus).
+            setBestiairePersoRaw([])
+            setBestiaireIllustrationsRaw({})
+            setHiddenBestiaireRaw([])
+            queueSave('Maitre de jeu/bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: [] }, null, 2))
+          } else {
+            const ancien = await migrerImagesBestiaire(unwrap(JSON.parse(ancienStr)) as BestiaireEntry[])
+            const { perso, illustrations, masquees } = migrerBestiairePerso(ancien, BESTIAIRE_LIVRE)
+            setBestiairePersoRaw(perso)
+            setBestiaireIllustrationsRaw(illustrations)
+            setHiddenBestiaireRaw(masquees)
+            // Écrit même à vide : c'est ce fichier qui marque la migration comme faite.
+            queueSave('Maitre de jeu/bestiaire-perso.json', JSON.stringify({ _type: 'bestiaire-perso', data: perso }, null, 2))
+            if (Object.keys(illustrations).length > 0) queueSave('Maitre de jeu/bestiaire-illustrations.json', JSON.stringify({ _type: 'bestiaire-illustrations', data: illustrations }, null, 2))
+            if (masquees.length > 0) queueSave('Maitre de jeu/hidden-bestiaire.json', JSON.stringify({ _type: 'hidden-bestiaire', data: masquees }, null, 2))
+          }
         }
         const rencontresStr = await loadDataFileDossier('Maitre de jeu/rencontres-sauvegardees.json', 'rencontres-sauvegardees.json')
         if (rencontresStr) setRencontresRaw(unwrap(JSON.parse(rencontresStr)) as RencontreSauvegardee[])

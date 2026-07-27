@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData, BESTIAIRE_LIVRE } from '../../context/GameDataContext'
 import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature } from '../../utils/bestiairePerso'
@@ -62,6 +62,16 @@ interface Props {
 
 export default function GMDashboard({ onBack }: Props) {
   const { t } = useTranslation()
+  // Même seuil/mécanisme que côté joueur (voir App.tsx) : GMDashboard est monté sans aucune info de
+  // largeur d'écran transmise par son parent, donc reprise ici plutôt que remontée depuis App.tsx —
+  // ce tableau de bord n'a aucune raison de dépendre de l'état de la fiche de personnage.
+  const [screenWidth, setScreenWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const onResize = () => setScreenWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const mobile = screenWidth < 700
   const [tab, setTab] = useState<Tab>('bestiaire')
   // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
   // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.
@@ -165,7 +175,7 @@ export default function GMDashboard({ onBack }: Props) {
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-          {tab === 'bestiaire' && <BestiaireTab forcerNom={bestiaireForcerNom} />}
+          {tab === 'bestiaire' && <BestiaireTab forcerNom={bestiaireForcerNom} mobile={mobile} />}
           {tab === 'adversite' && <AdversiteTab demarrerAuto={rencontreADemarrer} onCombatTermine={onCombatTermine} />}
           {tab === 'bataille' && (
             <BatailleTab
@@ -180,8 +190,12 @@ export default function GMDashboard({ onBack }: Props) {
   )
 }
 
-function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
+function BestiaireTab({ forcerNom, mobile }: { forcerNom?: string | null; mobile: boolean }) {
   const { t } = useTranslation()
+  // Sur mobile, la liste devient un menu flottant (tiroir du bas, même principe que le tiroir
+  // « Gestion » côté joueur) qu'on ouvre à la demande ; le détail occupe alors toute la largeur au
+  // lieu de partager l'espace avec une colonne de liste permanente.
+  const [mobileListeOuverte, setMobileListeOuverte] = useState(false)
   // Le bestiaire livré est en lecture seule (voir la séparation livré/perso dans GameDataContext) :
   // toute modification part soit dans les créatures perso, soit dans le calque d'illustrations, soit
   // dans la liste des masquées. La sélection se fait par nom, l'identifiant des créatures partout
@@ -424,9 +438,21 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
 
   return (
     <>
-    <div style={{ display: 'flex', gap: 16, height: '100%' }}>
-      {/* Liste — colonne gauche */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 520, flexShrink: 0, minHeight: 0 }}>
+    <div style={{ display: 'flex', gap: mobile ? 0 : 16, height: '100%', position: 'relative' }}>
+      {/* Liste — colonne gauche en desktop, tiroir flottant (bas d'écran) ouvert à la demande en mobile.
+          Le contenu (recherche, boutons, tableau) est identique dans les deux cas, seule l'enveloppe
+          change de forme/position. */}
+      {mobile && mobileListeOuverte && (
+        <div onClick={() => setMobileListeOuverte(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)' }} />
+      )}
+      {(!mobile || mobileListeOuverte) && (
+      <div style={mobile ? {
+        display: 'flex', flexDirection: 'column', gap: 12,
+        position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '80vh', zIndex: 201,
+        background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
+        borderRadius: '12px 12px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.8)',
+        padding: 12, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', boxSizing: 'border-box',
+      } : { display: 'flex', flexDirection: 'column', gap: 12, width: 520, flexShrink: 0, minHeight: 0 }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -531,6 +557,7 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                   // Laquelle des fiches de même nom a été cliquée, dans l'ordre stable de `bestiaire`
                   // (indépendant du tri/recherche affichés) : c'est ce qui distingue les deux Orcs.
                   setSelectedOccurrence(listeComplete.filter(x => x.nom === c.nom).indexOf(c))
+                  if (mobile) setMobileListeOuverte(false)
                 }} style={{
                   // Marge droite un peu plus large que les autres côtés : la scrollbar (overlay, s'épaissit
                   // au survol) sinon passe par-dessus le score de NC, collé trop près du bord.
@@ -562,26 +589,38 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Détail — colonne droite */}
-      <div style={{ flex: 1, minWidth: 0, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 20, overflowY: 'auto' }}>
+      {/* Détail — colonne droite en desktop, pleine largeur en mobile (le menu de liste ci-dessus
+          n'occupe alors plus d'espace en permanence, voir le bouton flottant pour l'ouvrir). */}
+      <div style={{ flex: mobile ? undefined : 1, width: mobile ? '100%' : undefined, minWidth: 0, border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: mobile ? 12 : 20, overflowY: 'auto', position: 'relative' }}>
+        {mobile && (
+          <button onClick={() => setMobileListeOuverte(true)} style={{
+            position: 'fixed', bottom: 16, left: 16, zIndex: 150,
+            display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 20,
+            background: 'rgba(15,12,8,0.95)', border: `1px solid ${GOLD}`, color: GOLD,
+            cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+          }}>
+            🐾 {t('gmMode.bestiaireCompte', { count: filtered.length })}
+          </button>
+        )}
         {selected ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Bandeau des créatures livrées. Deux cas seulement : la fiche est verrouillée (on dit
                 pourquoi, sinon elle passe pour une panne), ou elle est masquée (on offre de la
                 réafficher). En mode auteur sur une fiche visible, il n'y a rien à annoncer. */}
-            {selectionLivree && (selectionVerrouillee || masquees.has(selected.nom)) && (
+            {selectionLivree && (selectionVerrouillee || masquees.has(cleCreature(selected))) && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
                 border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: '10px 14px',
                 background: 'rgba(201,168,76,0.05)',
               }}>
                 <span style={{ flex: 1, minWidth: 200, fontSize: 13, lineHeight: 1.45, color: 'rgba(245,236,215,0.7)' }}>
-                  {masquees.has(selected.nom) ? t('gmMode.bestiaireLivreeMasquee') : t('gmMode.bestiaireLivreeInfo')}
+                  {masquees.has(cleCreature(selected)) ? t('gmMode.bestiaireLivreeMasquee') : t('gmMode.bestiaireLivreeInfo')}
                 </span>
                 {/* Copier n'a de sens que sur une fiche visible et verrouillée : sur une fiche
                     masquée, la seule action attendue est de la réafficher. */}
-                {selectionVerrouillee && !masquees.has(selected.nom) && (
+                {selectionVerrouillee && !masquees.has(cleCreature(selected)) && (
                   <button onClick={clonerSelected} style={{
                     background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
                     color: GOLD, cursor: 'pointer', fontSize: 14, padding: '4px 10px', whiteSpace: 'nowrap',
@@ -590,7 +629,7 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
                     ⎘ {t('gmMode.bestiaireClonerPourModifier')}
                   </button>
                 )}
-                {masquees.has(selected.nom) && (
+                {masquees.has(cleCreature(selected)) && (
                   <button onClick={restaurerSelected} style={{
                     background: 'transparent', border: '1px solid rgba(120,200,140,0.5)', borderRadius: 4,
                     color: 'rgba(140,215,160,0.9)', cursor: 'pointer', fontSize: 14, padding: '4px 10px',
@@ -607,7 +646,7 @@ function BestiaireTab({ forcerNom }: { forcerNom?: string | null }) {
               onDelete={deleteSelected}
               lectureSeule={selectionVerrouillee}
               masquageAuLieuDeSuppression={selectionLivree}
-              suppressionDesactivee={selectionLivree && masquees.has(selected.nom)}
+              suppressionDesactivee={selectionLivree && masquees.has(cleCreature(selected))}
             />
           </div>
         ) : (
