@@ -71,7 +71,10 @@ export type CombatPJ = {
 // camp : côté du plateau. Sert à colorer les listes de cibles (alliés en vert, adversaires en rouge) du
 // point de vue de celui qui agit — un compagnon est allié des PJ, donc camp 'pj' malgré sa forme de
 // CombatCreature (voir pjProprietaireId).
-export type CombatEntiteInfo = { id: string; nom: string; def: number; rd: number; pvActuels: number; camp: 'creature' | 'pj' }
+// estPJ : true UNIQUEMENT pour un vrai PJ (pas un compagnon, malgré son camp 'pj' identique) — sert à
+// resoudreAttaque pour savoir si la RD doit être déduite ici (créature, compagnon : pas de Mode de jeu
+// externe, seule source de vérité pour leurs PV) ou laissée au Mode de jeu du PJ (voir plus bas).
+export type CombatEntiteInfo = { id: string; nom: string; def: number; rd: number; pvActuels: number; camp: 'creature' | 'pj'; estPJ: boolean }
 
 export function listerEntites(session: CombatSession, descriptions: DescMap): CombatEntiteInfo[] {
   const creatures = session.combatants.map(c => ({
@@ -81,6 +84,7 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
     rd: getStatAvecBuff(c.creature.rd, c.buffs, 'RD').value,
     pvActuels: c.pvActuels,
     camp: 'creature' as const,
+    estPJ: false,
   }))
   const pjs = session.pjs.map(p => {
     const stats = computeCombatStatsPJ(p.character, descriptions)
@@ -91,6 +95,7 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
       rd: getStatAvecBuff(stats.rd, p.buffs, 'RD').value,
       pvActuels: p.pvActuels,
       camp: 'pj' as const,
+      estPJ: true,
     }
   })
   const compagnons = session.compagnons.map(c => ({
@@ -100,6 +105,7 @@ export function listerEntites(session: CombatSession, descriptions: DescMap): Co
     rd: getStatAvecBuff(c.creature.rd, c.buffs, 'RD').value,
     pvActuels: c.pvActuels,
     camp: 'pj' as const,
+    estPJ: false,
   }))
   return [...creatures, ...pjs, ...compagnons]
 }
@@ -234,10 +240,26 @@ export function rollAttaque(nom: string, bonus: string | undefined, dm: string |
   return result
 }
 
+// Applique la RD d'une cible à un montant de dégâts déjà connu (utilisé quand aucun jet n'a eu lieu
+// ici — attaque d'un PJ résolue à la main par le MJ, voir handleAttaquePJ dans CombatTab.tsx — mais
+// suit la même règle que resoudreAttaque ci-dessous : RD déduite pour une créature/un compagnon (seule
+// source de vérité pour leurs PV), pas pour un PJ (résolue dans son propre Mode de jeu).
+export function appliquerDegatsCible(montant: number, cible: CombatEntiteInfo): { degatsAppliques: number; rdAppliquee?: number } {
+  if (cible.estPJ) return { degatsAppliques: montant }
+  return { degatsAppliques: Math.max(0, montant - cible.rd), rdAppliquee: cible.rd }
+}
+
 // Lance l'attaque puis résout son effet contre une cible assignée : si un jet d'attaque existait et
 // n'atteint pas la DEF de la cible, l'attaque rate (aucun dégât appliqué, même si des DM ont été
 // lancés — ex. un jet de dégâts groupé avec le jet d'attaque). Sinon (touché, ou attaque à zone qui
-// n'a pas de jet d'attaque type "Souffle"), les dégâts sont appliqués réduits par la RD de la cible.
+// n'a pas de jet d'attaque type "Souffle"), les dégâts sont réduits par la RD de la cible — SAUF si la
+// cible est un PJ : sa RD (potentiellement dynamique — boosts défensifs actifs, résistances par type,
+// etc.) n'est fiablement connue et appliquée qu'une fois, côté Mode de jeu de ce PJ (voir
+// computeIncomingDamage/appliquerDegats dans GameModePanel.tsx). L'appliquer aussi ici la
+// déduirait deux fois (une fois ici sur le cartouche, une fois côté joueur) — le montant brut est
+// donc transmis tel quel (annoncé par le MJ ou envoyé automatiquement, voir handleAttaque dans
+// CombatTab.tsx), et session.pjs.pvActuels n'en devient qu'un miroir approximatif de la rencontre,
+// le Mode de jeu du PJ restant la source de vérité pour ses PV.
 // Le MJ garde la main pour corriger ensuite via les boutons +/- PV de la cible.
 export function resoudreAttaque(
   nom: string, bonus: string | undefined, dm: string | undefined,
@@ -252,8 +274,9 @@ export function resoudreAttaque(
   if (rate) {
     result.toucheRate = true
   } else if (result.degatsTotal !== undefined) {
-    result.degatsAppliques = Math.max(0, result.degatsTotal - cible.rd)
-    result.rdAppliquee = cible.rd
+    const { degatsAppliques, rdAppliquee } = appliquerDegatsCible(result.degatsTotal, cible)
+    result.degatsAppliques = degatsAppliques
+    result.rdAppliquee = rdAppliquee
   }
   return result
 }

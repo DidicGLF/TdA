@@ -1,11 +1,16 @@
+import type { Character } from '../types/character'
+
 // Enveloppe de messages du protocole de jeu réseau (jets/dégâts entre MJ et joueur) — partagée entre
 // CombatTab.tsx (MJ) et GameModePanel.tsx (joueur) pour que les deux bouts s'accordent sur une seule
 // définition. Même convention {type, ...} que la découverte UDP (reseau.rs) et importTypage.ts.
 export type MessageReseau =
-  // Envoyé par le joueur dès l'ouverture de la connexion (voir useReseauClient.connecter) : permet au MJ
-  // d'associer cette connexion à un PJ de sa rencontre — par nom, comme le fait déjà tout le code de
-  // ciblage existant (cibleNom, pas d'id stable disponible pour un PJ, voir CombatPJ dans combat.ts).
-  | { type: 'identification'; nom: string }
+  // Envoyé par le joueur dès l'ouverture de la connexion (voir useReseauClient.connecter) et à chaque
+  // réponse à 'qui-etes-vous' : permet au MJ d'associer cette connexion à un PJ de sa rencontre — par
+  // nom, comme le fait déjà tout le code de ciblage existant (cibleNom, pas d'id stable disponible pour
+  // un PJ, voir CombatPJ dans combat.ts). character voyage avec pour que le MJ puisse importer/retrouver
+  // automatiquement ce PJ dans sa rencontre sans glisser-déposer de fichier (voir pjsEnAttente/activerPJ
+  // dans CombatTab.tsx) — déjà JSON-safe, c'est exactement ce que SaveLoadPanel exporte tel quel.
+  | { type: 'identification'; nom: string; character: Character }
   // Joueur → MJ : montant de dégâts que le joueur vient d'infliger à sa cible (saisi à la main côté
   // joueur, comme le fait aujourd'hui le MJ dans handleAttaquePJ — seule la transmission est automatisée).
   | { type: 'degats'; montant: number; typeDegats: string }
@@ -36,4 +41,18 @@ export function decoderMessage(contenu: string): MessageReseau | null {
     // pas du JSON : message de test brut, pas un message de protocole
   }
   return null
+}
+
+// Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
+// joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
+// d'événement plutôt que de la redéfinir en double.
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte'
+
+export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
+  identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
+  degats: 'rgba(255,170,90,0.95)',         // orange — dégâts infligés par un joueur
+  degatsRecus: 'rgba(255,120,120,0.95)',   // rouge — dégâts reçus par le joueur
+  connexion: 'rgba(120,220,140,0.9)',      // vert — connexion
+  deconnexion: 'rgba(245,236,215,0.45)',   // parchemin atténué — déconnexion
+  decouverte: 'rgba(200,170,255,0.85)',    // violet — requête de découverte (code de partie)
 }

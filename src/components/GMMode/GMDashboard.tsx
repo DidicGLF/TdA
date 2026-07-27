@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData, BESTIAIRE_LIVRE } from '../../context/GameDataContext'
 import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature } from '../../utils/bestiairePerso'
@@ -8,6 +8,8 @@ import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
 import BatailleTab from './BatailleTab'
 import ReseauTab from './ReseauTab'
+import type { LigneJournal } from './ReseauTab'
+import type { CategorieJournal } from '../../utils/reseauProtocole'
 import NotesTab from '../NotesTab'
 import NotesGraph from '../NotesGraph'
 import bestiaireIllustration from '../../assets/bestiaire-gold.png'
@@ -75,6 +77,15 @@ export default function GMDashboard({ onBack }: Props) {
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const mobile = screenWidth < 1200
   const [tab, setTab] = useState<Tab>('bestiaire')
+  // Journal réseau — levé ici (plutôt qu'état local de ReseauTab) : cet onglet est démonté/remonté à
+  // chaque changement d'onglet, ce qui viderait un historique local à chaque fois. GMDashboard, lui, ne
+  // démonte jamais tant qu'on reste en mode MJ.
+  const [reseauJournal, setReseauJournal] = useState<LigneJournal[]>([])
+  const prochainIdReseauJournal = useRef(0)
+  const ajouterReseauJournal = useCallback((texte: string, categorie?: CategorieJournal) => {
+    prochainIdReseauJournal.current += 1
+    setReseauJournal(prev => [{ id: prochainIdReseauJournal.current, texte, categorie }, ...prev].slice(0, 200))
+  }, [])
   // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
   // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -186,7 +197,7 @@ export default function GMDashboard({ onBack }: Props) {
               onReprendreAutoConsomme={() => setBatailleARepredre(null)}
             />
           )}
-          {tab === 'reseau' && <ReseauTab />}
+          {tab === 'reseau' && <ReseauTab journal={reseauJournal} ajouterJournal={ajouterReseauJournal} />}
         </div>
       )}
     </div>

@@ -206,9 +206,11 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           />
         </div>
 
-        {/* Dégâts infligés — saisie manuelle : le MJ résout l'attaque lui-même (à la table), pas de
-            jet ni de DEF/RD à calculer ici (voir handleAttaquePJ dans CombatTab). Le type est purement
-            informatif (icône affichée sur le résultat), jamais utilisé pour un calcul de RD. */}
+        {/* Dégâts infligés — saisie manuelle : le MJ résout l'attaque lui-même (à la table) et entre le
+            montant BRUT ; pas de jet propre à recalculer, mais la RD de la cible est déduite ici (voir
+            appliquerDegatsCible/handleAttaquePJ dans CombatTab). Le type est purement informatif (icône
+            affichée sur le résultat), jamais utilisé pour un calcul de RD (pas de résistance par type
+            pour les créatures dans ce modèle, contrairement aux PJ). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase', flexShrink: 0 }}>⚔️ {t('gmMode.bataille.dmInfliges')}</span>
           <NumberField value={montantDegats} onChange={n => setMontantDegats(n ?? 0)}

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PORT_RESEAU } from '../utils/reseau'
 import { encoderMessage, decoderMessage } from '../utils/reseauProtocole'
+import type { CategorieJournal } from '../utils/reseauProtocole'
+import type { Character } from '../types/character'
 
 // Client réseau côté joueur (Mode de jeu) — se connecte au serveur MJ (voir src-tauri/src/reseau.rs et
 // src/components/GMMode/CombatTab.tsx). Un client WebSocket ne nécessite aucun code Rust/Tauri : la CSP
@@ -9,6 +12,7 @@ import { encoderMessage, decoderMessage } from '../utils/reseauProtocole'
 export interface LigneJournalReseau {
   id: number
   texte: string
+  categorie?: CategorieJournal
 }
 
 export interface DegatsRecus {
@@ -23,6 +27,7 @@ export interface DegatsRecus {
 // d'application des dégâts à jour dans une ref (voir GameModePanel.tsx) pour ne pas avoir à la définir
 // avant l'appel à ce hook.
 export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
+  const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
   const [journal, setJournal] = useState<LigneJournalReseau[]>([])
   const socketRef = useRef<WebSocket | null>(null)
@@ -30,13 +35,13 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
   const onDegatsRecusRef = useRef(onDegatsRecus)
   useEffect(() => { onDegatsRecusRef.current = onDegatsRecus })
   // Mémorisé pour pouvoir se réidentifier sur demande (voir 'qui-etes-vous' ci-dessous) sans redemander
-  // le nom à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet qui
-  // démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
-  const nomRef = useRef('')
+  // le personnage à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet
+  // qui démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
+  const characterRef = useRef<Character | null>(null)
 
-  const ajouterJournal = useCallback((texte: string) => {
+  const ajouterJournal = useCallback((texte: string, categorie?: CategorieJournal) => {
     prochainId.current += 1
-    setJournal(prev => [{ id: prochainId.current, texte }, ...prev].slice(0, 200))
+    setJournal(prev => [{ id: prochainId.current, texte, categorie }, ...prev].slice(0, 200))
   }, [])
 
   const deconnecter = useCallback(() => {
@@ -45,31 +50,42 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
     setConnecte(false)
   }, [])
 
-  // nom : identifiant envoyé au MJ dès l'ouverture de la connexion (voir reseauProtocole.ts) pour qu'il
-  // puisse associer cette connexion à un PJ de sa rencontre, par nom (pas d'id stable disponible côté
-  // personnage, cf. la note dans reseauProtocole.ts).
-  const connecter = useCallback((ip: string, nom: string) => {
+  // character : envoyé au MJ dès l'ouverture de la connexion (voir reseauProtocole.ts) pour qu'il puisse
+  // associer cette connexion à un PJ de sa rencontre par nom, et le proposer en attente dans son tiroir
+  // (voir pjsEnAttente/activerPJ dans CombatTab.tsx) — pas d'id stable disponible côté personnage, cf.
+  // la note dans reseauProtocole.ts.
+  const connecter = useCallback((ip: string, character: Character) => {
     socketRef.current?.close()
-    nomRef.current = nom
+    characterRef.current = character
     const socket = new WebSocket(`ws://${ip}:${PORT_RESEAU}`)
     socket.onopen = () => {
       setConnecte(true)
-      socket.send(encoderMessage({ type: 'identification', nom }))
+      socket.send(encoderMessage({ type: 'identification', nom: character.nomPersonnage, character }))
     }
     socket.onmessage = e => {
       const contenu = String(e.data)
       const message = decoderMessage(contenu)
       if (message?.type === 'degats-recus') {
         onDegatsRecusRef.current?.({ montant: message.montant, typeDegats: message.typeDegats, toucheRate: message.toucheRate })
+        const texte = message.toucheRate
+          ? t('gameMode.reseau.attaqueRateeJournal')
+          : t('gameMode.reseau.degatsRecusJournal', { montant: message.montant, type: message.typeDegats || t('gameMode.dmTypeGenerique') })
+        ajouterJournal(texte, 'degatsRecus')
       } else if (message?.type === 'qui-etes-vous') {
-        socket.send(encoderMessage({ type: 'identification', nom: nomRef.current }))
+        // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,
+        // ça n'apporte rien au joueur de le voir.
+        if (characterRef.current) {
+          socket.send(encoderMessage({ type: 'identification', nom: characterRef.current.nomPersonnage, character: characterRef.current }))
+        }
+      } else if (!message) {
+        // Pas un message de protocole reconnu : texte de test brut (voir "message de test"), affiché tel quel.
+        ajouterJournal(contenu)
       }
-      ajouterJournal(contenu)
     }
     socket.onclose = () => setConnecte(false)
     socket.onerror = () => setConnecte(false)
     socketRef.current = socket
-  }, [ajouterJournal])
+  }, [ajouterJournal, t])
 
   const envoyer = useCallback((contenu: string) => {
     socketRef.current?.send(contenu)

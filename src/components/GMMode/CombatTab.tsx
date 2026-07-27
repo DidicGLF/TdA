@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import CombatCard from './CombatCard'
 import PJCard from './PJCard'
-import { importPJ, resoudreAttaque, listerEntites, tickerDots } from '../../utils/combat'
+import { importPJ, resoudreAttaque, appliquerDegatsCible, listerEntites, tickerDots } from '../../utils/combat'
 import type { CombatSession, CombatCreature, RollResult, DotActif } from '../../utils/combat'
 import type { Character } from '../../types/character'
 import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
@@ -76,6 +76,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // pendant le rendu) : écrire une ref pendant le rendu est interdit par les règles des Hooks.
   const sessionRef = useRef(session)
   useEffect(() => { sessionRef.current = session })
+  // PJ connectés au réseau mais pas encore engagés dans la rencontre (voir activerPJ plus bas) —
+  // alimentée directement par l'écoute réseau : un setter issu de useState est stable par nature en
+  // React (contrairement à une fonction redéfinie à chaque rendu), pas besoin d'une ref d'indirection ici.
+  const [pjsEnAttente, setPjsEnAttente] = useState<{ connexionId: number; character: Character }[]>([])
+  // PJ importés par fichier (voir handleFiles) mais pas encore engagés — même principe que pjsEnAttente
+  // côté réseau, pour que le MJ voie clairement d'où vient chaque PJ avant de l'ajouter à la rencontre.
+  const [pjsImportesEnAttente, setPjsImportesEnAttente] = useState<Character[]>([])
 
   // Réorganisation par pointeur des cartes (créatures ET PJ, chacune dans sa propre colonne — jamais
   // l'une vers l'autre). Le drag-and-drop HTML5 natif (draggable/dragover/drop) n'est pas fiable dans
@@ -387,11 +394,26 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     let annule = false
     let desabonner = () => {}
     ecouterReseau(e => {
+      // Un PJ en attente dont le joueur repart n'a encore rien à défaire dans la rencontre (il n'y a
+      // jamais été ajouté) — juste retirer l'entrée pour ne pas la laisser traîner.
+      if (e.type === 'deconnexion') {
+        setPjsEnAttente(prev => prev.filter(p => p.connexionId !== e.id))
+        return
+      }
       if (e.type !== 'message') return
       const message = decoderMessage(e.contenu)
       if (!message) return
       if (message.type === 'identification') {
         clientsPJRef.current = { ...clientsPJRef.current, [e.id]: message.nom }
+        // Déjà engagé dans la rencontre (ex. réponse à qui-etes-vous après un changement d'onglet) :
+        // rien à faire, on ne le remet pas en attente par-dessus.
+        const dejaEngage = sessionRef.current?.pjs.some(p => p.character.nomPersonnage === message.character.nomPersonnage)
+        if (!dejaEngage) {
+          setPjsEnAttente(prev => [
+            ...prev.filter(p => p.character.nomPersonnage !== message.character.nomPersonnage),
+            { connexionId: e.id, character: message.character },
+          ])
+        }
       } else if (message.type === 'degats') {
         const nom = clientsPJRef.current[e.id]
         const pj = nom ? sessionRef.current?.pjs.find(p => p.character.nomPersonnage === nom) : undefined
@@ -493,8 +515,11 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     })
   }
 
+  // Met les PJ importés en attente (voir pjsImportesEnAttente) au lieu de les ajouter directement à la
+  // rencontre — même principe que les PJ réseau (pjsEnAttente), pour que le MJ décide explicitement du
+  // moment où chacun rejoint le combat, quelle que soit sa provenance.
   const handleFiles = async (files: FileList) => {
-    const nouveaux: CombatSession['pjs'] = []
+    const nouveaux: Character[] = []
     const rejets: string[] = []
     for (const file of Array.from(files)) {
       try {
@@ -508,19 +533,53 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
           if (type && type !== 'personnage') { rejets.push(messageMauvaisType(t, 'personnage', type)); continue }
           const c = contenu as { character?: Character; caracteristiques?: unknown } | undefined
           const character: Character | undefined = c?.character ?? (c?.caracteristiques ? (c as Character) : undefined)
-          if (character) nouveaux.push(importPJ(character, descriptions))
+          if (character) nouveaux.push(character)
         }
       } catch { /* fichier invalide, ignoré */ }
     }
     if (rejets.length > 0) { setSaveMsg(rejets.join(' ')); setTimeout(() => setSaveMsg(null), 5000) }
-    // Classés par initiative décroissante, quel que soit l'ordre d'import des fichiers (même règle que
-    // les créatures au lancement d'une rencontre, voir demarrerCombat dans combat.ts).
     if (nouveaux.length > 0) {
-      const pjs = [...session.pjs, ...nouveaux].sort((a, b) => b.character.initiative - a.character.initiative)
-      const compagnons = [...session.compagnons, ...nouveaux.flatMap(compagnonsDe)]
-      onSessionChange({ ...session, pjs, compagnons })
+      setPjsImportesEnAttente(prev => {
+        // Dédoublonné par nom, contre la rencontre active ET contre la liste d'attente elle-même — un
+        // fichier réimporté deux fois (ou déjà engagé) ne doit pas créer d'entrée en double.
+        const dejaPresents = new Set([...session.pjs.map(p => p.character.nomPersonnage), ...prev.map(c => c.nomPersonnage)])
+        const aAjouter = nouveaux.filter(c => !dejaPresents.has(c.nomPersonnage))
+        return [...prev, ...aAjouter]
+      })
     }
   }
+
+  // Fait passer un PJ d'une des deux listes d'attente (réseau pjsEnAttente, ou fichier
+  // pjsImportesEnAttente) à la rencontre active — même logique d'import + compagnons + tri par
+  // initiative dans les deux cas, seule la provenance affichée dans le tiroir diffère. Déclenchée par un
+  // clic (bouton du tiroir), jamais par l'écoute réseau elle-même : pas besoin de ref d'indirection ici,
+  // un gestionnaire de clic ferme toujours sur le rendu le plus récent. Retirer des DEUX listes ne pose
+  // pas de risque : un PJ n'est jamais présent que dans une seule des deux.
+  const activerPJ = (character: Character) => {
+    const nouveau = importPJ(character, descriptions)
+    const pjs = [...session.pjs, nouveau].sort((a, b) => b.character.initiative - a.character.initiative)
+    const compagnons = [...session.compagnons, ...compagnonsDe(nouveau)]
+    onSessionChange({ ...session, pjs, compagnons })
+    setPjsEnAttente(prev => prev.filter(p => p.character.nomPersonnage !== character.nomPersonnage))
+    setPjsImportesEnAttente(prev => prev.filter(c => c.nomPersonnage !== character.nomPersonnage))
+  }
+
+  // Une ligne des listes d'attente du tiroir (réseau ou fichier) — même structure visuelle pour les
+  // deux, seule la section englobante (avec ou sans 🌐) distingue la provenance.
+  const rendrePJAttente = (cle: string | number, nom: string, onAjouter: () => void) => (
+    <div key={cle} style={{
+      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+      border: '1px dashed rgba(201,168,76,0.4)', borderRadius: 6,
+    }}>
+      <span style={{ flex: 1, fontSize: 13, color: PARCHMENT }}>{nom}</span>
+      <button onClick={onAjouter} style={{
+        background: 'rgba(201,168,76,0.12)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+        color: GOLD, cursor: 'pointer', fontSize: 11, padding: '2px 8px', whiteSpace: 'nowrap',
+      }}>
+        {t('gmMode.bataille.ajouterALaRencontre')}
+      </button>
+    </div>
+  )
 
   // Un seul appel à onSessionChange pour tout l'attaque (résultat sur l'attaquant + dégâts sur la
   // cible) : deux appels séparés à updateCombatant/updatePJ ici se baseraient tous deux sur le même
@@ -562,23 +621,26 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   }
 
   // Un PJ n'a pas de moteur de jet propre : le MJ résout l'attaque lui-même (à la table ou de tête) et
-  // saisit directement le montant final infligé — pas de jet d'attaque/DEF/RD à recalculer ici, juste
-  // l'appliquer à la cible et garder le résultat pour l'afficher (cartouche + lien, voir ResultatCartouche).
-  // type est purement informatif (icône affichée), jamais utilisé pour un calcul de RD — voir RollResult.
+  // saisit le montant BRUT infligé (même convention que l'envoi automatique réseau, voir
+  // envoyerDegatsReseau dans GameModePanel.tsx) — la RD de la cible est déduite ici via
+  // appliquerDegatsCible, comme pour une attaque de créature (voir resoudreAttaque), pour apparaître
+  // dans le cartouche. type est purement informatif (icône affichée), jamais utilisé pour un calcul de
+  // RD — les créatures n'ont pas de résistance par type dans ce modèle, contrairement aux PJ.
   const handleAttaquePJ = (pj: CombatSession['pjs'][number], montant: number, type: string) => {
     const cibleInfo = pj.cibleId ? cibles.find(c => c.id === pj.cibleId) ?? null : null
     if (!cibleInfo || montant <= 0) return
+    const { degatsAppliques, rdAppliquee } = appliquerDegatsCible(montant, cibleInfo)
     const result: RollResult = {
       attaqueNom: t('gmMode.bataille.attaqueManuelle'), cibleNom: cibleInfo.nom,
-      degatsAppliques: montant, typeDegats: type || undefined,
+      degatsTotal: montant, degatsAppliques, rdAppliquee, typeDegats: type || undefined,
     }
     const cibleId = pj.cibleId
 
-    const nextCombatants = session.combatants.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - montant) } : c)
-    const nextCompagnons = session.compagnons.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - montant) } : c)
+    const nextCombatants = session.combatants.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques) } : c)
+    const nextCompagnons = session.compagnons.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques) } : c)
     const nextPjs = session.pjs.map(p => {
       if (p.id === pj.id) return { ...p, dernierResultat: result }
-      if (p.id === cibleId) return { ...p, pvActuels: Math.max(0, p.pvActuels - montant) }
+      if (p.id === cibleId) return { ...p, pvActuels: Math.max(0, p.pvActuels - degatsAppliques) }
       return p
     })
 
@@ -812,11 +874,10 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                     markerEnd={l.source === 'pj' ? 'url(#cible-fleche-pj)' : 'url(#cible-fleche)'} />
                   {(() => {
                     const ligneAtk = l.jetTotal !== undefined
-                    // degatsAppliques (pas degatsTotal) : un PJ n'a pas de jet propre, seul le montant
-                    // final saisi à la main par le MJ existe (voir handleAttaquePJ) — degatsTotal reste
-                    // alors undefined et la ligne se réduit au montant seul, sans détail brut/RD.
                     const ligneDm = !l.toucheRate && l.degatsAppliques !== undefined
-                    const detailDm = l.degatsTotal !== undefined
+                    // rdAppliquee undefined alors que degatsTotal est défini : cible PJ (voir
+                    // resoudreAttaque dans combat.ts) — RD non résolue ici, pas de faux "RD 0".
+                    const detailDm = l.degatsTotal !== undefined && l.rdAppliquee !== undefined
                     if (!ligneAtk && !ligneDm) return null
                     const deuxLignes = ligneAtk && ligneDm
                     const boxHeight = deuxLignes ? 50 : 32
@@ -903,6 +964,28 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
             >
               📂 {t('gmMode.bataille.importerPJ')}
             </button>
+
+            {/* PJ connectés au réseau mais pas encore engagés (voir pjsEnAttente) — un joueur peut se
+                connecter puis rejoindre le combat plus tard, pas forcément dès sa connexion. */}
+            {pjsEnAttente.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(245,236,215,0.5)' }}>
+                  🌐 {t('gmMode.bataille.pjEnAttente')}
+                </span>
+                {pjsEnAttente.map(p => rendrePJAttente(p.connexionId, p.character.nomPersonnage, () => activerPJ(p.character)))}
+              </div>
+            )}
+
+            {/* PJ importés par fichier mais pas encore engagés (voir handleFiles/pjsImportesEnAttente) —
+                même principe que ci-dessus, sans le 🌐 : distingue visuellement la provenance. */}
+            {pjsImportesEnAttente.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(245,236,215,0.5)' }}>
+                  {t('gmMode.bataille.pjImportesEnAttente')}
+                </span>
+                {pjsImportesEnAttente.map(c => rendrePJAttente(c.nomPersonnage, c.nomPersonnage, () => activerPJ(c)))}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {session.pjs.length === 0 ? (

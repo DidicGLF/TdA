@@ -12,7 +12,7 @@ import { parseDesc } from '../../utils/parseDesc'
 import { useReseauClient } from '../../hooks/useReseauClient'
 import type { DegatsRecus } from '../../hooks/useReseauClient'
 import { rechercherPartieReseau } from '../../utils/reseau'
-import { encoderMessage } from '../../utils/reseauProtocole'
+import { encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -194,8 +194,6 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const [reseauManuelOuvert, setReseauManuelOuvert] = useState(false)
   const [reseauIp, setReseauIp] = useState('')
   const [reseauMessage, setReseauMessage] = useState('')
-  const [reseauDegatsMontant, setReseauDegatsMontant] = useState('')
-  const [reseauDegatsType, setReseauDegatsType] = useState('')
   // La logique d'application des dégâts reçus (appliquerDegats/pushHistory, définie plus bas dans le
   // composant) n'existe pas encore à ce point — cette ref est synchronisée juste après sa définition
   // (voir plus bas) et lue uniquement depuis le callback réseau, jamais pendant le rendu.
@@ -203,13 +201,21 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const onDegatsRecus = useCallback((d: DegatsRecus) => gererDegatsRecusRef.current(d), [])
   const reseau = useReseauClient(onDegatsRecus)
 
+  // Transmission automatique au MJ de tout dégât infligé via le Mode de jeu (voir handleActionDegats/
+  // handleWeaponDegats/handleRollBonusDice ci-dessous) — pas de type de dégâts fiable à déduire côté
+  // joueur pour ces jets (DAMAGE_TYPES sert aux résistances de dégâts reçus, pas aux dégâts infligés),
+  // donc envoyé générique ; le MJ l'affiche comme tel dans son journal.
+  const envoyerDegatsReseau = (montant: number) => {
+    if (reseau.connecte && montant > 0) reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: '' }))
+  }
+
   const rechercherEtConnecter = async () => {
     if (!reseauCode.trim()) return
     setReseauRecherche(true)
     setReseauIntrouvable(false)
     const ip = await rechercherPartieReseau(reseauCode.trim())
     setReseauRecherche(false)
-    if (ip) reseau.connecter(ip, character.nomPersonnage)
+    if (ip) reseau.connecter(ip, character)
     else setReseauIntrouvable(true)
   }
 
@@ -507,12 +513,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         : { rangNom: ab.rangNom, voieNom: ab.voieNom, rangIdx: ab.rangIdx })
     }
     pushResult({ label: `💥 ${action.label} — ${t('gameMode.sufDm')}`, formula: formulaParts.join(' + '), sides: 6, roll: total, modifier: null, total, rollDisplay: displayParts.join(' '), flash: false, contributingEffects })
+    envoyerDegatsReseau(total)
   }
 
   const handleRollBonusDice = (ab: AvailableBonus) => {
     if (!ab.deDegats) return
     const { formula, total, display } = rollDmFormula(ab.deDegats)
     pushResult({ label: `💥 ${ab.label} — ${t('gameMode.sufDm')}`, formula, sides: 6, roll: total, modifier: null, total, rollDisplay: display, flash: false })
+    envoyerDegatsReseau(total)
   }
 
   const stripExposants = (nom: string) => nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
@@ -554,6 +562,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         : { rangNom: ab.rangNom, voieNom: ab.voieNom, rangIdx: ab.rangIdx })
     }
     pushResult({ label: `💥 ${label} — ${t('gameMode.sufDm')}`, formula: formulaParts.join(' + '), sides: 6, roll: total, modifier: null, total, rollDisplay: displayParts.join(' '), flash: false, contributingEffects })
+    envoyerDegatsReseau(total)
   }
 
   const activateDuration = (ab: AvailableBonus, key: string) => {
@@ -833,6 +842,10 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   // invoquée directement depuis le callback onmessage du socket (voir useReseauClient) — pas de state+
   // effet intermédiaire, qui ne ferait qu'appeler ces mêmes setState en réaction à un changement d'état.
   // toucheRate=true veut dire une attaque ratée : rien à appliquer, juste une ligne d'historique.
+  // montant est le dégât BRUT (voir resoudreAttaque dans combat.ts — la RD n'est plus résolue côté MJ
+  // pour une cible PJ, justement pour n'être appliquée qu'une fois, ici) : on repasse par
+  // appliquerDegats/computeIncomingDamage, exactement comme la saisie manuelle (handleTakeDamage), pour
+  // que réseau et hors-ligne appliquent la RD au même endroit et de la même façon.
   useEffect(() => {
     gererDegatsRecusRef.current = ({ montant, typeDegats, toucheRate }) => {
       if (toucheRate) {
@@ -952,8 +965,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
             boxShadow: '0 6px 20px rgba(0,0,0,0.5)', padding: 12,
             display: 'flex', flexDirection: 'column', gap: 8,
           }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {t('gameMode.reseau.titre')} — {reseau.connecte ? t('gameMode.reseau.connecte') : t('gameMode.reseau.deconnecte')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {t('gameMode.reseau.titre')} — {reseau.connecte ? t('gameMode.reseau.connecte') : t('gameMode.reseau.deconnecte')}
+              </div>
+              <button onClick={() => setReseauPanelOuvert(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.5)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
             </div>
 
             {!reseau.connecte ? (
@@ -992,7 +1008,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                       placeholder={t('gameMode.reseau.ipPlaceholder')}
                       style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
                     />
-                    <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim(), character.nomPersonnage) }} style={{
+                    <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim(), character) }} style={{
                       padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
                       border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                     }}>
@@ -1003,42 +1019,12 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               </>
             ) : (
               <>
-                {/* Dégâts à envoyer au MJ — le joueur saisit le montant qu'il vient d'infliger (jet déjà
-                    fait plus haut dans le panneau), comme il le dicterait à voix haute au MJ ; seule la
-                    transmission est automatisée (voir handleAttaquePJ côté MJ, inchangé). */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    type="number" min={1}
-                    value={reseauDegatsMontant}
-                    onChange={e => setReseauDegatsMontant(e.target.value)}
-                    placeholder={t('gameMode.reseau.degatsPlaceholder')}
-                    style={{ width: 70, flexShrink: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
-                  />
-                  <select
-                    value={reseauDegatsType}
-                    onChange={e => setReseauDegatsType(e.target.value)}
-                    style={{ flex: 1, minWidth: 0, padding: '5px 4px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
-                  >
-                    <option value="">{t('gameMode.dmTypeGenerique')}</option>
-                    {DAMAGE_TYPES.map(type => (
-                      <option key={type} value={type}>{t(`gameMode.dmType${type}`)}</option>
-                    ))}
-                  </select>
+                {/* Les dégâts infligés via le Mode de jeu (handleActionDegats/handleWeaponDegats/
+                    handleRollBonusDice) sont désormais transmis au MJ automatiquement, sans action du
+                    joueur — voir envoyerDegatsReseau. Ce panneau ne garde qu'un repère visuel. */}
+                <div style={{ fontSize: 11, color: 'rgba(120,220,140,0.85)' }}>
+                  {t('gameMode.reseau.envoiAutomatique')}
                 </div>
-                <button
-                  onClick={() => {
-                    const montant = parseInt(reseauDegatsMontant, 10)
-                    if (!Number.isFinite(montant) || montant <= 0) return
-                    reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: reseauDegatsType }))
-                    setReseauDegatsMontant('')
-                  }}
-                  style={{
-                    padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-                    border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
-                  }}
-                >
-                  {t('gameMode.reseau.envoyerDegats')}
-                </button>
 
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input
@@ -1070,7 +1056,9 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
             }}>
               {reseau.journal.length === 0
                 ? <span style={{ opacity: 0.4 }}>{t('gameMode.reseau.journalVide')}</span>
-                : reseau.journal.map(l => <div key={l.id}>{l.texte}</div>)}
+                : reseau.journal.map(l => (
+                  <div key={l.id} style={l.categorie ? { color: COULEUR_JOURNAL[l.categorie] } : undefined}>{l.texte}</div>
+                ))}
             </div>
           </div>
         )}

@@ -29,11 +29,10 @@ interface Props {
 function BlocResultat({ resultat }: { resultat: RollResult | null | undefined }) {
   const { t } = useTranslation()
   const ligneAtk = resultat?.jetTotal !== undefined
-  // degatsAppliques (pas degatsTotal) : un PJ n'a pas de jet propre, seul le montant final infligé à
-  // la main par le MJ existe (voir CombatPJ.dernierResultat) — degatsTotal reste alors undefined et la
-  // ligne se réduit au montant seul, sans le détail « brut — RD = appliqué » d'une créature.
+  // rdAppliquee undefined alors que degatsTotal est défini : cible PJ (voir resoudreAttaque dans
+  // combat.ts) — la RD n'est plus résolue ici, pas de faux "RD 0" à afficher, juste le montant brut.
   const ligneDm = !!resultat && !resultat.toucheRate && resultat.degatsAppliques !== undefined
-  const detailDm = !!resultat && resultat.degatsTotal !== undefined
+  const detailDm = !!resultat && resultat.degatsTotal !== undefined && resultat.rdAppliquee !== undefined
   if (!ligneAtk && !ligneDm) return null
   return (
     <>
