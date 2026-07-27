@@ -980,6 +980,11 @@
       "deconnecter": "Disconnect",
       "connecte": "Connected",
       "deconnecte": "Disconnected",
+      "degatsPlaceholder": "DM",
+      "envoyerDegats": "Send to GM",
+      "degatsRecusLabel": "Damage received (network)",
+      "attaqueRateeLabel": "Attack received — missed",
+      "attaqueRateeFormule": "No damage",
       "envoyerPlaceholder": "Test message…",
       "envoyer": "Send",
       "journalVide": "No messages received yet."

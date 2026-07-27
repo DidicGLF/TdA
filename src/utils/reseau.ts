@@ -38,6 +38,13 @@ export async function envoyerATousReseau(contenu: string): Promise<void> {
   await invoke<void>('envoyer_a_tous', { contenu })
 }
 
+// Envoie à UN seul client connecté (protocole de jeu — voir reseauProtocole.ts), identifié par l'id
+// reçu dans les événements reseau:connexion/reseau:message.
+export async function envoyerAClientReseau(id: number, contenu: string): Promise<void> {
+  if (!isTauri()) return
+  await invoke<void>('envoyer_a_client', { id, contenu })
+}
+
 export async function etatServeurReseau(): Promise<EtatServeurReseau> {
   if (!isTauri()) return ETAT_INDISPONIBLE
   return invoke<EtatServeurReseau>('etat_serveur')

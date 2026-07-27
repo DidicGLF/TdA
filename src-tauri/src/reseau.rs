@@ -253,6 +253,19 @@ pub async fn envoyer_a_tous(contenu: String, state: State<'_, Mutex<EtatReseau>>
     Ok(())
 }
 
+// Envoie contenu à UN seul client (protocole de jeu — voir reseauProtocole.ts côté frontend, ex. les
+// dégâts reçus renvoyés au joueur ciblé) plutôt qu'à tout le monde comme envoyer_a_tous. Silencieux si
+// l'id ne correspond à aucun client connecté (déconnecté entre-temps) — pas une erreur à signaler.
+#[tauri::command]
+pub async fn envoyer_a_client(id: u32, contenu: String, state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
+    let etat = state.lock().await;
+    let clients = etat.clients.lock().await;
+    if let Some(tx) = clients.get(&id) {
+        let _ = tx.send(Message::Text(contenu.into()));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn arreter_serveur(state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
     let mut etat = state.lock().await;

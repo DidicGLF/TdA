@@ -10,6 +10,8 @@ import type { Character } from '../../types/character'
 import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 import { compagnonEnCreature } from '../../utils/compagnons'
 import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
+import { ecouterReseau, envoyerAClientReseau, envoyerATousReseau } from '../../utils/reseau'
+import { encoderMessage, decoderMessage } from '../../utils/reseauProtocole'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -58,6 +60,22 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const splitRatio = session?.splitRatio ?? 0.5
   const [isResizingSplit, setIsResizingSplit] = useState(false)
   const resizeRef = useRef<{ startX: number; startRatio: number; areaWidth: number } | null>(null)
+
+  // Correspondance connexion réseau → nom de PJ (voir reseauProtocole.ts), alimentée au fil des messages
+  // d'identification reçus (un joueur connecté envoie son nom dès l'ouverture, voir useReseauClient). En
+  // ref (pas un state) : rien dans l'UI n'affiche cette liste, seuls handleAttaque et l'écoute réseau
+  // (abonnée une seule fois, voir plus bas) ont besoin de sa valeur la plus récente.
+  const clientsPJRef = useRef<Record<number, string>>({})
+  // handleAttaquePJ est redéfini à chaque rendu (ferme sur le session de CE rendu) : l'écoute réseau,
+  // abonnée une seule fois au montage, doit passer par cette ref (mise à jour juste après sa définition
+  // plus bas) pour toujours appeler la version la plus récente — sinon les dégâts reçus par réseau
+  // s'appliqueraient toujours sur l'état de session du tout premier rendu.
+  const handleAttaquePJRef = useRef<(pj: CombatSession['pjs'][number], montant: number, type: string) => void>(() => {})
+  // Même besoin que handleAttaquePJRef ci-dessus : l'écoute réseau doit retrouver le PJ par nom dans la
+  // session la PLUS RÉCENTE, pas celle du rendu où elle s'est abonnée. Synchronisée dans un effet (pas
+  // pendant le rendu) : écrire une ref pendant le rendu est interdit par les règles des Hooks.
+  const sessionRef = useRef(session)
+  useEffect(() => { sessionRef.current = session })
 
   // Réorganisation par pointeur des cartes (créatures ET PJ, chacune dans sa propre colonne — jamais
   // l'une vers l'autre). Le drag-and-drop HTML5 natif (draggable/dragover/drop) n'est pas fiable dans
@@ -361,6 +379,36 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     }
   }, [recomputeLinks])
 
+  // Écoute réseau (jets/dégâts, voir reseauProtocole.ts) : abonnement une seule fois — pas reconstruit à
+  // chaque changement de session, ce qui ouvrirait une fenêtre de désabonnement/réabonnement à chaque
+  // action de combat. clientsPJRef/handleAttaquePJRef/sessionRef (voir plus haut) donnent accès aux
+  // valeurs les plus récentes sans dépendre d'un effet reconstruit.
+  useEffect(() => {
+    let annule = false
+    let desabonner = () => {}
+    ecouterReseau(e => {
+      if (e.type !== 'message') return
+      const message = decoderMessage(e.contenu)
+      if (!message) return
+      if (message.type === 'identification') {
+        clientsPJRef.current = { ...clientsPJRef.current, [e.id]: message.nom }
+      } else if (message.type === 'degats') {
+        const nom = clientsPJRef.current[e.id]
+        const pj = nom ? sessionRef.current?.pjs.find(p => p.character.nomPersonnage === nom) : undefined
+        if (pj) handleAttaquePJRef.current(pj, message.montant, message.typeDegats)
+      }
+    }).then(fn => {
+      if (annule) { fn(); return }
+      desabonner = fn
+      // Redemande à tous les clients déjà connectés de se réidentifier (voir reseauProtocole.ts) :
+      // clientsPJRef vient d'être recréée vide par ce (re)montage, mais leur connexion WebSocket, elle,
+      // est restée ouverte pendant qu'on était sur un autre onglet — sans ça, elle resterait vide
+      // jusqu'à la prochaine (re)connexion d'un joueur.
+      envoyerATousReseau(encoderMessage({ type: 'qui-etes-vous' }))
+    })
+    return () => { annule = true; desabonner() }
+  }, [])
+
   // listerEntites recalcule les stats de combat de chaque PJ (computeCombatStatsPJ, coûteux — scan
   // voies/traits/cristaux) : mémoïsé pour ne pas repayer ce coût à chaque rendu déclenché par le survol
   // pendant un glisser-déposer (dragState/dropIndex changent bien plus souvent qu'une vraie mise à jour
@@ -498,6 +546,19 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       : session.pjs
 
     onSessionChange({ ...session, combatants: nextCombatants, compagnons: nextCompagnons, pjs: nextPjs })
+
+    // Si la cible est un PJ connecté au réseau (voir clientsPJRef), lui envoyer automatiquement le
+    // résultat — le MJ a déjà décidé l'action en cliquant "Attaquer", pas besoin d'une confirmation
+    // supplémentaire (contrairement à l'envoi joueur → MJ, resté manuel — voir GameModePanel.tsx).
+    const cibleEstPJ = cibleId ? session.pjs.find(p => p.id === cibleId) : undefined
+    if (cibleEstPJ) {
+      const connexionId = Object.entries(clientsPJRef.current).find(([, nom]) => nom === cibleEstPJ.character.nomPersonnage)?.[0]
+      if (connexionId !== undefined) {
+        envoyerAClientReseau(Number(connexionId), encoderMessage({
+          type: 'degats-recus', montant: degats ?? 0, typeDegats: result.typeDegats ?? '', toucheRate: !!result.toucheRate,
+        }))
+      }
+    }
   }
 
   // Un PJ n'a pas de moteur de jet propre : le MJ résout l'attaque lui-même (à la table ou de tête) et
@@ -523,6 +584,14 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
 
     onSessionChange({ ...session, combatants: nextCombatants, compagnons: nextCompagnons, pjs: nextPjs })
   }
+  // Voir la note sur handleAttaquePJRef plus haut : synchronisée à chaque rendu pour que l'écoute
+  // réseau (abonnée une seule fois) appelle toujours la version la plus récente. Pas un useEffect ici :
+  // handleAttaquePJ n'existe qu'après le retour anticipé "if (!session)" plus haut, un Hook ne peut pas
+  // être appelé après un retour conditionnel. La ref n'est de toute façon jamais lue pendant le rendu
+  // (seulement depuis le callback réseau asynchrone ci-dessus), donc cette écriture est sûre malgré
+  // l'avertissement.
+  // eslint-disable-next-line react-hooks/refs
+  handleAttaquePJRef.current = handleAttaquePJ
 
   // Pose un effet de dégâts sur la durée sur la cible actuelle du PJ (poison, brûlure, ...) — encaissé
   // automatiquement à chaque « Tour suivant » (voir tickerDots), sans appliquer de dégâts immédiats :

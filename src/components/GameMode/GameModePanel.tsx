@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
@@ -10,7 +10,9 @@ import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 import { parseDesc } from '../../utils/parseDesc'
 import { useReseauClient } from '../../hooks/useReseauClient'
+import type { DegatsRecus } from '../../hooks/useReseauClient'
 import { rechercherPartieReseau } from '../../utils/reseau'
+import { encoderMessage } from '../../utils/reseauProtocole'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -192,7 +194,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const [reseauManuelOuvert, setReseauManuelOuvert] = useState(false)
   const [reseauIp, setReseauIp] = useState('')
   const [reseauMessage, setReseauMessage] = useState('')
-  const reseau = useReseauClient()
+  const [reseauDegatsMontant, setReseauDegatsMontant] = useState('')
+  const [reseauDegatsType, setReseauDegatsType] = useState('')
+  // La logique d'application des dégâts reçus (appliquerDegats/pushHistory, définie plus bas dans le
+  // composant) n'existe pas encore à ce point — cette ref est synchronisée juste après sa définition
+  // (voir plus bas) et lue uniquement depuis le callback réseau, jamais pendant le rendu.
+  const gererDegatsRecusRef = useRef<(d: DegatsRecus) => void>(() => {})
+  const onDegatsRecus = useCallback((d: DegatsRecus) => gererDegatsRecusRef.current(d), [])
+  const reseau = useReseauClient(onDegatsRecus)
 
   const rechercherEtConnecter = async () => {
     if (!reseauCode.trim()) return
@@ -200,7 +209,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     setReseauIntrouvable(false)
     const ip = await rechercherPartieReseau(reseauCode.trim())
     setReseauRecherche(false)
-    if (ip) reseau.connecter(ip)
+    if (ip) reseau.connecter(ip, character.nomPersonnage)
     else setReseauIntrouvable(true)
   }
 
@@ -809,13 +818,33 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
     return parts.length > 1 ? parts.join(' ') : `${amount} ${t('gameMode.pv')}`
   }
 
-  const handleTakeDamage = (type: string) => {
-    const amount = parseInt(dmInput, 10)
+  // Factorisé pour être appelé aussi bien par la saisie manuelle (handleTakeDamage) que par la réception
+  // réseau d'une attaque du MJ (voir gererDegatsRecusRef juste après) — même résolution
+  // immunité/RD/division, seul le label affiché diffère selon l'origine.
+  const appliquerDegats = (type: string, amount: number, label?: string) => {
     if (!Number.isFinite(amount) || amount <= 0) return
-    const label = type ? `${t('gameMode.damageTakenHistoryLabel')} (${t(`gameMode.dmType${type}`)})` : t('gameMode.damageTakenHistoryLabel')
+    const resolvedLabel = label ?? (type ? `${t('gameMode.damageTakenHistoryLabel')} (${t(`gameMode.dmType${type}`)})` : t('gameMode.damageTakenHistoryLabel'))
     const calc = computeIncomingDamage(type, amount)
-    pushHistory({ label, formula: formatDamageFormula(amount, calc), sides: 6, roll: calc.net, modifier: null, total: calc.net, costType: 'PV', flash: false })
+    pushHistory({ label: resolvedLabel, formula: formatDamageFormula(amount, calc), sides: 6, roll: calc.net, modifier: null, total: calc.net, costType: 'PV', flash: false })
     if (!calc.immune) applyPVLoss(clampPvLoss(pvActuels - calc.net))
+  }
+
+  // Réception réseau d'une attaque du MJ (voir handleAttaque dans CombatTab.tsx et reseauProtocole.ts),
+  // invoquée directement depuis le callback onmessage du socket (voir useReseauClient) — pas de state+
+  // effet intermédiaire, qui ne ferait qu'appeler ces mêmes setState en réaction à un changement d'état.
+  // toucheRate=true veut dire une attaque ratée : rien à appliquer, juste une ligne d'historique.
+  useEffect(() => {
+    gererDegatsRecusRef.current = ({ montant, typeDegats, toucheRate }) => {
+      if (toucheRate) {
+        pushHistory({ label: t('gameMode.reseau.attaqueRateeLabel'), formula: t('gameMode.reseau.attaqueRateeFormule'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+        return
+      }
+      appliquerDegats(typeDegats, montant, t('gameMode.reseau.degatsRecusLabel'))
+    }
+  })
+
+  const handleTakeDamage = (type: string) => {
+    appliquerDegats(type, parseInt(dmInput, 10))
     setDmInput('')
   }
 
@@ -963,7 +992,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                       placeholder={t('gameMode.reseau.ipPlaceholder')}
                       style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
                     />
-                    <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim()) }} style={{
+                    <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim(), character.nomPersonnage) }} style={{
                       padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
                       border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                     }}>
@@ -974,6 +1003,43 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               </>
             ) : (
               <>
+                {/* Dégâts à envoyer au MJ — le joueur saisit le montant qu'il vient d'infliger (jet déjà
+                    fait plus haut dans le panneau), comme il le dicterait à voix haute au MJ ; seule la
+                    transmission est automatisée (voir handleAttaquePJ côté MJ, inchangé). */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="number" min={1}
+                    value={reseauDegatsMontant}
+                    onChange={e => setReseauDegatsMontant(e.target.value)}
+                    placeholder={t('gameMode.reseau.degatsPlaceholder')}
+                    style={{ width: 70, flexShrink: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                  />
+                  <select
+                    value={reseauDegatsType}
+                    onChange={e => setReseauDegatsType(e.target.value)}
+                    style={{ flex: 1, minWidth: 0, padding: '5px 4px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                  >
+                    <option value="">{t('gameMode.dmTypeGenerique')}</option>
+                    {DAMAGE_TYPES.map(type => (
+                      <option key={type} value={type}>{t(`gameMode.dmType${type}`)}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    const montant = parseInt(reseauDegatsMontant, 10)
+                    if (!Number.isFinite(montant) || montant <= 0) return
+                    reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: reseauDegatsType }))
+                    setReseauDegatsMontant('')
+                  }}
+                  style={{
+                    padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                    border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                  }}
+                >
+                  {t('gameMode.reseau.envoyerDegats')}
+                </button>
+
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input
                     value={reseauMessage}

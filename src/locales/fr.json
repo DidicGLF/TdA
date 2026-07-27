@@ -980,6 +980,11 @@
       "deconnecter": "Déconnecter",
       "connecte": "Connecté",
       "deconnecte": "Déconnecté",
+      "degatsPlaceholder": "DM",
+      "envoyerDegats": "Envoyer au MJ",
+      "degatsRecusLabel": "Dégâts reçus (réseau)",
+      "attaqueRateeLabel": "Attaque reçue — ratée",
+      "attaqueRateeFormule": "Aucun dégât",
       "envoyerPlaceholder": "Message de test…",
       "envoyer": "Envoyer",
       "journalVide": "Aucun message reçu pour l'instant."
