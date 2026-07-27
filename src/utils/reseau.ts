@@ -15,12 +15,13 @@ export const PORT_RESEAU = 47821
 export interface EtatServeurReseau {
   demarre: boolean
   port: number | null
+  code: string | null
   clients: number
 }
 
 // Hors Tauri (dev navigateur pur, cf. tauriStorage.ts), le réseau n'existe pas : on renvoie un état
 // "à l'arrêt" plutôt que de faire planter l'appelant.
-const ETAT_INDISPONIBLE: EtatServeurReseau = { demarre: false, port: null, clients: 0 }
+const ETAT_INDISPONIBLE: EtatServeurReseau = { demarre: false, port: null, code: null, clients: 0 }
 
 export async function demarrerServeurReseau(): Promise<number | null> {
   if (!isTauri()) return null
@@ -42,13 +43,24 @@ export async function etatServeurReseau(): Promise<EtatServeurReseau> {
   return invoke<EtatServeurReseau>('etat_serveur')
 }
 
-export interface EvenementReseau {
-  type: 'connexion' | 'message' | 'deconnexion'
-  id: number
-  contenu?: string
+// Diffuse une requête UDP contenant code sur le réseau local et attend (jusqu'à ~3s côté Rust) la
+// réponse du MJ dont le code correspond — voir rechercher_partie dans reseau.rs. Retourne l'IP trouvée,
+// ou null si personne n'a répondu (mauvais code, MJ non démarré, réseau qui bloque le broadcast…).
+export async function rechercherPartieReseau(code: string): Promise<string | null> {
+  if (!isTauri()) return null
+  return invoke<string | null>('rechercher_partie', { code })
 }
 
-// Abonnement groupé aux 3 événements émis par reseau.rs — retourne la fonction de désabonnement
+export type EvenementReseau =
+  | { type: 'connexion'; id: number }
+  | { type: 'deconnexion'; id: number }
+  | { type: 'message'; id: number; contenu: string }
+  // Diagnostic temporaire de la découverte réseau (voir demarrer_serveur dans reseau.rs) : toute
+  // requête UDP de découverte reçue, correspondance ou pas — utile pour voir si le paquet arrive du
+  // tout avant de chercher plus loin en cas d'échec.
+  | { type: 'decouverte'; source: string; codeRecu: string | null; correspond: boolean }
+
+// Abonnement groupé aux événements émis par reseau.rs — retourne la fonction de désabonnement
 // (à appeler dans le cleanup d'un useEffect). Pas d'effet hors Tauri : listen() n'y recevrait jamais
 // rien, mais autant éviter l'appel pour rester cohérent avec le reste du fichier.
 export async function ecouterReseau(callback: (e: EvenementReseau) => void): Promise<UnlistenFn> {
@@ -58,6 +70,8 @@ export async function ecouterReseau(callback: (e: EvenementReseau) => void): Pro
     listen<{ id: number; contenu: string }>('reseau:message', e =>
       callback({ type: 'message', id: e.payload.id, contenu: e.payload.contenu })),
     listen<{ id: number }>('reseau:deconnexion', e => callback({ type: 'deconnexion', id: e.payload.id })),
+    listen<{ source: string; code_recu: string | null; correspond: boolean }>('reseau:decouverte', e =>
+      callback({ type: 'decouverte', source: e.payload.source, codeRecu: e.payload.code_recu, correspond: e.payload.correspond })),
   ])
   return () => unlistens.forEach(u => u())
 }

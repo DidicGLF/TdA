@@ -10,6 +10,7 @@ import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 import { parseDesc } from '../../utils/parseDesc'
 import { useReseauClient } from '../../hooks/useReseauClient'
+import { rechercherPartieReseau } from '../../utils/reseau'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -180,13 +181,28 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const [dotDurationInput, setDotDurationInput] = useState('')
   const [dotTypeInput, setDotTypeInput] = useState('')
   const [gmTooltip, setGmTooltip] = useState<{ title: string; desc?: string; x: number; y: number; below: boolean } | null>(null)
-  // Panneau réseau — étape de test du chantier réseau local (voir useReseauClient et
-  // src/components/GMMode/ReseauTab.tsx côté MJ) : connexion au serveur du MJ par IP saisie à la main,
-  // pas encore de code de partie ni de découverte réseau.
+  // Panneau réseau (voir useReseauClient et src/components/GMMode/ReseauTab.tsx côté MJ) : connexion au
+  // serveur du MJ via le code de partie qu'il affiche (recherche par diffusion UDP, voir
+  // rechercherPartieReseau) — la saisie d'IP manuelle reste disponible en repli si la découverte ne
+  // fonctionne pas sur le réseau (routeur/VPN qui bloque le broadcast).
   const [reseauPanelOuvert, setReseauPanelOuvert] = useState(false)
+  const [reseauCode, setReseauCode] = useState('')
+  const [reseauRecherche, setReseauRecherche] = useState(false)
+  const [reseauIntrouvable, setReseauIntrouvable] = useState(false)
+  const [reseauManuelOuvert, setReseauManuelOuvert] = useState(false)
   const [reseauIp, setReseauIp] = useState('')
   const [reseauMessage, setReseauMessage] = useState('')
   const reseau = useReseauClient()
+
+  const rechercherEtConnecter = async () => {
+    if (!reseauCode.trim()) return
+    setReseauRecherche(true)
+    setReseauIntrouvable(false)
+    const ip = await rechercherPartieReseau(reseauCode.trim())
+    setReseauRecherche(false)
+    if (ip) reseau.connecter(ip)
+    else setReseauIntrouvable(true)
+  }
 
 
   const voiesPerso = useMemo(() => [
@@ -912,20 +928,50 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
             </div>
 
             {!reseau.connecte ? (
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  value={reseauIp}
-                  onChange={e => setReseauIp(e.target.value)}
-                  placeholder={t('gameMode.reseau.ipPlaceholder')}
-                  style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
-                />
-                <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim()) }} style={{
-                  padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-                  border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
-                }}>
-                  {t('gameMode.reseau.connecter')}
-                </button>
-              </div>
+              <>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={reseauCode}
+                    onChange={e => setReseauCode(e.target.value)}
+                    placeholder={t('gameMode.reseau.codePlaceholder')}
+                    disabled={reseauRecherche}
+                    style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12, letterSpacing: '0.1em' }}
+                  />
+                  <button onClick={rechercherEtConnecter} disabled={reseauRecherche} style={{
+                    padding: '5px 10px', borderRadius: 4, cursor: reseauRecherche ? 'default' : 'pointer', fontSize: 12,
+                    border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD, opacity: reseauRecherche ? 0.6 : 1,
+                  }}>
+                    {reseauRecherche ? t('gameMode.reseau.recherche') : t('gameMode.reseau.rechercher')}
+                  </button>
+                </div>
+                {reseauIntrouvable && (
+                  <div style={{ fontSize: 11, color: 'rgba(255,150,150,0.9)' }}>{t('gameMode.reseau.introuvable')}</div>
+                )}
+
+                {!reseauManuelOuvert ? (
+                  <button onClick={() => setReseauManuelOuvert(true)} style={{
+                    background: 'transparent', border: 'none', color: 'rgba(245,236,215,0.4)',
+                    cursor: 'pointer', fontSize: 11, textDecoration: 'underline', alignSelf: 'flex-start', padding: 0,
+                  }}>
+                    {t('gameMode.reseau.manuelLien')}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      value={reseauIp}
+                      onChange={e => setReseauIp(e.target.value)}
+                      placeholder={t('gameMode.reseau.ipPlaceholder')}
+                      style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                    />
+                    <button onClick={() => { if (reseauIp.trim()) reseau.connecter(reseauIp.trim()) }} style={{
+                      padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                      border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                    }}>
+                      {t('gameMode.reseau.connecter')}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 <div style={{ display: 'flex', gap: 6 }}>

@@ -23,6 +23,7 @@ export default function ReseauTab() {
   const { t } = useTranslation()
   const [demarre, setDemarre] = useState(false)
   const [port, setPort] = useState<number | null>(null)
+  const [code, setCode] = useState<string | null>(null)
   const [clients, setClients] = useState(0)
   const [journal, setJournal] = useState<LigneJournal[]>([])
   const prochainIdJournal = useRef(0)
@@ -34,7 +35,7 @@ export default function ReseauTab() {
   }
 
   useEffect(() => {
-    etatServeurReseau().then(etat => { setDemarre(etat.demarre); setPort(etat.port); setClients(etat.clients) })
+    etatServeurReseau().then(etat => { setDemarre(etat.demarre); setPort(etat.port); setCode(etat.code); setClients(etat.clients) })
   }, [])
 
   useEffect(() => {
@@ -42,7 +43,8 @@ export default function ReseauTab() {
     const gerer = (e: EvenementReseau) => {
       if (e.type === 'connexion') { setClients(c => c + 1); ajouterJournal(t('gmMode.reseau.connexionEvt', { id: e.id })) }
       else if (e.type === 'deconnexion') { setClients(c => Math.max(0, c - 1)); ajouterJournal(t('gmMode.reseau.deconnexionEvt', { id: e.id })) }
-      else { ajouterJournal(t('gmMode.reseau.messageEvt', { id: e.id, contenu: e.contenu })) }
+      else if (e.type === 'message') { ajouterJournal(t('gmMode.reseau.messageEvt', { id: e.id, contenu: e.contenu })) }
+      else { ajouterJournal(`🔍 ${e.source} → code ${e.codeRecu ?? '?'} (${e.correspond ? 'OK' : 'ne correspond pas'})`) }
     }
     let desabonner = () => {}
     ecouterReseau(gerer).then(fn => { if (annule) fn(); else desabonner = fn })
@@ -55,11 +57,18 @@ export default function ReseauTab() {
       await arreterServeurReseau()
       setDemarre(false)
       setPort(null)
+      setCode(null)
       setClients(0)
     } else {
       const p = await demarrerServeurReseau()
-      setDemarre(p !== null)
-      setPort(p)
+      if (p !== null) {
+        // demarrer_serveur ne renvoie que le port : le code n'est disponible qu'en relisant l'état
+        // complet côté Rust, juste après (voir EtatServeurInfo).
+        const etat = await etatServeurReseau()
+        setDemarre(true)
+        setPort(p)
+        setCode(etat.code)
+      }
     }
   }
 
@@ -94,6 +103,20 @@ export default function ReseauTab() {
 
           {demarre && (
             <>
+              {code !== null && (
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12,
+                  padding: '10px 14px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
+                  background: 'rgba(201,168,76,0.08)',
+                }}>
+                  <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {t('gmMode.reseau.codePartie')}
+                  </span>
+                  <span style={{ fontSize: 28, fontWeight: 700, color: GOLD, letterSpacing: '0.15em', fontFamily: 'monospace' }}>
+                    {code}
+                  </span>
+                </div>
+              )}
               <div style={{ fontSize: 13, color: GOLD, marginBottom: 12 }}>
                 {t('gmMode.reseau.clients', { count: clients })}
               </div>

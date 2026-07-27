@@ -970,6 +970,11 @@
     "clickToFull": "Click to restore to full",
     "reseau": {
       "titre": "Network",
+      "codePlaceholder": "Game code (4 digits)",
+      "rechercher": "Search and connect",
+      "recherche": "Searching…",
+      "introuvable": "No game found with this code.",
+      "manuelLien": "Manual IP connection",
       "ipPlaceholder": "GM's IP (e.g. 192.168.1.42)",
       "connecter": "Connect",
       "deconnecter": "Disconnect",
@@ -1290,7 +1295,8 @@
       "messageEvt": "#{{id}} → {{contenu}}",
       "horsTauri": "Network is only available in the installed app (not in the browser preview).",
       "envoyerATousPlaceholder": "Test message to broadcast…",
-      "envoyerATous": "Send to all"
+      "envoyerATous": "Send to all",
+      "codePartie": "Game code"
     },
     "batailleMasse": {
       "intro": "Manage a mass battle turn by turn: position the PJs, automate the tests and damage based on the battle's intensity.",

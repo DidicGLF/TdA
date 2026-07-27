@@ -970,6 +970,11 @@
     "clickToFull": "Cliquer pour remettre à plein",
     "reseau": {
       "titre": "Réseau",
+      "codePlaceholder": "Code de partie (4 chiffres)",
+      "rechercher": "Rechercher et se connecter",
+      "recherche": "Recherche en cours…",
+      "introuvable": "Aucune partie trouvée avec ce code.",
+      "manuelLien": "Connexion manuelle par IP",
       "ipPlaceholder": "IP du MJ (ex. 192.168.1.42)",
       "connecter": "Connecter",
       "deconnecter": "Déconnecter",
@@ -1290,7 +1295,8 @@
       "messageEvt": "#{{id}} → {{contenu}}",
       "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur).",
       "envoyerATousPlaceholder": "Message de test à diffuser…",
-      "envoyerATous": "Envoyer à tous"
+      "envoyerATous": "Envoyer à tous",
+      "codePartie": "Code de partie"
     },
     "batailleMasse": {
       "intro": "Gère une bataille de masse tour par tour : positionne les PJ, automatise les tests et les dégâts selon l'intensité du combat.",
