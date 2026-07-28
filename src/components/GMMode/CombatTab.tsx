@@ -11,7 +11,7 @@ import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 import { compagnonEnCreature } from '../../utils/compagnons'
 import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 import { ecouterReseau, envoyerAClientReseau, envoyerATousReseau } from '../../utils/reseau'
-import { encoderMessage, decoderMessage } from '../../utils/reseauProtocole'
+import { encoderMessage, decoderMessage, idPJ } from '../../utils/reseauProtocole'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -61,10 +61,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const [isResizingSplit, setIsResizingSplit] = useState(false)
   const resizeRef = useRef<{ startX: number; startRatio: number; areaWidth: number } | null>(null)
 
-  // Correspondance connexion réseau → nom de PJ (voir reseauProtocole.ts), alimentée au fil des messages
-  // d'identification reçus (un joueur connecté envoie son nom dès l'ouverture, voir useReseauClient). En
-  // ref (pas un state) : rien dans l'UI n'affiche cette liste, seuls handleAttaque et l'écoute réseau
-  // (abonnée une seule fois, voir plus bas) ont besoin de sa valeur la plus récente.
+  // Correspondance connexion réseau → idPJ (voir reseauProtocole.ts), alimentée au fil des messages
+  // d'identification reçus (un joueur connecté envoie son idPJ dès l'ouverture, voir useReseauClient) —
+  // idPJ, pas le nom : deux joueurs pourraient choisir le même nom de personnage, idPJ reste unique
+  // (nom perso + nom joueur + peuple). En ref (pas un state) : rien dans l'UI n'affiche cette liste,
+  // seuls handleAttaque et l'écoute réseau (abonnée une seule fois, voir plus bas) ont besoin de sa
+  // valeur la plus récente.
   const clientsPJRef = useRef<Record<number, string>>({})
   // handleAttaquePJ est redéfini à chaque rendu (ferme sur le session de CE rendu) : l'écoute réseau,
   // abonnée une seule fois au montage, doit passer par cette ref (mise à jour juste après sa définition
@@ -404,19 +406,19 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       const message = decoderMessage(e.contenu)
       if (!message) return
       if (message.type === 'identification') {
-        clientsPJRef.current = { ...clientsPJRef.current, [e.id]: message.nom }
+        clientsPJRef.current = { ...clientsPJRef.current, [e.id]: message.idPJ }
         // Déjà engagé dans la rencontre (ex. réponse à qui-etes-vous après un changement d'onglet) :
         // rien à faire, on ne le remet pas en attente par-dessus.
-        const dejaEngage = sessionRef.current?.pjs.some(p => p.character.nomPersonnage === message.character.nomPersonnage)
+        const dejaEngage = sessionRef.current?.pjs.some(p => idPJ(p.character) === message.idPJ)
         if (!dejaEngage) {
           setPjsEnAttente(prev => [
-            ...prev.filter(p => p.character.nomPersonnage !== message.character.nomPersonnage),
+            ...prev.filter(p => idPJ(p.character) !== message.idPJ),
             { connexionId: e.id, character: message.character },
           ])
         }
       } else if (message.type === 'degats') {
-        const nom = clientsPJRef.current[e.id]
-        const pj = nom ? sessionRef.current?.pjs.find(p => p.character.nomPersonnage === nom) : undefined
+        const monIdPJ = clientsPJRef.current[e.id]
+        const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
         if (pj) handleAttaquePJRef.current(pj, message.montant, message.typeDegats)
       }
     }).then(fn => {
@@ -540,10 +542,11 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     if (rejets.length > 0) { setSaveMsg(rejets.join(' ')); setTimeout(() => setSaveMsg(null), 5000) }
     if (nouveaux.length > 0) {
       setPjsImportesEnAttente(prev => {
-        // Dédoublonné par nom, contre la rencontre active ET contre la liste d'attente elle-même — un
-        // fichier réimporté deux fois (ou déjà engagé) ne doit pas créer d'entrée en double.
-        const dejaPresents = new Set([...session.pjs.map(p => p.character.nomPersonnage), ...prev.map(c => c.nomPersonnage)])
-        const aAjouter = nouveaux.filter(c => !dejaPresents.has(c.nomPersonnage))
+        // Dédoublonné par idPJ (pas par nom seul, voir reseauProtocole.ts), contre la rencontre active
+        // ET contre la liste d'attente elle-même — un fichier réimporté deux fois (ou déjà engagé) ne
+        // doit pas créer d'entrée en double.
+        const dejaPresents = new Set([...session.pjs.map(p => idPJ(p.character)), ...prev.map(idPJ)])
+        const aAjouter = nouveaux.filter(c => !dejaPresents.has(idPJ(c)))
         return [...prev, ...aAjouter]
       })
     }
@@ -560,9 +563,14 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     const pjs = [...session.pjs, nouveau].sort((a, b) => b.character.initiative - a.character.initiative)
     const compagnons = [...session.compagnons, ...compagnonsDe(nouveau)]
     onSessionChange({ ...session, pjs, compagnons })
-    setPjsEnAttente(prev => prev.filter(p => p.character.nomPersonnage !== character.nomPersonnage))
-    setPjsImportesEnAttente(prev => prev.filter(c => c.nomPersonnage !== character.nomPersonnage))
+    setPjsEnAttente(prev => prev.filter(p => idPJ(p.character) !== idPJ(character)))
+    setPjsImportesEnAttente(prev => prev.filter(c => idPJ(c) !== idPJ(character)))
   }
+
+  // Qualifie le nom d'un PJ par son joueur ("Beldin (joueur Dodoc)") pour distinguer deux PJ homonymes
+  // (voir aussi PJCard.tsx, même besoin) — inchangé si nomJoueur est vide.
+  const nomQualifie = (character: Character) =>
+    character.nomJoueur?.trim() ? t('gmMode.bataille.nomAvecJoueur', { nom: character.nomPersonnage, joueur: character.nomJoueur.trim() }) : character.nomPersonnage
 
   // Une ligne des listes d'attente du tiroir (réseau ou fichier) — même structure visuelle pour les
   // deux, seule la section englobante (avec ou sans 🌐) distingue la provenance.
@@ -611,7 +619,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     // supplémentaire (contrairement à l'envoi joueur → MJ, resté manuel — voir GameModePanel.tsx).
     const cibleEstPJ = cibleId ? session.pjs.find(p => p.id === cibleId) : undefined
     if (cibleEstPJ) {
-      const connexionId = Object.entries(clientsPJRef.current).find(([, nom]) => nom === cibleEstPJ.character.nomPersonnage)?.[0]
+      const connexionId = Object.entries(clientsPJRef.current).find(([, id]) => id === idPJ(cibleEstPJ.character))?.[0]
       if (connexionId !== undefined) {
         envoyerAClientReseau(Number(connexionId), encoderMessage({
           type: 'degats-recus', montant: degats ?? 0, typeDegats: result.typeDegats ?? '', toucheRate: !!result.toucheRate,
@@ -972,7 +980,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                 <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(245,236,215,0.5)' }}>
                   🌐 {t('gmMode.bataille.pjEnAttente')}
                 </span>
-                {pjsEnAttente.map(p => rendrePJAttente(p.connexionId, p.character.nomPersonnage, () => activerPJ(p.character)))}
+                {pjsEnAttente.map(p => rendrePJAttente(p.connexionId, nomQualifie(p.character), () => activerPJ(p.character)))}
               </div>
             )}
 
@@ -983,7 +991,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                 <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(245,236,215,0.5)' }}>
                   {t('gmMode.bataille.pjImportesEnAttente')}
                 </span>
-                {pjsImportesEnAttente.map(c => rendrePJAttente(c.nomPersonnage, c.nomPersonnage, () => activerPJ(c)))}
+                {pjsImportesEnAttente.map(c => rendrePJAttente(c.nomPersonnage, nomQualifie(c), () => activerPJ(c)))}
               </div>
             )}
 

@@ -266,6 +266,20 @@ pub async fn envoyer_a_client(id: u32, contenu: String, state: State<'_, Mutex<E
     Ok(())
 }
 
+// Déconnecte UN seul client (voir la liste "Joueurs connectés" dans ReseauTab.tsx), sans toucher au
+// serveur ni aux autres connexions — même mécanisme que arreter_serveur (envoi de Message::Close), mais
+// ciblé sur un seul id. Pas besoin de retirer l'entrée de clients ici : gerer_client s'en charge déjà
+// de lui-même en recevant le Close, et émettra reseau:deconnexion comme pour une déconnexion normale.
+#[tauri::command]
+pub async fn deconnecter_client(id: u32, state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
+    let etat = state.lock().await;
+    let clients = etat.clients.lock().await;
+    if let Some(tx) = clients.get(&id) {
+        let _ = tx.send(Message::Close(None));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn arreter_serveur(state: State<'_, Mutex<EtatReseau>>) -> Result<(), String> {
     let mut etat = state.lock().await;

@@ -1262,6 +1262,7 @@
       "pjEnAttente": "Connected PCs — not engaged yet",
       "pjImportesEnAttente": "Imported PCs — not engaged yet",
       "ajouterALaRencontre": "Add to encounter",
+      "nomAvecJoueur": "{{nom}} (player {{joueur}})",
       "niveau": "Level {{niveau}}",
       "cible": "Target",
       "attaquant": "Attacker",
@@ -1302,12 +1303,16 @@
       "connexionEvt": "Client #{{id}} connected",
       "deconnexionEvt": "Client #{{id}} disconnected",
       "messageEvt": "#{{id}} → {{contenu}}",
-      "identificationEvt": "The character {{nom}} was transmitted.",
-      "degatsEvt": "{{nom}} deals {{montant}} DM ({{type}}).",
+      "identificationEvt": "Client #{{id}} — The character {{nom}} ({{cle}}) was transmitted.",
+      "degatsEvt": "Client #{{id}} — {{nom}} ({{cle}}) deals {{montant}} DM ({{type}}).",
       "horsTauri": "Network is only available in the installed app (not in the browser preview).",
       "envoyerATousPlaceholder": "Test message to broadcast…",
       "envoyerATous": "Send to all",
-      "codePartie": "Game code"
+      "codePartie": "Game code",
+      "joueursConnectes": "Connected players",
+      "aucunJoueurConnecte": "No player connected yet.",
+      "joueurEtPeuple": "Player {{joueur}} · {{peuple}}",
+      "deconnecterJoueur": "Disconnect"
     },
     "batailleMasse": {
       "intro": "Manage a mass battle turn by turn: position the PJs, automate the tests and damage based on the battle's intensity.",

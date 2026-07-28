@@ -1262,6 +1262,7 @@
       "pjEnAttente": "PJ connectés — pas encore engagés",
       "pjImportesEnAttente": "PJ importés — pas encore engagés",
       "ajouterALaRencontre": "Ajouter à la rencontre",
+      "nomAvecJoueur": "{{nom}} (joueur {{joueur}})",
       "niveau": "Niveau {{niveau}}",
       "cible": "Cible",
       "attaquant": "Attaquant",
@@ -1302,12 +1303,16 @@
       "connexionEvt": "Client #{{id}} connecté",
       "deconnexionEvt": "Client #{{id}} déconnecté",
       "messageEvt": "#{{id}} → {{contenu}}",
-      "identificationEvt": "Le personnage {{nom}} a été transmis.",
-      "degatsEvt": "{{nom}} inflige {{montant}} DM ({{type}}).",
+      "identificationEvt": "Client #{{id}} — Le personnage {{nom}} ({{cle}}) a été transmis.",
+      "degatsEvt": "Client #{{id}} — {{nom}} ({{cle}}) inflige {{montant}} DM ({{type}}).",
       "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur).",
       "envoyerATousPlaceholder": "Message de test à diffuser…",
       "envoyerATous": "Envoyer à tous",
-      "codePartie": "Code de partie"
+      "codePartie": "Code de partie",
+      "joueursConnectes": "Joueurs connectés",
+      "aucunJoueurConnecte": "Aucun joueur connecté pour l'instant.",
+      "joueurEtPeuple": "Joueur {{joueur}} · {{peuple}}",
+      "deconnecterJoueur": "Déconnecter"
     },
     "batailleMasse": {
       "intro": "Gère une bataille de masse tour par tour : positionne les PJ, automatise les tests et les dégâts selon l'intensité du combat.",

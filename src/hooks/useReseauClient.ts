@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PORT_RESEAU } from '../utils/reseau'
-import { encoderMessage, decoderMessage } from '../utils/reseauProtocole'
+import { encoderMessage, decoderMessage, idPJ } from '../utils/reseauProtocole'
 import type { CategorieJournal } from '../utils/reseauProtocole'
 import type { Character } from '../types/character'
 
@@ -60,7 +60,7 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
     const socket = new WebSocket(`ws://${ip}:${PORT_RESEAU}`)
     socket.onopen = () => {
       setConnecte(true)
-      socket.send(encoderMessage({ type: 'identification', nom: character.nomPersonnage, character }))
+      socket.send(encoderMessage({ type: 'identification', nom: character.nomPersonnage, idPJ: idPJ(character), character }))
     }
     socket.onmessage = e => {
       const contenu = String(e.data)
@@ -75,7 +75,7 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,
         // ça n'apporte rien au joueur de le voir.
         if (characterRef.current) {
-          socket.send(encoderMessage({ type: 'identification', nom: characterRef.current.nomPersonnage, character: characterRef.current }))
+          socket.send(encoderMessage({ type: 'identification', nom: characterRef.current.nomPersonnage, idPJ: idPJ(characterRef.current), character: characterRef.current }))
         }
       } else if (!message) {
         // Pas un message de protocole reconnu : texte de test brut (voir "message de test"), affiché tel quel.

@@ -45,6 +45,13 @@ export async function envoyerAClientReseau(id: number, contenu: string): Promise
   await invoke<void>('envoyer_a_client', { id, contenu })
 }
 
+// Déconnecte un seul client (voir la liste "Joueurs connectés" dans ReseauTab.tsx), sans arrêter le
+// serveur ni affecter les autres connexions — voir deconnecter_client dans reseau.rs.
+export async function deconnecterClientReseau(id: number): Promise<void> {
+  if (!isTauri()) return
+  await invoke<void>('deconnecter_client', { id })
+}
+
 export async function etatServeurReseau(): Promise<EtatServeurReseau> {
   if (!isTauri()) return ETAT_INDISPONIBLE
   return invoke<EtatServeurReseau>('etat_serveur')

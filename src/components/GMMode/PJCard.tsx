@@ -117,7 +117,7 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
         </div>
         <div style={{ padding: '7px 9px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {character.nomPersonnage}
+            {character.nomJoueur?.trim() ? t('gmMode.bataille.nomAvecJoueur', { nom: character.nomPersonnage, joueur: character.nomJoueur.trim() }) : character.nomPersonnage}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {stats.pvTotal}</span>
@@ -170,7 +170,7 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: GOLD, fontFamily: "'Cinzel', serif" }}>
-              {isDown && '💀 '}{character.nomPersonnage}
+              {isDown && '💀 '}{character.nomJoueur?.trim() ? t('gmMode.bataille.nomAvecJoueur', { nom: character.nomPersonnage, joueur: character.nomJoueur.trim() }) : character.nomPersonnage}
             </div>
             <div style={{ fontSize: 13, opacity: 0.5 }}>{t('gmMode.bataille.niveau', { niveau: character.niveau })}{character.peuple ? ` · ${character.peuple}` : ''}</div>
           </div>

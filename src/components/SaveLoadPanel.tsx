@@ -100,9 +100,13 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
         } else if (type === 'personnage') {
           const data = contenu as Partial<SavedEntry> & Partial<Character>
           if (data.character !== undefined && data.nom !== undefined) {
-            // Format SavedEntry exporté individuellement
+            // Format SavedEntry exporté individuellement — toujours un nouvel id, jamais celui du
+            // fichier importé (data.id) : un fichier réimporté ailleurs (ex. copié dans un autre
+            // dossier, un peu modifié) partage souvent le même id que l'entrée déjà présente dans la
+            // bibliothèque, ce qui produirait deux entrées avec la même clé React (key={e.id}) — l'une
+            // des deux ne s'affichant alors plus, donnant l'impression que l'import n'a rien fait.
             const entry: SavedEntry = {
-              id: data.id ?? crypto.randomUUID(),
+              id: crypto.randomUUID(),
               nom: data.nom,
               date: data.date ?? new Date().toISOString(),
               maxStep: data.maxStep,

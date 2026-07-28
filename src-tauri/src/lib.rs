@@ -132,6 +132,7 @@ pub fn run() {
             reseau::envoyer_a_tous,
             reseau::envoyer_a_client,
             reseau::rechercher_partie,
+            reseau::deconnecter_client,
         ])
         .setup(|app| {
             tauri::WebviewWindowBuilder::new(

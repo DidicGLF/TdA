@@ -8,7 +8,7 @@ import { importerImage } from '../../utils/imageStore'
 import AdversiteTab from './AdversiteTab'
 import BatailleTab from './BatailleTab'
 import ReseauTab from './ReseauTab'
-import type { LigneJournal } from './ReseauTab'
+import type { LigneJournal, ClientConnecte } from './ReseauTab'
 import type { CategorieJournal } from '../../utils/reseauProtocole'
 import NotesTab from '../NotesTab'
 import NotesGraph from '../NotesGraph'
@@ -86,6 +86,8 @@ export default function GMDashboard({ onBack }: Props) {
     prochainIdReseauJournal.current += 1
     setReseauJournal(prev => [{ id: prochainIdReseauJournal.current, texte, categorie }, ...prev].slice(0, 200))
   }, [])
+  // Même raison que reseauJournal ci-dessus : levé ici pour survivre à un changement d'onglet.
+  const [clientsConnectes, setClientsConnectes] = useState<ClientConnecte[]>([])
   // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
   // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -197,7 +199,7 @@ export default function GMDashboard({ onBack }: Props) {
               onReprendreAutoConsomme={() => setBatailleARepredre(null)}
             />
           )}
-          {tab === 'reseau' && <ReseauTab journal={reseauJournal} ajouterJournal={ajouterReseauJournal} />}
+          {tab === 'reseau' && <ReseauTab journal={reseauJournal} ajouterJournal={ajouterReseauJournal} clientsConnectes={clientsConnectes} setClientsConnectes={setClientsConnectes} />}
         </div>
       )}
     </div>
