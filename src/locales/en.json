@@ -134,7 +134,8 @@
       "titleFiger": "Lock (prevent accidental repositioning)",
       "titleImageEntiere": "Show full image",
       "titleRecadrer": "Crop (fill frame)",
-      "titleReset": "Reset framing"
+      "titleReset": "Reset framing",
+      "titleSupprimer": "Remove image"
     }
   },
   "notes": {

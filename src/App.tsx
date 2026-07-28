@@ -35,6 +35,16 @@ import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 
+// Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
+// Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
+// équipement, Les derniers détails, Finalisation) — suivi automatiquement que ce soit via
+// Suivant/Précédent ou un clic direct sur une étape du fil d'ariane (StepIndicator/onGoTo dans
+// CreationWizard.tsx, qui ne font tous les deux que changer `step`). Constante de module (pas recréée
+// à chaque rendu) : les valeurs ne dépendent d'aucun état.
+const SHEET_PAGE_PAR_ETAPE: ('recto' | 'verso' | 'voies')[] = [
+  'recto', 'recto', 'recto', 'voies', 'recto', 'recto', 'verso', 'verso',
+]
+
 export default function App() {
   return <GameDataProvider><AppContent /></GameDataProvider>
 }
@@ -170,14 +180,13 @@ function AppContent() {
     reader.readAsDataURL(file)
   }
 
-  // Suit la progression du wizard de création (étapes 5+ concernent le verso) pour y basculer
-  // automatiquement — mais PAS quand handleLoad restaure step d'un coup à savedMaxStep (7 pour un
-  // personnage terminé) : sans ce garde-fou, charger n'importe quel personnage sauvegardé atterrissait
-  // systématiquement sur le verso au lieu du recto.
+  // Voir SHEET_PAGE_PAR_ETAPE. Le garde-fou ci-dessous évite de basculer la fiche quand handleLoad
+  // restaure step d'un coup à savedMaxStep (7 pour un personnage terminé) : sans lui, charger
+  // n'importe quel personnage sauvegardé atterrissait systématiquement sur le verso au lieu du recto.
   const skipAutoSheetPage = useRef(false)
   useEffect(() => {
     if (skipAutoSheetPage.current) { skipAutoSheetPage.current = false; return }
-    setSheetPage(step >= 5 ? 'verso' : 'recto')
+    setSheetPage(SHEET_PAGE_PAR_ETAPE[step] ?? 'recto')
   }, [step])
 
   useEffect(() => {
@@ -383,6 +392,15 @@ function AppContent() {
         <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
           fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
       </div>
+      {/* Une fiche A5 par compagnon débloqué (voir CharacterSheetCompagnons/FicheCompagnon), chacune
+          déjà wrappée dans .print-page-compagnon par le composant lui-même — toutesLesPages sort
+          toutes les fiches d'un coup plutôt que la seule page actuellement affichée à l'écran.
+          Rendu conditionnel : sans compagnon débloqué, le composant affiche un message "aucun
+          compagnon" qu'il ne faut pas imprimer (voir showCompagnonsTab, même condition que l'onglet). */}
+      {showCompagnonsTab && (
+        <CharacterSheetCompagnons character={character} onChange={() => {}}
+          fieldPositions={fieldPositions} toutesLesPages />
+      )}
     </div>
   )
 

@@ -263,6 +263,41 @@ export function sumStat(contributions: Contribution[]): number {
   return contributions.reduce((acc, c) => acc + c.value, 0)
 }
 
+// Grants de type AVANTAGE ("lancer N dés, garder le meilleur M") actuellement actifs — accordés par les
+// rangs "Héroïque" (rang 5 de certaines voies : +2 à une carac ET cet avantage sur cette même carac),
+// mais le mécanisme n'est pas réservé à ces rangs-là dans les données. Utilisé par le Mode de jeu (pour
+// activer le double-jet) et par la fiche recto (pour cocher automatiquement la case "Héroïque (2d)").
+export type AvailableAvantage = { voieNom: string; rangIdx: number; rangNom: string; stat: string; lancer: number; garder: number }
+
+export function computeAvantages(character: Character, descriptions: DescMap): AvailableAvantage[] {
+  const list: AvailableAvantage[] = []
+  for (const key of VOIE_KEYS) {
+    const voie = character[key]
+    if (!voie.nom) continue
+    const rangsDesc = descriptions[voie.nom]
+    if (!rangsDesc) continue
+    voie.rangs.forEach((unlocked, idx) => {
+      if (!unlocked) return
+      const rang = rangsDesc[idx]
+      if (!rang?.grants) return
+      for (const grant of rang.grants) {
+        if (grant.type !== 'AVANTAGE') continue
+        if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
+        if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
+        if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
+        list.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, stat: grant.stat, lancer: grant.lancer ?? 2, garder: grant.garder ?? 1 })
+      }
+    })
+  }
+  for (const { voieNom, rangIdx, rangData, avanceeAccordee } of getRangsEmpruntes(character, descriptions)) {
+    for (const grant of rangData.grants ?? []) {
+      if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+      list.push({ voieNom, rangIdx, rangNom: rangData.nom, stat: grant.stat, lancer: grant.lancer ?? 2, garder: grant.garder ?? 1 })
+    }
+  }
+  return list
+}
+
 // Stats de combat "de base" d'un PJ (PV/PM max, DEF, RD générique) à partir des effets permanents
 // (voies + cristaux) uniquement — pas des bonus temporaires de session (activeBoosts/effectCounters),
 // qui n'existent pas sur un personnage fraîchement importé et n'ont pas de sens hors d'une session de

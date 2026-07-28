@@ -10,7 +10,7 @@ import DraggableCheckboxRow from './DraggableCheckboxRow'
 import type { ArmesData, ArmuresData, FieldPositions, SheetPage } from '../context/GameDataContext'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
-import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions } from '../utils/computeEffects'
+import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions, computeAvantages } from '../utils/computeEffects'
 import SheetTooltip from './SheetTooltip'
 import type { TooltipData, TooltipLine } from './SheetTooltip'
 import { useChampsFiche } from '../hooks/useChampsFiche'
@@ -73,6 +73,19 @@ const PR_CHECKBOXES = [
   { nom: 'PR 6', top: 58.2, left: 32.6 },
 ]
 
+// Cases "Héroïque (2d)" : cochées automatiquement (jamais par clic) quand un grant AVANTAGE est actif
+// pour la caractéristique — cf. computeAvantages. Nouveau champ, sans position d'origine sur la
+// maquette : démarre en réserve de calibrage (voir le rendu plus bas), le top/left ci-dessous ne sert
+// que de valeur nominale tant que l'utilisateur ne l'a pas sortie de la réserve.
+const HEROIQUE_CHECKBOXES: { nom: string; key: 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA' }[] = [
+  { nom: 'Héroïque FOR', key: 'FOR' },
+  { nom: 'Héroïque DEX', key: 'DEX' },
+  { nom: 'Héroïque CON', key: 'CON' },
+  { nom: 'Héroïque INT', key: 'INT' },
+  { nom: 'Héroïque SAG', key: 'SAG' },
+  { nom: 'Héroïque CHA', key: 'CHA' },
+]
+
 
 
 const CARAC_ROWS = [
@@ -124,6 +137,13 @@ export default function ChampsRecto({
   React.useEffect(() => {
     setCbPos(Object.fromEntries(PR_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }])))
   }, [fieldPositions])
+
+  const [heroPos, setHeroPos] = useState<Record<string, { top: number; left: number }>>(
+    Object.fromEntries(HEROIQUE_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: CARAC_ROWS.find(r => r.key === f.key)!.top, left: 30 }]))
+  )
+  React.useEffect(() => {
+    setHeroPos(Object.fromEntries(HEROIQUE_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: CARAC_ROWS.find(r => r.key === f.key)!.top, left: 30 }])))
+  }, [fieldPositions])
   const voieName = useVoieName()
   const peupleName = usePeupleName()
   const profilName = useProfilName()
@@ -169,6 +189,38 @@ export default function ChampsRecto({
     document.addEventListener('mouseup', onUp)
   }
 
+  const startHeroDrag = (nom: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startY = e.clientY
+    const { top: startTop, left: startLeft } = heroPos[nom]
+
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      setHeroPos(prev => ({
+        ...prev,
+        [nom]: {
+          top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
+          left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
+        },
+      }))
+    }
+
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      setHeroPos(prev => ({ ...prev, [nom]: { top: newTop, left: newLeft } }))
+      cb(nom, newTop, newLeft)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
 
 
   // Tuyauterie des champs (position calibrée, appartenance à une fiche, réserve, infobulles) :
@@ -180,6 +232,7 @@ export default function ChampsRecto({
 
   const effects = computeEffectsWithCristaux(character, data)
   const diceEffects = computeDiceEffects(character, data)
+  const heroiqueStats = new Set(computeAvantages(character, data).map(a => a.stat))
 
   const activeTooltip = tooltip
 
@@ -702,6 +755,66 @@ export default function ChampsRecto({
             {calibrate && (
               <div
                 onMouseDown={e => startPRDrag(nom, e)}
+                style={{
+                  position: 'absolute',
+                  top: `${top}%`, left: `${left}%`,
+                  // Décalée au-dessus de la case : centrée dessus, elle masquerait la croix-repère.
+                  transform: 'translate(-50%, calc(-100% - 3px))',
+                  cursor: 'grab',
+                  background: 'rgba(160,90,230,0.92)',
+                  color: '#fff',
+                  fontSize: 7,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  padding: '1px 4px',
+                  borderRadius: 2,
+                  userSelect: 'none',
+                  zIndex: 40,
+                  whiteSpace: 'nowrap',
+                  lineHeight: '13px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                  display: 'flex', alignItems: 'center', gap: 2,
+                }}
+              >
+                {nom}
+                {onReserveToggle && (
+                  <span
+                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(nom, true, { top, left }) }}
+                    style={{ cursor: 'pointer', fontSize: 9, paddingLeft: 3, borderLeft: '1px solid rgba(255,255,255,0.35)', lineHeight: 1 }}
+                    title="Envoyer à la réserve"
+                  >📥</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* === HÉROÏQUE (2D) === : cases purement dérivées (jamais de clic), cochées automatiquement
+          par computeAvantages. Nouveau champ sans position d'origine : reste en réserve tant que
+          fieldPositions n'a pas d'entrée pour lui (voir feedback_nouveaux_champs_en_reserve). */}
+      {HEROIQUE_CHECKBOXES.map(({ nom, key }) => {
+        const { top, left } = heroPos[nom]
+        const fp = fieldPositions?.[nom]
+        if (fp?.reserved === true || !fp) return reserveChip(nom, { top, left })
+        if (!surCettePage(nom)) return null
+        return (
+          <div key={nom}>
+            <div
+              className="tdr-temporaire"
+              style={{
+                position: 'absolute',
+                top: `${top}%`, left: `${left}%`,
+                width: '1.6%', height: '1.1%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <CroixCase coche={heroiqueStats.has(key)} calibrate={calibrate} />
+            </div>
+            {calibrate && (
+              <div
+                onMouseDown={e => startHeroDrag(nom, e)}
                 style={{
                   position: 'absolute',
                   top: `${top}%`, left: `${left}%`,

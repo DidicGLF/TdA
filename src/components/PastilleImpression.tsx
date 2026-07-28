@@ -9,6 +9,7 @@ interface Props {
 export default function PastilleImpression({ imprime, onToggle, top, left }: Props) {
   return (
     <div
+      className="no-print"
       onClick={onToggle}
       title={imprime
         ? "Figure sur la version papier — cliquer pour l'exclure"
