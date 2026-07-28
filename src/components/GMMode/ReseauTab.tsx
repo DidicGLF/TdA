@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
-import { demarrerServeurReseau, arreterServeurReseau, etatServeurReseau, envoyerATousReseau, deconnecterClientReseau, ecouterReseau } from '../../utils/reseau'
+import { demarrerServeurReseau, arreterServeurReseau, etatServeurReseau, envoyerATousReseau, envoyerAClientReseau, deconnecterClientReseau, ecouterReseau } from '../../utils/reseau'
 import type { EvenementReseau } from '../../utils/reseau'
-import { decoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
+import { decoderMessage, encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 import type { CategorieJournal } from '../../utils/reseauProtocole'
+import { compresserImage } from '../../utils/imageStore'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -50,6 +51,39 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
   const [code, setCode] = useState<string | null>(null)
   const [clients, setClients] = useState(0)
   const [messageATous, setMessageATous] = useState('')
+  // Brouillon de message privé par connexion (voir 'message-mj' dans reseauProtocole.ts) — un client
+  // connecté peut recevoir un message ciblé, invisible des autres, contrairement au champ ci-dessus.
+  const [messagesPrives, setMessagesPrives] = useState<Record<number, string>>({})
+  const envoyerMessagePrive = (connexionId: number) => {
+    const texte = (messagesPrives[connexionId] ?? '').trim()
+    if (!texte) return
+    envoyerAClientReseau(connexionId, encoderMessage({ type: 'message-mj', texte }))
+    setMessagesPrives(prev => ({ ...prev, [connexionId]: '' }))
+  }
+
+  // Envoi d'image (voir 'image-mj' dans reseauProtocole.ts) — un seul <input type=file> caché partagé
+  // par tous les boutons 🖼 (à tous + un par joueur) : cibleImageRef retient pour qui au moment du clic,
+  // relu dans l'onChange une fois le fichier choisi. Évite de créer un ref par carte de client.
+  const cibleImageRef = useRef<number | 'tous' | null>(null)
+  const fichierImageRef = useRef<HTMLInputElement | null>(null)
+  const choisirImagePour = (cible: number | 'tous') => {
+    cibleImageRef.current = cible
+    fichierImageRef.current?.click()
+  }
+  const fichierImageChoisi = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const cible = cibleImageRef.current
+    e.target.value = ''
+    if (!file || cible === null) return
+    const reader = new FileReader()
+    reader.onload = async ev => {
+      const compressed = await compresserImage(ev.target?.result as string)
+      const contenu = encoderMessage({ type: 'image-mj', dataUrl: compressed })
+      if (cible === 'tous') envoyerATousReseau(contenu)
+      else envoyerAClientReseau(cible, contenu)
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     etatServeurReseau().then(etat => { setDemarre(etat.demarre); setPort(etat.port); setCode(etat.code); setClients(etat.clients) })
@@ -86,6 +120,9 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
           const nom = identite?.nom ?? `#${e.id}`
           const cle = identite?.idPJ.slice(0, 6) ?? '?'
           ajouterJournal(t('gmMode.reseau.degatsEvt', { id: e.id, nom, cle, montant: message.montant, type: message.typeDegats || t('gameMode.dmTypeGenerique') }), 'degats')
+        } else if (message?.type === 'message-joueur') {
+          const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
+          ajouterJournal(t('gmMode.reseau.messageJoueurEvt', { nom, texte: message.texte }), 'messageJoueur')
         } else {
           // Pas un message de protocole reconnu (texte de test brut, voir "message de test") : affiché tel quel.
           ajouterJournal(t('gmMode.reseau.messageEvt', { id: e.id, contenu: e.contenu }))
@@ -121,29 +158,30 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontFamily: "'Cinzel', serif", fontWeight: 700, color: GOLD, marginBottom: 6 }}>
+      <input ref={fichierImageRef} type="file" accept="image/*" onChange={fichierImageChoisi} style={{ display: 'none' }} />
+      <div style={{ fontSize: 19, fontFamily: "'Cinzel', serif", fontWeight: 700, color: GOLD, marginBottom: 6 }}>
         {t('gmMode.reseau.titre')}
       </div>
-      <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)', marginBottom: 16 }}>
+      <div style={{ fontSize: 15, color: 'rgba(245,236,215,0.6)', marginBottom: 16 }}>
         {t('gmMode.reseau.intro')}
       </div>
 
       {!isTauri() ? (
-        <div style={{ padding: 12, borderRadius: 6, border: `1px solid ${SECTION_BORDER}`, color: 'rgba(245,236,215,0.5)', fontSize: 13, maxWidth: 640 }}>
+        <div style={{ padding: 12, borderRadius: 6, border: `1px solid ${SECTION_BORDER}`, color: 'rgba(245,236,215,0.5)', fontSize: 15, maxWidth: 640 }}>
           {t('gmMode.reseau.horsTauri')}
         </div>
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <button onClick={toggleServeur} style={{
-              padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 14,
+              padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 16,
               border: `1px solid ${demarre ? 'rgba(220,80,80,0.5)' : 'rgba(120,220,140,0.5)'}`,
               background: demarre ? 'rgba(220,80,80,0.12)' : 'rgba(120,220,140,0.12)',
               color: demarre ? 'rgba(255,150,150,0.95)' : 'rgba(120,220,140,0.95)',
             }}>
               {demarre ? t('gmMode.reseau.arreter') : t('gmMode.reseau.demarrer')}
             </button>
-            <span style={{ fontSize: 13, color: PARCHMENT }}>
+            <span style={{ fontSize: 15, color: PARCHMENT }}>
               {demarre && port !== null ? t('gmMode.reseau.demarre', { port }) : t('gmMode.reseau.arrete')}
             </span>
           </div>
@@ -158,7 +196,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       padding: '10px 14px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
                       background: 'rgba(201,168,76,0.08)',
                     }}>
-                      <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         {t('gmMode.reseau.codePartie')}
                       </span>
                       <span style={{ fontSize: 28, fontWeight: 700, color: GOLD, letterSpacing: '0.15em', fontFamily: 'monospace' }}>
@@ -166,7 +204,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       </span>
                     </div>
                   )}
-                  <div style={{ fontSize: 13, color: GOLD, marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, color: GOLD, marginBottom: 12 }}>
                     {t('gmMode.reseau.clients', { count: clients })}
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -176,29 +214,39 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       placeholder={t('gmMode.reseau.envoyerATousPlaceholder')}
                       style={{
                         flex: 1, padding: '6px 10px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,
-                        background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 13,
+                        background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 15,
                       }}
                     />
                     <button
                       onClick={() => { if (messageATous.trim()) { envoyerATousReseau(messageATous); setMessageATous('') } }}
                       style={{
-                        padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                        padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                         border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                       }}
                     >
                       {t('gmMode.reseau.envoyerATous')}
                     </button>
+                    <button
+                      onClick={() => choisirImagePour('tous')}
+                      title={t('gmMode.reseau.envoyerImageATousTitle')}
+                      style={{
+                        padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                        border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                      }}
+                    >
+                      🖼
+                    </button>
                   </div>
                 </>
               )}
 
-              <div style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                 {t('gmMode.reseau.journal')}
               </div>
               <div style={{
                 border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: 10, maxHeight: 320,
                 overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4,
-                background: 'rgba(0,0,0,0.2)', fontFamily: 'monospace', fontSize: 12,
+                background: 'rgba(0,0,0,0.2)', fontFamily: 'monospace', fontSize: 14,
               }}>
                 {journal.length === 0
                   ? <span style={{ opacity: 0.4 }}>{t('gmMode.reseau.journalVide')}</span>
@@ -214,28 +262,60 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                 PJ homonymes (nom + joueur + peuple + fragment d'idPJ affichés), et pour déconnecter un
                 client précis sans devoir arrêter tout le serveur. */}
             <div style={{ flex: '0 0 260px', minWidth: 220 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                 {t('gmMode.reseau.joueursConnectes')}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {clientsConnectes.length === 0
-                  ? <span style={{ fontSize: 12, opacity: 0.4 }}>{t('gmMode.reseau.aucunJoueurConnecte')}</span>
+                  ? <span style={{ fontSize: 14, opacity: 0.4 }}>{t('gmMode.reseau.aucunJoueurConnecte')}</span>
                   : clientsConnectes.map(c => (
                     <div key={c.connexionId} style={{
                       padding: '8px 10px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
                       background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: 3,
                     }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: PARCHMENT }}>{c.nom}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.6)' }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: PARCHMENT }}>{c.nom}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)' }}>
                         {t('gmMode.reseau.joueurEtPeuple', { joueur: c.nomJoueur || '—', peuple: c.peuple || '—' })}
                       </div>
-                      <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.35)', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontFamily: 'monospace' }}>
                         #{c.connexionId} · {c.idPJ.slice(0, 6)}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                        <input
+                          value={messagesPrives[c.connexionId] ?? ''}
+                          onChange={e => setMessagesPrives(prev => ({ ...prev, [c.connexionId]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') envoyerMessagePrive(c.connexionId) }}
+                          placeholder={t('gmMode.reseau.messagePrivePlaceholder')}
+                          style={{
+                            flex: 1, minWidth: 0, padding: '3px 6px', borderRadius: 4, fontSize: 13,
+                            border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT,
+                          }}
+                        />
+                        <button
+                          onClick={() => envoyerMessagePrive(c.connexionId)}
+                          title={t('gmMode.reseau.envoyerMessagePriveTitle')}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                            border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                          }}
+                        >
+                          🔒
+                        </button>
+                        <button
+                          onClick={() => choisirImagePour(c.connexionId)}
+                          title={t('gmMode.reseau.envoyerImagePriveeTitle')}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                            border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
+                          }}
+                        >
+                          🖼
+                        </button>
                       </div>
                       <button
                         onClick={() => deconnecterClientReseau(c.connexionId)}
                         style={{
-                          alignSelf: 'flex-start', marginTop: 2, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
+                          alignSelf: 'flex-start', marginTop: 2, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
                           border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
                         }}
                       >

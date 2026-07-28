@@ -30,6 +30,16 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
   const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
   const [journal, setJournal] = useState<LigneJournalReseau[]>([])
+  // Signale un message privé du MJ (voir 'message-mj') non encore vu tant que le panneau réseau n'a pas
+  // été rouvert — le joueur ne le garde pas forcément ouvert en permanence, contrairement au MJ qui suit
+  // ReseauTab. Remis à false par marquerMessagesLus (voir GameModePanel, à l'ouverture du panneau).
+  const [messageNonLu, setMessageNonLu] = useState(false)
+  // Image actuellement affichée en plein écran (voir 'image-mj') — dataUrl déjà compressée par le MJ,
+  // jamais stockée sur disque ici. imagesRecuesRef (id de ligne de journal → dataUrl) permet de rouvrir
+  // une image passée en cliquant sa ligne de journal (voir ouvrirImage) ; purgée au-delà de 30 entrées,
+  // simple garde-fou mémoire pour une longue session (ces images ne sont jamais persistées).
+  const [imageAffichee, setImageAffichee] = useState<string | null>(null)
+  const imagesRecuesRef = useRef<Record<number, string>>({})
   const socketRef = useRef<WebSocket | null>(null)
   const prochainId = useRef(0)
   const onDegatsRecusRef = useRef(onDegatsRecus)
@@ -41,7 +51,9 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
 
   const ajouterJournal = useCallback((texte: string, categorie?: CategorieJournal) => {
     prochainId.current += 1
-    setJournal(prev => [{ id: prochainId.current, texte, categorie }, ...prev].slice(0, 200))
+    const id = prochainId.current
+    setJournal(prev => [{ id, texte, categorie }, ...prev].slice(0, 200))
+    return id
   }, [])
 
   const deconnecter = useCallback(() => {
@@ -71,6 +83,16 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
           ? t('gameMode.reseau.attaqueRateeJournal')
           : t('gameMode.reseau.degatsRecusJournal', { montant: message.montant, type: message.typeDegats || t('gameMode.dmTypeGenerique') })
         ajouterJournal(texte, 'degatsRecus')
+      } else if (message?.type === 'message-mj') {
+        ajouterJournal(t('gameMode.reseau.messagePriveJournal', { texte: message.texte }), 'messageMJ')
+        setMessageNonLu(true)
+      } else if (message?.type === 'image-mj') {
+        const id = ajouterJournal(t('gameMode.reseau.imageMJJournal'), 'imageMJ')
+        const entries = Object.entries(imagesRecuesRef.current)
+        if (entries.length >= 30) delete imagesRecuesRef.current[Number(entries[0][0])]
+        imagesRecuesRef.current[id] = message.dataUrl
+        setImageAffichee(message.dataUrl)
+        setMessageNonLu(true)
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,
         // ça n'apporte rien au joueur de le voir.
@@ -91,8 +113,20 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
     socketRef.current?.send(contenu)
   }, [])
 
+  const marquerMessagesLus = useCallback(() => setMessageNonLu(false), [])
+
+  // Rouvre une image déjà reçue depuis sa ligne de journal (voir imagesRecuesRef ci-dessus).
+  const ouvrirImage = useCallback((id: number) => {
+    const dataUrl = imagesRecuesRef.current[id]
+    if (dataUrl) setImageAffichee(dataUrl)
+  }, [])
+  const fermerImage = useCallback(() => setImageAffichee(null), [])
+
   // Ferme proprement la connexion si le panneau (ou l'app) se démonte pendant qu'on est connecté.
   useEffect(() => () => { socketRef.current?.close() }, [])
 
-  return { connecte, journal, connecter, deconnecter, envoyer }
+  return {
+    connecte, journal, connecter, deconnecter, envoyer, messageNonLu, marquerMessagesLus,
+    imageAffichee, ouvrirImage, fermerImage,
+  }
 }

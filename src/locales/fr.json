@@ -986,8 +986,11 @@
       "attaqueRateeFormule": "Aucun dégât",
       "attaqueRateeJournal": "⚔️ Attaque reçue — ratée",
       "degatsRecusJournal": "⚔️ {{montant}} DM reçus ({{type}})",
-      "envoyerPlaceholder": "Message de test…",
+      "envoyerPlaceholder": "Répondre au MJ…",
       "envoyer": "Envoyer",
+      "messagePriveJournal": "🔒 Message du MJ : {{texte}}",
+      "imageMJJournal": "🖼 Image reçue du MJ — cliquer pour la revoir",
+      "fermerImageTitle": "Fermer",
       "journalVide": "Aucun message reçu pour l'instant."
     },
     "pvCardTitle": "Points de vie",
@@ -1305,6 +1308,7 @@
       "messageEvt": "#{{id}} → {{contenu}}",
       "identificationEvt": "Client #{{id}} — Le personnage {{nom}} ({{cle}}) a été transmis.",
       "degatsEvt": "Client #{{id}} — {{nom}} ({{cle}}) inflige {{montant}} DM ({{type}}).",
+      "messageJoueurEvt": "💬 {{nom}} : {{texte}}",
       "horsTauri": "Le réseau n'est disponible que dans l'application installée (pas en aperçu navigateur).",
       "envoyerATousPlaceholder": "Message de test à diffuser…",
       "envoyerATous": "Envoyer à tous",
@@ -1312,6 +1316,10 @@
       "joueursConnectes": "Joueurs connectés",
       "aucunJoueurConnecte": "Aucun joueur connecté pour l'instant.",
       "joueurEtPeuple": "Joueur {{joueur}} · {{peuple}}",
+      "messagePrivePlaceholder": "Message privé…",
+      "envoyerMessagePriveTitle": "Envoyer en privé à ce joueur (invisible des autres)",
+      "envoyerImagePriveeTitle": "Envoyer une image en privé à ce joueur (invisible des autres)",
+      "envoyerImageATousTitle": "Envoyer une image à tous les joueurs connectés",
       "deconnecterJoueur": "Déconnecter"
     },
     "batailleMasse": {

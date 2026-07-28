@@ -200,6 +200,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   const gererDegatsRecusRef = useRef<(d: DegatsRecus) => void>(() => {})
   const onDegatsRecus = useCallback((d: DegatsRecus) => gererDegatsRecusRef.current(d), [])
   const reseau = useReseauClient(onDegatsRecus)
+  // Marque le message/l'image du MJ comme lu(e) dès que le panneau est ouvert — à l'ouverture, mais
+  // aussi si un nouveau message arrive alors que le panneau est DÉJÀ ouvert (sinon messageNonLu repasse
+  // à true sans que ce useEffect ne se redéclenche, puisque reseauPanelOuvert lui ne change pas : le
+  // voyant rouge restait affiché malgré le panneau ouvert — bug rapporté par Didic).
+  useEffect(() => {
+    if (reseauPanelOuvert && reseau.messageNonLu) reseau.marquerMessagesLus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reseauPanelOuvert, reseau.messageNonLu, reseau.marquerMessagesLus])
 
   // Transmission automatique au MJ de tout dégât infligé via le Mode de jeu (voir handleActionDegats/
   // handleWeaponDegats/handleRollBonusDice ci-dessous) — pas de type de dégâts fiable à déduire côté
@@ -947,15 +955,47 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
 
   return (
     <div style={panelStyle}>
+      {/* Image envoyée par le MJ (voir 'image-mj') : révélation plein écran automatique à la réception
+          (imageAffichee, mis à jour depuis useReseauClient) — clic sur le fond ou ✕ pour fermer, la ligne
+          de journal correspondante permet de la rouvrir ensuite (voir reseau.ouvrirImage ci-dessous). */}
+      {reseau.imageAffichee && (
+        <div onClick={reseau.fermerImage} style={{
+          position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        }}>
+          <img src={reseau.imageAffichee} alt="" style={{
+            maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.8)', cursor: 'default',
+          }} onClick={e => e.stopPropagation()} />
+          <button onClick={reseau.fermerImage} title={t('gameMode.reseau.fermerImageTitle')} style={{
+            position: 'fixed', top: 16, right: 20, background: 'rgba(0,0,0,0.5)', border: `1px solid ${SECTION_BORDER}`,
+            color: PARCHMENT, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '6px 10px', borderRadius: 4,
+          }}>✕</button>
+        </div>
+      )}
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, gap: 8, position: 'relative' }}>
         <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, flex: 1, fontFamily: "'Cinzel', serif" }}>{t('gameMode.title')}</span>
-        <button onClick={() => setReseauPanelOuvert(o => !o)} title={t('gameMode.reseau.titre')} style={{
-          background: reseau.connecte ? 'rgba(120,220,140,0.15)' : 'transparent',
-          border: `1px solid ${reseau.connecte ? 'rgba(120,220,140,0.4)' : 'transparent'}`,
-          borderRadius: 4, color: reseau.connecte ? 'rgba(120,220,140,0.95)' : 'rgba(245,236,215,0.5)',
-          cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '4px 6px',
-        }}>🌐</button>
+        {/* Pulsation du point rouge ci-dessous — message privé du MJ non lu (voir messageNonLu) */}
+        {reseau.messageNonLu && (
+          <style>{'@keyframes tda-reseau-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,90,90,0.55)}50%{box-shadow:0 0 0 5px rgba(255,90,90,0)}}'}</style>
+        )}
+        <button onClick={() => setReseauPanelOuvert(o => !o)} title={t('gameMode.reseau.titre')}
+          style={{
+            background: reseau.connecte ? 'rgba(120,220,140,0.15)' : 'transparent',
+            border: `1px solid ${reseau.connecte ? 'rgba(120,220,140,0.4)' : 'transparent'}`,
+            borderRadius: 4, color: reseau.connecte ? 'rgba(120,220,140,0.95)' : 'rgba(245,236,215,0.5)',
+            cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '4px 6px', position: 'relative',
+          }}>
+          🌐
+          {/* Point rouge : message privé du MJ non lu, visible même panneau fermé (voir messageNonLu) */}
+          {reseau.messageNonLu && (
+            <span style={{
+              position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 4,
+              background: 'rgba(255,90,90,0.95)', animation: 'tda-reseau-pulse 1.6s ease-in-out infinite',
+            }} />
+          )}
+        </button>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: `rgba(245,236,215,0.5)`, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>✕</button>
 
         {reseauPanelOuvert && (
@@ -1033,7 +1073,7 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
                     placeholder={t('gameMode.reseau.envoyerPlaceholder')}
                     style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
                   />
-                  <button onClick={() => { if (reseauMessage.trim()) { reseau.envoyer(reseauMessage); setReseauMessage('') } }} style={{
+                  <button onClick={() => { if (reseauMessage.trim()) { reseau.envoyer(encoderMessage({ type: 'message-joueur', texte: reseauMessage })); setReseauMessage('') } }} style={{
                     padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
                     border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                   }}>
@@ -1057,7 +1097,14 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
               {reseau.journal.length === 0
                 ? <span style={{ opacity: 0.4 }}>{t('gameMode.reseau.journalVide')}</span>
                 : reseau.journal.map(l => (
-                  <div key={l.id} style={l.categorie ? { color: COULEUR_JOURNAL[l.categorie] } : undefined}>{l.texte}</div>
+                  <div key={l.id}
+                    onClick={l.categorie === 'imageMJ' ? () => reseau.ouvrirImage(l.id) : undefined}
+                    style={{
+                      color: l.categorie ? COULEUR_JOURNAL[l.categorie] : undefined,
+                      cursor: l.categorie === 'imageMJ' ? 'pointer' : undefined,
+                      textDecoration: l.categorie === 'imageMJ' ? 'underline' : undefined,
+                    }}
+                  >{l.texte}</div>
                 ))}
             </div>
           </div>

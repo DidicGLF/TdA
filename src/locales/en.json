@@ -986,8 +986,11 @@
       "attaqueRateeFormule": "No damage",
       "attaqueRateeJournal": "⚔️ Attack received — missed",
       "degatsRecusJournal": "⚔️ {{montant}} DM received ({{type}})",
-      "envoyerPlaceholder": "Test message…",
+      "envoyerPlaceholder": "Reply to the GM…",
       "envoyer": "Send",
+      "messagePriveJournal": "🔒 Message from the GM: {{texte}}",
+      "imageMJJournal": "🖼 Image received from the GM — click to view again",
+      "fermerImageTitle": "Close",
       "journalVide": "No messages received yet."
     },
     "pvCardTitle": "Hit Points",
@@ -1305,6 +1308,7 @@
       "messageEvt": "#{{id}} → {{contenu}}",
       "identificationEvt": "Client #{{id}} — The character {{nom}} ({{cle}}) was transmitted.",
       "degatsEvt": "Client #{{id}} — {{nom}} ({{cle}}) deals {{montant}} DM ({{type}}).",
+      "messageJoueurEvt": "💬 {{nom}}: {{texte}}",
       "horsTauri": "Network is only available in the installed app (not in the browser preview).",
       "envoyerATousPlaceholder": "Test message to broadcast…",
       "envoyerATous": "Send to all",
@@ -1312,6 +1316,10 @@
       "joueursConnectes": "Connected players",
       "aucunJoueurConnecte": "No player connected yet.",
       "joueurEtPeuple": "Player {{joueur}} · {{peuple}}",
+      "messagePrivePlaceholder": "Private message…",
+      "envoyerMessagePriveTitle": "Send privately to this player (invisible to others)",
+      "envoyerImagePriveeTitle": "Send an image privately to this player (invisible to others)",
+      "envoyerImageATousTitle": "Send an image to all connected players",
       "deconnecterJoueur": "Disconnect"
     },
     "batailleMasse": {

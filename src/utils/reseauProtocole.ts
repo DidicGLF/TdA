@@ -49,6 +49,20 @@ export type MessageReseau =
   // connexion WebSocket, elle, reste ouverte côté joueur (qui n'a donc aucune raison de renvoyer son
   // identification de lui-même). Diffusé à chaque (re)montage de l'écoute réseau côté MJ.
   | { type: 'qui-etes-vous' }
+  // MJ → UN joueur en particulier (voir envoyerAClientReseau, déjà existant au niveau transport) :
+  // message privé, invisible des autres joueurs connectés — contrairement au "message à tous" qui reste
+  // du texte brut non protocolaire. Affiché dans le journal du panneau réseau du joueur ET signale une
+  // notification tant que le panneau n'a pas été rouvert (voir messageNonLu dans useReseauClient).
+  | { type: 'message-mj'; texte: string }
+  // Joueur → MJ : réponse au message privé (ou tout texte libre) — symétrique de 'message-mj'. Affiché
+  // dans le journal du MJ avec le nom du PJ (résolu via identitesRef, voir ReseauTab.tsx), là où l'ancien
+  // "message de test" brut n'affichait qu'un id de connexion.
+  | { type: 'message-joueur'; texte: string }
+  // MJ → un ou plusieurs joueurs (diffusion via envoyerATousReseau, ou ciblée via envoyerAClientReseau —
+  // le choix se fait au niveau du transport appelé côté MJ, voir ReseauTab.tsx, jamais dans le message
+  // lui-même) : image affichée en plein écran dès réception côté joueur (voir imageAffichee dans
+  // useReseauClient.ts). dataUrl déjà compressée (compresserImage, même réglage que les portraits).
+  | { type: 'image-mj'; dataUrl: string }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -72,7 +86,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -81,4 +95,7 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   connexion: 'rgba(120,220,140,0.9)',      // vert — connexion
   deconnexion: 'rgba(245,236,215,0.45)',   // parchemin atténué — déconnexion
   decouverte: 'rgba(200,170,255,0.85)',    // violet — requête de découverte (code de partie)
+  messageMJ: 'rgba(201,168,76,0.95)',      // or — message privé du MJ, doit se démarquer du reste
+  messageJoueur: 'rgba(120,210,220,0.95)', // turquoise — réponse d'un joueur, distincte de tout le reste
+  imageMJ: 'rgba(201,168,76,0.95)',        // or — même famille que messageMJ, distinguée par l'icône 🖼
 }
