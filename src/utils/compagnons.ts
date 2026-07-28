@@ -200,14 +200,10 @@ export function getRangCompagnon(
   return 1
 }
 
-// Saisies du joueur pour ce compagnon (fiche dédiée) — compagnonsFiches (par nom) prioritaire,
-// compagnonsOverrides (par position, legacy) en repli seulement si ce compagnon occupe encore l'un
-// des 2 emplacements actifs. Même règle que CompagnonsFields/FicheCompagnon.
+// Saisies du joueur pour ce compagnon (fiche dédiée), indexées par nom — l'ancien format par position
+// (compagnonsOverrides) est migré une fois pour toutes au chargement (voir App.tsx).
 function getOverrideCompagnon(character: Character, nom: string): CompagnonOverride {
-  const parFiche = character.compagnonsFiches?.[nom]
-  if (parFiche) return parFiche
-  const slot = character.compagnonsActifs?.indexOf(nom) ?? -1
-  return (slot >= 0 ? character.compagnonsOverrides?.[slot] : undefined) ?? {}
+  return character.compagnonsFiches?.[nom] ?? {}
 }
 
 // Substitution pure (sans évaluer l'expression) des tokens [NIV]/[RANG]/[ATT ...] et des modificateurs

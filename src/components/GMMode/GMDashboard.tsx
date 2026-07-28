@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameData, BESTIAIRE_LIVRE } from '../../context/GameDataContext'
-import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature } from '../../utils/bestiairePerso'
+import { illustrationDe, publierBestiaireLivre, CHAMPS_ILLUSTRATION, cleCreature, sluggifierNom } from '../../utils/bestiairePerso'
 import { publierCapacitesBibliothequeLivre } from '../../utils/cataloguePerso'
 import CreatureDetail from './CreatureDetail'
 import { importerImage } from '../../utils/imageStore'
@@ -341,7 +341,7 @@ function BestiaireTab({ forcerNom, mobile }: { forcerNom?: string | null; mobile
           const e = contenu as BestiaireEntry
           if (!e || typeof e.nom !== 'string') continue
           const image = typeof e.image === 'string' && e.image.startsWith('data:')
-            ? await importerImage('bestiaire', e.image)
+            ? await importerImage('img', e.image, `${sluggifierNom(e.nom)}_nc${e.nc}`)
             : e.image
           ajoutees.push({ ...e, ...(image ? { image } : {}) })
         }
@@ -362,6 +362,68 @@ function BestiaireTab({ forcerNom, mobile }: { forcerNom?: string | null; mobile
     ].filter(Boolean).join(' ')
     setMessageImport(message)
     setTimeout(() => setMessageImport(null), 5000)
+  }
+
+  // Import en masse d'images depuis un dossier — chaque joueur fournit les siennes (le bestiaire livré
+  // n'en a pas, pour des raisons de taille ET de licence). Convention : img_<slug-du-nom>.ext (ex.
+  // img_orc_guerrier.png), éventuellement img_<slug>_nc<NC>.ext pour ne viser qu'un NC précis parmi des
+  // homonymes — sans suffixe, l'image s'applique à toutes leurs variantes, gratuit grâce à la
+  // déduplication par empreinte de importerImage (voir imageStore.ts).
+  const dossierImagesRef = useRef<HTMLInputElement>(null)
+
+  const lireFichierEnDataUrl = (fichier: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const lecteur = new FileReader()
+      lecteur.onload = () => resolve(lecteur.result as string)
+      lecteur.onerror = () => reject(lecteur.error)
+      lecteur.readAsDataURL(fichier)
+    })
+
+  // Même routage que updateSelected (livrée → calque d'illustrations, perso → surcharge), mais pour une
+  // créature arbitraire plutôt que celle actuellement sélectionnée dans l'éditeur.
+  const appliquerImageCreature = (creature: BestiaireEntry, image: string) => {
+    const cle = cleCreature(creature)
+    if (clesPerso.has(cle)) {
+      setBestiairePerso(prev => prev.map(c => cleCreature(c) === cle ? { ...c, image } : c))
+    } else {
+      setBestiaireIllustrations(prev => ({ ...prev, [cle]: { ...prev[cle], image } }))
+    }
+  }
+
+  const importerImagesDossier = async (fichiers: FileList) => {
+    const parSlug = new Map<string, BestiaireEntry[]>()
+    for (const c of bestiaire) {
+      const slug = sluggifierNom(c.nom)
+      parSlug.set(slug, [...(parSlug.get(slug) ?? []), c])
+    }
+    let importees = 0
+    const nonReconnus: string[] = []
+    for (const fichier of Array.from(fichiers)) {
+      const nomFichier = fichier.name.replace(/\.[^.]+$/, '')
+      if (!nomFichier.toLowerCase().startsWith('img_')) continue
+      const reste = nomFichier.slice(4)
+      const matchNC = reste.match(/^(.+)_nc([\d.]+)$/i)
+      const slug = sluggifierNom(matchNC ? matchNC[1] : reste)
+      const ncCible = matchNC ? Number(matchNC[2]) : null
+      let cibles = parSlug.get(slug) ?? []
+      if (ncCible !== null) cibles = cibles.filter(c => c.nc === ncCible)
+      if (cibles.length === 0) { nonReconnus.push(fichier.name); continue }
+      try {
+        const dataUrl = await lireFichierEnDataUrl(fichier)
+        const cleNommee = ncCible !== null ? `${slug}_nc${ncCible}` : slug
+        const cle = await importerImage('img', dataUrl, cleNommee)
+        for (const cible of cibles) appliquerImageCreature(cible, cle)
+        importees++
+      } catch {
+        nonReconnus.push(fichier.name)
+      }
+    }
+    const message = [
+      t('gmMode.bestiaireImagesResultat', { count: importees }),
+      ...(nonReconnus.length > 0 ? [t('gmMode.bestiaireImagesNonReconnues', { liste: nonReconnus.join(', ') })] : []),
+    ].join(' ')
+    setMessageImport(message)
+    setTimeout(() => setMessageImport(null), 8000)
   }
 
   const updateSelected = (patch: Partial<BestiaireEntry>) => {
@@ -491,6 +553,15 @@ function BestiaireTab({ forcerNom, mobile }: { forcerNom?: string | null; mobile
             </button>
             <input ref={fichierImportRef} type="file" accept=".json" multiple style={{ display: 'none' }}
               onChange={e => { if (e.target.files?.length) importerCreatures(e.target.files); e.target.value = '' }} />
+            <button onClick={() => dossierImagesRef.current?.click()} style={{
+              background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+              color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
+            }}>
+              🖼 {t('gmMode.bestiaireImporterImages')}
+            </button>
+            <input ref={dossierImagesRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+              {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+              onChange={e => { if (e.target.files?.length) importerImagesDossier(e.target.files); e.target.value = '' }} />
             {messageImport && (
               <span style={{ fontSize: 12, color: 'rgba(130,220,140,0.95)', whiteSpace: 'nowrap' }}>{messageImport}</span>
             )}

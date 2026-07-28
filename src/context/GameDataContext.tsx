@@ -28,7 +28,7 @@ import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
 import { loadDataFile, loadDataFileDossier, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
-import { fusionnerBestiaire, migrerBestiairePerso, cleCreature } from '../utils/bestiairePerso'
+import { fusionnerBestiaire, migrerBestiairePerso, cleCreature, sluggifierNom } from '../utils/bestiairePerso'
 import {
   fusionnerVoies, migrerVoiesPerso, extraireSurchargesVoies,
   fusionnerDescriptions, migrerDescriptionsPerso, extraireSurchargesDescriptions,
@@ -177,7 +177,7 @@ async function migrerImagesBestiaire(entrees: BestiaireEntry[]): Promise<Bestiai
   return Promise.all(entrees.map(async e => {
     if (!e.image?.startsWith('data:')) return e
     try {
-      return { ...e, image: await importerImage('bestiaire', e.image) }
+      return { ...e, image: await importerImage('img', e.image, `${sluggifierNom(e.nom)}_nc${e.nc}`) }
     } catch {
       return e
     }

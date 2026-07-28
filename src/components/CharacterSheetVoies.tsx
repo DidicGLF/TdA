@@ -7,7 +7,6 @@ import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
 import ChampsRecto from './ChampsRecto'
 import ChampsVerso from './ChampsVerso'
 import VoieRangCheckboxes from './VoieRangCheckboxes'
-import CompagnonsFields from './CompagnonsFields'
 import { TOUTES_VOIES_ENTRIES, TOUS_VOIES_TITRES } from '../data/voieRangEntries'
 
 interface Props {
@@ -49,7 +48,6 @@ export default function CharacterSheetVoies({
       <ChampsVerso {...commun} defaultPage="verso" activeStep={activeStep} />
       <VoieRangCheckboxes {...commun} defaultPage="voies" activeStep={activeStep} descriptions={data}
         entries={TOUTES_VOIES_ENTRIES} titres={TOUS_VOIES_TITRES} />
-      <CompagnonsFields {...commun} defaultPage="verso" descriptions={data} />
     </div>
   )
 }

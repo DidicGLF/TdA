@@ -9,6 +9,15 @@ export function useImage(valeur: string | undefined | null): string | null {
   // l'effet devrait la recopier à chaque rendu, ce qui provoque des rendus en cascade inutiles.
   const directe = valeur && !estCleImage(valeur) ? valeur : null
   const [chargee, setChargee] = useState<string | null>(null)
+  // Repère la dernière valeur pour laquelle chargee a été résolu — ajusté pendant le rendu (pattern
+  // recommandé par React pour réagir à un changement de prop), pas dans l'effet ci-dessous. Sans ce
+  // reset, passer d'une créature illustrée à une créature sans image laissait chargee à sa dernière
+  // valeur chargée, affichée indéfiniment jusqu'à la sélection d'une autre créature illustrée.
+  const [dernierePourChargee, setDernierePourChargee] = useState(valeur)
+  if (valeur !== dernierePourChargee) {
+    setDernierePourChargee(valeur)
+    setChargee(null)
+  }
 
   useEffect(() => {
     if (!valeur || !estCleImage(valeur)) return

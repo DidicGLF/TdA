@@ -41,6 +41,35 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* Barres de défilement discrètes — WebKitGTK (Linux) applique déjà le thème GTK fin/auto-masqué par
+   défaut, mais WebView2 (Windows) affiche sa grosse barre blanche par défaut. ::-webkit-scrollbar est
+   compris par les deux moteurs (tous deux basés sur WebKit/Chromium), donc une seule règle suffit pour
+   harmoniser l'apparence sur les deux plateformes plutôt que de cibler Windows spécifiquement.
+   scrollbar-width/scrollbar-color (standard) en repli pour un moteur qui ne supporterait pas le préfixe. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,168,76,0.35) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(201,168,76,0.35);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(201,168,76,0.6);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body {
   margin: 0;
   background-color: var(--tdr-dark);

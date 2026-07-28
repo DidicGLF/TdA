@@ -185,11 +185,12 @@ export interface Character {
   // une capacité déjà empruntée ailleurs) mais seulement à lui accorder gratuitement sa version avancée
   // (ex : "Perfection élémentaliste").
   voieRangChoix?: Record<string, { voie: string; rang: number; avanceeSeulement?: boolean }>
-  compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
   // Saisies du joueur pour les fiches de compagnon, indexées par NOM de compagnon et non par position :
-  // un personnage peut en débloquer plus de deux, et l'ordre de la liste peut changer (une voie qui en
-  // remplace un autre, par exemple) — un index de position ferait alors suivre les saisies au mauvais
-  // compagnon. `compagnonsOverrides` (2 positions) reste lu en repli pour les personnages existants.
+  // un personnage peut en débloquer plus de deux (une fiche A5 par compagnon débloqué, voir
+  // CharacterSheetCompagnons.tsx), et l'ordre de la liste peut changer (une voie qui en remplace un
+  // autre, par exemple) — un index de position ferait alors suivre les saisies au mauvais compagnon.
+  // Remplace l'ancien format par position (compagnonsOverrides, retiré — migré au chargement dans
+  // App.tsx::handleLoad pour les personnages qui l'utilisaient encore).
   compagnonsFiches?: Record<string, CompagnonOverride>
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)

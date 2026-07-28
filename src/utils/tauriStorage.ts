@@ -24,6 +24,20 @@ export async function saveDataFile(filename: string, content: string): Promise<v
   localStorage.setItem(LS_PREFIX + filename, content)
 }
 
+// Binaire réel (images, voir imageStore.ts) — contrairement à load/saveDataFile (texte). Hors Tauri
+// (aperçu navigateur) : pas de vrai fichier de toute façon dans ce contexte, no-op/null — imageStore.ts
+// garde son ancien chemin texte via localStorage pour ce cas.
+export async function saveBinaryFile(filename: string, content: Uint8Array): Promise<void> {
+  if (!isTauri()) return
+  await invoke<void>('save_binary_file', { filename, content: Array.from(content) })
+}
+
+export async function loadBinaryFile(filename: string): Promise<Uint8Array | null> {
+  if (!isTauri()) return null
+  const octets = await invoke<number[] | null>('load_binary_file', { filename })
+  return octets ? new Uint8Array(octets) : null
+}
+
 // Charge un fichier rangé dans un sous-dossier (voir le rangement Personnage/Notes/Maitre de jeu de
 // Documents/TdA) ; si le nouveau chemin n'existe pas encore, reprend l'ancien emplacement (racine,
 // nom d'avant le rangement) et le recopie aussitôt au nouveau chemin. Migration silencieuse, faite une

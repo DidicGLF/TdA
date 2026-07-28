@@ -3,7 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { useLocaleContext } from './context/LocaleContext'
 import { loadDataFileDossier, saveDataFile } from './utils/tauriStorage'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import type { Character } from './types/character'
+import type { Character, CompagnonOverride } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
@@ -326,8 +326,23 @@ function AppContent() {
 
   const handleLoad = (c: Character, savedMaxStep: number) => {
     const tm = c.talentMagique
+    // Migration : compagnonsOverrides (legacy, par position) est remplacé par compagnonsFiches (par
+    // nom) — voir FicheCompagnon.tsx. Recopié une seule fois si absent du nouveau format, puis le
+    // champ legacy est omis (undefined) du personnage normalisé : plus jamais réécrit.
+    const legacyOverrides = (c as Character & { compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null] }).compagnonsOverrides
+    const compagnonsFichesMigre = { ...(c.compagnonsFiches ?? {}) }
+    if (legacyOverrides) {
+      for (const slot of [0, 1] as const) {
+        const nom = c.compagnonsActifs?.[slot]
+        if (nom && !compagnonsFichesMigre[nom] && legacyOverrides[slot]) {
+          compagnonsFichesMigre[nom] = legacyOverrides[slot]!
+        }
+      }
+    }
     const normalized = {
       ...c,
+      compagnonsFiches: compagnonsFichesMigre,
+      compagnonsOverrides: undefined,
       talentMagique: typeof tm === 'string' ? { nom: tm, desc: '' } : (tm ?? { nom: '', desc: '' }),
       portrait: c.portrait ?? '',
       portraitScale: c.portraitScale ?? 1,
