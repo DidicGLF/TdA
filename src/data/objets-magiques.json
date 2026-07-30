@@ -1,0 +1,24 @@
+[
+  {
+    "id": "livre-bague-symbiose-aquatique",
+    "nom": "Bague de symbiose aquatique",
+    "categorie": "legendaire",
+    "slot": "accessoire",
+    "enchantements": [],
+    "niveauMagieBase": 4,
+    "niveauMagie": 4,
+    "valeur": 3200,
+    "description": "Cette bague permet au porteur de se lier complètement avec l'essence de l'eau. Il peut nager à la même vitesse que s'il se déplaçait sur la terre ferme, peut respirer sous l'eau sans limite de temps et ne pas être inquiété par la pression rencontrée dans les grandes profondeurs."
+  },
+  {
+    "id": "livre-fragment-cristal-noir",
+    "nom": "Fragment du cristal noir",
+    "categorie": "legendaire",
+    "slot": "accessoire",
+    "enchantements": [],
+    "niveauMagieBase": 5,
+    "niveauMagie": 5,
+    "valeur": 5000,
+    "description": "Ce cristal noir permet de contrer les effets de la magie. Une fois par jour, au prix d'une action limitée, il permet de créer une zone de 10 mètres de rayon centrée sur le cristal, lequel perdure pendant une journée et qui aspire toute forme de magie. Aucun sort ni effet magique ne peut persister ou pénétrer dans ces zones. Les sorts actifs prennent fin immédiatement."
+  }
+]

@@ -18,6 +18,7 @@ import BESTIAIRE_RAW from '../data/bestiaire.json'
 import RENCONTRES_RAW from '../data/rencontres.json'
 import COMBATS_RAW from '../data/combats-sauvegardes.json'
 import CAPACITES_BIBLIOTHEQUE_RAW from '../data/capacites-bibliotheque.json'
+import OBJETS_MAGIQUES_RAW from '../data/objets-magiques.json'
 import NOTES_RAW from '../data/notes.json'
 import CAMPAGNES_RAW from '../data/campagnes.json'
 import NOTE_IMAGES_RAW from '../data/note-images.json'
@@ -35,11 +36,12 @@ import {
   fusionnerHiddenVoies, migrerHiddenVoiesPerso, deriverAjoutsRetraits,
 } from '../utils/voiesPerso'
 import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
+import { fusionnerObjetsMagiques, extraireSurchargesObjetsMagiques } from '../utils/objetsMagiquesPerso'
 import { fusionnerArmes, migrerArmesPerso, extraireSurchargesArmes, fusionnerArmures, migrerArmuresPerso, extraireSurchargesArmures } from '../utils/armesPerso'
 import type { ArmesPerso, ArmuresPerso } from '../utils/armesPerso'
 import { fusionnerPeuples, migrerPeuplesPerso, extraireSurchargesPeuples } from '../utils/peuplesPerso'
 import type { PeuplesPerso } from '../utils/peuplesPerso'
-import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage } from '../types/gameData'
+import type { DescMap, TraitEntry, PeupleEntry, CompanionEntry, VoieEntry, BestiaireEntry, BestiaireIllustrations, RencontreSauvegardee, CapaciteBibliotheque, Note, Campaign, NoteImage, ObjetMagiqueEntry } from '../types/gameData'
 export type { VoieEntry } from '../types/gameData'
 import type { CombatSessionSauvegardee } from '../utils/combat'
 import { normaliserCombatSession } from '../utils/combat'
@@ -131,6 +133,8 @@ interface GameDataContextValue {
   setCombatsSauvegardes: Dispatch<SetStateAction<CombatSessionSauvegardee[]>>
   capacitesBibliotheque: CapaciteBibliotheque[]
   setCapacitesBibliotheque: Dispatch<SetStateAction<CapaciteBibliotheque[]>>
+  objetsMagiques: ObjetMagiqueEntry[]
+  setObjetsMagiques: Dispatch<SetStateAction<ObjetMagiqueEntry[]>>
   notes: Note[]
   setNotes: Dispatch<SetStateAction<Note[]>>
   campagnes: Campaign[]
@@ -252,6 +256,11 @@ export const HIDDEN_COMPAGNONS_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_C
 // l'équipement, plus haut).
 export const CAPACITES_BIBLIOTHEQUE_LIVRE = unwrap(JSON.parse(JSON.stringify(CAPACITES_BIBLIOTHEQUE_RAW))) as CapaciteBibliotheque[]
 
+// Objets magiques créés par le MJ (Livre du meneur p.183-190) — même principe de catalogue plat que la
+// bibliothèque de capacités ci-dessus, mais identifié par `id` (objetsMagiquesPerso.ts) plutôt que par
+// nom, deux objets pouvant légitimement partager un nom après clonage.
+export const OBJETS_MAGIQUES_LIVRE = unwrap(JSON.parse(JSON.stringify(OBJETS_MAGIQUES_RAW))) as ObjetMagiqueEntry[]
+
 // ─── Équipement : même principe, à la granularité de la catégorie ──────────────────────────────────
 // Voir src/utils/armesPerso.ts pour le détail et les limites (portée réduite : la structure — groupes/
 // catégories renommés, réordonnés ou supprimés — n'est pas suivie, seuls le contenu des catégories et
@@ -321,6 +330,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     unwrap(JSON.parse(JSON.stringify(COMBATS_RAW))) as CombatSessionSauvegardee[]
   )
   const [capacitesBibliothequePerso, setCapacitesBibliothequePersoRaw] = useState<CapaciteBibliotheque[]>([])
+  const [objetsMagiquesPerso, setObjetsMagiquesPersoRaw] = useState<ObjetMagiqueEntry[]>([])
   const [notes, setNotesRaw] = useState<Note[]>(() =>
     unwrap(JSON.parse(JSON.stringify(NOTES_RAW))) as Note[]
   )
@@ -554,6 +564,11 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           setCapacitesBibliothequePersoRaw(perso)
           queueSave('Maitre de jeu/capacites-bibliotheque-perso.json', JSON.stringify({ _type: 'capacites-bibliotheque-perso', data: perso }, null, 2))
         }
+        // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste [] par défaut au premier lancement.
+        const objetsMagiquesPersoStr = await loadDataFile('Maitre de jeu/objets-magiques-perso.json')
+        if (objetsMagiquesPersoStr !== null) {
+          setObjetsMagiquesPersoRaw(unwrap(JSON.parse(objetsMagiquesPersoStr)) as ObjetMagiqueEntry[])
+        }
         const notesStr = await loadDataFileDossier('Notes/notes.json', 'notes.json')
         if (notesStr) setNotesRaw(unwrap(JSON.parse(notesStr)) as Note[])
         const campagnesStr = await loadDataFileDossier('Notes/campagnes.json', 'campagnes.json')
@@ -743,6 +758,17 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextPerso
     })
   }, [])
+  // Même principe (générique, reçoit la vue fusionnée, en déduit la surcharge perso par différence).
+  const setObjetsMagiques = useCallback<Dispatch<SetStateAction<ObjetMagiqueEntry[]>>>((updater) => {
+    setObjetsMagiquesPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: ObjetMagiqueEntry[]) => ObjetMagiqueEntry[])(fusionnerObjetsMagiques(OBJETS_MAGIQUES_LIVRE, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesObjetsMagiques(next, OBJETS_MAGIQUES_LIVRE)
+      queueSave('Maitre de jeu/objets-magiques-perso.json', JSON.stringify({ _type: 'objets-magiques-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'Notes/notes.json', 'notes'), [])
   const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'Notes/campagnes.json', 'campagnes'), [])
   const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'Notes/note-images.json', 'note-images'), [])
@@ -767,6 +793,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const traitsRaciaux = useMemo(() => fusionnerCatalogue(TRAITS_RACIAUX_LIVRE, traitsRaciauxPerso), [traitsRaciauxPerso])
   const compagnons = useMemo(() => fusionnerCatalogue(COMPAGNONS_LIVRE, compagnonsPerso), [compagnonsPerso])
   const capacitesBibliotheque = useMemo(() => fusionnerCatalogue(CAPACITES_BIBLIOTHEQUE_LIVRE, capacitesBibliothequePerso), [capacitesBibliothequePerso])
+  const objetsMagiques = useMemo(() => fusionnerObjetsMagiques(OBJETS_MAGIQUES_LIVRE, objetsMagiquesPerso), [objetsMagiquesPerso])
   const hiddenCompagnons = useMemo(
     () => fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, hiddenCompagnonsDelta.ajouts, hiddenCompagnonsDelta.retraits),
     [hiddenCompagnonsDelta],
@@ -814,6 +841,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       rencontres, setRencontres,
       combatsSauvegardes, setCombatsSauvegardes,
       capacitesBibliotheque, setCapacitesBibliotheque,
+      objetsMagiques, setObjetsMagiques,
       notes, setNotes,
       campagnes, setCampagnes,
       noteImages, setNoteImages,

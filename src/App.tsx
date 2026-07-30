@@ -14,7 +14,7 @@ import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
 import CharacterSheetCristaux from './components/CharacterSheetCristaux'
-import CreationWizard from './components/CreationWizard'
+import CreationWizard, { STEP_COUNT } from './components/CreationWizard'
 import ModeSelector from './components/ModeSelector'
 import GMDashboard from './components/GMMode/GMDashboard'
 import SaveLoadPanel from './components/SaveLoadPanel'
@@ -714,7 +714,7 @@ function AppContent() {
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <CreationWizard
                     step={step} maxStep={maxStep} character={character} onChange={onChange}
-                    onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                    onNext={() => { const n = Math.min(step + 1, STEP_COUNT - 1); setStep(n); setMaxStep(m => Math.max(m, n)) }}
                     onPrev={() => setStep(s => Math.max(s - 1, 0))}
                     onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                     onSave={() => setShowSave(true)}
@@ -1329,7 +1329,7 @@ function AppContent() {
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <CreationWizard
                 step={step} maxStep={maxStep} character={character} onChange={onChange}
-                onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                onNext={() => { const n = Math.min(step + 1, STEP_COUNT - 1); setStep(n); setMaxStep(m => Math.max(m, n)) }}
                 onPrev={() => setStep(s => Math.max(s - 1, 0))}
                 onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                 onSave={() => setShowSave(true)}

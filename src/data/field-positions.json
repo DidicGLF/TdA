@@ -1318,25 +1318,25 @@
     "reserved": false
   },
   "Héroïque CON": {
-    "top": 31,
+    "top": 30.9,
     "left": 5.3,
     "page": "recto",
     "reserved": false
   },
   "Héroïque INT": {
-    "top": 34.8,
+    "top": 34.7,
     "left": 5.3,
     "page": "recto",
     "reserved": false
   },
   "Héroïque SAG": {
-    "top": 38.3,
+    "top": 38.2,
     "left": 5.3,
     "page": "recto",
     "reserved": false
   },
   "Héroïque CHA": {
-    "top": 41.9,
+    "top": 41.8,
     "left": 5.3,
     "page": "recto",
     "reserved": false
@@ -1581,6 +1581,20 @@
     "left": 86.3,
     "width": 5.2,
     "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Nom du personnage": {
+    "top": 9.5,
+    "left": 29.9,
+    "width": 30.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Armes de paysan": {
+    "top": 67.5,
+    "left": 6.2,
     "page": "recto",
     "reserved": false
   }

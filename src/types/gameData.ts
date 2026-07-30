@@ -116,6 +116,50 @@ export type CapaciteBibliotheque = {
   effets?: CapaciteEffet[]
 }
 
+// Objets magiques (Livre du meneur, p.183-190) — voir enchantements-magiques.json (catalogue de
+// référence statique, tables du livre) et objets-magiques.json/objets-magiques-perso.json (objets créés
+// par le MJ, un par un, en piochant dans ce catalogue).
+export type ObjetMagiqueCategorie = 'traditionnel' | 'focalisateur' | 'legendaire'
+// 'accessoire' couvre les objets légendaires narratifs sans emplacement de combat (bague, amulette,
+// vêtement...) — pas d'enchantements arme/armure/focalisateur disponibles, seulement pouvoir/puissance
+// ou un effet purement descriptif (cf. les deux exemples du livre : Bague de symbiose aquatique,
+// Fragment du cristal noir).
+export type ObjetMagiqueSlot = 'arme' | 'armure' | 'bouclier' | 'focalisateur' | 'accessoire'
+export type TraditionPeuple = 'elfe' | 'nain' | 'orc' | 'gobelin' | 'ogre'
+
+// Un enchantement choisi dans enchantements-magiques.json (ou saisi à la main pour un enchantement de
+// pouvoir) et copié sur l'objet — indépendant du catalogue de référence ensuite, comme
+// CapaciteBibliotheque copiée sur CreatureCapacite.effets.
+export type EnchantementApplique = {
+  nom: string
+  niveauMagie: number
+  effets?: CapaciteEffet[]
+  // Effet non réductible à un simple bonus de stat (ex. "dégainer est une action gratuite") — toujours
+  // affiché, y compris quand effets est vide ou ne couvre qu'une partie de l'enchantement.
+  texte?: string
+}
+
+export type ObjetMagiqueEntry = {
+  id: string
+  nom: string
+  categorie: ObjetMagiqueCategorie
+  slot: ObjetMagiqueSlot
+  tradition?: TraditionPeuple           // si categorie === 'traditionnel' — purement descriptif/filtre
+  degreQualite?: 1 | 2 | 3              // idem, purement descriptif (1=-, 2=Supérieure, 3=Exceptionnelle)
+  // TOUS les enchantements appliqués, y compris l'effet de base tradition/focalisateur (copié ici par
+  // ObjetMagiqueDetail au moment du choix de tradition+degré/focalisateur+degré, comme n'importe quel
+  // autre enchantement) — computeEffectsWithCristaux ne lit QUE ce tableau, jamais tradition/
+  // degreQualite directement : ces deux champs ne servent qu'à l'affichage et au filtrage du picker.
+  enchantements: EnchantementApplique[]
+  // Niveau de magie narratif assigné directement par le MJ (0 par défaut) — utile pour un objet
+  // légendaire "accessoire" (bague, amulette...) dont le pouvoir n'est pas réductible à un enchantement
+  // du catalogue, cf. les exemples du livre (Bague de symbiose aquatique, Fragment du cristal noir).
+  niveauMagieBase?: number
+  niveauMagie: number   // total = niveauMagieBase + somme des niveauMagie de enchantements
+  valeur: number         // niveauMagie² × 200 po
+  description?: string   // texte libre (lore)
+}
+
 export type CreatureVoieRang = {
   rang: number
   nom: string

@@ -128,7 +128,7 @@ export default function ChampsRecto({
   const { t } = useTranslation()
   const modeImpression = useContext(ModeImpressionContext)
   const cb = onFieldMoved ?? (() => {})
-  const { peuples, data: rawData, armes, armures } = useGameData()
+  const { peuples, data: rawData, armes, armures, objetsMagiques } = useGameData()
   const data = useTranslatedDescriptions(rawData)
 
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
@@ -233,7 +233,7 @@ export default function ChampsRecto({
     onFieldMoved, reservePortalTarget, onReserveToggle,
   })
 
-  const effects = computeEffectsWithCristaux(character, data)
+  const effects = computeEffectsWithCristaux(character, data, objetsMagiques)
   const diceEffects = computeDiceEffects(character, data)
   const heroiqueStats = new Set(computeAvantages(character, data).map(a => a.stat))
 
@@ -736,11 +736,16 @@ export default function ChampsRecto({
             // infobulle (voir la condition `formula && !calibrate && p.readOnly` dans useChampsFiche).
             // Alignée ici sur le même principe : total calculé et infobulle quand verrouillée, saisie
             // manuelle libre (comme avant) quand déverrouillée.
-            const pcAffiche = CHA.mod + (character.famille === 'aventuriers' ? 4 : 2)
+            // effects['PC'] : bonus des objets magiques équipés (ex. arme traditionnelle gobeline) — voir
+            // computeEffectsWithCristaux. Aucune voie n'accorde de bonus de PC à ce jour, donc ce terme
+            // était absent jusqu'ici ; son ajout ne change rien pour un personnage sans objet magique.
+            const pcContribs = effects['PC'] ?? []
+            const pcAffiche = CHA.mod + (character.famille === 'aventuriers' ? 4 : 2) + sumStat(pcContribs)
             const pcLines = [
               { label: t('recto.tlBase'), value: '+2' },
               { label: t('stats.modCHA'), value: fmt(CHA.mod) },
               ...(character.famille === 'aventuriers' ? [{ label: t('recto.tlAventuriers'), value: '+2' }] : []),
+              ...groupContribs(pcContribs),
             ]
             return f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0,
               value: locked ? pcAffiche : character.pc,

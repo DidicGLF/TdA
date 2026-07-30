@@ -1,0 +1,124 @@
+{
+  "_comment": "Catalogue de référence statique (Livre du meneur p.183-190) — pas de fichier perso, ce sont les tableaux du livre. effets=null signifie un effet non réductible à un simple bonus de stat (dés, mécanique conditionnelle, règle narrative) : seul le champ texte est affiché, aucun bonus n'est appliqué automatiquement sur la fiche. necessiteChoixDegats indique que le MJ doit préciser un type de dégâts (parmi choixDegatsOptions) au moment d'ajouter l'enchantement, avant que son effet (RD_<TYPE>) puisse être calculé.",
+
+  "traditions": {
+    "elfe": {
+      "arme": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "+1 aux tests d'attaque" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "+2 aux tests d'attaque" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "+3 aux tests d'attaque" }
+      ],
+      "armure": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "-1 aux pénalités d'encombrement (la pénalité ne peut être inférieure à 0)" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "-2 aux pénalités d'encombrement (la pénalité ne peut être inférieure à 0)" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "-3 aux pénalités d'encombrement (la pénalité ne peut être inférieure à 0)" }
+      ]
+    },
+    "nain": {
+      "arme": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "+1 aux DM (doublé si l'arme est tenue à deux mains)" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "+2 aux DM (doublé si l'arme est tenue à deux mains)" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "+3 aux DM (doublé si l'arme est tenue à deux mains)" }
+      ],
+      "armure": [
+        { "degre": 1, "niveauMagie": 1, "effets": [{ "stat": "DEF", "valeur": "1" }], "texte": "Bonus de DEF +1" },
+        { "degre": 2, "niveauMagie": 2, "effets": [{ "stat": "DEF", "valeur": "2" }], "texte": "Bonus de DEF +2" },
+        { "degre": 3, "niveauMagie": 3, "effets": [{ "stat": "DEF", "valeur": "3" }], "texte": "Bonus de DEF +3" }
+      ]
+    },
+    "orc": {
+      "arme": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "+1 à la marge de coup critique" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "+2 à la marge de coup critique" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "+3 à la marge de coup critique" }
+      ],
+      "armure": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "1 DM en cas de blessure au contact subie (ne peut excéder le bonus de DEF de l'armure)" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "2 DM en cas de blessure au contact subie (ne peut excéder le bonus de DEF de l'armure)" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "3 DM en cas de blessure au contact subie (ne peut excéder le bonus de DEF de l'armure)" }
+      ],
+      "bouclier": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "+1 DM avec la capacité Coup de bouclier" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "+2 DM avec la capacité Coup de bouclier" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "+3 DM avec la capacité Coup de bouclier" }
+      ]
+    },
+    "gobelin": {
+      "arme": [
+        { "degre": 1, "niveauMagie": 1, "effets": [{ "stat": "PC", "valeur": "1" }], "texte": "+1 point de chance" },
+        { "degre": 2, "niveauMagie": 2, "effets": [{ "stat": "PC", "valeur": "2" }], "texte": "+2 points de chance" }
+      ],
+      "armure": [
+        { "degre": 1, "niveauMagie": 1, "effets": [{ "stat": "PV", "valeur": "5" }], "texte": "+5 PV max." },
+        { "degre": 2, "niveauMagie": 2, "effets": [{ "stat": "PV", "valeur": "10" }], "texte": "+10 PV max." }
+      ]
+    },
+    "ogre": {
+      "arme": [
+        { "degre": 1, "niveauMagie": 1, "effets": null, "texte": "Augmentation de la catégorie des DM de 1 (1D4→1D6→1D8→1D10→1D12→2D6→2D8→2D10→2D12)" },
+        { "degre": 2, "niveauMagie": 2, "effets": null, "texte": "Augmentation de la catégorie des DM de 2" },
+        { "degre": 3, "niveauMagie": 3, "effets": null, "texte": "Augmentation de la catégorie des DM de 3" }
+      ]
+    }
+  },
+
+  "focalisateur": [
+    { "degre": 1, "niveauMagie": 1, "effets": [{ "stat": "ATT_MAGIQUE", "valeur": "1" }], "texte": "+1 aux tests d'attaque magique" },
+    { "degre": 2, "niveauMagie": 2, "effets": [{ "stat": "ATT_MAGIQUE", "valeur": "2" }], "texte": "+2 aux tests d'attaque magique" },
+    { "degre": 3, "niveauMagie": 3, "effets": [{ "stat": "ATT_MAGIQUE", "valeur": "3" }], "texte": "+3 aux tests d'attaque magique" }
+  ],
+
+  "supplementaires": {
+    "arme": [
+      { "nom": "Acéré", "niveauMagie": 1, "effets": null, "texte": "Bonus de +1 aux DM" },
+      { "nom": "Fléau des...", "niveauMagie": 2, "effets": null, "texte": "+1d6 DM contre une catégorie d'ennemis choisie (mort-vivant, démon, dragon, etc.)" },
+      { "nom": "Gardien", "niveauMagie": 1, "effets": null, "texte": "+1 à la DEF contre les attaques de contact" },
+      { "nom": "Rapide", "niveauMagie": 1, "effets": null, "texte": "Dégainer est une action gratuite" },
+      { "nom": "Sournois", "niveauMagie": 1, "effets": null, "texte": "+1d6 DM aux coups critiques" }
+    ],
+    "armure": [
+      { "nom": "Barrière", "niveauMagie": 1, "effets": [{ "stat": "DEF", "valeur": "1" }], "texte": "Bonus de DEF +1" },
+      { "nom": "Défense", "niveauMagie": 2, "effets": [{ "stat": "RD", "valeur": "2" }], "texte": "Réduits de 2 tous les DM subis" },
+      { "nom": "De résistance au...", "niveauMagie": 1, "effets": null, "texte": "Réduit de 5 les DM d'une catégorie choisie (feu, froid, poison ou foudre)", "necessiteChoixDegats": true, "choixDegatsOptions": ["FEU", "FROID", "POISON", "FOUDRE"], "choixDegatsValeur": "5" },
+      { "nom": "Protecteur", "niveauMagie": 1, "effets": null, "texte": "Divise par 2 les DM des coups critiques (et des attaques sournoises)" },
+      { "nom": "Vivace", "niveauMagie": 1, "effets": [{ "stat": "INIT", "valeur": "2" }], "texte": "Bonus d'Init. +2" }
+    ],
+    "focalisateur": [
+      { "nom": "De magie durable", "niveauMagie": 2, "effets": null, "texte": "Durée des sorts +1 unité de temps" },
+      { "nom": "De magie violente", "niveauMagie": 1, "effets": null, "texte": "DM des sorts +1" },
+      { "nom": "De réserve arcanique", "niveauMagie": 1, "effets": [{ "stat": "PM", "valeur": "2" }], "texte": "PM totaux +2" }
+    ]
+  },
+
+  "legendaires": {
+    "arme": [
+      { "nom": "Ardent", "niveauMagie": 2, "effets": null, "texte": "+1d6 DM de feu" },
+      { "nom": "De givre", "niveauMagie": 2, "effets": null, "texte": "+1d6 DM de froid" },
+      { "nom": "Destiné", "niveauMagie": 2, "effets": null, "texte": "Bonus de +2 en attaque" },
+      { "nom": "Effroyable", "niveauMagie": 2, "effets": null, "texte": "+2d6 DM aux coups critiques" },
+      { "nom": "Étincelant", "niveauMagie": 2, "effets": null, "texte": "+1d6 DM de foudre" },
+      { "nom": "Fidèle", "niveauMagie": 2, "effets": null, "texte": "Revient en main au début du tour" },
+      { "nom": "Foudroyant", "niveauMagie": 4, "effets": null, "texte": "+2d6 DM de foudre" },
+      { "nom": "Glacial", "niveauMagie": 4, "effets": null, "texte": "+2d6 DM de froid" },
+      { "nom": "Infernal", "niveauMagie": 4, "effets": null, "texte": "+2d6 DM de feu" },
+      { "nom": "Meurtrier", "niveauMagie": 2, "effets": null, "texte": "Bonus de +3 aux DM" },
+      { "nom": "Tueur de...", "niveauMagie": 3, "effets": null, "texte": "Bonus de +2d6 DM contre une catégorie d'ennemis choisie (mort-vivant, démon, dragon, etc.) — ne se cumule pas avec l'art traditionnel orc" },
+      { "nom": "Vicieux", "niveauMagie": 2, "effets": null, "texte": "Bonus de +2 à la marge de coup critique — ne se cumule pas avec l'art traditionnel orc" }
+    ],
+    "armure": [
+      { "nom": "Muraille", "niveauMagie": 2, "effets": [{ "stat": "DEF", "valeur": "2" }], "texte": "Bonus de DEF +2" },
+      { "nom": "Défense supérieure", "niveauMagie": 2, "effets": [{ "stat": "RD", "valeur": "4" }], "texte": "Réduits de 4 tous les DM subis" },
+      { "nom": "De résistance supérieure au...", "niveauMagie": 2, "effets": null, "texte": "Réduit de 10 les DM d'une catégorie choisie (feu, froid, poison ou foudre)", "necessiteChoixDegats": true, "choixDegatsOptions": ["FEU", "FROID", "POISON", "FOUDRE"], "choixDegatsValeur": "10" },
+      { "nom": "D'antimagie", "niveauMagie": 2, "effets": [{ "stat": "DEF", "valeur": "5" }], "texte": "+5 à la DEF et aux tests pour résister à la magie (seul le bonus de DEF est appliqué automatiquement)" },
+      { "nom": "Impénétrable", "niveauMagie": 4, "effets": [{ "stat": "DEF", "valeur": "4" }], "texte": "Bonus de DEF +4" },
+      { "nom": "Véloce", "niveauMagie": 2, "effets": [{ "stat": "INIT", "valeur": "4" }], "texte": "Bonus d'Init. +4" }
+    ],
+    "focalisateur": [
+      { "nom": "De magie éternelle", "niveauMagie": 2, "effets": null, "texte": "Durée des sorts +3 tours" },
+      { "nom": "De magie explosive", "niveauMagie": 2, "effets": null, "texte": "DM des sorts +2" },
+      { "nom": "De magie chaotique", "niveauMagie": 3, "effets": null, "texte": "DM des sorts +1d8" },
+      { "nom": "De magie pénétrante", "niveauMagie": 2, "effets": null, "texte": "+2 difficulté des sorts (pour la cible qui y résiste)" },
+      { "nom": "De magie imparable", "niveauMagie": 4, "effets": null, "texte": "+5 difficulté des sorts (pour la cible qui y résiste)" }
+    ]
+  }
+}

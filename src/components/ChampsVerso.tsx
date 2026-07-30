@@ -18,6 +18,10 @@ import { ModeImpressionContext } from '../hooks/modeImpression'
 import PastilleImpression from './PastilleImpression'
 
 
+// Fond blanc sous le portrait (mode image) : masqué temporairement à la demande de Didic (2026-07-30) —
+// repasser à false pour le réafficher.
+const MASQUER_FOND_PORTRAIT = true
+
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
   { nom: 'Armures légères',         top: 12.0, left: 54.5 },
   { nom: 'Armures lourdes',         top: 13.3, left: 54.4 },
@@ -91,11 +95,40 @@ export default function ChampsVerso({
   )
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [togglePos, setTogglePos] = useState(fieldPositions?.['Toggle image/description'] ?? { top: 17.5, left: 3.3 })
+  // "Armes de paysan" : formation gratuite de base (jamais un choix parmi les formations martiales
+  // limitées) — la nouvelle maquette ne l'imprime plus mais la règle reste acquise d'office, cf. Didic.
+  // Case toujours cochée, sans interaction, calquée sur HEROIQUE_CHECKBOXES (ChampsRecto.tsx).
+  const [paysanPos, setPaysanPos] = useState(fieldPositions?.['Armes de paysan'] ?? { top: 12.0, left: 40 })
 
   React.useEffect(() => {
     setCbPos(Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }])))
     if (fieldPositions?.['Toggle image/description']) setTogglePos(fieldPositions['Toggle image/description'])
+    if (fieldPositions?.['Armes de paysan']) setPaysanPos(fieldPositions['Armes de paysan'])
   }, [fieldPositions])
+
+  const startPaysanDrag = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    const startX = e.clientX, startY = e.clientY
+    const { top: startTop, left: startLeft } = paysanPos
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      setPaysanPos({
+        top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
+        left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
+      })
+    }
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      setPaysanPos({ top: newTop, left: newLeft })
+      cb('Armes de paysan', newTop, newLeft)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   const startToggleDrag = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -214,7 +247,9 @@ export default function ChampsVerso({
       {/* === PORTRAIT (mode image, ou calibrage) === */}
       {((character.versoMode ?? 'description') === 'image' || calibrate) && visible('Portrait') && (
         <>
-          {(character.versoMode ?? 'description') === 'image' && !calibrate && (() => {
+          {/* Masqué temporairement à la demande de Didic (2026-07-30) — repasser MASQUER_FOND_PORTRAIT
+              à false ci-dessus pour le réactiver. */}
+          {!MASQUER_FOND_PORTRAIT && (character.versoMode ?? 'description') === 'image' && !calibrate && (() => {
             // Fond blanc sous le portrait (mode image) — même position calibrée que le champ Portrait
             // juste en dessous (fp('Portrait', ...)) : sans ça, recalibrer le portrait ne déplaçait pas
             // ce fond, resté sur ses anciennes coordonnées par défaut (rapporté par Didic).
@@ -352,6 +387,74 @@ export default function ChampsVerso({
           </div>
         )
       })}
+
+      {/* === ARMES DE PAYSAN (formation gratuite de base) === : toujours cochée, sans interaction — voir
+          la note sur paysanPos plus haut. Nouveau champ, sans position d'origine : part en réserve. */}
+      {(() => {
+        const nomPaysan = 'Armes de paysan'
+        const fpPaysan = fieldPositions?.[nomPaysan]
+        const { top, left } = paysanPos
+        if (fpPaysan?.reserved === true || !fpPaysan) {
+          if (!calibrate || !reservePortalTarget) return null
+          const venuDAilleurs = pageDe(nomPaysan) !== page
+          return createPortal(
+            <div onClick={() => cbReserve(nomPaysan, false, { top, left, page })}
+              title={venuDAilleurs ? `Placer sur cette fiche (vient du ${pageDe(nomPaysan)})` : 'Placer sur la feuille'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: 'rgba(160,90,230,0.18)', border: '1px solid rgba(160,90,230,0.6)',
+                color: 'rgba(225,205,255,0.95)', fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
+                padding: '4px 9px', borderRadius: 4, userSelect: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+              {nomPaysan}
+              {venuDAilleurs && <span style={{ opacity: 0.6, fontSize: 10 }}>({pageDe(nomPaysan) === 'recto' ? 'R' : 'V'})</span>}
+            </div>,
+            reservePortalTarget,
+          )
+        }
+        if (pageDe(nomPaysan) !== page) return null
+        return (
+          <div>
+            <div style={{
+              position: 'absolute', top: `${top}%`, left: `${left}%`,
+              width: '1.6%', height: '1.1%', transform: 'translate(-50%, -50%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <CroixCase coche calibrate={calibrate} />
+            </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fpPaysan?.imprimer ?? true}
+                onToggle={() => cbReserve(nomPaysan, false, { top, left, imprimer: !(fpPaysan?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
+            {calibrate && (
+              <div
+                onMouseDown={startPaysanDrag}
+                style={{
+                  position: 'absolute', top: `${top}%`, left: `${left}%`,
+                  transform: 'translate(-50%, calc(-100% - 3px))',
+                  cursor: 'grab', background: 'rgba(160,90,230,0.92)', color: '#fff',
+                  fontSize: 7, fontFamily: 'monospace', fontWeight: 700,
+                  padding: '1px 4px', borderRadius: 2, userSelect: 'none', zIndex: 40,
+                  whiteSpace: 'nowrap', lineHeight: '13px', boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                  display: 'flex', alignItems: 'center', gap: 2,
+                }}
+              >
+                {nomPaysan}
+                {onReserveToggle && (
+                  <span
+                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(nomPaysan, true, { top, left }) }}
+                    style={{ cursor: 'pointer', fontSize: 9, paddingLeft: 3, borderLeft: '1px solid rgba(255,255,255,0.35)', lineHeight: 1 }}
+                    title="Envoyer à la réserve"
+                  >📥</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* === PSYCHOLOGIE (curseurs sur graduation imprimée) === : nouveaux champs, réservés par défaut
           (jamais de position devinée — voir feedback_nouveaux_champs_en_reserve), contrairement à

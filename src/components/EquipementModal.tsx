@@ -59,6 +59,11 @@ function exportJson(data: unknown, filename: string) {
 const ARMES_NOTES_FR   = "¹ Arme tenue à deux mains.\n² Critique sur 19 ou 20.\n³ Règles spéciales, voir ci-dessous.\n⁴ Score minimum en FOR requis : 12 pour l'arc long, 14 pour le composite.\n⁵ Nécessite une action limitée pour ajouter le Mod. de Carac. aux DM.\n⁶ Nécessite une action d'attaque pour être rechargée.\n⁷ Nécessite une action limitée pour être rechargée.\n* Nécessite une capacité pour être maîtrisée."
 const ARMURES_NOTES_FR = "¹ Encombrantes, ces armures annulent le bonus de DEX à la DEF.\n² Fabriquée sur mesure, nécessite la capacité Armure lourde (voie du bastion) pour être portée."
 
+// Niveau de magie total CONSEILLÉ par niveau de PJ (Livre du meneur p.183) — purement indicatif, pas un
+// plafond dur (le livre le présente comme un repère pour le MJ, pas une règle bloquante). Index 0 =
+// niveau de PJ 1.
+const NIVEAU_MAGIE_CONSEILLE = [0, 0, 1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 45]
+
 const isDistance = (groupe: string) => groupe.toLowerCase().includes('distance')
 
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
@@ -74,7 +79,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   // Sans personnage (ouverture depuis "Données du jeu"), la modale n'a aucune utilité hors édition du
   // catalogue : on démarre directement en mode édition et le bouton pour en sortir est masqué.
   const catalogueSeul = !character
-  const [section,      setSection]      = useState<'armes' | 'armures'>('armes')
+  const [section,      setSection]      = useState<'armes' | 'armures' | 'objetsMagiques'>('armes')
   const [editMode,     setEditMode]     = useState(catalogueSeul)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
@@ -87,7 +92,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   // replie dans un menu flottant pour rendre tout l'écran à la liste.
   const [menuTypesOuvert, setMenuTypesOuvert] = useState(false)
 
-  const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures } = useGameData()
+  const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures, objetsMagiques } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
   const [armures,      setArmures]      = useState<CatArmure[]>  (() => JSON.parse(JSON.stringify(armuresCtx.categories)))
   const [armesNotes,   setArmesNotes]   = useState<string>(() => {
@@ -525,6 +530,107 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
   useModalBackButton(onClose)
 
+  // ── Objets magiques ────────────────────────────────────────────────────
+  // Rendu séparé de l'éditeur armes/armures ci-dessous (jamais le même arbre de rendu) : ce dernier
+  // suppose `section` binaire ('armes' | 'armures') dans plusieurs ternaires, une troisième valeur y
+  // tomberait dans la mauvaise branche. Retour anticipé, avant même la branche mobile, pour couvrir les
+  // deux tailles d'écran avec une seule mise en page (pas besoin d'une variante mobile dédiée ici).
+  if (section === 'objetsMagiques' && character && onChange) {
+    const possedes = character.objetsMagiquesPossedes ?? []
+    const equipes = character.objetsMagiquesEquipes ?? []
+    const niveauMagieEquipe = objetsMagiques
+      .filter(o => equipes.includes(o.id))
+      .reduce((s, o) => s + o.niveauMagie, 0)
+    const conseille = NIVEAU_MAGIE_CONSEILLE[Math.min(character.niveau, NIVEAU_MAGIE_CONSEILLE.length) - 1] ?? 0
+
+    const togglePossede = (id: string) => {
+      const enPossession = possedes.includes(id)
+      onChange({
+        objetsMagiquesPossedes: enPossession ? possedes.filter(x => x !== id) : [...possedes, id],
+        // Retirer un objet de la possession le déséquipe aussi, sans quoi ses bonus resteraient actifs.
+        objetsMagiquesEquipes: enPossession ? equipes.filter(x => x !== id) : equipes,
+      })
+    }
+    const toggleEquipe = (id: string) => {
+      onChange({ objetsMagiquesEquipes: equipes.includes(id) ? equipes.filter(x => x !== id) : [...equipes, id] })
+    }
+
+    return (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}
+        onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      >
+        <div style={{ background: 'rgba(18,14,9,0.99)', border: `1px solid ${S.border}`,
+          borderRadius: 8, width: '90vw', maxWidth: 700, maxHeight: '85vh',
+          display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.9)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 20px', borderBottom: `1px solid ${S.border}`, flexShrink: 0, gap: 10 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['armes', 'armures', 'objetsMagiques'] as const).map(s => (
+                <button key={s} onClick={() => setSection(s)} style={{
+                  padding: '4px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                  border: `1px solid ${S.gold}`,
+                  background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
+                  color: S.gold, fontWeight: section === s ? 700 : 400,
+                }}>
+                  {t(`equipement.${s}`)}
+                </button>
+              ))}
+            </div>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: S.parchment,
+              opacity: 0.5, cursor: 'pointer', fontSize: 20, lineHeight: 1,
+            }}>✕</button>
+          </div>
+
+          <div style={{ padding: '10px 20px', borderBottom: `1px solid ${S.border}`, flexShrink: 0, fontSize: 14, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span style={{ color: S.parchment, opacity: 0.7 }}>{t('equipement.niveauMagieEquipe')}</span>
+            <span style={{ color: niveauMagieEquipe > conseille ? '#e08080' : S.gold, fontWeight: 700, fontSize: 17 }}>{niveauMagieEquipe}</span>
+            <span style={{ color: S.parchment, opacity: 0.5 }}>/ {conseille} {t('equipement.conseilleNiveau', { n: character.niveau })}</span>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            {objetsMagiques.length === 0 && (
+              <div style={{ padding: 20, textAlign: 'center', opacity: 0.5, fontSize: 14 }}>{t('equipement.aucunObjetMagique')}</div>
+            )}
+            {objetsMagiques.map(o => {
+              const possede = possedes.includes(o.id)
+              const equipe = equipes.includes(o.id)
+              return (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 20px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, color: S.parchment }}>{o.nom}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
+                      {t(`gmMode.objetMagiqueDetail.categorie.${o.categorie}`)} · {t('gmMode.objetMagiqueDetail.niveauAbrege', { n: o.niveauMagie })} · {o.valeur} po
+                    </div>
+                  </div>
+                  <button onClick={() => togglePossede(o.id)} style={{
+                    padding: '5px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
+                    border: `1px solid ${possede ? 'rgba(120,200,140,0.6)' : S.border}`,
+                    background: possede ? 'rgba(120,200,140,0.15)' : 'transparent',
+                    color: possede ? 'rgba(140,215,160,0.9)' : S.parchment,
+                  }}>
+                    {possede ? t('equipement.possede') : t('equipement.ajouter')}
+                  </button>
+                  <button onClick={() => toggleEquipe(o.id)} disabled={!possede} style={{
+                    padding: '5px 12px', borderRadius: 4, fontSize: 13, cursor: possede ? 'pointer' : 'default',
+                    border: `1px solid ${equipe ? S.gold : S.border}`,
+                    background: equipe ? 'rgba(201,168,76,0.2)' : 'transparent',
+                    color: equipe ? S.gold : S.parchment, opacity: possede ? 1 : 0.35,
+                  }}>
+                    {equipe ? t('equipement.equipe') : t('equipement.equiper')}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Layout mobile ──────────────────────────────────────────────────────
   // Sans personnage (mode catalogue seul), la vue mobile ci-dessous ne sert qu'à parcourir + ajouter à un
   // personnage — inutile ici, et elle n'offre aucun moyen d'éditer le catalogue. On garde alors l'éditeur
@@ -578,6 +684,10 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   color: section === s ? S.gold : S.parchment,
                 }}>{t(`equipement.${s}`)}</button>
               ))}
+              <button onClick={() => setSection('objetsMagiques')} style={{
+                flex: 1, padding: '6px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>{t('equipement.objetsMagiques')}</button>
             </div>
             <select
               value={mobileCatKey}
@@ -789,6 +899,14 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 {t(`equipement.${s}`)}
               </button>
             ))}
+            {!catalogueSeul && (
+              <button onClick={() => setSection('objetsMagiques')} style={{
+                padding: '4px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+              }}>
+                {t('equipement.objetsMagiques')}
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {editMode && (

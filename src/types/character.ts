@@ -180,6 +180,12 @@ export interface Character {
   cristauxAppris?: string[]
   cristauxActifs?: string[]
 
+  // Objets magiques (voir src/types/gameData.ts:ObjetMagiqueEntry) — id-référencés dans le catalogue
+  // fusionné livré+perso, même principe que les cristaux (possédé/équipé) mais sans plafond dur : le
+  // niveau de magie total conseillé par niveau de PJ n'est qu'indicatif dans les règles.
+  objetsMagiquesPossedes?: string[]
+  objetsMagiquesEquipes?: string[]
+
   // Compagnons
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif

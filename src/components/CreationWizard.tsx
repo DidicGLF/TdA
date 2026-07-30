@@ -42,7 +42,9 @@ interface Props {
   onPlay?: () => void
 }
 
-const STEP_COUNT = 9
+// Exporté pour App.tsx (onNext y clampait le nouveau step sur un nombre d'étapes codé en dur — voir
+// le correctif du bouton "Suivant" bloqué à l'étape 8/9 après l'ajout de l'étape Psychologie).
+export const STEP_COUNT = 9
 
 const DISTRIBUTION = [10, 11, 12, 13, 14, 16]
 
@@ -869,7 +871,7 @@ function Step3({ character, onChange, modeVoies, setModeVoies }: Pick<Props, 'ch
             </label>
           )}
           <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
-            {(['libre', 'profil'] as const).map(mode => (
+            {(['profil', 'libre'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => setModeVoies(mode)}
@@ -1540,7 +1542,7 @@ function Step4({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 type EqTooltip = { lines: string[]; x: number; y: number }
 
 function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
-  const { traits, data: descriptions } = useGameData()
+  const { traits, data: descriptions, objetsMagiques } = useGameData()
   const [showTraitModal, setShowTraitModal] = React.useState(false)
   const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
   const [mobileCompagnonPicker, setMobileCompagnonPicker] = React.useState<0 | 1 | null>(null)
@@ -1601,7 +1603,9 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   // cas). Bloqué si une arme à 2 mains est en main (aucune main libre).
   const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
   const shieldNom = character.armuresEquipees.find(a => isBouclier(a.nom) && a.equipe)?.nom ?? null
-  const totalArmes = character.armes.length + character.armuresEquipees.length
+  const objetsMagiquesPossedes = character.objetsMagiquesPossedes ?? []
+  const objetsMagiquesEquipes = character.objetsMagiquesEquipes ?? []
+  const totalArmes = character.armes.length + character.armuresEquipees.length + objetsMagiquesPossedes.length
 
   const showTip = (lines: string[], e: React.MouseEvent) => {
     setEqTip({ lines, x: e.clientX + 14, y: e.clientY + 14 })
@@ -1765,7 +1769,7 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             </span>
           )}
         </button>
-        {(character.armes.length > 0 || character.armuresEquipees.length > 0) && (
+        {(character.armes.length > 0 || character.armuresEquipees.length > 0 || objetsMagiquesPossedes.length > 0) && (
           <div style={{ marginTop: 8 }}>
             {/* Slots */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -1873,6 +1877,35 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                         opacity: a.equipe ? 0.4 : 1,
                       }}>{equipementName(a.nom)}</span>
                   ))}
+                </div>
+              </>
+            )}
+            {/* Objets magiques possédés — pas de glisser-déposer vers un emplacement (voir la modale
+                Objets magiques, ouverte via le même bouton "Choisir armes & armures" ci-dessus, pour
+                les posséder/équiper) : juste un rappel de ce qui est équipé, doré comme un objet équipé
+                dans un emplacement ci-dessus, ou grisé comme les armes/armures simplement possédées. */}
+            {objetsMagiquesPossedes.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4, marginTop: 8 }}>{t('wizard.step5.objetsMagiquesLabel')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {objetsMagiquesPossedes.map(id => {
+                    const objet = objetsMagiques.find(o => o.id === id)
+                    if (!objet) return null
+                    const equipe = objetsMagiquesEquipes.includes(id)
+                    return (
+                      <span key={id}
+                        onMouseEnter={e => showTip([objet.nom, t('gmMode.objetMagiqueDetail.niveauAbrege', { n: objet.niveauMagie }), ...(equipe ? [t('wizard.step5.objetEquipe')] : [t('wizard.step5.objetNonEquipe')])], e)}
+                        onMouseMove={moveTip}
+                        onMouseLeave={() => setEqTip(null)}
+                        style={{
+                          padding: '2px 8px', borderRadius: 3, fontSize: 12,
+                          background: equipe ? 'rgba(201,168,76,0.18)' : 'rgba(160,90,230,0.1)',
+                          border: `1px solid ${equipe ? 'rgba(201,168,76,0.5)' : 'rgba(160,90,230,0.3)'}`,
+                          color: 'var(--tdr-parchment)', userSelect: 'none',
+                          opacity: equipe ? 1 : 0.6,
+                        }}>{objet.nom}</span>
+                    )
+                  })}
                 </div>
               </>
             )}
@@ -2531,7 +2564,7 @@ function Step8({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
 
 export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint, onPlay }: Props) {
   const { t } = useTranslation()
-  const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('libre')
+  const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('profil')
   const ptsDisp = calcPointsCapacite(character).disponibles
   const maxForms = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
   const nbForms  = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
