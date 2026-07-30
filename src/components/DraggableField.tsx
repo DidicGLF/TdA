@@ -19,9 +19,14 @@ interface Props {
   align?: 'left' | 'center' | 'right'
   active?: boolean
   calibrate: boolean
+  // Identifiant de calibrage (clé dans fieldPositions) — ne JAMAIS le renommer pour un champ existant,
+  // sous peine de perdre sa position calibrée (voir title ci-dessous pour changer le texte affiché sans
+  // perdre le calibrage, ex. le champ "Trésorerie" qui affiche désormais l'or).
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number) => void
+  // Texte affiché (infobulle native, étiquette de réserve, étiquette de la poignée en calibrage) —
+  // remplace `label` partout où il est fourni, sans toucher à l'identifiant de calibrage lui-même.
   title?: string
   readOnly?: boolean
   temporaire?: boolean
@@ -129,7 +134,7 @@ export default function DraggableField({
           userSelect: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
         }}
       >
-        {label}
+        {title ?? label}
       </div>,
       reservePortalTarget,
     )
@@ -188,7 +193,7 @@ export default function DraggableField({
             gap: 2,
           }}
         >
-          {label}
+          {title ?? label}
           <span
             onMouseDown={handleResizeMouseDown}
             style={{

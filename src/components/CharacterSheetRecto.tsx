@@ -44,7 +44,7 @@ export default function CharacterSheetRecto({
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       <ChampsRecto {...commun} defaultPage="recto" activeStep={activeStep} onCheckboxRowMoved={onCheckboxRowMoved} />
-      <ChampsVerso {...commun} defaultPage="verso" activeStep={activeStep} />
+      <ChampsVerso {...commun} defaultPage="verso" activeStep={activeStep} onCheckboxRowMoved={onCheckboxRowMoved} />
       <VoieRangCheckboxes {...commun} defaultPage="voies" activeStep={activeStep} descriptions={data}
         entries={TOUTES_VOIES_ENTRIES} titres={TOUS_VOIES_TITRES} />
     </div>

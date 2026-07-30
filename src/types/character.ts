@@ -158,7 +158,13 @@ export interface Character {
   // Divers
   description: string
   inventaire: string
-  tresorerie: string
+  // Trésorerie détaillée (remplace l'ancien champ tresorerie: string, ex. "5 pièces d'or" — migré au
+  // chargement dans App.tsx::handleLoad). Or/Argent/Cuivre sont 3 vues d'une seule richesse réelle,
+  // toujours renormalisées ensemble (voir normaliserTresorerie) : jamais 3 compteurs indépendants.
+  piecesOr: number
+  piecesArgent: number
+  piecesCuivre: number
+  gemmes: string
   portrait: string
   portraitScale: number
   portraitTx: number
@@ -192,6 +198,9 @@ export interface Character {
   // Remplace l'ancien format par position (compagnonsOverrides, retiré — migré au chargement dans
   // App.tsx::handleLoad pour les personnages qui l'utilisaient encore).
   compagnonsFiches?: Record<string, CompagnonOverride>
+
+  // Psychologie (clé de TRAITS_PSYCHOLOGIE → valeur 0-10, voir data/psychologieTraits.ts)
+  psychologie?: Record<string, number>
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {
@@ -303,7 +312,10 @@ export const defaultCharacter = (): Character => ({
 
   description: '',
   inventaire: '',
-  tresorerie: '',
+  piecesOr: 5,
+  piecesArgent: 0,
+  piecesCuivre: 0,
+  gemmes: '',
   portrait: '',
   portraitScale: 1,
   portraitTx: 0,
@@ -313,4 +325,12 @@ export const defaultCharacter = (): Character => ({
 
 export function getMod(valeur: number): number {
   return Math.max(-4, Math.floor((valeur - 10) / 2))
+}
+
+// Renormalise la trésorerie (1 or = 10 argent = 100 cuivre) : Or/Argent/Cuivre ne sont que 3 vues d'une
+// seule richesse réelle (convertie en cuivre en interne), jamais 3 compteurs indépendants — saisir 15 en
+// argent, par exemple, doit reporter 1 sur l'or et n'en laisser que 5 en argent.
+export function normaliserTresorerie(or: number, argent: number, cuivre: number): { piecesOr: number; piecesArgent: number; piecesCuivre: number } {
+  const total = Math.max(0, or * 100 + argent * 10 + cuivre)
+  return { piecesOr: Math.floor(total / 100), piecesArgent: Math.floor((total % 100) / 10), piecesCuivre: total % 10 }
 }

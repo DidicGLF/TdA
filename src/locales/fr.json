@@ -265,7 +265,7 @@
     "reserveAide": "Cliquez sur 📥 pour envoyer un champ ici, cliquez dessus ici pour le replacer sur la feuille"
   },
   "wizard": {
-    "stepNames": ["Identité", "Peuple & Culture", "Caractéristiques", "Profil & Voies", "Scores dérivés", "Spécialisation & équipement", "Les derniers détails", "Finalisation"],
+    "stepNames": ["Identité", "Peuple & Culture", "Caractéristiques", "Profil & Voies", "Scores dérivés", "Spécialisation & équipement", "Psychologie", "Les derniers détails", "Finalisation"],
     "etape": "Étape {{current}}/{{total}}",
     "nav": {
       "precedent": "← Précédent",
@@ -410,15 +410,21 @@
       "selectionnerTrait": "Sélectionnez un trait"
     },
     "step6": {
+      "intro": "Qui est vraiment ton personnage ? Place chaque curseur sur le profil qui lui correspond."
+    },
+    "step7": {
       "intro": "Dernières touches avant de jouer !",
       "description": "Description du personnage",
       "inventaire": "Inventaire",
       "inventaireHint": "N'hésitez pas à personnaliser son inventaire avec des objets intimes sans valeur marchande, telle qu'une lettre, un coquillage imprégné de souvenirs, la plume du premier rapace qu'il a chassé, etc.",
       "inventaireDefault": "une couverture, une torche, un briquet en silex, une outre, une gamelle",
       "tresorerie": "Trésorerie",
-      "tresorerieDefault": "5 pièces d'or"
+      "or": "Or",
+      "argent": "Argent",
+      "cuivre": "Cuivre",
+      "gemmes": "Gemmes et pierres précieuses"
     },
-    "step7": {
+    "step8": {
       "bonneAventure": "Bonne aventure !",
       "personnagePret": "Tous les éléments sont renseignés. Votre personnage est prêt à jouer.",
       "sauvegarder": "Sauvegarder le personnage",

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
-import { getMod, getGolemVoieRang } from '../types/character'
+import { getMod, getGolemVoieRang, normaliserTresorerie } from '../types/character'
 import { findCulture, findTrait } from '../data/peuples'
 import PROFILS_RAW from '../data/profils.json'
 import { useGameData } from '../context/GameDataContext'
@@ -24,6 +24,8 @@ import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
 import { getVoieRangChoixGrants, getChoixOptions, applyVoieRangChoix, applyVoieRangChoixAvancee, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement } from '../utils/voieRangChoix'
 import CarteVoieModal from './CarteVoieModal'
 import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName, useVoieName, useTranslatedDescriptions, useProfilName } from '../hooks/useContentTranslation'
+import { TRAITS_PSYCHOLOGIE, labelProfilPsychologie } from '../data/psychologieTraits'
+import { CURSEUR_MASK_SVG } from '../utils/curseurMarker'
 
 type TraitEntry = { nom: string; desc: string }
 
@@ -40,7 +42,7 @@ interface Props {
   onPlay?: () => void
 }
 
-const STEP_COUNT = 8
+const STEP_COUNT = 9
 
 const DISTRIBUTION = [10, 11, 12, 13, 14, 16]
 
@@ -2218,15 +2220,87 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   )
 }
 
+// Curseur natif (pas de glisser-déposer maison à écrire/maintenir) stylé aux couleurs de l'app — les
+// pseudo-éléments ::-webkit-slider-thumb/::-moz-range-thumb ne sont pas exprimables en style inline,
+// d'où ce <style> scopé au composant, même motif que SaveStatusIndicator.tsx (@keyframes inline).
+const PSYCHOLOGIE_SLIDER_CSS = `
+  .tdr-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: rgba(245,236,215,0.15); border-radius: 2px; outline: none; display: block; }
+  /* Pouce en forme de repère (haut rectangulaire à coins arrondis, pointe basse arrondie plutôt que
+     franche) : un cercle uni ne s'exprime qu'en border-radius, cette silhouette demande un masque SVG
+     (couleur du thème appliquée via background-color + mask-image, plutôt qu'un fill figé dans le SVG). */
+  .tdr-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 24px; margin-top: -6px; cursor: pointer;
+    background-color: var(--tdr-gold);
+    -webkit-mask-image: url("${CURSEUR_MASK_SVG}");
+    -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain;
+  }
+  .tdr-slider::-moz-range-thumb {
+    width: 14px; height: 24px; border: none; cursor: pointer;
+    background-color: var(--tdr-gold);
+    mask-image: url("${CURSEUR_MASK_SVG}");
+    mask-repeat: no-repeat; mask-position: center; mask-size: contain;
+  }
+  .tdr-slider::-moz-range-track { height: 4px; background: rgba(245,236,215,0.15); border-radius: 2px; }
+  /* Graduation 0-10 : recréée en CSS (pas <datalist>, rendu trop inégal d'un WebView à l'autre). Un
+     curseur natif ne parcourt pas toute la largeur de son conteneur : son centre va de [rayon du pouce]
+     à [100% - rayon du pouce], jamais bord à bord — utiliser justify-content: space-between sur toute
+     la largeur décale donc chaque graduation par rapport à la position réelle du pouce (rapporté par
+     Didic : "le curseur en position 5 n'est pas aligné avec la graduation 5"). Chaque graduation est
+     donc positionnée individuellement via left: calc(7px + (100% - 14px) * fraction) (7px/14px = rayon/
+     largeur du pouce ci-dessus), la même formule que le navigateur applique en interne au pouce. */
+  .tdr-ticks { position: relative; height: 26px; margin-top: 3px; pointer-events: none; }
+  .tdr-tick { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tdr-tick-line { width: 2px; height: 9px; background: rgba(245,236,215,0.35); border-radius: 1px; }
+  .tdr-tick-num { font-size: 13px; line-height: 1; color: rgba(245,236,215,0.55); font-variant-numeric: tabular-nums; }
+`
+
 function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { t } = useTranslation()
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <style>{PSYCHOLOGIE_SLIDER_CSS}</style>
       <p className="text-base opacity-70 italic">{t('wizard.step6.intro')}</p>
+      {TRAITS_PSYCHOLOGIE.map(trait => {
+        const valeur = character.psychologie?.[trait.cle] ?? 5
+        return (
+          <div key={trait.cle}>
+            <div className="text-base uppercase tracking-widest" style={{ color: 'var(--tdr-gold)' }}>
+              {trait.nom} <span className="normal-case italic opacity-60">({trait.sousTitre})</span>
+            </div>
+            <div className="text-base italic mt-1" style={{ color: 'var(--tdr-gold)' }}>
+              {labelProfilPsychologie(trait, valeur)}
+            </div>
+            <div className="mt-1">
+              <input
+                type="range" min={0} max={10} step={1} value={valeur}
+                className="tdr-slider"
+                onChange={e => onChange({ psychologie: { ...character.psychologie, [trait.cle]: Number(e.target.value) } })}
+              />
+              <div className="tdr-ticks" aria-hidden="true">
+                {Array.from({ length: 11 }).map((_, i) => (
+                  <div key={i} className="tdr-tick" style={{ left: `calc(7px + (100% - 14px) * ${i / 10})` }}>
+                    <span className="tdr-tick-line" />
+                    <span className="tdr-tick-num">{i}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Step7({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-3">
+      <p className="text-base opacity-70 italic">{t('wizard.step7.intro')}</p>
 
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          {t('wizard.step6.description')}
+          {t('wizard.step7.description')}
         </label>
         <textarea
           className="w-full border rounded px-3 py-2 text-base"
@@ -2237,7 +2311,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       </div>
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          {t('wizard.step6.inventaire')}
+          {t('wizard.step7.inventaire')}
         </label>
         <textarea
           className="w-full border rounded px-3 py-2 text-base"
@@ -2246,18 +2320,49 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           onChange={e => onChange({ inventaire: e.target.value })}
         />
         <p className="text-base italic mt-1" style={{ color: 'rgba(245,236,215,0.5)', fontSize: '0.9em' }}>
-          {t('wizard.step6.inventaireHint')}
+          {t('wizard.step7.inventaireHint')}
         </p>
       </div>
       <div>
         <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
-          {t('wizard.step6.tresorerie')}
+          {t('wizard.step7.tresorerie')}
         </label>
-        <input
-          className="w-full border rounded px-3 py-1.5 text-base"
-          style={INPUT_STYLE}
-          value={character.tresorerie}
-          onChange={e => onChange({ tresorerie: e.target.value })}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="block text-base opacity-70 mb-1">{t('wizard.step7.or')}</label>
+            <input
+              type="number" className="w-full border rounded px-3 py-1.5 text-base" style={INPUT_STYLE}
+              value={character.piecesOr}
+              onChange={e => onChange(normaliserTresorerie(parseInt(e.target.value) || 0, character.piecesArgent, character.piecesCuivre))}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-base opacity-70 mb-1">{t('wizard.step7.argent')}</label>
+            <input
+              type="number" className="w-full border rounded px-3 py-1.5 text-base" style={INPUT_STYLE}
+              value={character.piecesArgent}
+              onChange={e => onChange(normaliserTresorerie(character.piecesOr, parseInt(e.target.value) || 0, character.piecesCuivre))}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-base opacity-70 mb-1">{t('wizard.step7.cuivre')}</label>
+            <input
+              type="number" className="w-full border rounded px-3 py-1.5 text-base" style={INPUT_STYLE}
+              value={character.piecesCuivre}
+              onChange={e => onChange(normaliserTresorerie(character.piecesOr, character.piecesArgent, parseInt(e.target.value) || 0))}
+            />
+          </div>
+        </div>
+      </div>
+      <div>
+        <label className="block text-base uppercase tracking-widest mb-1" style={{ color: 'var(--tdr-gold)' }}>
+          {t('wizard.step7.gemmes')}
+        </label>
+        <textarea
+          className="w-full border rounded px-3 py-2 text-base"
+          style={{ ...INPUT_STYLE, minHeight: '4rem' }}
+          value={character.gemmes}
+          onChange={e => onChange({ gemmes: e.target.value })}
         />
       </div>
 
@@ -2265,7 +2370,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   )
 }
 
-function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void; onPlay?: () => void }) {
+function Step8({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void; onPlay?: () => void }) {
   const { t } = useTranslation()
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
   const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
@@ -2274,24 +2379,24 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
 
   type CheckItem = { label: string; ok: boolean; niveau: 'requis' | 'conseille' }
   const checks: CheckItem[] = [
-    { label: t('wizard.step7.checks.nomJoueur'),       ok: !!character.nomJoueur.trim(),          niveau: 'requis' },
-    { label: t('wizard.step7.checks.nomPersonnage'),   ok: !!character.nomPersonnage.trim(),       niveau: 'requis' },
-    { label: t('wizard.step7.checks.peupleRenseigne'), ok: !!character.peuple,                     niveau: 'requis' },
-    { label: t('wizard.step7.checks.cultureRenseignee'), ok: !!character.culture,                  niveau: 'requis' },
-    { label: t('wizard.step7.checks.profilRenseigne'), ok: modeVoies === 'libre' || !!character.profil, niveau: 'requis' },
-    { label: t('wizard.step7.checks.familleDeterminee'), ok: !!character.famille,                  niveau: 'requis' },
-    { label: t('wizard.step7.checks.voie1'),           ok: !!character.voie1.nom,                  niveau: 'requis' },
-    { label: t('wizard.step7.checks.voie2'),           ok: !!character.voie2.nom,                  niveau: 'requis' },
-    { label: t('wizard.step7.checks.voie3'),           ok: !!character.voie3.nom,                  niveau: 'requis' },
-    { label: t('wizard.step7.checks.pointsCapacite', { count: ptsDisponibles }),
+    { label: t('wizard.step8.checks.nomJoueur'),       ok: !!character.nomJoueur.trim(),          niveau: 'requis' },
+    { label: t('wizard.step8.checks.nomPersonnage'),   ok: !!character.nomPersonnage.trim(),       niveau: 'requis' },
+    { label: t('wizard.step8.checks.peupleRenseigne'), ok: !!character.peuple,                     niveau: 'requis' },
+    { label: t('wizard.step8.checks.cultureRenseignee'), ok: !!character.culture,                  niveau: 'requis' },
+    { label: t('wizard.step8.checks.profilRenseigne'), ok: modeVoies === 'libre' || !!character.profil, niveau: 'requis' },
+    { label: t('wizard.step8.checks.familleDeterminee'), ok: !!character.famille,                  niveau: 'requis' },
+    { label: t('wizard.step8.checks.voie1'),           ok: !!character.voie1.nom,                  niveau: 'requis' },
+    { label: t('wizard.step8.checks.voie2'),           ok: !!character.voie2.nom,                  niveau: 'requis' },
+    { label: t('wizard.step8.checks.voie3'),           ok: !!character.voie3.nom,                  niveau: 'requis' },
+    { label: t('wizard.step8.checks.pointsCapacite', { count: ptsDisponibles }),
                                                   ok: ptsDisponibles === 0,                   niveau: 'requis' },
-    { label: t('wizard.step7.checks.pointsVieCalcules'), ok: character.pvTotal > 0,               niveau: 'requis' },
-    { label: t('wizard.step7.checks.formations', { nb: nbFormationsChoisies, max: maxFormations }),
+    { label: t('wizard.step8.checks.pointsVieCalcules'), ok: character.pvTotal > 0,               niveau: 'requis' },
+    { label: t('wizard.step8.checks.formations', { nb: nbFormationsChoisies, max: maxFormations }),
                                                   ok: nbFormationsChoisies >= maxFormations,  niveau: 'requis' },
-    { label: t('wizard.step7.checks.armesChoisis'),    ok: totalArmes > 0,                         niveau: 'conseille' },
-    { label: t('wizard.step7.checks.talentMagique'),
+    { label: t('wizard.step8.checks.armesChoisis'),    ok: totalArmes > 0,                         niveau: 'conseille' },
+    { label: t('wizard.step8.checks.talentMagique'),
       ok: character.famille !== 'mystiques' || !!character.talentMagique.nom,                 niveau: 'conseille' },
-    { label: t('wizard.step7.checks.portrait'),        ok: !!character.portrait,                   niveau: 'conseille' },
+    { label: t('wizard.step8.checks.portrait'),        ok: !!character.portrait,                   niveau: 'conseille' },
   ]
   const manquants  = checks.filter(c => !c.ok && c.niveau === 'requis')
   const conseilles = checks.filter(c => !c.ok && c.niveau === 'conseille')
@@ -2308,10 +2413,10 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 28, fontFamily: "'Cinzel', serif", fontWeight: 700, color: 'rgba(120,200,120,0.95)', marginBottom: 8 }}>
-              {t('wizard.step7.bonneAventure')}
+              {t('wizard.step8.bonneAventure')}
             </div>
             <p style={{ fontSize: 14, color: 'rgba(120,200,120,0.7)', margin: 0, fontStyle: 'italic' }}>
-              {t('wizard.step7.personnagePret')}
+              {t('wizard.step8.personnagePret')}
             </p>
           </div>
 
@@ -2322,9 +2427,9 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 15, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.sauvegarder')}</div>
+              <div style={{ fontSize: 15, color: 'var(--tdr-gold)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step8.sauvegarder')}</div>
               <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                {t('wizard.step7.sauvegarderDesc')}
+                {t('wizard.step8.sauvegarderDesc')}
               </div>
             </div>
             {onSave && (
@@ -2333,7 +2438,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                 border: '1px solid rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.15)',
                 color: 'var(--tdr-gold)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                {t('wizard.step7.btnSauvegarder')}
+                {t('wizard.step8.btnSauvegarder')}
               </button>
             )}
           </div>
@@ -2345,9 +2450,9 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <div>
-              <div style={{ fontSize: 15, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.imprimer')}</div>
+              <div style={{ fontSize: 15, color: 'rgba(140,190,255,0.85)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step8.imprimer')}</div>
               <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                {t('wizard.step7.imprimerDesc')}
+                {t('wizard.step8.imprimerDesc')}
               </div>
             </div>
             {onPrint && (
@@ -2356,7 +2461,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                 border: '1px solid rgba(120,180,255,0.35)', background: 'rgba(120,180,255,0.08)',
                 color: 'rgba(140,190,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                {t('wizard.step7.btnImprimer')}
+                {t('wizard.step8.btnImprimer')}
               </button>
             )}
           </div>
@@ -2369,9 +2474,9 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
             }}>
               <div>
-                <div style={{ fontSize: 15, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step7.jouer')}</div>
+                <div style={{ fontSize: 15, color: 'rgba(200,170,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{t('wizard.step8.jouer')}</div>
                 <div style={{ fontSize: 14, color: 'rgba(245,236,215,0.5)', lineHeight: 1.5 }}>
-                  {t('wizard.step7.jouerDesc')}
+                  {t('wizard.step8.jouerDesc')}
                 </div>
               </div>
               <button onClick={onPlay} style={{
@@ -2379,7 +2484,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                 border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)',
                 color: 'rgba(200,170,255,0.95)', fontWeight: 600, whiteSpace: 'nowrap',
               }}>
-                {t('wizard.step7.btnJouer')}
+                {t('wizard.step8.btnJouer')}
               </button>
             </div>
           )}
@@ -2394,7 +2499,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
             fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 10,
             color: manquants.length > 0 ? '#c97a4c' : 'var(--tdr-gold)',
           }}>
-            {t('wizard.step7.recap', { count: manquants.length + conseilles.length })}
+            {t('wizard.step8.recap', { count: manquants.length + conseilles.length })}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {[...manquants, ...conseilles].map((c, i) => (
@@ -2413,7 +2518,7 @@ function Step7({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
                   {c.label}
                 </span>
                 {c.niveau === 'conseille' && (
-                  <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>{t('wizard.step7.conseille')}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.3)', fontStyle: 'italic' }}>{t('wizard.step8.conseille')}</span>
                 )}
               </div>
             ))}
@@ -2444,6 +2549,7 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
     character.pvTotal > 0,
     true,
     true,
+    true,
     personnageComplet,
   ]
 
@@ -2455,7 +2561,8 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
     <Step4 character={character} onChange={onChange} />,
     <Step5 character={character} onChange={onChange} />,
     <Step6 character={character} onChange={onChange} />,
-    <Step7 character={character} modeVoies={modeVoies} onSave={onSave} onPrint={onPrint} onPlay={onPlay} />,
+    <Step7 character={character} onChange={onChange} />,
+    <Step8 character={character} modeVoies={modeVoies} onSave={onSave} onPrint={onPrint} onPlay={onPlay} />,
   ]
 
   return (

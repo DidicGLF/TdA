@@ -265,7 +265,7 @@
     "reserveAide": "Click 📥 to send a field here, click it here to place it back on the sheet"
   },
   "wizard": {
-    "stepNames": ["Identity", "People & Culture", "Characteristics", "Profile & Paths", "Derived Scores", "Specialization & Equipment", "Final Details", "Finalization"],
+    "stepNames": ["Identity", "People & Culture", "Characteristics", "Profile & Paths", "Derived Scores", "Specialization & Equipment", "Psychology", "Final Details", "Finalization"],
     "etape": "Step {{current}}/{{total}}",
     "nav": {
       "precedent": "← Previous",
@@ -410,15 +410,21 @@
       "selectionnerTrait": "Select a talent"
     },
     "step6": {
+      "intro": "Who is your character, really? Move each slider to the profile that fits them."
+    },
+    "step7": {
       "intro": "Final touches before playing!",
       "description": "Character description",
       "inventaire": "Inventory",
       "inventaireHint": "Feel free to customize the inventory with personal items without market value, such as a letter, a seashell full of memories, the feather of the first raptor they hunted, etc.",
       "inventaireDefault": "a blanket, a torch, a flint and steel, a waterskin, a mess kit",
       "tresorerie": "Treasury",
-      "tresorerieDefault": "5 gold pieces"
+      "or": "Gold",
+      "argent": "Silver",
+      "cuivre": "Copper",
+      "gemmes": "Gems and precious stones"
     },
-    "step7": {
+    "step8": {
       "bonneAventure": "Good luck!",
       "personnagePret": "All elements are filled in. Your character is ready to play.",
       "sauvegarder": "Save character",
