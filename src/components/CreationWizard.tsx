@@ -2564,13 +2564,24 @@ function Step8({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'c
 
 export default function CreationWizard({ step, maxStep, character, onChange, onNext, onPrev, onGoTo, onSave, onPrint, onPlay }: Props) {
   const { t } = useTranslation()
-  const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>('profil')
+  // Devine le mode d'un personnage déjà en cours d'édition (voies déjà remplies sans profil = mode
+  // libre) plutôt que de toujours partir sur 'profil' — sinon, à l'ouverture d'un personnage fait en
+  // libre, l'onglet affiché ne correspond pas à ses données (voir aussi personnageComplet/stepOk[3]
+  // ci-dessous, qui ne dépendent plus du tout de modeVoies pour la même raison).
+  const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>(() =>
+    character.profil ? 'profil' : (character.voie1.nom || character.voie2.nom || character.voie3.nom) ? 'libre' : 'profil'
+  )
   const ptsDisp = calcPointsCapacite(character).disponibles
   const maxForms = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
   const nbForms  = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
+  // Voie1/2/3 ne peuvent être remplies que via un profil appliqué (qui renseigne aussi character.profil)
+  // ou le mode libre — les trois noms déjà présents suffisent donc à prouver que l'étape est complète,
+  // peu importe le mode affiché à l'écran (modeVoies n'est qu'un état d'affichage, pas une donnée du
+  // personnage) : le vérifier en plus ne faisait que casser ce calcul pour un personnage chargé dont le
+  // mode réel ne correspond pas au mode par défaut du wizard.
   const personnageComplet = !!(
     character.nomJoueur.trim() && character.nomPersonnage.trim() &&
-    character.peuple && character.culture && (modeVoies === 'libre' || character.profil) && character.famille &&
+    character.peuple && character.culture && character.famille &&
     character.voie1.nom && character.voie2.nom && character.voie3.nom &&
     ptsDisp === 0 && character.pvTotal > 0 && nbForms >= maxForms
   )
@@ -2578,7 +2589,7 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
     !!(character.nomJoueur.trim() && character.nomPersonnage.trim()),
     !!(character.peuple && character.culture),
     Object.values(character.caracteristiques).some(c => c.valeur !== 10),
-    !!((modeVoies === 'libre' || character.profil) && character.famille && character.voie1.nom && character.voie2.nom && character.voie3.nom && ptsDisp === 0),
+    !!(character.famille && character.voie1.nom && character.voie2.nom && character.voie3.nom && ptsDisp === 0),
     character.pvTotal > 0,
     true,
     true,

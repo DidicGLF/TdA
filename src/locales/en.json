@@ -1228,6 +1228,10 @@
         "legendaire": "Legendary item"
       },
       "slotLabel": "Slot",
+      "armeDmLabel": "Damage die",
+      "armeDmPlaceholder": "e.g. 1d8",
+      "armeDmHint": "Just the die, without the characteristic bonus: it's added automatically at roll time (Game mode), like any weapon.",
+      "armeAttaqueLabel": "Attack characteristic",
       "slot": {
         "arme": "Weapon",
         "armure": "Armor",

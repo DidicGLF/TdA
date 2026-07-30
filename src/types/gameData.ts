@@ -146,6 +146,13 @@ export type ObjetMagiqueEntry = {
   slot: ObjetMagiqueSlot
   tradition?: TraditionPeuple           // si categorie === 'traditionnel' — purement descriptif/filtre
   degreQualite?: 1 | 2 | 3              // idem, purement descriptif (1=-, 2=Supérieure, 3=Exceptionnelle)
+  // Statistiques de base si slot === 'arme' — aucun enchantement ne modélise un dé de dégâts ou une
+  // caractéristique d'attaque (ce ne sont que des bonus), donc rien pour les déduire automatiquement :
+  // saisies à la main par le MJ. Utilisées pour synthétiser une Arme classique (character.armes) quand
+  // le joueur possède l'objet (voir EquipementModal.tsx, togglePossede) — au-delà de là, l'objet se
+  // comporte comme n'importe quelle arme "hors catalogue" existante, aucun autre branchement nécessaire.
+  armeDm?: string
+  armeAttaque?: 'FOR' | 'DEX' | 'INT'
   // TOUS les enchantements appliqués, y compris l'effet de base tradition/focalisateur (copié ici par
   // ObjetMagiqueDetail au moment du choix de tradition+degré/focalisateur+degré, comme n'importe quel
   // autre enchantement) — computeEffectsWithCristaux ne lit QUE ce tableau, jamais tradition/

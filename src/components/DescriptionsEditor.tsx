@@ -711,8 +711,15 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   }
 
   // Fonctions peuples
+  // Un peuple entièrement nouveau doit démarrer avec au moins une culture : le stockage perso
+  // (peuplesPerso.ts) est indexé à la granularité de la culture, donc un peuple à `cultures: []`
+  // n'a aucune culture pour l'ancrer et disparaît dès la prochaine dérivation de `peuples` (fusionnerPeuples
+  // ne reconstruit un peuple absent du livré qu'à partir des cultures perso qui portent son label).
   const addPeuple = () => {
-    setPeuples(prev => [...prev, { label: t('descEditor.nouveauPeuple'), cultures: [] }])
+    setPeuples(prev => [...prev, {
+      label: t('descEditor.nouveauPeuple'),
+      cultures: [{ label: t('descEditor.nouvelleCulture'), voiePeuple: '', voieCulturelle: '', modCaracs: {} }],
+    }])
     setSelectedPeuple(peuples.length)
     setSelectedCulture(0)
     setPeuplesExported(false)

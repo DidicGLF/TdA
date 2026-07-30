@@ -281,6 +281,30 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
                 </div>
               </div>
 
+              {/* Statistiques d'arme : rien dans les enchantements ne modélise un dé de dégâts ou une
+                  caractéristique d'attaque (que des bonus) — saisie manuelle nécessaire pour que l'objet
+                  puisse être synthétisé en Arme classique quand un joueur le possède (voir
+                  EquipementModal.tsx, togglePossede). */}
+              {objet.slot === 'arme' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 20 }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={labelStyle}>{t('gmMode.objetMagiqueDetail.armeDmLabel')}</span>
+                      <input value={objet.armeDm ?? ''} onChange={e => onChange({ armeDm: e.target.value })}
+                        placeholder={t('gmMode.objetMagiqueDetail.armeDmPlaceholder')} style={inputStyle} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={labelStyle}>{t('gmMode.objetMagiqueDetail.armeAttaqueLabel')}</span>
+                      <select value={objet.armeAttaque ?? 'FOR'} style={selectStyle}
+                        onChange={e => onChange({ armeAttaque: e.target.value as 'FOR' | 'DEX' | 'INT' })}>
+                        {(['FOR', 'DEX', 'INT'] as const).map(c => <option key={c} value={c} style={optionStyle}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, opacity: 0.55, fontStyle: 'italic' }}>{t('gmMode.objetMagiqueDetail.armeDmHint')}</div>
+                </div>
+              )}
+
               {/* Niveau de magie : base tradition/focalisateur + narratif — même style de titre que les
                   autres sous-sections (Enchantements.../Puissance/Pouvoir) pour rester bien visible :
                   labelStyle (11px, terne) rendait ce bloc trop discret, au point de sembler vide. */}

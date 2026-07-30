@@ -544,12 +544,40 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const conseille = NIVEAU_MAGIE_CONSEILLE[Math.min(character.niveau, NIVEAU_MAGIE_CONSEILLE.length) - 1] ?? 0
 
     const togglePossede = (id: string) => {
+      const objet = objetsMagiques.find(o => o.id === id)
       const enPossession = possedes.includes(id)
-      onChange({
+      const patch: Partial<Character> = {
         objetsMagiquesPossedes: enPossession ? possedes.filter(x => x !== id) : [...possedes, id],
         // Retirer un objet de la possession le déséquipe aussi, sans quoi ses bonus resteraient actifs.
         objetsMagiquesEquipes: enPossession ? equipes.filter(x => x !== id) : equipes,
-      })
+      }
+      // Synthétise/retire une Arme ou ArmureEquipee classique correspondante, pour que l'objet apparaisse
+      // dans la liste d'armes/armures et soit plaçable dans un emplacement comme n'importe quelle arme
+      // "hors catalogue" — le reste de l'app (fiche, wizard) n'a besoin d'aucune modification, il résout
+      // déjà toute arme par nom sans se soucier de son origine (voir plan spicy-seeking-canyon).
+      if (objet?.slot === 'arme') {
+        if (enPossession) {
+          patch.armes = character.armes.filter(a => a.nom !== objet.nom)
+          if (stripExposants(character.arme1) === stripExposants(objet.nom)) { patch.arme1 = ''; patch.dmArme1 = '' }
+          if (stripExposants(character.arme2) === stripExposants(objet.nom)) { patch.arme2 = ''; patch.dmArme2 = '' }
+        } else if (!character.armes.some(a => a.nom === objet.nom)) {
+          patch.armes = [...character.armes, {
+            nom: objet.nom, dm: objet.armeDm ?? '', attaque: objet.armeAttaque ?? 'FOR',
+            special: objet.description ?? '',
+          }]
+        }
+      } else if (objet?.slot === 'armure' || objet?.slot === 'bouclier') {
+        if (enPossession) {
+          patch.armuresEquipees = character.armuresEquipees.filter(a => a.nom !== objet.nom)
+        } else if (!character.armuresEquipees.some(a => a.nom === objet.nom)) {
+          // Le "def" de base n'a pas de champ dédié côté objet magique : il se déduit des enchantements
+          // de type DEF déjà présents (pas de double saisie pour le MJ).
+          const defDerive = objet.enchantements.reduce((s, e) =>
+            s + (e.effets ?? []).filter(ef => ef.stat === 'DEF').reduce((s2, ef) => s2 + (parseInt(ef.valeur) || 0), 0), 0)
+          patch.armuresEquipees = [...character.armuresEquipees, { nom: objet.nom, def: defDerive, prix: '' }]
+        }
+      }
+      onChange(patch)
     }
     const toggleEquipe = (id: string) => {
       onChange({ objetsMagiquesEquipes: equipes.includes(id) ? equipes.filter(x => x !== id) : [...equipes, id] })

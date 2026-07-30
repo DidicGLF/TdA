@@ -349,12 +349,15 @@ function AppContent() {
     }
     // Migration : tresorerie (legacy, texte libre "5 pièces d'or") remplacée par piecesOr/piecesArgent/
     // piecesCuivre/gemmes — voir normaliserTresorerie (types/character.ts). Le nombre en tête du texte
-    // devient piecesOr, et le texte d'origine est recopié tel quel dans gemmes (filet de sécurité :
-    // rien n'est perdu, même si ça peut dupliquer "5 pièces d'or" le temps de nettoyer à la main).
+    // devient piecesOr ; le texte d'origine n'est recopié dans gemmes que s'il contient autre chose
+    // qu'un simple montant en or (ex. "5 pièces d'or, une bague en argent") — filet de sécurité pour ne
+    // rien perdre, sans dupliquer "5 pièces d'or" dans un champ qui n'a plus rien à voir avec l'or.
     // Jamais appliqué si le personnage a déjà le nouveau format (piecesOr défini).
     const legacyTresorerie = (c as Character & { tresorerie?: string }).tresorerie
+    const legacyEstMontantOrSeul = legacyTresorerie !== undefined
+      && /^\s*\d+\s*(pi[eè]ces?\s+d['’]or|po)?\s*\.?\s*$/i.test(legacyTresorerie)
     const tresorerieMigree = legacyTresorerie !== undefined && c.piecesOr === undefined
-      ? { piecesOr: parseInt(legacyTresorerie) || 0, piecesArgent: 0, piecesCuivre: 0, gemmes: c.gemmes ?? legacyTresorerie }
+      ? { piecesOr: parseInt(legacyTresorerie) || 0, piecesArgent: 0, piecesCuivre: 0, gemmes: c.gemmes ?? (legacyEstMontantOrSeul ? '' : legacyTresorerie) }
       : {}
     const normalized = {
       ...c,

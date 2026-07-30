@@ -20,7 +20,14 @@ const listeners = new Set<(s: SaveStatus) => void>()
 
 function emit(s: SaveStatus) {
   status = s
-  listeners.forEach(l => l(s))
+  // Différé en microtâche : `queueSave` (donc cet `emit`) est appelé de façon synchrone DEPUIS
+  // l'updater passé à un setState de GameDataContext (voir makeAutoSaver et les setters génériques
+  // comme setPeuples/setObjetsMagiques) — prévenir les abonnés (SaveStatusIndicator) de façon tout
+  // aussi synchrone déclenche leur setState EN PLEIN MILIEU du rendu de GameDataProvider, ce que React
+  // refuse ("Cannot update a component while rendering a different component"). Le microtask s'exécute
+  // juste après la pile JS courante (donc après la fin du rendu), sans changer le comportement observé
+  // (`status` reste lu de façon synchrone via getSaveStatus, seule la notification des abonnés attend).
+  queueMicrotask(() => listeners.forEach(l => l(s)))
 }
 
 export function subscribeSaveStatus(fn: (s: SaveStatus) => void): () => void {

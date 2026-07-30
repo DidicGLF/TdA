@@ -1228,6 +1228,10 @@
         "legendaire": "Objet légendaire"
       },
       "slotLabel": "Emplacement",
+      "armeDmLabel": "Dé de dégâts",
+      "armeDmPlaceholder": "ex. 1d8",
+      "armeDmHint": "Uniquement le dé, sans le bonus de caractéristique : il est ajouté automatiquement au jet (Mode de jeu), comme pour toute arme.",
+      "armeAttaqueLabel": "Caractéristique d'attaque",
       "slot": {
         "arme": "Arme",
         "armure": "Armure",
