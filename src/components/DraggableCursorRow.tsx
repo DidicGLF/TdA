@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { CURSEUR_ICON_SVG } from '../utils/curseurMarker'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 interface Props {
   top: number
@@ -23,6 +25,11 @@ interface Props {
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
   reservePortalTarget?: HTMLElement | null
+  // Décision d'impression pour ce champ (mode « préparer l'impression ») — même motif que DraggableField/
+  // DraggableTextarea, absent de DraggableCheckboxRow (cases cochées au crayon, jamais un choix par
+  // champ) mais demandé explicitement par Didic pour ce curseur-ci.
+  imprime?: boolean
+  onToggleImpression?: () => void
 }
 
 // Champ "curseur glissant sur une graduation imprimée" (voir data/psychologieTraits.ts) — un seul repère
@@ -33,8 +40,9 @@ interface Props {
 export default function DraggableCursorRow({
   top, left, stepX: initStepX, stepY: initStepY, count, value, onValueChange,
   calibrate, label, containerRef, onGridChange,
-  reserved, onReserveToggle, reservePortalTarget,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
 }: Props) {
+  const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
   const [stepX, setStepX] = useState(initStepX)
   const [stepY, setStepY] = useState(initStepY)
@@ -173,6 +181,9 @@ export default function DraggableCursorRow({
           cursor: calibrate ? 'default' : 'grab',
         }}
       />
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
       {calibrate && (
         <div
           onMouseDown={handleAxisMouseDown}

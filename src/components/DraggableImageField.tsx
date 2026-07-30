@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useContext } from 'react'
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { compresserImage } from '../utils/imageStore'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 interface Props {
   top: number
@@ -22,6 +24,10 @@ interface Props {
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number, height?: number) => void
+  // Décision d'impression pour ce champ, et bascule associée (mode « préparer l'impression ») — même
+  // motif que DraggableField/DraggableTextarea.
+  imprime?: boolean
+  onToggleImpression?: () => void
 }
 
 const TOOL_BTN: React.CSSProperties = {
@@ -36,8 +42,10 @@ export default function DraggableImageField({
   fit = 'cover',
   locked: initLocked = false,
   onChange, onPanZoomChange, onFitChange, onLockedChange, calibrate, label, containerRef, onMoved,
+  imprime = true, onToggleImpression,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
@@ -221,6 +229,10 @@ export default function DraggableImageField({
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
+
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
 
       {value ? (
         <div

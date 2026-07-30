@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import CroixCase from './CroixCase'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 import type { Character, VoiePersonnage } from '../types/character'
 import { getMod } from '../types/character'
 import type { DescMap, Grant } from '../types/gameData'
@@ -89,6 +91,7 @@ export default function VoieRangCheckboxes({
   fieldPositions, onFieldMoved, reservePortalTarget, onReserveToggle,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const voieName = useVoieName()
   const peupleName = usePeupleName()
   const cb = onFieldMoved ?? (() => {})
@@ -385,6 +388,8 @@ export default function VoieRangCheckboxes({
             calibrate={calibrate} containerRef={containerRef} onMoved={cb}
             reservePortalTarget={reservePortalTarget}
             onReserveToggle={r => cbReserve(descId, r, { top: dTop, left: dLeft, width: dWidth, height: dHeight })}
+            imprime={fp?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(descId, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
           />
         )
       })}
@@ -438,6 +443,13 @@ export default function VoieRangCheckboxes({
               }}>
               <CroixCase coche={acquis} calibrate={calibrate} />
             </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fieldPositions?.[cbId]?.imprimer ?? true}
+                onToggle={() => cbReserve(cbId, fieldPositions?.[cbId]?.reserved === true, { top, left, imprimer: !(fieldPositions?.[cbId]?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
             {calibrate && (
               <div onMouseDown={e => startRangDrag(cbId, e)} style={{
                 position: 'absolute', top: `${top}%`, left: `${left}%`,

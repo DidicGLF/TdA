@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import CroixCase from './CroixCase'
 import { useTranslation } from 'react-i18next'
 import type { Character, Famille } from '../types/character'
@@ -14,6 +14,8 @@ import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostCon
 import SheetTooltip from './SheetTooltip'
 import type { TooltipData, TooltipLine } from './SheetTooltip'
 import { useChampsFiche } from '../hooks/useChampsFiche'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
 const normalizeArmeName = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
@@ -124,6 +126,7 @@ export default function ChampsRecto({
   reservePortalTarget, onReserveToggle, onCheckboxRowMoved,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const cb = onFieldMoved ?? (() => {})
   const { peuples, data: rawData, armes, armures } = useGameData()
   const data = useTranslatedDescriptions(rawData)
@@ -545,7 +548,8 @@ export default function ChampsRecto({
           {/* ATT contact */}
           {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. contact", tooltipTitle: t('recto.bonusFamilleContact'), top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleAttDisp') })}
           {f({ label: "ATT contact total",  tooltipTitle: t('recto.attContactTotal'), top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
               { label: t('recto.tlNiveau'), value: niv },
@@ -559,7 +563,8 @@ export default function ChampsRecto({
           {/* ATT distance */}
           {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. distance", tooltipTitle: t('recto.bonusFamilleDistance'), top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleAttDisp') })}
           {f({ label: "ATT dist total",      tooltipTitle: t('recto.attDistTotal'), top: 30.9, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attDistTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
@@ -575,7 +580,8 @@ export default function ChampsRecto({
           {/* ATT magique */}
           {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked,  align: "center" })}
-          {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. magique", tooltipTitle: t('recto.bonusFamilleMagique'), top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleMagiqueDisp') })}
           {f({ label: "ATT mag total",      tooltipTitle: t('recto.attMagTotal'), top: 33.7, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attMagTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
@@ -706,6 +712,8 @@ export default function ChampsRecto({
                 calibrate={calibrate} containerRef={containerRef}
                 onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
                 onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY, perRow: rPerRow })}
+                imprime={fp?.imprimer ?? true}
+                onToggleImpression={() => cbReserve(label, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
               />
             )
           })()}
@@ -722,10 +730,40 @@ export default function ChampsRecto({
           {f({ label: "pcRestants", tooltipTitle: t('recto.pcRestants'), top: 50.6, left: 22.8, width: 5.2, height: 2.0,
             value: character.pcRestants || character.pc,
             onChange: v => onChange({ pcRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 , temporaire: true})}
-          {f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
-            formula: character.famille === 'aventuriers'
-              ? { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }, { label: t('recto.tlAventuriers'), value: '+2' }], total: CHA.mod + 4 }
-              : { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }], total: CHA.mod + 2 } })}
+          {(() => {
+            // "PC" suivait un chemin à part, jamais readOnly même verrouillée : contrairement à "PV
+            // total"/"PM" (mêmes readOnly: locked + formula), sa formule ne s'affichait donc jamais en
+            // infobulle (voir la condition `formula && !calibrate && p.readOnly` dans useChampsFiche).
+            // Alignée ici sur le même principe : total calculé et infobulle quand verrouillée, saisie
+            // manuelle libre (comme avant) quand déverrouillée.
+            const pcAffiche = CHA.mod + (character.famille === 'aventuriers' ? 4 : 2)
+            const pcLines = [
+              { label: t('recto.tlBase'), value: '+2' },
+              { label: t('stats.modCHA'), value: fmt(CHA.mod) },
+              ...(character.famille === 'aventuriers' ? [{ label: t('recto.tlAventuriers'), value: '+2' }] : []),
+            ]
+            return f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0,
+              value: locked ? pcAffiche : character.pc,
+              onChange: locked ? () => {} : v => onChange({ pc: parseInt(v) || 0 }),
+              readOnly: locked, type: "number", align: "center", active: activeStep === 4,
+              formula: { lines: pcLines, total: pcAffiche } })
+          })()}
+          {/* Bonus de CHA : PAS un bonus indépendant — un second affichage du champ "CHA mod" (bloc
+              caractéristiques), reproduit à l'identique (même valeur, même comportement figé/déverrouillé)
+              pour apparaître aussi dans l'encart points de chance de la nouvelle maquette. Nouveau champ,
+              sans position d'origine : part en réserve de calibrage. */}
+          {f({ label: "Bonus de CHA", top: 50.6, left: 35, width: 5.2, height: 2.0,
+            value: fmt(CHA.mod),
+            onChange: () => {}, readOnly: locked, align: "center",
+            reserveByDefault: true })}
+          {/* Bonus de famille (PC) : dérivé de la famille Aventuriers (+2), jamais de saisie manuelle —
+              même principe que "ATT contact mod"/"Nom armure" (champ purement affiché). Nouveau champ,
+              sans position d'origine sur la maquette : part en réserve de calibrage. */}
+          {f({ label: "Bonus famille PC", tooltipTitle: t('recto.bonusFamillePc'), top: 50.6, left: 41.2, width: 5.2, height: 2.0,
+            value: character.famille === 'aventuriers' ? '+2' : '+0',
+            onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamillePcDisp'),
+            reserveByDefault: true })}
           {f({ label: "Dé de vie", tooltipTitle: t('recto.deVie'), top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie, onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4,
             formula: { lines: [{ label: t('recto.tlCombattants'), value: 'd10' }, { label: t('recto.tlAventuriers'), value: 'd8' }, { label: t('recto.tlMystiques'), value: 'd6' }], total: character.deVie } })}
         </>
@@ -752,6 +790,13 @@ export default function ChampsRecto({
             >
               <CroixCase coche={character.prUtilises[idx]} calibrate={calibrate} />
             </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fieldPositions?.[nom]?.imprimer ?? true}
+                onToggle={() => onReserveToggle(nom, fieldPositions?.[nom]?.reserved === true, { top, left, imprimer: !(fieldPositions?.[nom]?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
             {calibrate && (
               <div
                 onMouseDown={e => startPRDrag(nom, e)}
@@ -812,6 +857,13 @@ export default function ChampsRecto({
             >
               <CroixCase coche={heroiqueStats.has(key)} calibrate={calibrate} />
             </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fp?.imprimer ?? true}
+                onToggle={() => onReserveToggle(nom, fp?.reserved === true, { top, left, imprimer: !(fp?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
             {calibrate && (
               <div
                 onMouseDown={e => startHeroDrag(nom, e)}
@@ -868,6 +920,8 @@ export default function ChampsRecto({
             lineHeightPct={1.3} paddingTopPct={0.15}
             autoShrink
             onReserveToggle={r => cbReserve(label, r, { top: tTop, left: tLeft, width: tWidth, height: tHeight })}
+            imprime={fpTrait?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(label, fpTrait?.reserved === true, { imprimer: !(fpTrait?.imprimer ?? true) } as never)}
           />
         )
       })()}

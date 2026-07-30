@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import CroixCase from './CroixCase'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,8 @@ import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
 import SheetTooltip from './SheetTooltip'
 import type { TooltipData } from './SheetTooltip'
 import { TRAITS_PSYCHOLOGIE, labelProfilPsychologie } from '../data/psychologieTraits'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
@@ -55,6 +57,7 @@ export default function ChampsVerso({
   reservePortalTarget, onReserveToggle, onCheckboxRowMoved,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const cb = onFieldMoved ?? (() => {})
   const cbReserve = onReserveToggle ?? (() => {})
   // Point de passage unique pour (quasi) tous les champs de cette page : en plus de la position, fournit
@@ -227,7 +230,7 @@ export default function ChampsVerso({
             )
           })()}
           <DraggableImageField
-            {...(({ top, left, width, height }) => ({ top, left, width, height }))(fp('Portrait', 30.6, 26.5, 44, 37))}
+            {...(({ top, left, width, height, imprime, onToggleImpression }) => ({ top, left, width, height, imprime, onToggleImpression }))(fp('Portrait', 30.6, 26.5, 44, 37))}
             value={character.portrait}
             scale={character.portraitScale} tx={character.portraitTx} ty={character.portraitTy}
             fit={character.portraitFit ?? 'cover'}
@@ -304,6 +307,13 @@ export default function ChampsVerso({
             >
               <CroixCase coche={character.formationsMartiales.includes(nom)} calibrate={calibrate} />
             </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fieldPositions?.[nom]?.imprimer ?? true}
+                onToggle={() => cbReserve(nom, fieldPositions?.[nom]?.reserved === true, { top, left, imprimer: !(fieldPositions?.[nom]?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
             {/* Tag draggable en mode calibrage */}
             {calibrate && (
               <div
@@ -380,6 +390,8 @@ export default function ChampsVerso({
             calibrate={calibrate} containerRef={containerRef}
             onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
             onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY })}
+            imprime={cfp?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(label, cfp?.reserved === true, { imprimer: !(cfp?.imprimer ?? true) } as never)}
           />
         )
       })}
@@ -417,6 +429,8 @@ export default function ChampsVerso({
             value={labelProfilPsychologie(trait, character.psychologie?.[trait.cle] ?? 5)}
             onChange={() => {}} readOnly align="center"
             calibrate={calibrate} label={label} containerRef={containerRef} onMoved={cb}
+            imprime={tfp?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(label, tfp?.reserved === true, { imprimer: !(tfp?.imprimer ?? true) } as never)}
           />
         )
       })}
@@ -503,11 +517,14 @@ export default function ChampsVerso({
         containerRef={containerRef} onMoved={cb}
       />}
 
-      {/* === NOM DU JOUEUR === */}
-      {visible("Nom du joueur") && <DraggableField
-        {...fp("Nom du joueur", 9.1, 37, 22.8, 2.0)}
-        value={character.nomJoueur} onChange={() => {}}
-        calibrate={calibrate} label="Nom du joueur"
+      {/* === NOM DU PERSONNAGE (répété depuis le recto) === : ancien champ "Nom du joueur", absent de la
+          nouvelle maquette verso (déjà en réserve dans src/data/field-positions.json) — repris tel quel
+          pour afficher le nom du personnage à la place, en réserve tant qu'il n'a pas été recalibré sur
+          la nouvelle fiche. */}
+      {visible("Nom du personnage") && <DraggableField
+        {...fp("Nom du personnage", 9.1, 37, 22.8, 2.0, true)}
+        value={character.nomPersonnage} onChange={() => {}}
+        calibrate={calibrate} label="Nom du personnage"
         containerRef={containerRef} onMoved={cb}
       />}
 

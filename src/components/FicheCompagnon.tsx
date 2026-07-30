@@ -75,6 +75,8 @@ export default function FicheCompagnon({
         reserved={fp ? fp.reserved === true : true}
         reservePortalTarget={reservePortalTarget}
         onReserveToggle={r => onReserveToggle?.(id, r, p)}
+        imprime={fp?.imprimer ?? true}
+        onToggleImpression={() => onReserveToggle?.(id, fp?.reserved === true, { ...p, imprimer: !(fp?.imprimer ?? true) } as never)}
       />
     )
   }
@@ -130,6 +132,8 @@ export default function FicheCompagnon({
             onChange={v => setOv('image', v)}
             calibrate={calibrate} label="Comp image"
             containerRef={containerRef} onMoved={onFieldMoved ?? (() => {})}
+            imprime={fp?.imprimer ?? true}
+            onToggleImpression={() => onReserveToggle?.('Comp image', fp?.reserved === true, { ...p, imprimer: !(fp?.imprimer ?? true) } as never)}
           />
         )
       })()}

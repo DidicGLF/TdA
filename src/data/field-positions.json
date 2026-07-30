@@ -79,8 +79,8 @@
     "reserved": false
   },
   "Profil": {
-    "top": 13,
-    "left": 37.4,
+    "top": 12.9,
+    "left": 37.9,
     "width": 13.9
   },
   "Niveau": {
@@ -89,7 +89,7 @@
     "width": 5.1
   },
   "Famille": {
-    "top": 15.4,
+    "top": 15.3,
     "left": 37.9,
     "width": 11.2
   },
@@ -1566,6 +1566,22 @@
     "width": 42.9,
     "height": 5.7,
     "page": "verso",
+    "reserved": false
+  },
+  "Bonus de CHA": {
+    "top": 41.7,
+    "left": 73,
+    "width": 5.2,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Bonus famille PC": {
+    "top": 41.7,
+    "left": 86.3,
+    "width": 5.2,
+    "height": 2,
+    "page": "recto",
     "reserved": false
   }
 }

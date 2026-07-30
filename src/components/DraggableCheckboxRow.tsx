@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
 import CroixCase from './CroixCase'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 interface Props {
   top: number
@@ -28,6 +30,10 @@ interface Props {
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
   reservePortalTarget?: HTMLElement | null
+  // Décision d'impression pour toute la rangée (une seule pastille, pas une par case), et bascule
+  // associée (mode « préparer l'impression ») — même motif que DraggableField/DraggableTextarea.
+  imprime?: boolean
+  onToggleImpression?: () => void
 }
 
 // Champ "rangée de cases à cocher" — une seule calibration (position + grille perRow/stepX/stepY,
@@ -37,8 +43,9 @@ interface Props {
 export default function DraggableCheckboxRow({
   top, left, perRow: initPerRow, stepX: initStepX, stepY: initStepY, count, checkedCount, onValueChange,
   calibrate, label, containerRef, onGridChange, temporaire,
-  reserved, onReserveToggle, reservePortalTarget,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
 }: Props) {
+  const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
   const [perRow, setPerRow] = useState(initPerRow)
   const [stepX, setStepX] = useState(initStepX)
@@ -141,6 +148,9 @@ export default function DraggableCheckboxRow({
           </div>
         )
       })}
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
       {calibrate && (
         <div
           onMouseDown={handleDragMouseDown}
