@@ -63,6 +63,31 @@ export function estAvanceeAccordeePourCible(
   return false
 }
 
+// Nombre total d'emplacements de formation martiale supplémentaires accordés par les rangs réellement
+// possédés du personnage (grants FORMATION, minRang respecté comme pour VOIE_RANG/VOIE_RANG_CHOIX) —
+// toujours des emplacements à choix libre, jamais des formations imposées (voir le type Grant). À
+// ajouter au nombre de base lié à la famille partout où ce plafond est utilisé (wizard Step5/Step8).
+export function getBonusFormationsCount(character: Character, descriptions: DescMap): number {
+  let total = 0
+  for (const key of VOIE_KEYS) {
+    const voie = character[key]
+    if (!voie.nom) continue
+    const rangsData = descriptions[voie.nom]
+    if (!rangsData) continue
+    for (let i = 0; i < voie.rangs.length; i++) {
+      if (!voie.rangs[i]) continue
+      const rangData = rangsData[i]
+      if (!rangData?.grants) continue
+      for (const grant of rangData.grants) {
+        if (grant.type !== 'FORMATION') continue
+        if (grant.minRang !== undefined && !voie.rangs[grant.minRang - 1]) continue
+        total += grant.nombre ?? 1
+      }
+    }
+  }
+  return total
+}
+
 // Un rang "emprunté" : obtenu automatiquement (VOIE_RANG) ou choisi (VOIE_RANG_CHOIX) via un grant
 // porté par un rang réellement possédé, plutôt que par une des 7 voies du personnage. Volontairement
 // non récursif : les grants VOIE_RANG/VOIE_RANG_CHOIX du rang emprunté lui-même ne sont pas résolus

@@ -1,7 +1,9 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useContext } from 'react'
 import { majusculeInitiale } from '../utils/texte'
 import type { RefObject, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 const BASE_FONT = 0.95
 const MIN_FONT  = 0.35
@@ -23,6 +25,10 @@ interface Props {
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
   reservePortalTarget?: HTMLElement | null
+  // Décision d'impression pour ce champ, et bascule associée (mode « préparer l'impression ») — même
+  // motif que DraggableField/DraggableTextarea.
+  imprime?: boolean
+  onToggleImpression?: () => void
 }
 
 // Description d'un rang de voie : bloc en lecture seule, positionné et dimensionné comme les autres
@@ -31,8 +37,9 @@ interface Props {
 export default function DraggableRangDesc({
   top, left, width: initWidth, height: initHeight, contenu, texteBrut,
   calibrate, label, containerRef, onMoved,
-  reserved, onReserveToggle, reservePortalTarget,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
 }: Props) {
+  const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
@@ -129,6 +136,9 @@ export default function DraggableRangDesc({
           <span style={{ color: 'rgba(160,90,230,0.55)' }}>{majusculeInitiale(label)}</span>
         ))}
       </div>
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
       {calibrate && (
         <div
           onMouseDown={e => glisser(e, 'pos')}

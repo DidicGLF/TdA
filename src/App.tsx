@@ -3,7 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { useLocaleContext } from './context/LocaleContext'
 import { loadDataFileDossier, saveDataFile } from './utils/tauriStorage'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import type { Character } from './types/character'
+import type { Character, CompagnonOverride } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
@@ -14,7 +14,7 @@ import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
 import CharacterSheetCristaux from './components/CharacterSheetCristaux'
-import CreationWizard from './components/CreationWizard'
+import CreationWizard, { STEP_COUNT } from './components/CreationWizard'
 import ModeSelector from './components/ModeSelector'
 import GMDashboard from './components/GMMode/GMDashboard'
 import SaveLoadPanel from './components/SaveLoadPanel'
@@ -35,6 +35,16 @@ import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 
+// Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
+// Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
+// équipement, Psychologie, Les derniers détails, Finalisation) — suivi automatiquement que ce soit via
+// Suivant/Précédent ou un clic direct sur une étape du fil d'ariane (StepIndicator/onGoTo dans
+// CreationWizard.tsx, qui ne font tous les deux que changer `step`). Constante de module (pas recréée
+// à chaque rendu) : les valeurs ne dépendent d'aucun état.
+const SHEET_PAGE_PAR_ETAPE: ('recto' | 'verso' | 'voies')[] = [
+  'recto', 'recto', 'recto', 'voies', 'recto', 'recto', 'verso', 'verso', 'verso',
+]
+
 export default function App() {
   return <GameDataProvider><AppContent /></GameDataProvider>
 }
@@ -48,8 +58,7 @@ function AppContent() {
   } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
-    inventaire: t('wizard.step6.inventaireDefault'),
-    tresorerie: t('wizard.step6.tresorerieDefault'),
+    inventaire: t('wizard.step7.inventaireDefault'),
   }))
 
   // Synchronise compagnonsActifs dès qu'un rang de voie change, quelle que soit l'origine
@@ -170,14 +179,13 @@ function AppContent() {
     reader.readAsDataURL(file)
   }
 
-  // Suit la progression du wizard de création (étapes 5+ concernent le verso) pour y basculer
-  // automatiquement — mais PAS quand handleLoad restaure step d'un coup à savedMaxStep (7 pour un
-  // personnage terminé) : sans ce garde-fou, charger n'importe quel personnage sauvegardé atterrissait
-  // systématiquement sur le verso au lieu du recto.
+  // Voir SHEET_PAGE_PAR_ETAPE. Le garde-fou ci-dessous évite de basculer la fiche quand handleLoad
+  // restaure step d'un coup à savedMaxStep (8 pour un personnage terminé) : sans lui, charger
+  // n'importe quel personnage sauvegardé atterrissait systématiquement sur le verso au lieu du recto.
   const skipAutoSheetPage = useRef(false)
   useEffect(() => {
     if (skipAutoSheetPage.current) { skipAutoSheetPage.current = false; return }
-    setSheetPage(step >= 5 ? 'verso' : 'recto')
+    setSheetPage(SHEET_PAGE_PAR_ETAPE[step] ?? 'recto')
   }, [step])
 
   useEffect(() => {
@@ -326,8 +334,37 @@ function AppContent() {
 
   const handleLoad = (c: Character, savedMaxStep: number) => {
     const tm = c.talentMagique
+    // Migration : compagnonsOverrides (legacy, par position) est remplacé par compagnonsFiches (par
+    // nom) — voir FicheCompagnon.tsx. Recopié une seule fois si absent du nouveau format, puis le
+    // champ legacy est omis (undefined) du personnage normalisé : plus jamais réécrit.
+    const legacyOverrides = (c as Character & { compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null] }).compagnonsOverrides
+    const compagnonsFichesMigre = { ...(c.compagnonsFiches ?? {}) }
+    if (legacyOverrides) {
+      for (const slot of [0, 1] as const) {
+        const nom = c.compagnonsActifs?.[slot]
+        if (nom && !compagnonsFichesMigre[nom] && legacyOverrides[slot]) {
+          compagnonsFichesMigre[nom] = legacyOverrides[slot]!
+        }
+      }
+    }
+    // Migration : tresorerie (legacy, texte libre "5 pièces d'or") remplacée par piecesOr/piecesArgent/
+    // piecesCuivre/gemmes — voir normaliserTresorerie (types/character.ts). Le nombre en tête du texte
+    // devient piecesOr ; le texte d'origine n'est recopié dans gemmes que s'il contient autre chose
+    // qu'un simple montant en or (ex. "5 pièces d'or, une bague en argent") — filet de sécurité pour ne
+    // rien perdre, sans dupliquer "5 pièces d'or" dans un champ qui n'a plus rien à voir avec l'or.
+    // Jamais appliqué si le personnage a déjà le nouveau format (piecesOr défini).
+    const legacyTresorerie = (c as Character & { tresorerie?: string }).tresorerie
+    const legacyEstMontantOrSeul = legacyTresorerie !== undefined
+      && /^\s*\d+\s*(pi[eè]ces?\s+d['’]or|po)?\s*\.?\s*$/i.test(legacyTresorerie)
+    const tresorerieMigree = legacyTresorerie !== undefined && c.piecesOr === undefined
+      ? { piecesOr: parseInt(legacyTresorerie) || 0, piecesArgent: 0, piecesCuivre: 0, gemmes: c.gemmes ?? (legacyEstMontantOrSeul ? '' : legacyTresorerie) }
+      : {}
     const normalized = {
       ...c,
+      ...tresorerieMigree,
+      tresorerie: undefined,
+      compagnonsFiches: compagnonsFichesMigre,
+      compagnonsOverrides: undefined,
       talentMagique: typeof tm === 'string' ? { nom: tm, desc: '' } : (tm ?? { nom: '', desc: '' }),
       portrait: c.portrait ?? '',
       portraitScale: c.portraitScale ?? 1,
@@ -368,6 +405,15 @@ function AppContent() {
         <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
           fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
       </div>
+      {/* Une fiche A5 par compagnon débloqué (voir CharacterSheetCompagnons/FicheCompagnon), chacune
+          déjà wrappée dans .print-page-compagnon par le composant lui-même — toutesLesPages sort
+          toutes les fiches d'un coup plutôt que la seule page actuellement affichée à l'écran.
+          Rendu conditionnel : sans compagnon débloqué, le composant affiche un message "aucun
+          compagnon" qu'il ne faut pas imprimer (voir showCompagnonsTab, même condition que l'onglet). */}
+      {showCompagnonsTab && (
+        <CharacterSheetCompagnons character={character} onChange={() => {}}
+          fieldPositions={fieldPositions} toutesLesPages />
+      )}
     </div>
   )
 
@@ -505,7 +551,7 @@ function AppContent() {
           onLibraryChange={setLibrary}
           onLoad={handleLoad}
           onNew={() => {
-            setCharacter({ ...defaultCharacter(), inventaire: t('wizard.step6.inventaireDefault'), tresorerie: t('wizard.step6.tresorerieDefault') })
+            setCharacter({ ...defaultCharacter(), inventaire: t('wizard.step7.inventaireDefault') })
             setStep(0)
             setMaxStep(0)
           }}
@@ -671,7 +717,7 @@ function AppContent() {
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <CreationWizard
                     step={step} maxStep={maxStep} character={character} onChange={onChange}
-                    onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                    onNext={() => { const n = Math.min(step + 1, STEP_COUNT - 1); setStep(n); setMaxStep(m => Math.max(m, n)) }}
                     onPrev={() => setStep(s => Math.max(s - 1, 0))}
                     onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                     onSave={() => setShowSave(true)}
@@ -1204,9 +1250,34 @@ function AppContent() {
 
       {/* === PANNEAU DROIT (wizard ou mode jeu) — masqué en mode runes full === */}
       {!showFullRunes && (
+      <>
+        {/* Barre de séparation glissable : pilote directement `zoom` (même état/persistance que le
+            zoom Ctrl+molette ci-dessus, mêmes bornes 30-82) — la feuille est déjà en `${zoom}%`, le
+            panneau de droite en `flex: 1` (le reste), donc juste re-router zoom vers la souris suffit,
+            aucun nouvel état de largeur à introduire. Glisser vers la gauche réduit zoom% → agrandit ce
+            panneau (flex: 1 prend l'espace libéré) ; vers la droite, l'inverse. */}
+        <div
+          className="no-print"
+          onMouseDown={e => {
+            e.preventDefault()
+            const onMove = (ev: MouseEvent) => {
+              const n = Math.min(82, Math.max(30, Math.round(ev.clientX / window.innerWidth * 100)))
+              localStorage.setItem('tdr-zoom', String(n))
+              setZoom(n)
+            }
+            const onUp = () => {
+              document.removeEventListener('mousemove', onMove)
+              document.removeEventListener('mouseup', onUp)
+            }
+            document.addEventListener('mousemove', onMove)
+            document.addEventListener('mouseup', onUp)
+          }}
+          style={{ width: 6, flexShrink: 0, cursor: 'col-resize', background: 'rgba(201,168,76,0.2)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.5)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.2)' }}
+        />
       <div className="no-print" style={{
         flex: 1, minWidth: 300,
-        borderLeft: '1px solid rgba(201,168,76,0.2)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(20,16,10,0.98)',
         overflow: 'hidden',
@@ -1223,7 +1294,15 @@ function AppContent() {
                 {t('notes.graphe')}
               </div>
             </div>
-            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes} />
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes}
+              onSetRelation={(sourceId, targetId, type) => setNotes(prev => prev.map(n => n.id !== sourceId ? n : {
+                ...n,
+                relations: type
+                  ? [...(n.relations ?? []).filter(r => r.versId !== targetId), { versId: targetId, type }]
+                  : (n.relations ?? []).filter(r => r.versId !== targetId),
+                modifieLe: new Date().toISOString(),
+              }))}
+            />
           </>
         ) : calibrate ? (
           <>
@@ -1261,7 +1340,7 @@ function AppContent() {
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <CreationWizard
                 step={step} maxStep={maxStep} character={character} onChange={onChange}
-                onNext={() => { const n = Math.min(step + 1, 7); setStep(n); setMaxStep(m => Math.max(m, n)) }}
+                onNext={() => { const n = Math.min(step + 1, STEP_COUNT - 1); setStep(n); setMaxStep(m => Math.max(m, n)) }}
                 onPrev={() => setStep(s => Math.max(s - 1, 0))}
                 onGoTo={(s) => { setStep(s); setMaxStep(m => Math.max(m, s)) }}
                 onSave={() => setShowSave(true)}
@@ -1272,6 +1351,7 @@ function AppContent() {
           </>
         )}
       </div>
+      </>
       )}
     </div>
     </ModeImpressionContext.Provider>

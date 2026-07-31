@@ -12,6 +12,23 @@ export default defineConfig({
     react(),
     tailwindcss(),
     {
+      // WebKitGTK (webview Linux de Tauri) garde un cache HTTP disque PERSISTANT pour l'app, séparé du
+      // serveur Vite et de son propre cache (node_modules/.vite) — il survit aux redémarrages de
+      // `npm run tauri dev` d'une session à l'autre (~/.local/share/<identifier>/WebKitCache). Résultat :
+      // une modif de source peut s'afficher correctement avec `npm run dev` (onglet de navigateur neuf,
+      // sans ce cache) mais rester périmée avec `npm run tauri dev` (même profil WebView réutilisé), déjà
+      // vu avec l'étape wizard Psychologie et les phrases d'aide objets magiques. Interdire toute mise en
+      // cache des réponses du serveur de dev supprime la source du problème à la racine plutôt que de
+      // devoir vider le cache disque à la main à chaque fois.
+      name: 'no-cache-dev',
+      configureServer(server) {
+        server.middlewares.use((_req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          res.setHeader('Cache-Control', 'no-store')
+          next()
+        })
+      },
+    },
+    {
       name: 'data-api',
       configureServer(server) {
         server.middlewares.use('/api/load-json', (req: IncomingMessage, res: ServerResponse) => {

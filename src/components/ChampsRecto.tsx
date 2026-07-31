@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import CroixCase from './CroixCase'
 import { useTranslation } from 'react-i18next'
 import type { Character, Famille } from '../types/character'
@@ -10,10 +10,12 @@ import DraggableCheckboxRow from './DraggableCheckboxRow'
 import type { ArmesData, ArmuresData, FieldPositions, SheetPage } from '../context/GameDataContext'
 import { findCulture, findTrait } from '../data/peuples'
 import { useGameData } from '../context/GameDataContext'
-import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions } from '../utils/computeEffects'
+import { computeEffectsWithCristaux, computeDiceEffects, sumStat, activeBoostContributions, computeAvantages } from '../utils/computeEffects'
 import SheetTooltip from './SheetTooltip'
 import type { TooltipData, TooltipLine } from './SheetTooltip'
 import { useChampsFiche } from '../hooks/useChampsFiche'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 const normalizeFormation = (f: string) => f.replace(/\s*\(.*?\)/g, '').trim().toLowerCase()
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
 const normalizeArmeName = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
@@ -73,6 +75,19 @@ const PR_CHECKBOXES = [
   { nom: 'PR 6', top: 58.2, left: 32.6 },
 ]
 
+// Cases "Héroïque (2d)" : cochées automatiquement (jamais par clic) quand un grant AVANTAGE est actif
+// pour la caractéristique — cf. computeAvantages. Nouveau champ, sans position d'origine sur la
+// maquette : démarre en réserve de calibrage (voir le rendu plus bas), le top/left ci-dessous ne sert
+// que de valeur nominale tant que l'utilisateur ne l'a pas sortie de la réserve.
+const HEROIQUE_CHECKBOXES: { nom: string; key: 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA' }[] = [
+  { nom: 'Héroïque FOR', key: 'FOR' },
+  { nom: 'Héroïque DEX', key: 'DEX' },
+  { nom: 'Héroïque CON', key: 'CON' },
+  { nom: 'Héroïque INT', key: 'INT' },
+  { nom: 'Héroïque SAG', key: 'SAG' },
+  { nom: 'Héroïque CHA', key: 'CHA' },
+]
+
 
 
 const CARAC_ROWS = [
@@ -111,8 +126,9 @@ export default function ChampsRecto({
   reservePortalTarget, onReserveToggle, onCheckboxRowMoved,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const cb = onFieldMoved ?? (() => {})
-  const { peuples, data: rawData, armes, armures } = useGameData()
+  const { peuples, data: rawData, armes, armures, objetsMagiques } = useGameData()
   const data = useTranslatedDescriptions(rawData)
 
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
@@ -123,6 +139,13 @@ export default function ChampsRecto({
   // ne survivaient pas à un redémarrage de l'app (retour aux positions par défaut).
   React.useEffect(() => {
     setCbPos(Object.fromEntries(PR_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }])))
+  }, [fieldPositions])
+
+  const [heroPos, setHeroPos] = useState<Record<string, { top: number; left: number }>>(
+    Object.fromEntries(HEROIQUE_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: CARAC_ROWS.find(r => r.key === f.key)!.top, left: 30 }]))
+  )
+  React.useEffect(() => {
+    setHeroPos(Object.fromEntries(HEROIQUE_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: CARAC_ROWS.find(r => r.key === f.key)!.top, left: 30 }])))
   }, [fieldPositions])
   const voieName = useVoieName()
   const peupleName = usePeupleName()
@@ -169,6 +192,38 @@ export default function ChampsRecto({
     document.addEventListener('mouseup', onUp)
   }
 
+  const startHeroDrag = (nom: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startY = e.clientY
+    const { top: startTop, left: startLeft } = heroPos[nom]
+
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      setHeroPos(prev => ({
+        ...prev,
+        [nom]: {
+          top:  +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1),
+          left: +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1),
+        },
+      }))
+    }
+
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const newTop  = +(startTop  + (ev.clientY - startY) / rect.height * 100).toFixed(1)
+      const newLeft = +(startLeft + (ev.clientX - startX) / rect.width  * 100).toFixed(1)
+      setHeroPos(prev => ({ ...prev, [nom]: { top: newTop, left: newLeft } }))
+      cb(nom, newTop, newLeft)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
 
 
   // Tuyauterie des champs (position calibrée, appartenance à une fiche, réserve, infobulles) :
@@ -178,8 +233,9 @@ export default function ChampsRecto({
     onFieldMoved, reservePortalTarget, onReserveToggle,
   })
 
-  const effects = computeEffectsWithCristaux(character, data)
+  const effects = computeEffectsWithCristaux(character, data, objetsMagiques)
   const diceEffects = computeDiceEffects(character, data)
+  const heroiqueStats = new Set(computeAvantages(character, data).map(a => a.stat))
 
   const activeTooltip = tooltip
 
@@ -492,7 +548,8 @@ export default function ChampsRecto({
           {/* ATT contact */}
           {f({ label: "ATT contact mod",    top: 28.1, left: 50,   width: 5.1, height: 2.0, value: fmt(FOR.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT contact niv",    top: 28.1, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "Bonus fam. contact", top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. contact", tooltipTitle: t('recto.bonusFamilleContact'), top: 28.1, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleAttDisp') })}
           {f({ label: "ATT contact total",  tooltipTitle: t('recto.attContactTotal'), top: 28.1, left: 68.3, width: 5.0, height: 2.0, value: fmt(attContactTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
               { label: t('recto.tlNiveau'), value: niv },
@@ -506,7 +563,8 @@ export default function ChampsRecto({
           {/* ATT distance */}
           {f({ label: "ATT dist mod",        top: 30.9, left: 50,   width: 5.1, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT dist niv",        top: 30.9, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked, align: "center" })}
-          {f({ label: "Bonus fam. distance", top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. distance", tooltipTitle: t('recto.bonusFamilleDistance'), top: 30.9, left: 62.2, width: 5.0, height: 2.0, value: fmt(famContact), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleAttDisp') })}
           {f({ label: "ATT dist total",      tooltipTitle: t('recto.attDistTotal'), top: 30.9, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attDistTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
@@ -522,7 +580,8 @@ export default function ChampsRecto({
           {/* ATT magique */}
           {f({ label: "ATT mag mod",        top: 33.7, left: 50,   width: 5.1, height: 2.0, value: fmt(INT.mod), onChange: () => {}, readOnly: locked, align: "center" })}
           {f({ label: "ATT mag niv",        top: 33.7, left: 56.2, width: 5.0, height: 2.0, value: niv, onChange: () => {}, readOnly: locked,  align: "center" })}
-          {f({ label: "Bonus fam. magique", top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Bonus fam. magique", tooltipTitle: t('recto.bonusFamilleMagique'), top: 33.7, left: 62.2, width: 5.0, height: 2.0, value: fmt(famMagique), onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamilleMagiqueDisp') })}
           {f({ label: "ATT mag total",      tooltipTitle: t('recto.attMagTotal'), top: 33.7, left: 68.3, width: 5.0, height: 2.0,
             value: fmt(attMagTotal), onChange: () => {}, readOnly: locked, align: "center",
             formula: { lines: [
@@ -548,11 +607,21 @@ export default function ChampsRecto({
             // l'inventaire du personnage (toujours à jour) plutôt que sur le champ hérité dmArme1 (qui peut être
             // vide si l'arme a été équipée avant que ce fallback n'existe).
             const invEntry1 = !e1 && character.arme1 ? character.armes.find(a => a.nom === character.arme1) : null
-            const dm1base = e1 ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}` : invEntry1 ? [invEntry1.dm, invEntry1.attaque].filter(Boolean).join(' ') : character.dmArme1
+            // invEntry1.attaque est une clé de stat brute ('FOR'/'DEX', voir addArme dans EquipementModal.tsx),
+            // pas un modificateur chiffré : la résoudre ici comme pour e1/modVal1 ci-dessus, sinon le montant
+            // affiché perd son bonus (ex. "2d6 FOR" au lieu de "2d6 +3").
+            const invModVal1 = invEntry1?.attaque === 'FOR' ? FOR.mod : invEntry1?.attaque === 'DEX' ? DEX.mod : null
+            const dm1base = e1
+              ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}`
+              : invEntry1 ? `${invEntry1.dm}${invModVal1 !== null ? ' ' + fmt(invModVal1) : ''}` : character.dmArme1
             const dm1 = bonus1 !== 0 ? `${dm1base} ${fmt(bonus1)}` : dm1base
             const formula1 = e1 ? { lines: [
               { label: t('recto.tlDes'), value: e1.dm },
               ...(modVal1 !== null ? [{ label: t(`stats.mod${e1.mod}`), value: fmt(modVal1) }] : []),
+              ...groupContribs(bonusContribs1),
+            ], total: dm1 } : invEntry1 ? { lines: [
+              { label: t('recto.tlDes'), value: invEntry1.dm },
+              ...(invModVal1 !== null ? [{ label: t(`stats.mod${invEntry1.attaque}`), value: fmt(invModVal1) }] : []),
               ...groupContribs(bonusContribs1),
             ], total: dm1 } : undefined
             return f({ label: "DM Arme 1", tooltipTitle: t('recto.dmArme', { arme: character.arme1 ?? '1' }), top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, readOnly: locked, align: "center", formula: formula1 })
@@ -574,11 +643,18 @@ export default function ChampsRecto({
             const bonusContribs2 = character.arme2 ? dmArmeBonusContribs(character.arme2) : []
             const bonus2 = sumStat(bonusContribs2)
             const invEntry2 = !e2 && character.arme2 ? character.armes.find(a => a.nom === character.arme2) : null
-            const dm2base = e2 ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}` : invEntry2 ? [invEntry2.dm, invEntry2.attaque].filter(Boolean).join(' ') : character.dmArme2
+            const invModVal2 = invEntry2?.attaque === 'FOR' ? FOR.mod : invEntry2?.attaque === 'DEX' ? DEX.mod : null
+            const dm2base = e2
+              ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}`
+              : invEntry2 ? `${invEntry2.dm}${invModVal2 !== null ? ' ' + fmt(invModVal2) : ''}` : character.dmArme2
             const dm2 = bonus2 !== 0 ? `${dm2base} ${fmt(bonus2)}` : dm2base
             const formula2 = e2 ? { lines: [
               { label: t('recto.tlDes'), value: e2.dm },
               ...(modVal2 !== null ? [{ label: t(`stats.mod${e2.mod}`), value: fmt(modVal2) }] : []),
+              ...groupContribs(bonusContribs2),
+            ], total: dm2 } : invEntry2 ? { lines: [
+              { label: t('recto.tlDes'), value: invEntry2.dm },
+              ...(invModVal2 !== null ? [{ label: t(`stats.mod${invEntry2.attaque}`), value: fmt(invModVal2) }] : []),
               ...groupContribs(bonusContribs2),
             ], total: dm2 } : undefined
             return f({ label: "DM Arme 2", tooltipTitle: t('recto.dmArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: locked, align: "center", formula: formula2 })
@@ -636,6 +712,8 @@ export default function ChampsRecto({
                 calibrate={calibrate} containerRef={containerRef}
                 onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
                 onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY, perRow: rPerRow })}
+                imprime={fp?.imprimer ?? true}
+                onToggleImpression={() => cbReserve(label, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
               />
             )
           })()}
@@ -652,10 +730,45 @@ export default function ChampsRecto({
           {f({ label: "pcRestants", tooltipTitle: t('recto.pcRestants'), top: 50.6, left: 22.8, width: 5.2, height: 2.0,
             value: character.pcRestants || character.pc,
             onChange: v => onChange({ pcRestants: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4 , temporaire: true})}
-          {f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0, value: character.pc, onChange: v => onChange({ pc: parseInt(v) || 0 }), type: "number", align: "center", active: activeStep === 4,
-            formula: character.famille === 'aventuriers'
-              ? { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }, { label: t('recto.tlAventuriers'), value: '+2' }], total: CHA.mod + 4 }
-              : { lines: [{ label: t('stats.modCHA'), value: fmt(CHA.mod) }, { label: t('recto.tlBase'), value: '+2' }], total: CHA.mod + 2 } })}
+          {(() => {
+            // "PC" suivait un chemin à part, jamais readOnly même verrouillée : contrairement à "PV
+            // total"/"PM" (mêmes readOnly: locked + formula), sa formule ne s'affichait donc jamais en
+            // infobulle (voir la condition `formula && !calibrate && p.readOnly` dans useChampsFiche).
+            // Alignée ici sur le même principe : total calculé et infobulle quand verrouillée, saisie
+            // manuelle libre (comme avant) quand déverrouillée.
+            // effects['PC'] : bonus des objets magiques équipés (ex. arme traditionnelle gobeline) — voir
+            // computeEffectsWithCristaux. Aucune voie n'accorde de bonus de PC à ce jour, donc ce terme
+            // était absent jusqu'ici ; son ajout ne change rien pour un personnage sans objet magique.
+            const pcContribs = effects['PC'] ?? []
+            const pcAffiche = CHA.mod + (character.famille === 'aventuriers' ? 4 : 2) + sumStat(pcContribs)
+            const pcLines = [
+              { label: t('recto.tlBase'), value: '+2' },
+              { label: t('stats.modCHA'), value: fmt(CHA.mod) },
+              ...(character.famille === 'aventuriers' ? [{ label: t('recto.tlAventuriers'), value: '+2' }] : []),
+              ...groupContribs(pcContribs),
+            ]
+            return f({ label: "PC", tooltipTitle: t('recto.pc'), top: 50.6, left: 28.8, width: 5.2, height: 2.0,
+              value: locked ? pcAffiche : character.pc,
+              onChange: locked ? () => {} : v => onChange({ pc: parseInt(v) || 0 }),
+              readOnly: locked, type: "number", align: "center", active: activeStep === 4,
+              formula: { lines: pcLines, total: pcAffiche } })
+          })()}
+          {/* Bonus de CHA : PAS un bonus indépendant — un second affichage du champ "CHA mod" (bloc
+              caractéristiques), reproduit à l'identique (même valeur, même comportement figé/déverrouillé)
+              pour apparaître aussi dans l'encart points de chance de la nouvelle maquette. Nouveau champ,
+              sans position d'origine : part en réserve de calibrage. */}
+          {f({ label: "Bonus de CHA", top: 50.6, left: 35, width: 5.2, height: 2.0,
+            value: fmt(CHA.mod),
+            onChange: () => {}, readOnly: locked, align: "center",
+            reserveByDefault: true })}
+          {/* Bonus de famille (PC) : dérivé de la famille Aventuriers (+2), jamais de saisie manuelle —
+              même principe que "ATT contact mod"/"Nom armure" (champ purement affiché). Nouveau champ,
+              sans position d'origine sur la maquette : part en réserve de calibrage. */}
+          {f({ label: "Bonus famille PC", tooltipTitle: t('recto.bonusFamillePc'), top: 50.6, left: 41.2, width: 5.2, height: 2.0,
+            value: character.famille === 'aventuriers' ? '+2' : '+0',
+            onChange: () => {}, readOnly: locked, align: "center",
+            tooltipDesc: t('recto.bonusFamillePcDisp'),
+            reserveByDefault: true })}
           {f({ label: "Dé de vie", tooltipTitle: t('recto.deVie'), top: 55.2, left: 25.8, width: 11.1, height: 2.0, value: character.deVie, onChange: v => onChange({ deVie: v }), align: "center", active: activeStep === 4,
             formula: { lines: [{ label: t('recto.tlCombattants'), value: 'd10' }, { label: t('recto.tlAventuriers'), value: 'd8' }, { label: t('recto.tlMystiques'), value: 'd6' }], total: character.deVie } })}
         </>
@@ -682,9 +795,83 @@ export default function ChampsRecto({
             >
               <CroixCase coche={character.prUtilises[idx]} calibrate={calibrate} />
             </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fieldPositions?.[nom]?.imprimer ?? true}
+                onToggle={() => onReserveToggle(nom, fieldPositions?.[nom]?.reserved === true, { top, left, imprimer: !(fieldPositions?.[nom]?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
             {calibrate && (
               <div
                 onMouseDown={e => startPRDrag(nom, e)}
+                style={{
+                  position: 'absolute',
+                  top: `${top}%`, left: `${left}%`,
+                  // Décalée au-dessus de la case : centrée dessus, elle masquerait la croix-repère.
+                  transform: 'translate(-50%, calc(-100% - 3px))',
+                  cursor: 'grab',
+                  background: 'rgba(160,90,230,0.92)',
+                  color: '#fff',
+                  fontSize: 7,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  padding: '1px 4px',
+                  borderRadius: 2,
+                  userSelect: 'none',
+                  zIndex: 40,
+                  whiteSpace: 'nowrap',
+                  lineHeight: '13px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                  display: 'flex', alignItems: 'center', gap: 2,
+                }}
+              >
+                {nom}
+                {onReserveToggle && (
+                  <span
+                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(nom, true, { top, left }) }}
+                    style={{ cursor: 'pointer', fontSize: 9, paddingLeft: 3, borderLeft: '1px solid rgba(255,255,255,0.35)', lineHeight: 1 }}
+                    title="Envoyer à la réserve"
+                  >📥</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* === HÉROÏQUE (2D) === : cases purement dérivées (jamais de clic), cochées automatiquement
+          par computeAvantages. Nouveau champ sans position d'origine : reste en réserve tant que
+          fieldPositions n'a pas d'entrée pour lui (voir feedback_nouveaux_champs_en_reserve). */}
+      {HEROIQUE_CHECKBOXES.map(({ nom, key }) => {
+        const { top, left } = heroPos[nom]
+        const fp = fieldPositions?.[nom]
+        if (fp?.reserved === true || !fp) return reserveChip(nom, { top, left })
+        if (!surCettePage(nom)) return null
+        return (
+          <div key={nom}>
+            <div
+              className="tdr-temporaire"
+              style={{
+                position: 'absolute',
+                top: `${top}%`, left: `${left}%`,
+                width: '1.6%', height: '1.1%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <CroixCase coche={heroiqueStats.has(key)} calibrate={calibrate} />
+            </div>
+            {modeImpression && onReserveToggle && (
+              <PastilleImpression
+                imprime={fp?.imprimer ?? true}
+                onToggle={() => onReserveToggle(nom, fp?.reserved === true, { top, left, imprimer: !(fp?.imprimer ?? true) } as never)}
+                top={top} left={left}
+              />
+            )}
+            {calibrate && (
+              <div
+                onMouseDown={e => startHeroDrag(nom, e)}
                 style={{
                   position: 'absolute',
                   top: `${top}%`, left: `${left}%`,
@@ -738,6 +925,8 @@ export default function ChampsRecto({
             lineHeightPct={1.3} paddingTopPct={0.15}
             autoShrink
             onReserveToggle={r => cbReserve(label, r, { top: tTop, left: tLeft, width: tWidth, height: tHeight })}
+            imprime={fpTrait?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(label, fpTrait?.reserved === true, { imprimer: !(fpTrait?.imprimer ?? true) } as never)}
           />
         )
       })()}

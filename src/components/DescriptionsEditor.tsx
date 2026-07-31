@@ -113,19 +113,13 @@ const FORMULAS = ['MOD_FOR', 'MOD_DEX', 'MOD_CON', 'MOD_INT', 'MOD_SAG', 'MOD_CH
 // (attaque, caractéristique ou jet libre) — n'a de sens que pour BONUS_TEMP, donc gardée hors de STATS.
 const CIBLE_JET_LIBRE = 'JET'
 
-const FORMATIONS = [
-  'Armes de duel', 'Armes de guerre', 'Armes de guerre lourdes', 'Armes de jet',
-  'Armes de tir', 'Armes de trait', "Armes d'hast", 'Armes de paysan (gratuit)',
-  'Armures légères', 'Armures lourdes',
-]
-
 type EffectCondition =
   | { type: 'hasBouclier' }
   | { type: 'hasArme'; armes: string[] }
   | { type: 'noArme' }
 type Effect = { stat: string; value?: number; formula?: string; diceStr?: string; minRang?: number; avancee?: boolean; rangMultiplier?: boolean; condition?: EffectCondition; div2?: boolean; immunite?: boolean }
 type Grant =
-  | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
+  | { type: 'FORMATION'; nombre?: number; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG_CHOIX'; voies: string[]; rangMax: number; rangMin?: number; minRang?: number; avancee?: boolean; avanceeGratuite?: boolean }
   | { type: 'COMPAGNON'; nom: string; remplace?: string; minRang?: number; avancee?: boolean }
@@ -300,6 +294,12 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   const voiesList = useMemo(() =>
     Object.keys(data).sort((a, b) => a.localeCompare(b, 'fr'))
   , [data])
+  // Famille (combattants/aventuriers/mystiques) de chaque voie du catalogue — sert à regrouper/trier
+  // par famille le picker de voies d'un grant VOIE_RANG_CHOIX (ex: un grant "n'importe quelle voie de
+  // la famille des mystiques" est bien plus rapide à composer avec les voies déjà groupées par famille
+  // que dans une liste alphabétique plate de 90+ voies).
+  const familleParVoie = useMemo(() => new Map(voies.map(v => [v.nom, v.famille])), [voies])
+  const FAMILLES_TRI = ['combattants', 'aventuriers', 'mystiques'] as const
 
   // Synchronise `selected` si la liste des voies change (chargement async ou ajout/suppression)
   useEffect(() => {
@@ -398,8 +398,8 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       const voieData: RangEntry[] = prev[voie] ? [...prev[voie]] : emptyRangs()
       const entry: RangEntry = voieData[rang] ?? { nom: getNom(voie, rang), desc: '' }
       const newGrant: Grant = avancee
-        ? { type: 'FORMATION', value: FORMATIONS[0], avancee: true }
-        : { type: 'FORMATION', value: FORMATIONS[0] }
+        ? { type: 'FORMATION', nombre: 1, avancee: true }
+        : { type: 'FORMATION', nombre: 1 }
 
       voieData[rang] = { ...entry, grants: [...(entry.grants ?? []), newGrant] }
       return { ...prev, [voie]: voieData }
@@ -444,7 +444,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
     setExported(false)
   }
 
-  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string | number; voie?: string; rang?: number; voies?: string[]; rangMax?: number; rangMin?: number; nom?: string; noms?: string[]; remplace?: string; stats?: string[]; formula?: string; rangMultiplier?: boolean; minRang?: number | null; avancee?: boolean | null; avanceeGratuite?: boolean }) => {
+  const updateGrant = (voie: string, rang: number, gIdx: number, patch: { type?: Grant['type']; value?: string | number; nombre?: number; voie?: string; rang?: number; voies?: string[]; rangMax?: number; rangMin?: number; nom?: string; noms?: string[]; remplace?: string; stats?: string[]; formula?: string; rangMultiplier?: boolean; minRang?: number | null; avancee?: boolean | null; avanceeGratuite?: boolean }) => {
     setData(prev => {
       const voieData = [...prev[voie]]
       const entry = voieData[rang]
@@ -462,7 +462,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       } else if ('type' in patch && patch.type !== current.type) {
         const av = current.avancee ? { avancee: true as const } : {}
         grants[gIdx] = patch.type === 'FORMATION'
-          ? { type: 'FORMATION', value: FORMATIONS[0], ...av }
+          ? { type: 'FORMATION', nombre: 1, ...av }
           : patch.type === 'VOIE_RANG'
             ? { type: 'VOIE_RANG', voie: VOIES_INIT[0], rang: 1, ...av }
             : patch.type === 'VOIE_RANG_CHOIX'
@@ -711,8 +711,15 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
   }
 
   // Fonctions peuples
+  // Un peuple entièrement nouveau doit démarrer avec au moins une culture : le stockage perso
+  // (peuplesPerso.ts) est indexé à la granularité de la culture, donc un peuple à `cultures: []`
+  // n'a aucune culture pour l'ancrer et disparaît dès la prochaine dérivation de `peuples` (fusionnerPeuples
+  // ne reconstruit un peuple absent du livré qu'à partir des cultures perso qui portent son label).
   const addPeuple = () => {
-    setPeuples(prev => [...prev, { label: t('descEditor.nouveauPeuple'), cultures: [] }])
+    setPeuples(prev => [...prev, {
+      label: t('descEditor.nouveauPeuple'),
+      cultures: [{ label: t('descEditor.nouvelleCulture'), voiePeuple: '', voieCulturelle: '', modCaracs: {} }],
+    }])
     setSelectedPeuple(peuples.length)
     setSelectedCulture(0)
     setPeuplesExported(false)
@@ -2225,16 +2232,18 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                           </select>
 
                           {grant.type === 'FORMATION' && (
-                            <select
-                              value={grant.value}
-                              onChange={e => updateGrant(selected, i, gi, { type: 'FORMATION', value: e.target.value })}
-                              style={{
-                                background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3,
-                                padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', cursor: 'pointer',
-                              }}
-                            >
-                              {FORMATIONS.map(f => <option key={f} value={f}>{t(`descEditor.formationNames.${f}`, f)}</option>)}
-                            </select>
+                            <>
+                              <span style={{ fontSize: 13, color: S.parchment, opacity: 0.7 }}>{t('descEditor.grantFormationNombre')}</span>
+                              <input
+                                type="number" min={1}
+                                value={grant.nombre ?? 1}
+                                onChange={e => updateGrant(selected, i, gi, { type: 'FORMATION', nombre: Math.max(1, parseInt(e.target.value) || 1) })}
+                                style={{
+                                  width: 50, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3,
+                                  padding: '2px 4px', fontSize: 13, color: S.parchment, outline: 'none', textAlign: 'center',
+                                }}
+                              />
+                            </>
                           )}
 
                           {grant.type === 'VOIE_RANG' && (
@@ -2779,7 +2788,42 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
                               style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: S.gold, outline: 'none', cursor: 'pointer' }}
                             >
                               <option value="">{t('descEditor.ajouterVoiePlus')}</option>
-                              {voiesList.filter(v => !grant.voies.includes(v)).map(v => <option key={v} value={v}>{voieName(v)}</option>)}
+                              {FAMILLES_TRI.map(fam => {
+                                const opts = voiesList.filter(v => !grant.voies.includes(v) && familleParVoie.get(v) === fam)
+                                if (opts.length === 0) return null
+                                return (
+                                  <optgroup key={fam} label={t(`wizard.famille.${fam}.label`)}>
+                                    {opts.map(v => <option key={v} value={v}>{voieName(v)}</option>)}
+                                  </optgroup>
+                                )
+                              })}
+                              {(() => {
+                                const autres = voiesList.filter(v => !grant.voies.includes(v) && !(FAMILLES_TRI as readonly string[]).includes(familleParVoie.get(v) ?? ''))
+                                if (autres.length === 0) return null
+                                return (
+                                  <optgroup label={t('descEditor.sansFamille')}>
+                                    {autres.map(v => <option key={v} value={v}>{voieName(v)}</option>)}
+                                  </optgroup>
+                                )
+                              })()}
+                            </select>
+                            {/* Ajout en un clic de toute une famille (ex: "n'importe quelle voie mystique") plutôt que
+                                d'ajouter chaque voie une à une — voir familleParVoie. */}
+                            <select
+                              value=""
+                              onChange={e => {
+                                const fam = e.target.value
+                                if (!fam) return
+                                const aAjouter = voiesList.filter(v => !grant.voies.includes(v) && familleParVoie.get(v) === fam)
+                                if (aAjouter.length === 0) return
+                                updateGrant(selected, i, gi, { type: 'VOIE_RANG_CHOIX', voies: [...grant.voies, ...aAjouter], rangMax: grant.rangMax })
+                              }}
+                              style={{ background: S.bg, border: `1px solid rgba(120,180,255,0.4)`, borderRadius: 3, padding: '1px 4px', fontSize: 12, color: 'rgba(140,190,255,0.9)', outline: 'none', cursor: 'pointer' }}
+                            >
+                              <option value="">{t('descEditor.ajouterFamillePlus')}</option>
+                              {FAMILLES_TRI.filter(fam => voiesList.some(v => !grant.voies.includes(v) && familleParVoie.get(v) === fam)).map(fam => (
+                                <option key={fam} value={fam}>{t(`wizard.famille.${fam}.label`)}</option>
+                              ))}
                             </select>
                           </div>
                         )}

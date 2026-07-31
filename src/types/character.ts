@@ -158,7 +158,13 @@ export interface Character {
   // Divers
   description: string
   inventaire: string
-  tresorerie: string
+  // Trésorerie détaillée (remplace l'ancien champ tresorerie: string, ex. "5 pièces d'or" — migré au
+  // chargement dans App.tsx::handleLoad). Or/Argent/Cuivre sont 3 vues d'une seule richesse réelle,
+  // toujours renormalisées ensemble (voir normaliserTresorerie) : jamais 3 compteurs indépendants.
+  piecesOr: number
+  piecesArgent: number
+  piecesCuivre: number
+  gemmes: string
   portrait: string
   portraitScale: number
   portraitTx: number
@@ -174,6 +180,12 @@ export interface Character {
   cristauxAppris?: string[]
   cristauxActifs?: string[]
 
+  // Objets magiques (voir src/types/gameData.ts:ObjetMagiqueEntry) — id-référencés dans le catalogue
+  // fusionné livré+perso, même principe que les cristaux (possédé/équipé) mais sans plafond dur : le
+  // niveau de magie total conseillé par niveau de PJ n'est qu'indicatif dans les règles.
+  objetsMagiquesPossedes?: string[]
+  objetsMagiquesEquipes?: string[]
+
   // Compagnons
   compagnonsActifs?: [string | null, string | null]
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
@@ -185,12 +197,16 @@ export interface Character {
   // une capacité déjà empruntée ailleurs) mais seulement à lui accorder gratuitement sa version avancée
   // (ex : "Perfection élémentaliste").
   voieRangChoix?: Record<string, { voie: string; rang: number; avanceeSeulement?: boolean }>
-  compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
   // Saisies du joueur pour les fiches de compagnon, indexées par NOM de compagnon et non par position :
-  // un personnage peut en débloquer plus de deux, et l'ordre de la liste peut changer (une voie qui en
-  // remplace un autre, par exemple) — un index de position ferait alors suivre les saisies au mauvais
-  // compagnon. `compagnonsOverrides` (2 positions) reste lu en repli pour les personnages existants.
+  // un personnage peut en débloquer plus de deux (une fiche A5 par compagnon débloqué, voir
+  // CharacterSheetCompagnons.tsx), et l'ordre de la liste peut changer (une voie qui en remplace un
+  // autre, par exemple) — un index de position ferait alors suivre les saisies au mauvais compagnon.
+  // Remplace l'ancien format par position (compagnonsOverrides, retiré — migré au chargement dans
+  // App.tsx::handleLoad pour les personnages qui l'utilisaient encore).
   compagnonsFiches?: Record<string, CompagnonOverride>
+
+  // Psychologie (clé de TRAITS_PSYCHOLOGIE → valeur 0-10, voir data/psychologieTraits.ts)
+  psychologie?: Record<string, number>
 
   // Snapshot du niveau 1 (capturé lors du premier level-up)
   niveau1Base?: {
@@ -302,7 +318,10 @@ export const defaultCharacter = (): Character => ({
 
   description: '',
   inventaire: '',
-  tresorerie: '',
+  piecesOr: 5,
+  piecesArgent: 0,
+  piecesCuivre: 0,
+  gemmes: '',
   portrait: '',
   portraitScale: 1,
   portraitTx: 0,
@@ -312,4 +331,12 @@ export const defaultCharacter = (): Character => ({
 
 export function getMod(valeur: number): number {
   return Math.max(-4, Math.floor((valeur - 10) / 2))
+}
+
+// Renormalise la trésorerie (1 or = 10 argent = 100 cuivre) : Or/Argent/Cuivre ne sont que 3 vues d'une
+// seule richesse réelle (convertie en cuivre en interne), jamais 3 compteurs indépendants — saisir 15 en
+// argent, par exemple, doit reporter 1 sur l'or et n'en laisser que 5 en argent.
+export function normaliserTresorerie(or: number, argent: number, cuivre: number): { piecesOr: number; piecesArgent: number; piecesCuivre: number } {
+  const total = Math.max(0, or * 100 + argent * 10 + cuivre)
+  return { piecesOr: Math.floor(total / 100), piecesArgent: Math.floor((total % 100) / 10), piecesCuivre: total % 10 }
 }

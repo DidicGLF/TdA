@@ -90,6 +90,28 @@ fn save_data_file(app: tauri::AppHandle, filename: String, content: String) -> R
     fs::write(path, content).map_err(|e| e.to_string())
 }
 
+// Binaire réel (images) — contrairement à load_data_file/save_data_file (texte). Tauri sérialise
+// nativement Vec<u8> en tableau JSON de nombres sur l'IPC, pas besoin de base64/dépendance dédiée.
+// Voir imageStore.ts : les images étaient stockées en Data URL base64 dans un fichier .txt, ce qui les
+// rendait illisibles/impartageables hors de l'app — un vrai fichier binaire (.webp) résout ça.
+#[tauri::command]
+fn save_binary_file(app: tauri::AppHandle, filename: String, content: Vec<u8>) -> Result<(), String> {
+    let path = chemin_donnees(&app, &filename)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn load_binary_file(app: tauri::AppHandle, filename: String) -> Result<Option<Vec<u8>>, String> {
+    let path = chemin_donnees(&app, &filename)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    fs::read(path).map(Some).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn open_data_dir(app: tauri::AppHandle) -> Result<(), String> {
     let dir = data_dir(&app)?;
@@ -120,6 +142,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_data_file,
             save_data_file,
+            save_binary_file,
+            load_binary_file,
             open_data_dir,
             init_locale_dir,
             locale_file_exists,

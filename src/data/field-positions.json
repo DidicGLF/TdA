@@ -20,42 +20,42 @@
     "width": 8.5
   },
   "sangmele-0": {
-    "top": 80.7,
-    "left": 36.5,
+    "top": 69.6,
+    "left": 67.6,
     "reserved": false,
     "page": "verso"
   },
   "sangmele-1": {
-    "top": 85,
-    "left": 36.5,
+    "top": 78.1,
+    "left": 67.6,
     "reserved": false,
     "page": "verso"
   },
   "sangmele-2": {
-    "top": 89.4,
-    "left": 36.6,
+    "top": 86.6,
+    "left": 67.7,
     "reserved": false,
     "page": "verso"
   },
   "sangmele-cap-0": {
-    "top": 80.9,
-    "left": 52.7,
+    "top": 69.5,
+    "left": 83.75,
     "width": 23.8,
     "height": 2,
     "reserved": false,
     "page": "verso"
   },
   "sangmele-cap-1": {
-    "top": 85.2,
-    "left": 52.6,
+    "top": 78,
+    "left": 83.85000000000001,
     "width": 23.6,
     "height": 2,
     "reserved": false,
     "page": "verso"
   },
   "sangmele-cap-2": {
-    "top": 89.5,
-    "left": 52.8,
+    "top": 86.5,
+    "left": 83.95,
     "width": 23.4,
     "height": 2,
     "reserved": false,
@@ -79,8 +79,8 @@
     "reserved": false
   },
   "Profil": {
-    "top": 13,
-    "left": 37.4,
+    "top": 12.9,
+    "left": 37.9,
     "width": 13.9
   },
   "Niveau": {
@@ -90,7 +90,7 @@
   },
   "Famille": {
     "top": 15.3,
-    "left": 37.7,
+    "left": 37.9,
     "width": 11.2
   },
   "Peuple": {
@@ -100,7 +100,7 @@
   },
   "Genre": {
     "top": 15.3,
-    "left": 53.1,
+    "left": 53.5,
     "width": 7.9
   },
   "Âge": {
@@ -115,7 +115,7 @@
   },
   "Taille": {
     "top": 15.3,
-    "left": 78.2,
+    "left": 78.6,
     "width": 5.7
   },
   "Poids": {
@@ -675,7 +675,7 @@
   },
   "Déf mod DEX": {
     "top": 46.7,
-    "left": 72.9,
+    "left": 73,
     "width": 5
   },
   "Bonus DEF": {
@@ -831,7 +831,7 @@
     "page": "recto"
   },
   "Armes de duel": {
-    "top": 72.8,
+    "top": 72.9,
     "left": 25.7,
     "reserved": false,
     "page": "recto"
@@ -859,15 +859,17 @@
     "page": "recto"
   },
   "Inventaire": {
-    "top": 40.9,
-    "left": 73.3,
-    "width": 44.2,
-    "height": 15.5
+    "top": 56,
+    "left": 26.8,
+    "width": 43.3,
+    "height": 14.7,
+    "reserved": false,
+    "page": "verso"
   },
   "Voie sang-mêlé": {
-    "top": 78.8,
-    "left": 57.6,
-    "width": 14,
+    "top": 67.1,
+    "left": 87.75,
+    "width": 15.5,
     "height": 2,
     "reserved": false,
     "page": "verso"
@@ -1285,6 +1287,315 @@
     "left": 73.5,
     "width": 44,
     "height": 21.1,
+    "reserved": false
+  },
+  "Nom armure": {
+    "top": 50.1,
+    "left": 59.6,
+    "width": 14.5,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Nom bouclier": {
+    "top": 52.8,
+    "left": 59.6,
+    "width": 14.4,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque FOR": {
+    "top": 23.6,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque DEX": {
+    "top": 27.2,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque CON": {
+    "top": 30.9,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque INT": {
+    "top": 34.7,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque SAG": {
+    "top": 38.2,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Héroïque CHA": {
+    "top": 41.8,
+    "left": 5.3,
+    "page": "recto",
+    "reserved": false
+  },
+  "Portrait": {
+    "top": 28.1,
+    "left": 26.5,
+    "width": 44,
+    "height": 33.8
+  },
+  "Description": {
+    "top": 29.5,
+    "left": 26.9,
+    "width": 44.2,
+    "height": 32.6
+  },
+  "Psychologie Courage": {
+    "top": 13.4,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Courage texte": {
+    "top": 11.9,
+    "left": 82.7,
+    "width": 25.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Empathie": {
+    "top": 16.8,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Empathie texte": {
+    "top": 15.3,
+    "left": 82.7,
+    "width": 25.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Sociabilité": {
+    "top": 20.3,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Sociabilité texte": {
+    "top": 18.7,
+    "left": 82.7,
+    "width": 25.9,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Loyauté": {
+    "top": 23.7,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Loyauté texte": {
+    "top": 22.2,
+    "left": 82.7,
+    "width": 25.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Ambition": {
+    "top": 27.1,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Ambition texte": {
+    "top": 25.6,
+    "left": 82.7,
+    "width": 25.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Prudence": {
+    "top": 30.5,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Honnêteté": {
+    "top": 33.9,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Honnêteté texte": {
+    "top": 32.4,
+    "left": 82.7,
+    "width": 25.9,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Curiosité": {
+    "top": 37.4,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Prudence texte": {
+    "top": 29,
+    "left": 82.7,
+    "width": 25.9,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Curiosité texte": {
+    "top": 35.8,
+    "left": 82.7,
+    "width": 25.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Foi / Convictions": {
+    "top": 40.7,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Foi / Convictions texte": {
+    "top": 39.2,
+    "left": 82.7,
+    "width": 25.6,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Psychologie Maîtrise de soi": {
+    "top": 44.1,
+    "left": 70.3,
+    "width": 2.49,
+    "height": 0,
+    "page": "verso",
+    "reserved": false,
+    "perRow": 11
+  },
+  "Psychologie Maîtrise de soi texte": {
+    "top": 42.5,
+    "left": 82.7,
+    "width": 25.7,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Trésorerie": {
+    "top": 50.5,
+    "left": 66.5,
+    "width": 7.4,
+    "height": 2,
+    "reserved": false,
+    "page": "verso"
+  },
+  "Capacités supp.": {
+    "top": 80.2,
+    "left": 34.4,
+    "width": 58.8,
+    "height": 25.2
+  },
+  "Nom du joueur": {
+    "top": 9.1,
+    "left": 37,
+    "width": 22.8,
+    "height": 2,
+    "reserved": true
+  },
+  "Argent": {
+    "top": 52.9,
+    "left": 69.3,
+    "width": 7.6,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Cuivre": {
+    "top": 52.9,
+    "left": 90.7,
+    "width": 7.6,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Gemmes": {
+    "top": 59.7,
+    "left": 73.9,
+    "width": 42.9,
+    "height": 5.7,
+    "page": "verso",
+    "reserved": false
+  },
+  "Bonus de CHA": {
+    "top": 41.7,
+    "left": 73,
+    "width": 5.2,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Bonus famille PC": {
+    "top": 41.7,
+    "left": 86.3,
+    "width": 5.2,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Nom du personnage": {
+    "top": 9.5,
+    "left": 29.9,
+    "width": 30.8,
+    "height": 2,
+    "page": "verso",
+    "reserved": false
+  },
+  "Armes de paysan": {
+    "top": 67.5,
+    "left": 6.2,
+    "page": "recto",
     "reserved": false
   }
 }

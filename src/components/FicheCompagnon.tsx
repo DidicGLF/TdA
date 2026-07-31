@@ -53,12 +53,9 @@ export default function FicheCompagnon({
   const att = { contact: character.attaqueContact, distance: character.attaqueDistance, magique: character.attaqueMagique }
   const c = entry ? resolveCompagnon(entry, character.niveau, rang, att) : null
 
-  // Saisies du joueur, indexées par nom (cf. Character.compagnonsFiches). Les anciennes fiches
-  // stockées par position sont relues en repli, pour ne pas perdre les saisies des personnages créés
-  // avant l'arrivée de cet onglet.
-  const positionLegacy = character.compagnonsActifs?.indexOf(nomCompagnon) ?? -1
-  const ov: CompagnonOverride = character.compagnonsFiches?.[nomCompagnon]
-    ?? (positionLegacy >= 0 ? character.compagnonsOverrides?.[positionLegacy] ?? {} : {})
+  // Saisies du joueur, indexées par nom (cf. Character.compagnonsFiches) — l'ancien format par
+  // position (compagnonsOverrides) est migré une fois pour toutes au chargement (voir App.tsx).
+  const ov: CompagnonOverride = character.compagnonsFiches?.[nomCompagnon] ?? {}
 
   const setOv = (champ: keyof CompagnonOverride, valeur: string) => {
     onChange({ compagnonsFiches: { ...(character.compagnonsFiches ?? {}), [nomCompagnon]: { ...ov, [champ]: valeur } } })
@@ -78,6 +75,8 @@ export default function FicheCompagnon({
         reserved={fp ? fp.reserved === true : true}
         reservePortalTarget={reservePortalTarget}
         onReserveToggle={r => onReserveToggle?.(id, r, p)}
+        imprime={fp?.imprimer ?? true}
+        onToggleImpression={() => onReserveToggle?.(id, fp?.reserved === true, { ...p, imprimer: !(fp?.imprimer ?? true) } as never)}
       />
     )
   }
@@ -133,6 +132,8 @@ export default function FicheCompagnon({
             onChange={v => setOv('image', v)}
             calibrate={calibrate} label="Comp image"
             containerRef={containerRef} onMoved={onFieldMoved ?? (() => {})}
+            imprime={fp?.imprimer ?? true}
+            onToggleImpression={() => onReserveToggle?.('Comp image', fp?.reserved === true, { ...p, imprimer: !(fp?.imprimer ?? true) } as never)}
           />
         )
       })()}

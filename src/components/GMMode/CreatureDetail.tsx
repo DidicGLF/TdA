@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { useImage } from '../../hooks/useImage'
 import { importerImage, oublierImage, estCleImage, chargerImage } from '../../utils/imageStore'
-import { imageEncoreUtilisee } from '../../utils/bestiairePerso'
+import { imageEncoreUtilisee, sluggifierNom } from '../../utils/bestiairePerso'
 import { useTranslation } from 'react-i18next'
 import CreatureImage from './CreatureImage'
 import NumberField from '../NumberField'
@@ -372,7 +372,7 @@ export default function CreatureDetail({ creature, onChange, onDelete, lectureSe
                     onChange({ image: '' })
                     return
                   }
-                  const cle = await importerImage('bestiaire', dataUrl)
+                  const cle = await importerImage('img', dataUrl, `${sluggifierNom(creature.nom)}_nc${creature.nc}`)
                   await libererAncienne(cle)
                   onChange({ image: cle })
                 }}

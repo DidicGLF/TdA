@@ -16,6 +16,9 @@
     "pointsEnTropDesc_other": "{{count}} ability points too many.",
     "rangLabel": "rank {{n}}",
     "bonusDefDisp": "Various defense bonuses (magic armor, spells, etc.)",
+    "bonusFamillePcDisp": "Bonus automatically granted to characters of the Adventurers family (+2 Luck Points)",
+    "bonusFamilleAttDisp": "Bonus automatically granted by family: +2 (Warriors), +1 (Adventurers)",
+    "bonusFamilleMagiqueDisp": "Bonus automatically granted to characters of the Mystics family (+2 magic ATK)",
     "reductionEnc": "Encumbrance reduction from magical enchantment",
     "defArmureTitre": "Armor DEF",
     "defBouclierTitre": "Shield DEF",
@@ -55,6 +58,10 @@
     "encInit": "Enc. initiative",
     "initiativeTotale": "Total initiative",
     "bonusDef": "Defense bonus",
+    "bonusFamillePc": "Family bonus (LP)",
+    "bonusFamilleContact": "Family bonus (melee ATK)",
+    "bonusFamilleDistance": "Family bonus (ranged ATK)",
+    "bonusFamilleMagique": "Family bonus (magic ATK)",
     "defTotal": "Total defense",
     "totalEncombrement": "Total encumbrance",
     "attContactTotal": "Melee ATK",
@@ -134,7 +141,8 @@
       "titleFiger": "Lock (prevent accidental repositioning)",
       "titleImageEntiere": "Show full image",
       "titleRecadrer": "Crop (fill frame)",
-      "titleReset": "Reset framing"
+      "titleReset": "Reset framing",
+      "titleSupprimer": "Remove image"
     }
   },
   "notes": {
@@ -142,6 +150,12 @@
     "grapheVide": "No notes yet — the graph of their links will appear here",
     "grapheRecalculer": "Recalculate",
     "grapheRecalculerAide": "Recompute the graph layout to try to reduce crossing links",
+    "relation": {
+      "amical": "Friendly",
+      "ennemi": "Enemy",
+      "neutre": "Neutral",
+      "aucune": "No relation"
+    },
     "rechercher": "Search (title, tag, text, bookmark)…",
     "nouvelleNote": "New note",
     "aucuneNote": "No notes yet",
@@ -264,7 +278,7 @@
     "reserveAide": "Click 📥 to send a field here, click it here to place it back on the sheet"
   },
   "wizard": {
-    "stepNames": ["Identity", "People & Culture", "Characteristics", "Profile & Paths", "Derived Scores", "Specialization & Equipment", "Final Details", "Finalization"],
+    "stepNames": ["Identity", "People & Culture", "Characteristics", "Profile & Paths", "Derived Scores", "Specialization & Equipment", "Psychology", "Final Details", "Finalization"],
     "etape": "Step {{current}}/{{total}}",
     "nav": {
       "precedent": "← Previous",
@@ -391,6 +405,9 @@
       "glisserIci": "Drag here…",
       "armesLabel": "Weapons",
       "armuresLabel": "Armor",
+      "objetsMagiquesLabel": "Magic items",
+      "objetEquipe": "Equipped",
+      "objetNonEquipe": "Owned, not equipped",
       "deuxMains": "2 hands",
       "compagnonPicker": "Companion {{n}}",
       "aucun": "None",
@@ -409,15 +426,21 @@
       "selectionnerTrait": "Select a talent"
     },
     "step6": {
+      "intro": "Who is your character, really? Move each slider to the profile that fits them."
+    },
+    "step7": {
       "intro": "Final touches before playing!",
       "description": "Character description",
       "inventaire": "Inventory",
       "inventaireHint": "Feel free to customize the inventory with personal items without market value, such as a letter, a seashell full of memories, the feather of the first raptor they hunted, etc.",
       "inventaireDefault": "a blanket, a torch, a flint and steel, a waterskin, a mess kit",
       "tresorerie": "Treasury",
-      "tresorerieDefault": "5 gold pieces"
+      "or": "Gold",
+      "argent": "Silver",
+      "cuivre": "Copper",
+      "gemmes": "Gems and precious stones"
     },
-    "step7": {
+    "step8": {
       "bonneAventure": "Good luck!",
       "personnagePret": "All elements are filled in. Your character is ready to play.",
       "sauvegarder": "Save character",
@@ -491,7 +514,14 @@
     "nouveauGroupe": "New group",
     "nouvelleCategorie": "New category",
     "armesNotesDef": "¹ Two-handed weapon.\n² Critical hit on 19 or 20.\n³ Special rules, see below.\n⁴ Minimum STR score required: 12 for the longbow, 14 for the composite bow.\n⁵ Requires a limited action to add the Ability Mod. to damage.\n⁶ Requires an attack action to reload.\n⁷ Requires a limited action to reload.\n* Requires a feat to be proficient.",
-    "armuresNotesDef": "¹ Cumbersome, these armors cancel the DEX bonus to DEF.\n² Custom-made, requires the Heavy Armor feat (bastion path) to be worn."
+    "armuresNotesDef": "¹ Cumbersome, these armors cancel the DEX bonus to DEF.\n² Custom-made, requires the Heavy Armor feat (bastion path) to be worn.",
+    "objetsMagiques": "Magic items",
+    "niveauMagieEquipe": "Equipped magic level",
+    "conseilleNiveau": "recommended at level {{n}}",
+    "aucunObjetMagique": "No magic item created yet — the GM can create some from the GM Dashboard.",
+    "possede": "✓ Owned",
+    "ajouter": "+ Add",
+    "equiper": "Equip"
   },
   "saveLoad": {
     "nomSansNom": "Unnamed character",
@@ -735,6 +765,7 @@
       "Armures lourdes": "Heavy Armor"
     },
     "grantFormation": "Training",
+    "grantFormationNombre": "Number of extra slots (player's choice):",
     "grantVoieRangFixe": "Path (fixed rank)",
     "grantVoieRangChoix": "Path (chosen rank)",
     "grantCompagnonFixe": "Companion (fixed)",
@@ -751,6 +782,8 @@
     "remplacePar": "replaces:",
     "aucunRemplace": "— none —",
     "ajouterVoiePlus": "+ Path…",
+    "ajouterFamillePlus": "+ Whole family…",
+    "sansFamille": "No family",
     "ajouterCompagnonPlus": "+ Companion…",
     "effetsAideTitre": "Effect fields",
     "effetsAideTokens": "Tokens in descriptions",
@@ -1120,6 +1153,10 @@
     "bestiaireCompte_one": "{{count}} creature",
     "bestiaireCompte_other": "{{count}} creatures",
     "bestiaireSauvegarderBundle": "⬇ Save to project",
+    "bestiaireImporterImages": "Import images",
+    "bestiaireImagesResultat_one": "{{count}} image imported.",
+    "bestiaireImagesResultat_other": "{{count}} images imported.",
+    "bestiaireImagesNonReconnues": "Not recognized: {{liste}}.",
     "bestiairePerso": "MINE",
     "bestiairePersoTitre": "Creature you added — editable and deletable",
     "bestiaireModifiee": "EDITED",
@@ -1201,6 +1238,86 @@
       "imageFigeLegend": "Image locked · Click the lock to change framing",
       "titleFiger": "Lock (prevent accidental panning)",
       "titleDefiger": "Unlock (allow panning)"
+    },
+    "objetsMagiquesTab": {
+      "titre": "Magic items",
+      "nouvelObjet": "New magic item",
+      "aucuneSelection": "Select an item in the list",
+      "importer": "↑ Import",
+      "importResultat_one": "{{count}} item imported",
+      "importResultat_other": "{{count}} items imported",
+      "cloner": "Clone",
+      "badgeLivre": "BUILT-IN",
+      "badgePerso": "MINE",
+      "triNom": "Name",
+      "triNiveauMagie": "Magic lvl.",
+      "livreInfo": "Item shipped with the app. You can edit it directly, or clone it to create a variant next to it without touching it.",
+      "supprimerConfirmation": "Delete this magic item?"
+    },
+    "objetMagiqueDetail": {
+      "categorieLabel": "Category",
+      "categorie": {
+        "traditionnel": "Traditional item",
+        "focalisateur": "Magic focus",
+        "legendaire": "Legendary item"
+      },
+      "slotLabel": "Slot",
+      "armeDmLabel": "Damage die",
+      "armeDmPlaceholder": "e.g. 1d8",
+      "armeDmHint": "Just the die, without the characteristic bonus: it's added automatically at roll time (Game mode), like any weapon.",
+      "armeAttaqueLabel": "Attack characteristic",
+      "slot": {
+        "arme": "Weapon",
+        "armure": "Armor",
+        "bouclier": "Shield",
+        "focalisateur": "Focus",
+        "accessoire": "Accessory (ring, amulet…)"
+      },
+      "traditionLabel": "Tradition",
+      "tradition": {
+        "elfe": "Elf",
+        "nain": "Dwarf",
+        "orc": "Orc",
+        "gobelin": "Goblin",
+        "ogre": "Ogre"
+      },
+      "degreQualite": "Quality tier",
+      "degre1": "—",
+      "degre2": "Superior",
+      "degre3": "Exceptional",
+      "combinaisonIndisponible": "No item of this type in this tradition",
+      "niveauMagieBase": "Narrative magic level (0 by default)",
+      "niveauAbrege": "lvl. {{n}}",
+      "enchantementsSupplementaires": "Additional enchantments",
+      "enchantementsLegendaires": "Legendary enchantments",
+      "enchantementsAppliques": "Applied enchantments",
+      "colonneCreation": "Creation",
+      "colonneResultat": "Finished item",
+      "niveauMagieSection": "Magic level",
+      "enchantementsLegendairesAppliques": "Applied legendary enchantments",
+      "enchantementsPuissanceAppliques": "Applied power enchantments",
+      "enchantementsPouvoirAppliques": "Applied ability enchantments",
+      "aucunEnchantement": "No enchantment applied yet.",
+      "forger": "Forge",
+      "forgeEnCours": "Forging…",
+      "forgeConfirmation": "✓ Item forged and saved!",
+      "puissance": "Power enchantment",
+      "puissanceHint": "Build an enchantment then click Add to apply it to the item (it joins the \"Applied enchantments\" list on the right).",
+      "pouvoir": "Ability enchantment",
+      "pouvoirHint": "Build an enchantment then click Add to apply it to the item (it joins the \"Applied enchantments\" list on the right).",
+      "pouvoirVoiePlaceholder": "From a voie rank (optional)",
+      "pouvoirRangPlaceholder": "Rank…",
+      "pouvoirUtiliserRang": "Use this rank",
+      "pouvoirNomPlaceholder": "Ability name (e.g. Horn of terror)",
+      "pouvoirTextePlaceholder": "Ability effect",
+      "ajouter": "Add",
+      "niveauMagieTotal": "Total magic level",
+      "plafondAtteint": "Maximum magic level reached ({{plafond}}) — remove an enchantment before adding another.",
+      "valeur": "Value",
+      "description": "Description",
+      "exporter": "Export this item",
+      "exporteVers": "Exported to {{filename}}",
+      "supprimer": "Delete this item"
     },
     "adversite": {
       "intro": "Generates an encounter from the GM Book's tables: splits the encounter budget across several bestiary adversaries.",
@@ -1289,8 +1406,9 @@
       "bestiaire": "Bestiary",
       "adversite": "Encounter generator",
       "bataille": "Battle management",
-      "notes": "Notes",
-      "reseau": "Network"
+      "objetsMagiques": "Magic items",
+      "reseau": "Network",
+      "notes": "Notes"
     },
     "reseau": {
       "titre": "Local network server",
@@ -1502,6 +1620,7 @@
     "personnage": "a character",
     "bibliothequePersonnages": "a character library",
     "creature": "a creature",
+    "objetMagique": "a magic item",
     "rencontre": "an encounter",
     "bataille": "a battle",
     "gabaritBataille": "a battle template",

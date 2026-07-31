@@ -1,6 +1,6 @@
 import type { Character, Caracteristique } from '../types/character'
 import { getMod } from '../types/character'
-import type { DescMap } from '../types/gameData'
+import type { DescMap, ObjetMagiqueEntry } from '../types/gameData'
 import cristauxData from '../data/cristaux.json'
 import { getRangsEmpruntes } from './voieRangChoix'
 
@@ -193,24 +193,40 @@ export function computeEffects(character: Character, descriptions: DescMap): Eff
   return result
 }
 
-// Comme computeEffects, mais fusionne également les bonus des cristaux actifs (Voie des cristaux)
-export function computeEffectsWithCristaux(character: Character, descriptions: DescMap): EffectsResult {
+// Comme computeEffects, mais fusionne également les bonus des cristaux actifs (Voie des cristaux) et des
+// objets magiques équipés (objetsMagiques : catalogue fusionné livré+perso résolu par l'appelant — voir
+// useGameData().objetsMagiques ; paramètre optionnel, défaut [], pour ne pas casser les appelants qui
+// n'ont pas encore ce catalogue sous la main, ex. les outils de combat/bataille MJ).
+export function computeEffectsWithCristaux(character: Character, descriptions: DescMap, objetsMagiques: ObjetMagiqueEntry[] = []): EffectsResult {
   const baseEffects = computeEffects(character, descriptions)
   const actifsCristaux = (character.cristauxActifs ?? [])
     .map(nom => cristauxData.find(c => c.nom === nom))
     .filter((c): c is typeof cristauxData[0] => Boolean(c?.bonus))
-  if (actifsCristaux.length === 0) return baseEffects
+
+  const equipes = (character.objetsMagiquesEquipes ?? [])
+    .map(id => objetsMagiques.find(o => o.id === id))
+    .filter((o): o is ObjetMagiqueEntry => Boolean(o))
+
+  if (actifsCristaux.length === 0 && equipes.length === 0) return baseEffects
 
   const result: EffectsResult = { ...baseEffects }
-  const addContrib = (key: string, value: number, nom: string) => {
-    result[key] = [...(result[key] ?? []), { stat: key, value, nom, rang: -1, triggerRang: -1, voie: 'cristaux' }]
+  const addContrib = (key: string, value: number, nom: string, voie: string) => {
+    result[key] = [...(result[key] ?? []), { stat: key, value, nom, rang: -1, triggerRang: -1, voie }]
   }
   for (const cristal of actifsCristaux) {
     const { stat, valeur } = cristal.bonus!
-    if (stat === 'initiative') addContrib('INIT', valeur, cristal.nom)
-    else if (stat === 'defense') addContrib('DEF', valeur, cristal.nom)
-    else if (stat === 'attaques') { addContrib('ATT_CONTACT', valeur, cristal.nom); addContrib('ATT_DISTANCE', valeur, cristal.nom); addContrib('ATT_MAGIQUE', valeur, cristal.nom) }
-    else addContrib(stat, valeur, cristal.nom)
+    if (stat === 'initiative') addContrib('INIT', valeur, cristal.nom, 'cristaux')
+    else if (stat === 'defense') addContrib('DEF', valeur, cristal.nom, 'cristaux')
+    else if (stat === 'attaques') { addContrib('ATT_CONTACT', valeur, cristal.nom, 'cristaux'); addContrib('ATT_DISTANCE', valeur, cristal.nom, 'cristaux'); addContrib('ATT_MAGIQUE', valeur, cristal.nom, 'cristaux') }
+    else addContrib(stat, valeur, cristal.nom, 'cristaux')
+  }
+  for (const objet of equipes) {
+    for (const ench of objet.enchantements) {
+      for (const effet of ench.effets ?? []) {
+        const value = parseInt(effet.valeur)
+        if (!isNaN(value)) addContrib(effet.stat, value, objet.nom, 'objets-magiques')
+      }
+    }
   }
   return result
 }
@@ -261,6 +277,41 @@ export function computeDiceEffects(character: Character, descriptions: DescMap):
 
 export function sumStat(contributions: Contribution[]): number {
   return contributions.reduce((acc, c) => acc + c.value, 0)
+}
+
+// Grants de type AVANTAGE ("lancer N dés, garder le meilleur M") actuellement actifs — accordés par les
+// rangs "Héroïque" (rang 5 de certaines voies : +2 à une carac ET cet avantage sur cette même carac),
+// mais le mécanisme n'est pas réservé à ces rangs-là dans les données. Utilisé par le Mode de jeu (pour
+// activer le double-jet) et par la fiche recto (pour cocher automatiquement la case "Héroïque (2d)").
+export type AvailableAvantage = { voieNom: string; rangIdx: number; rangNom: string; stat: string; lancer: number; garder: number }
+
+export function computeAvantages(character: Character, descriptions: DescMap): AvailableAvantage[] {
+  const list: AvailableAvantage[] = []
+  for (const key of VOIE_KEYS) {
+    const voie = character[key]
+    if (!voie.nom) continue
+    const rangsDesc = descriptions[voie.nom]
+    if (!rangsDesc) continue
+    voie.rangs.forEach((unlocked, idx) => {
+      if (!unlocked) return
+      const rang = rangsDesc[idx]
+      if (!rang?.grants) return
+      for (const grant of rang.grants) {
+        if (grant.type !== 'AVANTAGE') continue
+        if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
+        if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
+        if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
+        list.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, stat: grant.stat, lancer: grant.lancer ?? 2, garder: grant.garder ?? 1 })
+      }
+    })
+  }
+  for (const { voieNom, rangIdx, rangData, avanceeAccordee } of getRangsEmpruntes(character, descriptions)) {
+    for (const grant of rangData.grants ?? []) {
+      if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+      list.push({ voieNom, rangIdx, rangNom: rangData.nom, stat: grant.stat, lancer: grant.lancer ?? 2, garder: grant.garder ?? 1 })
+    }
+  }
+  return list
 }
 
 // Stats de combat "de base" d'un PJ (PV/PM max, DEF, RD générique) à partir des effets permanents

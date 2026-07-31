@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useContext } from 'react'
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import { compresserImage } from '../utils/imageStore'
+import { ModeImpressionContext } from '../hooks/modeImpression'
+import PastilleImpression from './PastilleImpression'
 
 interface Props {
   top: number
@@ -21,6 +24,10 @@ interface Props {
   label: string
   containerRef: RefObject<HTMLDivElement | null>
   onMoved: (label: string, top: number, left: number, width?: number, height?: number) => void
+  // Décision d'impression pour ce champ, et bascule associée (mode « préparer l'impression ») — même
+  // motif que DraggableField/DraggableTextarea.
+  imprime?: boolean
+  onToggleImpression?: () => void
 }
 
 const TOOL_BTN: React.CSSProperties = {
@@ -35,8 +42,10 @@ export default function DraggableImageField({
   fit = 'cover',
   locked: initLocked = false,
   onChange, onPanZoomChange, onFitChange, onLockedChange, calibrate, label, containerRef, onMoved,
+  imprime = true, onToggleImpression,
 }: Props) {
   const { t } = useTranslation()
+  const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
@@ -182,38 +191,20 @@ export default function DraggableImageField({
     document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
   }
 
+  // Portrait de personnage / image de compagnon : reste embarqué en Data URL dans le JSON (pas
+  // externalisé comme le bestiaire/les notes), mais compressé avec la MÊME fonction partagée
+  // (compresserImage, webp) pour un traitement cohérent dans toute l'app — c'était auparavant une
+  // logique canvas dupliquée ici avec des réglages différents (1200px/0.88 contre 1600px/0.82).
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
     const reader = new FileReader()
-    reader.onload = ev => {
+    reader.onload = async ev => {
       const src = ev.target?.result as string
-      const applyImage = (dataUrl: string) => {
-        onPanZoomChangeRef.current?.(1, 0, 0)
-        onChangeRef.current(dataUrl)
-      }
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const MAX = 1200
-          const ratio = Math.min(MAX / img.width, MAX / img.height, 1)
-          const w = Math.round(img.width * ratio)
-          const h = Math.round(img.height * ratio)
-          const canvas = document.createElement('canvas')
-          canvas.width = w
-          canvas.height = h
-          const ctx = canvas.getContext('2d')
-          if (!ctx) { applyImage(src); return }
-          ctx.drawImage(img, 0, 0, w, h)
-          const webp = canvas.toDataURL('image/webp', 0.88)
-          applyImage(webp)
-        } catch {
-          applyImage(src)
-        }
-      }
-      img.onerror = () => applyImage(src)
-      img.src = src
+      const compressed = await compresserImage(src)
+      onPanZoomChangeRef.current?.(1, 0, 0)
+      onChangeRef.current(compressed)
     }
     reader.readAsDataURL(file)
   }
@@ -238,6 +229,10 @@ export default function DraggableImageField({
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
+
+      {modeImpression && onToggleImpression && (
+        <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
+      )}
 
       {value ? (
         <div
@@ -313,6 +308,15 @@ export default function DraggableImageField({
                     onMouseDown={e => e.stopPropagation()}
                     title={t('fiche.portrait.titleReset')}
                   >↺</button>
+                )}
+                {/* Supprimer l'image — seul moyen d'y accéder auparavant était le mode calibrage */}
+                {!locked && (
+                  <button
+                    style={{ ...TOOL_BTN, color: 'rgba(255,140,140,0.95)' }}
+                    onClick={e => { e.stopPropagation(); onChange('') }}
+                    onMouseDown={e => e.stopPropagation()}
+                    title={t('fiche.portrait.titleSupprimer')}
+                  >✕</button>
                 )}
               </div>
             </>

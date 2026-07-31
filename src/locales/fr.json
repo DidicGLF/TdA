@@ -16,6 +16,9 @@
     "pointsEnTropDesc_other": "{{count}} pts de capacité en trop.",
     "rangLabel": "rang {{n}}",
     "bonusDefDisp": "Bonus de défense divers (armures magiques, sorts, etc.)",
+    "bonusFamillePcDisp": "Bonus accordé automatiquement aux personnages de la famille Aventuriers (+2 Points de Chance)",
+    "bonusFamilleAttDisp": "Bonus accordé automatiquement selon la famille : +2 (Combattants), +1 (Aventuriers)",
+    "bonusFamilleMagiqueDisp": "Bonus accordé automatiquement aux personnages de la famille Mystiques (+2 ATT magique)",
     "reductionEnc": "Réduction d'encombrement par enchantement magique",
     "defArmureTitre": "DEF Armure",
     "defBouclierTitre": "DEF Bouclier",
@@ -55,6 +58,10 @@
     "encInit": "Enc. initiative",
     "initiativeTotale": "Initiative totale",
     "bonusDef": "Bonus défense",
+    "bonusFamillePc": "Bonus de famille (PC)",
+    "bonusFamilleContact": "Bonus de famille (ATT contact)",
+    "bonusFamilleDistance": "Bonus de famille (ATT distance)",
+    "bonusFamilleMagique": "Bonus de famille (ATT magique)",
     "defTotal": "Défense totale",
     "totalEncombrement": "Encombrement total",
     "attContactTotal": "ATT contact",
@@ -134,7 +141,8 @@
       "titleFiger": "Figer (empêcher le déplacement accidentel)",
       "titleImageEntiere": "Afficher l'image entière",
       "titleRecadrer": "Recadrer (remplir le cadre)",
-      "titleReset": "Réinitialiser le cadrage"
+      "titleReset": "Réinitialiser le cadrage",
+      "titleSupprimer": "Supprimer l'image"
     }
   },
   "notes": {
@@ -142,6 +150,12 @@
     "grapheVide": "Aucune note pour l'instant — le graphe de leurs liaisons apparaîtra ici",
     "grapheRecalculer": "Recalculer",
     "grapheRecalculerAide": "Recalcule la disposition du graphe pour tenter de réduire les liens qui se croisent",
+    "relation": {
+      "amical": "Amical",
+      "ennemi": "Ennemi",
+      "neutre": "Neutre",
+      "aucune": "Aucune relation"
+    },
     "rechercher": "Rechercher (titre, tag, texte, marque-page)…",
     "nouvelleNote": "Nouvelle note",
     "aucuneNote": "Aucune note pour l'instant",
@@ -264,7 +278,7 @@
     "reserveAide": "Cliquez sur 📥 pour envoyer un champ ici, cliquez dessus ici pour le replacer sur la feuille"
   },
   "wizard": {
-    "stepNames": ["Identité", "Peuple & Culture", "Caractéristiques", "Profil & Voies", "Scores dérivés", "Spécialisation & équipement", "Les derniers détails", "Finalisation"],
+    "stepNames": ["Identité", "Peuple & Culture", "Caractéristiques", "Profil & Voies", "Scores dérivés", "Spécialisation & équipement", "Psychologie", "Les derniers détails", "Finalisation"],
     "etape": "Étape {{current}}/{{total}}",
     "nav": {
       "precedent": "← Précédent",
@@ -391,6 +405,9 @@
       "glisserIci": "Glisser ici…",
       "armesLabel": "Armes",
       "armuresLabel": "Armures",
+      "objetsMagiquesLabel": "Objets magiques",
+      "objetEquipe": "Équipé",
+      "objetNonEquipe": "Possédé, non équipé",
       "deuxMains": "2 mains",
       "compagnonPicker": "Compagnon {{n}}",
       "aucun": "Aucun",
@@ -409,15 +426,21 @@
       "selectionnerTrait": "Sélectionnez un trait"
     },
     "step6": {
+      "intro": "Qui est vraiment ton personnage ? Place chaque curseur sur le profil qui lui correspond."
+    },
+    "step7": {
       "intro": "Dernières touches avant de jouer !",
       "description": "Description du personnage",
       "inventaire": "Inventaire",
       "inventaireHint": "N'hésitez pas à personnaliser son inventaire avec des objets intimes sans valeur marchande, telle qu'une lettre, un coquillage imprégné de souvenirs, la plume du premier rapace qu'il a chassé, etc.",
       "inventaireDefault": "une couverture, une torche, un briquet en silex, une outre, une gamelle",
       "tresorerie": "Trésorerie",
-      "tresorerieDefault": "5 pièces d'or"
+      "or": "Or",
+      "argent": "Argent",
+      "cuivre": "Cuivre",
+      "gemmes": "Gemmes et pierres précieuses"
     },
-    "step7": {
+    "step8": {
       "bonneAventure": "Bonne aventure !",
       "personnagePret": "Tous les éléments sont renseignés. Votre personnage est prêt à jouer.",
       "sauvegarder": "Sauvegarder le personnage",
@@ -491,7 +514,14 @@
     "nouveauGroupe": "Nouveau groupe",
     "nouvelleCategorie": "Nouvelle catégorie",
     "armesNotesDef": "¹ Arme tenue à deux mains.\n² Critique sur 19 ou 20.\n³ Règles spéciales, voir ci-dessous.\n⁴ Score minimum en FOR requis : 12 pour l'arc long, 14 pour le composite.\n⁵ Nécessite une action limitée pour ajouter le Mod. de Carac. aux DM.\n⁶ Nécessite une action d'attaque pour être rechargée.\n⁷ Nécessite une action limitée pour être rechargée.\n* Nécessite une capacité pour être maîtrisée.",
-    "armuresNotesDef": "¹ Encombrantes, ces armures annulent le bonus de DEX à la DEF.\n² Fabriquée sur mesure, nécessite la capacité Armure lourde (voie du bastion) pour être portée."
+    "armuresNotesDef": "¹ Encombrantes, ces armures annulent le bonus de DEX à la DEF.\n² Fabriquée sur mesure, nécessite la capacité Armure lourde (voie du bastion) pour être portée.",
+    "objetsMagiques": "Objets magiques",
+    "niveauMagieEquipe": "Niveau de magie équipé",
+    "conseilleNiveau": "conseillé au niveau {{n}}",
+    "aucunObjetMagique": "Aucun objet magique créé pour l'instant — le MJ peut en créer dans le Tableau de bord MJ.",
+    "possede": "✓ Possédé",
+    "ajouter": "+ Ajouter",
+    "equiper": "Équiper"
   },
   "saveLoad": {
     "nomSansNom": "Personnage sans nom",
@@ -735,6 +765,7 @@
       "Armures lourdes": "Armures lourdes"
     },
     "grantFormation": "Formation",
+    "grantFormationNombre": "Nombre d'emplacements supplémentaires (au choix du joueur) :",
     "grantVoieRangFixe": "Voie (rang fixe)",
     "grantVoieRangChoix": "Voie (rang au choix)",
     "grantCompagnonFixe": "Compagnon (fixe)",
@@ -751,6 +782,8 @@
     "remplacePar": "remplace :",
     "aucunRemplace": "— aucun —",
     "ajouterVoiePlus": "+ Voie…",
+    "ajouterFamillePlus": "+ Toute une famille…",
+    "sansFamille": "Sans famille",
     "ajouterCompagnonPlus": "+ Compagnon…",
     "effetsAideTitre": "Champs d'un effet",
     "effetsAideTokens": "Tokens dans les descriptions",
@@ -1120,6 +1153,10 @@
     "bestiaireCompte_one": "{{count}} créature",
     "bestiaireCompte_other": "{{count}} créatures",
     "bestiaireSauvegarderBundle": "⬇ Sauvegarder dans le projet",
+    "bestiaireImporterImages": "Importer des images",
+    "bestiaireImagesResultat_one": "{{count}} image importée.",
+    "bestiaireImagesResultat_other": "{{count}} images importées.",
+    "bestiaireImagesNonReconnues": "Non reconnus : {{liste}}.",
     "bestiairePerso": "PERSO",
     "bestiairePersoTitre": "Créature que vous avez ajoutée — modifiable et supprimable",
     "bestiaireModifiee": "MODIFIÉE",
@@ -1201,6 +1238,86 @@
       "imageFigeLegend": "Image figée · Cliquer sur le cadenas pour modifier le cadrage",
       "titleFiger": "Figer (empêcher le déplacement accidentel)",
       "titleDefiger": "Défiger (autoriser le déplacement)"
+    },
+    "objetsMagiquesTab": {
+      "titre": "Objets magiques",
+      "nouvelObjet": "Nouvel objet magique",
+      "aucuneSelection": "Sélectionne un objet dans la liste",
+      "importer": "↑ Importer",
+      "importResultat_one": "{{count}} objet importé",
+      "importResultat_other": "{{count}} objets importés",
+      "cloner": "Cloner",
+      "badgeLivre": "LIVRÉ",
+      "badgePerso": "PERSO",
+      "triNom": "Nom",
+      "triNiveauMagie": "Niv. magie",
+      "livreInfo": "Objet livré avec l'application. Tu peux le modifier directement, ou le cloner pour créer une variante à côté sans y toucher.",
+      "supprimerConfirmation": "Supprimer cet objet magique ?"
+    },
+    "objetMagiqueDetail": {
+      "categorieLabel": "Catégorie",
+      "categorie": {
+        "traditionnel": "Objet traditionnel",
+        "focalisateur": "Focalisateur magique",
+        "legendaire": "Objet légendaire"
+      },
+      "slotLabel": "Emplacement",
+      "armeDmLabel": "Dé de dégâts",
+      "armeDmPlaceholder": "ex. 1d8",
+      "armeDmHint": "Uniquement le dé, sans le bonus de caractéristique : il est ajouté automatiquement au jet (Mode de jeu), comme pour toute arme.",
+      "armeAttaqueLabel": "Caractéristique d'attaque",
+      "slot": {
+        "arme": "Arme",
+        "armure": "Armure",
+        "bouclier": "Bouclier",
+        "focalisateur": "Focalisateur",
+        "accessoire": "Accessoire (bague, amulette…)"
+      },
+      "traditionLabel": "Tradition",
+      "tradition": {
+        "elfe": "Elfe",
+        "nain": "Nain",
+        "orc": "Orc",
+        "gobelin": "Gobelin",
+        "ogre": "Ogre"
+      },
+      "degreQualite": "Degré de qualité",
+      "degre1": "—",
+      "degre2": "Supérieure",
+      "degre3": "Exceptionnelle",
+      "combinaisonIndisponible": "Aucun objet de ce type dans cette tradition",
+      "niveauMagieBase": "Niveau de magie narratif (0 par défaut)",
+      "niveauAbrege": "niv. {{n}}",
+      "enchantementsSupplementaires": "Enchantements supplémentaires",
+      "enchantementsLegendaires": "Enchantements légendaires",
+      "enchantementsAppliques": "Enchantements appliqués",
+      "colonneCreation": "Création",
+      "colonneResultat": "Objet fini",
+      "niveauMagieSection": "Niveau de magie",
+      "enchantementsLegendairesAppliques": "Enchantements légendaires appliqués",
+      "enchantementsPuissanceAppliques": "Enchantements de puissance appliqués",
+      "enchantementsPouvoirAppliques": "Enchantements de pouvoir appliqués",
+      "aucunEnchantement": "Aucun enchantement appliqué pour l'instant.",
+      "forger": "Forger",
+      "forgeEnCours": "Forge en cours…",
+      "forgeConfirmation": "✓ Objet forgé et sauvegardé !",
+      "puissance": "Enchantement de puissance",
+      "puissanceHint": "Compose un enchantement puis clique Ajouter pour l'appliquer à l'objet (il rejoint la liste \"Enchantements appliqués\" à droite).",
+      "pouvoir": "Enchantement de pouvoir",
+      "pouvoirHint": "Compose un enchantement puis clique Ajouter pour l'appliquer à l'objet (il rejoint la liste \"Enchantements appliqués\" à droite).",
+      "pouvoirVoiePlaceholder": "Depuis un rang de voie (optionnel)",
+      "pouvoirRangPlaceholder": "Rang…",
+      "pouvoirUtiliserRang": "Utiliser ce rang",
+      "pouvoirNomPlaceholder": "Nom du pouvoir (ex. Corne de terreur)",
+      "pouvoirTextePlaceholder": "Effet du pouvoir",
+      "ajouter": "Ajouter",
+      "niveauMagieTotal": "Niveau de magie total",
+      "plafondAtteint": "Niveau de magie maximum atteint ({{plafond}}) — retire un enchantement avant d'en ajouter un autre.",
+      "valeur": "Valeur",
+      "description": "Description",
+      "exporter": "Exporter cet objet",
+      "exporteVers": "Exporté vers {{filename}}",
+      "supprimer": "Supprimer cet objet"
     },
     "adversite": {
       "intro": "Génère une rencontre à partir des tables du Livre du Meneur : répartit le budget de la rencontre entre plusieurs adversaires du bestiaire.",
@@ -1289,8 +1406,9 @@
       "bestiaire": "Bestiaire",
       "adversite": "Générateur de rencontre",
       "bataille": "Gestion de bataille",
-      "notes": "Notes",
-      "reseau": "Réseau"
+      "objetsMagiques": "Objets magiques",
+      "reseau": "Réseau",
+      "notes": "Notes"
     },
     "reseau": {
       "titre": "Serveur réseau local",
@@ -1502,6 +1620,7 @@
     "personnage": "un personnage",
     "bibliothequePersonnages": "une bibliothèque de personnages",
     "creature": "une créature",
+    "objetMagique": "un objet magique",
     "rencontre": "une rencontre",
     "bataille": "une bataille",
     "gabaritBataille": "un gabarit de bataille",

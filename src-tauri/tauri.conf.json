@@ -1,5 +1,6 @@
 {
   "productName": "TdA",
+  "mainBinaryName": "TdA",
   "version": "0.1.0",
   "identifier": "com.tda.app",
   "build": {

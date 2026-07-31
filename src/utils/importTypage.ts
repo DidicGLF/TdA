@@ -7,6 +7,7 @@ export type TypeFichier =
   | 'personnage'
   | 'bibliotheque-personnages'
   | 'creature'
+  | 'objet-magique'
   | 'rencontre'
   | 'bataille'
   | 'gabarit-bataille'
@@ -14,7 +15,7 @@ export type TypeFichier =
   | 'notes-groupe'
 
 const TYPES_CONNUS: TypeFichier[] = [
-  'personnage', 'bibliotheque-personnages', 'creature', 'rencontre',
+  'personnage', 'bibliotheque-personnages', 'creature', 'objet-magique', 'rencontre',
   'bataille', 'gabarit-bataille', 'note', 'notes-groupe',
 ]
 
@@ -24,6 +25,7 @@ export const CLE_LABEL_TYPE: Record<TypeFichier, string> = {
   'personnage': 'personnage',
   'bibliotheque-personnages': 'bibliothequePersonnages',
   'creature': 'creature',
+  'objet-magique': 'objetMagique',
   'rencontre': 'rencontre',
   'bataille': 'bataille',
   'gabarit-bataille': 'gabaritBataille',
@@ -38,6 +40,11 @@ function ressembleAPersonnage(r: Record<string, unknown>): boolean {
 
 function ressembleACreature(r: Record<string, unknown>): boolean {
   return typeof r.nom === 'string' && typeof r.nc === 'number' && Array.isArray(r.livres)
+}
+
+function ressembleAObjetMagique(r: Record<string, unknown>): boolean {
+  return typeof r.nom === 'string' && typeof r.categorie === 'string' && typeof r.slot === 'string'
+    && Array.isArray(r.enchantements) && typeof r.niveauMagie === 'number' && typeof r.valeur === 'number'
 }
 
 function ressembleARencontre(r: Record<string, unknown>): boolean {
@@ -90,6 +97,7 @@ export function detecterTypeFichier(raw: unknown): TypeFichier | null {
   if (ressembleANotesGroupe(r)) return 'notes-groupe'
   if (ressembleANote(r)) return 'note'
   if (ressembleACreature(r)) return 'creature'
+  if (ressembleAObjetMagique(r)) return 'objet-magique'
   return null
 }
 

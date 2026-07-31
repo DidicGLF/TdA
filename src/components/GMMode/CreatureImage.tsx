@@ -43,9 +43,17 @@ export default function CreatureImage({
   const imgScaleRef = useRef(imgScale); imgScaleRef.current = imgScale
   const onTransformChangeRef = useRef(onTransformChange); onTransformChangeRef.current = onTransformChange
   const onChangeRef = useRef(onChange); onChangeRef.current = onChange
+  // Aperçu local de l'image tout juste choisie, affiché immédiatement sans attendre l'aller-retour
+  // async (compression + écriture) par importerImage — nécessaire depuis que la clé de stockage du
+  // bestiaire est basée sur le nom de la créature (stable) plutôt que sur le contenu : remplacer une
+  // image garde la même clé, donc `value` (qui en dérive via useImage) ne change pas et n'aurait sinon
+  // rien déclenché de nouveau à l'écran tant que la page n'est pas rechargée.
+  const [apercuLocal, setApercuLocal] = useState<string | null>(null)
+  const valeurAffichee = apercuLocal ?? value
 
   useEffect(() => {
     setImgScale(initScale); setImgTx(initTx); setImgTy(initTy)
+    setApercuLocal(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, initScale, initTx, initTy])
 
@@ -66,7 +74,7 @@ export default function CreatureImage({
     return () => ro.disconnect()
   }, [])
 
-  const hasValue = !!value
+  const hasValue = !!valeurAffichee
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -120,6 +128,7 @@ export default function CreatureImage({
     reader.onload = ev => {
       const src = ev.target?.result as string
       const applyImage = (dataUrl: string) => {
+        setApercuLocal(dataUrl)
         onTransformChangeRef.current?.(1, 0, 0)
         onChangeRef.current(dataUrl)
       }
@@ -152,7 +161,7 @@ export default function CreatureImage({
     <div ref={rootRef} style={{ height: '100%', flexShrink: 0, display: 'flex', flexDirection: 'row', gap: 6 }}>
       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 
-      {value && (
+      {valeurAffichee && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
           <button
             style={{ ...TOOL_BTN, background: locked ? 'rgba(201,168,76,0.18)' : TOOL_BTN.background, borderColor: locked ? 'rgba(201,168,76,0.7)' : undefined }}
@@ -183,10 +192,10 @@ export default function CreatureImage({
       )}
 
       <div style={{ width: boxWidth, height: '100%', flexShrink: 0, position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(201,168,76,0.3)' }}>
-        {value ? (
+        {valeurAffichee ? (
           <div ref={containerRef} onMouseDown={handleImageMouseDown} className="creature-image-hover" style={{ width: '100%', height: '100%', cursor: 'pointer', position: 'relative' }}>
             <img
-              src={value}
+              src={valeurAffichee}
               alt=""
               draggable={false}
               style={{

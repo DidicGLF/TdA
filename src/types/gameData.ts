@@ -19,7 +19,10 @@ export type Effect = {
 }
 
 export type Grant =
-  | { type: 'FORMATION'; value: string; minRang?: number; avancee?: boolean }
+  // nombre (défaut 1) : combien d'emplacements de formation martiale supplémentaires ce rang accorde —
+  // toujours à choix libre du joueur parmi la liste complète (comme ses emplacements de base liés à sa
+  // famille), jamais une formation imposée d'avance. Voir getBonusFormationsCount (voieRangChoix.ts).
+  | { type: 'FORMATION'; nombre?: number; minRang?: number; avancee?: boolean }
   | { type: 'VOIE_RANG'; voie: string; rang: number; minRang?: number; avancee?: boolean }
   // rangMin (optionnel, défaut 1) : propose les rangs [rangMin..rangMax] de chaque voie listée, pas
   // toujours à partir de 1 — ex. un choix qui ne doit proposer QUE le rang 2 (rangMin=2, rangMax=2),
@@ -114,6 +117,57 @@ export type CapaciteBibliotheque = {
   nom: string
   desc: string
   effets?: CapaciteEffet[]
+}
+
+// Objets magiques (Livre du meneur, p.183-190) — voir enchantements-magiques.json (catalogue de
+// référence statique, tables du livre) et objets-magiques.json/objets-magiques-perso.json (objets créés
+// par le MJ, un par un, en piochant dans ce catalogue).
+export type ObjetMagiqueCategorie = 'traditionnel' | 'focalisateur' | 'legendaire'
+// 'accessoire' couvre les objets légendaires narratifs sans emplacement de combat (bague, amulette,
+// vêtement...) — pas d'enchantements arme/armure/focalisateur disponibles, seulement pouvoir/puissance
+// ou un effet purement descriptif (cf. les deux exemples du livre : Bague de symbiose aquatique,
+// Fragment du cristal noir).
+export type ObjetMagiqueSlot = 'arme' | 'armure' | 'bouclier' | 'focalisateur' | 'accessoire'
+export type TraditionPeuple = 'elfe' | 'nain' | 'orc' | 'gobelin' | 'ogre'
+
+// Un enchantement choisi dans enchantements-magiques.json (ou saisi à la main pour un enchantement de
+// pouvoir) et copié sur l'objet — indépendant du catalogue de référence ensuite, comme
+// CapaciteBibliotheque copiée sur CreatureCapacite.effets.
+export type EnchantementApplique = {
+  nom: string
+  niveauMagie: number
+  effets?: CapaciteEffet[]
+  // Effet non réductible à un simple bonus de stat (ex. "dégainer est une action gratuite") — toujours
+  // affiché, y compris quand effets est vide ou ne couvre qu'une partie de l'enchantement.
+  texte?: string
+}
+
+export type ObjetMagiqueEntry = {
+  id: string
+  nom: string
+  categorie: ObjetMagiqueCategorie
+  slot: ObjetMagiqueSlot
+  tradition?: TraditionPeuple           // si categorie === 'traditionnel' — purement descriptif/filtre
+  degreQualite?: 1 | 2 | 3              // idem, purement descriptif (1=-, 2=Supérieure, 3=Exceptionnelle)
+  // Statistiques de base si slot === 'arme' — aucun enchantement ne modélise un dé de dégâts ou une
+  // caractéristique d'attaque (ce ne sont que des bonus), donc rien pour les déduire automatiquement :
+  // saisies à la main par le MJ. Utilisées pour synthétiser une Arme classique (character.armes) quand
+  // le joueur possède l'objet (voir EquipementModal.tsx, togglePossede) — au-delà de là, l'objet se
+  // comporte comme n'importe quelle arme "hors catalogue" existante, aucun autre branchement nécessaire.
+  armeDm?: string
+  armeAttaque?: 'FOR' | 'DEX' | 'INT'
+  // TOUS les enchantements appliqués, y compris l'effet de base tradition/focalisateur (copié ici par
+  // ObjetMagiqueDetail au moment du choix de tradition+degré/focalisateur+degré, comme n'importe quel
+  // autre enchantement) — computeEffectsWithCristaux ne lit QUE ce tableau, jamais tradition/
+  // degreQualite directement : ces deux champs ne servent qu'à l'affichage et au filtrage du picker.
+  enchantements: EnchantementApplique[]
+  // Niveau de magie narratif assigné directement par le MJ (0 par défaut) — utile pour un objet
+  // légendaire "accessoire" (bague, amulette...) dont le pouvoir n'est pas réductible à un enchantement
+  // du catalogue, cf. les exemples du livre (Bague de symbiose aquatique, Fragment du cristal noir).
+  niveauMagieBase?: number
+  niveauMagie: number   // total = niveauMagieBase + somme des niveauMagie de enchantements
+  valeur: number         // niveauMagie² × 200 po
+  description?: string   // texte libre (lore)
 }
 
 export type CreatureVoieRang = {
@@ -222,6 +276,8 @@ export type NoteMarque = {
 // (gras/italique/listes) pouvant contenir des liens wiki [[Titre]] — résolus (voir resoudreLien dans
 // NotesTab.tsx) contre une autre note en priorité, puis, capacité réservée au MJ, contre une créature
 // du Bestiaire ou une rencontre sauvegardée portant ce nom ; sinon le lien crée une note vide.
+export type RelationType = 'amical' | 'ennemi' | 'neutre'
+
 export type Note = {
   id: string
   titre: string
@@ -231,6 +287,11 @@ export type Note = {
   tags?: string[]        // libres, créés à la volée — pas d'entité séparée, juste une liste par note
   marques?: NoteMarque[] // signets de page / ancres de paragraphe personnalisés
   couleur?: string       // repère visuel libre (hex "#rrggbb"), utilisé pour la pastille dans NotesGraph
+  // Relation affichée en symbole sur le lien correspondant dans NotesGraph, jamais ailleurs dans
+  // l'interface — versId = id de la note ciblée par un [[Titre]] présent dans le contenu de CETTE note.
+  // Absent de la liste = relation jamais catégorisée (lien affiché neutre par défaut, à distinguer du
+  // type 'neutre' explicitement choisi qui, lui, affiche son propre symbole).
+  relations?: { versId: string; type: RelationType }[]
   creeLe: string     // ISO timestamp
   modifieLe: string  // ISO timestamp
 }

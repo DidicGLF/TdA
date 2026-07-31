@@ -41,6 +41,35 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* Barres de défilement discrètes — WebKitGTK (Linux) applique déjà le thème GTK fin/auto-masqué par
+   défaut, mais WebView2 (Windows) affiche sa grosse barre blanche par défaut. ::-webkit-scrollbar est
+   compris par les deux moteurs (tous deux basés sur WebKit/Chromium), donc une seule règle suffit pour
+   harmoniser l'apparence sur les deux plateformes plutôt que de cibler Windows spécifiquement.
+   scrollbar-width/scrollbar-color (standard) en repli pour un moteur qui ne supporterait pas le préfixe. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,168,76,0.35) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(201,168,76,0.35);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(201,168,76,0.6);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body {
   margin: 0;
   background-color: var(--tdr-dark);
@@ -73,7 +102,17 @@ body {
   margin: 0;
 }
 
-/* Fiche de compagnon : A5 à l'italienne, deux par feuille A4 portrait. */
+/* Fiche de compagnon : A5 à l'italienne, deux par feuille A4 portrait.
+   Tentative du 2026-07-30 (unifier en A4 portrait comme les 3 autres @page, pour éviter le mélange de
+   tailles/orientations soupçonné de causer l'étirement + rotation à 90° sous Windows) REVERTÉE le même
+   jour : sur Linux, résultat pire qu'avant — la fiche A5 arrive maintenant visiblement coupée en
+   plusieurs morceaux (pas juste une marge grignotée comme le bug déjà connu sur recto/verso/voies).
+   Cause exacte non identifiée avec certitude (voir [[project_impression_pdf_bug]]) : hypothèse principale,
+   un saut de page implicite qui ne se produit plus de façon fiable entre tdr-voies et tdr-compagnon
+   maintenant qu'ils déclarent la même taille de page — mais pas vérifié en profondeur. Retour à l'état
+   d'origine (A5 landscape) : pas une solution non plus (le bug de troncature existait déjà avant, côté
+   Linux), mais un état CONNU plutôt qu'une régression non comprise. Ne pas retenter de correctif CSS sur
+   ce point sans un plan clair — voir la note associée. */
 @page tdr-compagnon {
   size: A5 landscape;
   margin: 0;

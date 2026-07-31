@@ -6,7 +6,6 @@ import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
 import ChampsRecto from './ChampsRecto'
 import ChampsVerso from './ChampsVerso'
 import VoieRangCheckboxes from './VoieRangCheckboxes'
-import CompagnonsFields from './CompagnonsFields'
 import { TOUTES_VOIES_ENTRIES, TOUS_VOIES_TITRES } from '../data/voieRangEntries'
 
 interface Props {
@@ -40,14 +39,13 @@ export default function CharacterSheetVerso({
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-verso.png`} alt="Feuille de personnage verso"
+      <img src={sheetImage || `${import.meta.env.BASE_URL}feuille-verso.webp`} alt="Feuille de personnage verso"
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       <ChampsRecto {...commun} defaultPage="recto" activeStep={activeStep} onCheckboxRowMoved={onCheckboxRowMoved} />
-      <ChampsVerso {...commun} defaultPage="verso" activeStep={activeStep} />
+      <ChampsVerso {...commun} defaultPage="verso" activeStep={activeStep} onCheckboxRowMoved={onCheckboxRowMoved} />
       <VoieRangCheckboxes {...commun} defaultPage="voies" activeStep={activeStep} descriptions={data}
         entries={TOUTES_VOIES_ENTRIES} titres={TOUS_VOIES_TITRES} />
-      <CompagnonsFields {...commun} defaultPage="verso" descriptions={data} />
     </div>
   )
 }

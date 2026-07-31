@@ -4,7 +4,7 @@ import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
 type CharacterPatch = Partial<Character>
 import type { DescMap, Grant } from '../../types/gameData'
-import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula } from '../../utils/computeEffects'
+import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula, computeAvantages } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
@@ -104,15 +104,6 @@ interface AvailableBonus {
   precision?: string
   div2?: boolean
   immunite?: boolean
-}
-
-interface AvailableAvantage {
-  voieNom: string
-  rangIdx: number
-  rangNom: string
-  stat: string
-  lancer: number
-  garder: number
 }
 
 interface AvailableAction {
@@ -303,39 +294,11 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
 
   // Stats avec "garder le meilleur jet" : stat → { lancer, garder }
   const { statsAvantage, availableAvantages } = useMemo(() => {
+    const list = computeAvantages(character, descriptions)
     const map = new Map<string, { lancer: number; garder: number }>()
-    const list: AvailableAvantage[] = []
-    for (const voie of voiesPerso) {
-      if (!voie.nom) continue
-      const rangsDesc = descriptions[voie.nom]
-      if (!rangsDesc) continue
-      voie.rangs.forEach((unlocked, idx) => {
-        if (!unlocked) return
-        const rang = rangsDesc[idx]
-        if (!rang?.grants) return
-        for (const grant of rang.grants) {
-          if (grant.type !== 'AVANTAGE') continue
-          if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
-          if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
-          if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
-          const lancer = grant.lancer ?? 2
-          const garder = grant.garder ?? 1
-          map.set(grant.stat, { lancer, garder })
-          list.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, stat: grant.stat, lancer, garder })
-        }
-      })
-    }
-    for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
-      for (const grant of rangData.grants ?? []) {
-        if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
-        const lancer = grant.lancer ?? 2
-        const garder = grant.garder ?? 1
-        map.set(grant.stat, { lancer, garder })
-        list.push({ voieNom, rangIdx, rangNom: rangData.nom, stat: grant.stat, lancer, garder })
-      }
-    }
+    for (const a of list) map.set(a.stat, { lancer: a.lancer, garder: a.garder })
     return { statsAvantage: map, availableAvantages: list }
-  }, [voiesPerso, rangsEmpruntes, descriptions])
+  }, [character, descriptions])
 
   const availableActions = useMemo<AvailableAction[]>(() => {
     const out: AvailableAction[] = []
