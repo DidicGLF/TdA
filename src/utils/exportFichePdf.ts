@@ -7,17 +7,17 @@ const A5_HAUTEUR_MM = 148
 const BASE_PT = 12
 const MIN_PT = 5
 
-// Filet de sécurité pour la taille de police des champs (.tdr-field) : SheetField/SheetTextarea la
-// calculent déjà eux-mêmes en vw*var(--zoom-scale) (voir .pdf-export dans App.tsx pour la valeur posée
-// ici), mais cette formule est plus délicate à vérifier sans accès visuel direct au résultat — un forçage
-// en pt, basé sur la géométrie RÉELLE mesurée (clientWidth/scrollWidth, indépendante de --zoom-scale),
-// reprend le mécanisme déjà éprouvé par l'ancienne impression native (window.print/beforeprint, qui a
-// fonctionné correctement) plutôt que de dépendre uniquement d'une formule vw pas encore confirmée en
-// conditions réelles. N'ajuste PAS l'interligne/padding-top des zones de texte : ceux-ci sont déjà
-// calculés par SheetTextarea à partir de la hauteur RÉELLE mesurée du conteneur (indépendante de
-// --zoom-scale), donc déjà fiables.
+// Filet de sécurité pour la taille de police des champs SIMPLES (input, un seul champ par ligne) :
+// SheetField la calcule déjà elle-même en vw*var(--zoom-scale) (voir .pdf-export dans App.tsx), mais un
+// forçage en pt basé sur la géométrie RÉELLE mesurée (clientWidth/scrollWidth, indépendante de
+// --zoom-scale) reprend le mécanisme déjà éprouvé par l'ancienne impression native.
+// Volontairement PAS appliqué aux <textarea> (SheetTextarea) : leur interligne et padding-top sont
+// calculés à part (hauteur réelle du conteneur, indépendante de --zoom-scale) en fonction de LEUR PROPRE
+// taille de police — leur imposer ici une taille différente désynchronise les deux et pousse le texte
+// visuellement trop bas dans sa ligne (glyphe petit dans un interligne prévu pour un glyphe plus grand).
+// Pour les zones de texte, on fait donc confiance à SheetTextarea + --zoom-scale (déjà corrigé) en bloc.
 function ajusterPoliceChamps(container: HTMLElement) {
-  container.querySelectorAll<HTMLElement>('.tdr-field').forEach(el => {
+  container.querySelectorAll<HTMLElement>('input.tdr-field').forEach(el => {
     el.style.setProperty('font-size', `${BASE_PT}pt`, 'important')
     const w = el.clientWidth
     if (!w) return
@@ -25,15 +25,6 @@ function ajusterPoliceChamps(container: HTMLElement) {
     while (el.scrollWidth > w + 1 && size > MIN_PT) {
       size = +(size - 0.5).toFixed(1)
       el.style.setProperty('font-size', `${size}pt`, 'important')
-    }
-    if (el.tagName === 'TEXTAREA') {
-      const h = el.clientHeight
-      if (h) {
-        while (el.scrollHeight > h + 1 && size > MIN_PT) {
-          size = +(size - 0.5).toFixed(1)
-          el.style.setProperty('font-size', `${size}pt`, 'important')
-        }
-      }
     }
   })
 }
