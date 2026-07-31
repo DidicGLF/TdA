@@ -68,14 +68,16 @@ export default function SheetField({
           height: `${height}%`,
           transform: 'translate(-50%, -50%)',
           display: 'flex',
-          // flex-end (pas center) + un peu de marge sous le texte : un <input> natif centre son texte
-          // différemment d'un <div> flex-centré (constaté sur un export réel — voir
-          // project_impression_pdf_bug) — le texte apparaissait décalé vers le haut par rapport à la
-          // ligne du fond sur laquelle il est censé reposer. Marge basse en em (relative à la taille de
-          // police de CE champ) plutôt qu'en % de hauteur de la boîte — un % de padding vertical se
-          // calcule en CSS sur la LARGEUR du bloc, pas sa hauteur, ce qui aurait donné un décalage
-          // incohérent d'un champ à l'autre.
-          alignItems: 'flex-end',
+          // flex-start (pas center) + un peu de marge au-dessus du texte : un <input> natif centre son
+          // texte différemment d'un <div> flex-centré (constaté sur un export réel — voir
+          // project_impression_pdf_bug), le texte apparaissant décalé vers le bas par rapport à la ligne
+          // du fond sur laquelle il est censé reposer. (Un premier essai avec flex-end allait dans le
+          // mauvais sens : flex-end pousse vers le BAS de la boîte sur l'axe transverse d'un flex en
+          // ligne, pas vers le haut — confirmé en aggravant le décalage plutôt qu'en le corrigeant.)
+          // Marge haute en em (relative à la taille de police de CE champ) plutôt qu'en % de hauteur de
+          // la boîte — un % de padding vertical se calcule en CSS sur la LARGEUR du bloc, pas sa hauteur,
+          // ce qui aurait donné un décalage incohérent d'un champ à l'autre.
+          alignItems: 'flex-start',
           justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
           textAlign: align,
           overflow: 'hidden',
@@ -83,7 +85,7 @@ export default function SheetField({
           fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
           fontFamily: "'Crimson Text', Georgia, serif",
           color: '#1a1510',
-          padding: '0 3px 0.2em',
+          padding: '0.2em 3px 0',
           boxSizing: 'border-box',
         }}
       >
