@@ -28,7 +28,7 @@ import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
 import { getCompagnonsDisponibles } from './utils/compagnons'
-import { ModeImpressionContext } from './hooks/useChampsFiche'
+import { ModeImpressionContext, PdfExportContext } from './hooks/useChampsFiche'
 import { saveDataFileToBundle } from './utils/tauriStorage'
 import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
@@ -126,6 +126,24 @@ function AppContent() {
       setExportingPdf(false)
     }
   }
+  // Beaucoup de champs (SheetField, SheetTextarea, curseurs, cases à cocher…) dimensionnent leur police
+  // en vw multiplié par --zoom-scale (voir le panneau de fiche desktop plus bas) : cette variable n'est
+  // normalement posée que sur CE panneau, absent du conteneur d'export (hors écran, hors de son arbre)
+  // — sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1% de la fenêtre du navigateur au
+  // lieu de 1% de la largeur réelle de la page A4 capturée, faussant toutes les tailles calculées en
+  // vw (texte, curseurs, boutons…). Calculée dès le tout premier rendu (état React, pas une mutation
+  // DOM après coup) pour que les useLayoutEffect de ces composants voient la bonne valeur dès leur
+  // tout premier passage, plutôt que de figer une décision de taille prise avec la mauvaise échelle.
+  const [zoomScaleExport, setZoomScaleExport] = useState(1)
+  useEffect(() => {
+    const update = () => {
+      const pageMmEnPx = 210 * 96 / 25.4 // 210mm en px CSS (96dpi, référence du navigateur pour les unités mm)
+      setZoomScaleExport(pageMmEnPx / window.innerWidth)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
   const [calibrageSauve, setCalibrageSauve] = useState<'ok' | 'erreur' | null>(null)
   // Le calibrage est réservé à l'auteur du jeu : il conditionne l'alignement des champs sur les fonds
   // livrés, qu'un utilisateur final n'a aucune raison de modifier (et qu'il casserait sans le vouloir).
@@ -349,24 +367,26 @@ function AppContent() {
   // lieu de celle où il a été posé.
   const pdfExportContainer = (
     <div ref={pdfExportRef} className="pdf-export no-print"
-      style={{ position: 'fixed', top: 0, left: -99999, '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
+      style={{ position: 'fixed', top: 0, left: -99999, '--zoom-scale': zoomScaleExport, '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
       <ModeImpressionContext.Provider value={false}>
-        <div className="print-page-recto">
-          <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1}
-            fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
-        </div>
-        <div className="print-page-verso">
-          <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1}
-            fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
-        </div>
-        <div className="print-page-voies">
-          <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
-            fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
-        </div>
-        {showCompagnonsTab && (
-          <CharacterSheetCompagnons character={character} onChange={() => {}}
-            fieldPositions={fieldPositions} toutesLesPages />
-        )}
+        <PdfExportContext.Provider value={true}>
+          <div className="print-page-recto">
+            <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1}
+              fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
+          </div>
+          <div className="print-page-verso">
+            <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1}
+              fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
+          </div>
+          <div className="print-page-voies">
+            <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
+              fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
+          </div>
+          {showCompagnonsTab && (
+            <CharacterSheetCompagnons character={character} onChange={() => {}}
+              fieldPositions={fieldPositions} toutesLesPages />
+          )}
+        </PdfExportContext.Provider>
       </ModeImpressionContext.Provider>
     </div>
   )

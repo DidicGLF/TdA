@@ -1,8 +1,8 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
-import { ModeImpressionContext } from './modeImpression'
-export { ModeImpressionContext }
+import { ModeImpressionContext, PdfExportContext } from './modeImpression'
+export { ModeImpressionContext, PdfExportContext }
 import DraggableField from '../components/DraggableField'
 import type { TooltipData, TooltipLine } from '../components/SheetTooltip'
 

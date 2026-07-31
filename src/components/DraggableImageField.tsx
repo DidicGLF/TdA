@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useContext } from 'react'
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { compresserImage } from '../utils/imageStore'
-import { ModeImpressionContext } from '../hooks/modeImpression'
+import { ModeImpressionContext, PdfExportContext } from '../hooks/modeImpression'
 import PastilleImpression from './PastilleImpression'
 
 interface Props {
@@ -46,6 +46,7 @@ export default function DraggableImageField({
 }: Props) {
   const { t } = useTranslation()
   const modeImpression = useContext(ModeImpressionContext)
+  const pdfExport = useContext(PdfExportContext)
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
   const [height, setHeight] = useState(initHeight)
@@ -322,7 +323,7 @@ export default function DraggableImageField({
             </>
           )}
         </div>
-      ) : (
+      ) : pdfExport ? null : (
         <div
           onClick={!calibrate ? () => fileRef.current?.click() : undefined}
           style={{
