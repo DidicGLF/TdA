@@ -267,8 +267,9 @@
   },
   "impression": {
     "consigne": "Cliquez sur une pastille pour inclure ou exclure un champ de la version papier",
-    "lancer": "📄 Télécharger le PDF",
-    "exportEnCours": "Génération…",
+    "lancer": "🖨 Imprimer",
+    "exportCompagnons": "📄 Fiches compagnons (PDF)",
+    "exportCompagnonsEnCours": "Génération…",
     "fermer": "Fermer"
   },
   "calibrage": {

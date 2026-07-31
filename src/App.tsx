@@ -34,7 +34,7 @@ import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
-import { exporterFichePDF } from './utils/exportFichePdf'
+import { exporterFichesCompagnonsPDF } from './utils/exportCompagnonsPdf'
 
 // Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
 // Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
@@ -113,38 +113,38 @@ function AppContent() {
   // Prépare l'impression : la fiche affiche une pastille par champ pour choisir ce qui figure sur
   // la version papier, avant de lancer réellement l'impression.
   const [modeImpression, setModeImpression] = useState(false)
-  // Export PDF de la fiche (recto/verso/voies/compagnons) : conteneur toujours monté hors écran (voir
-  // pdfExportContainer/exportFichePdf.ts).
-  const pdfExportRef = useRef<HTMLDivElement>(null)
-  const [exportingPdf, setExportingPdf] = useState(false)
-  const lancerExportPDF = async () => {
-    if (!pdfExportRef.current) return
-    setExportingPdf(true)
+  // Fiches compagnons : export PDF dédié par capture d'image (voir compagnonsExportContainer/
+  // exportCompagnonsPdf.ts) — l'impression native (@page/window.print) reste cassée sur Windows ET
+  // Linux pour cette fiche (étirement + troncature). Recto/verso/voies restent en impression native
+  // (déjà correcte sur Windows) : générer TOUTE la fiche par capture d'image a été tenté, mais le rendu
+  // d'un <input> par html2canvas reste trop imprécis (texte mal centré verticalement sur son support
+  // ligné) même après plusieurs correctifs ciblés — Didic a préféré revenir à ce qui marchait déjà
+  // plutôt que de continuer à itérer sur un rendu pixel-perfect (voir project_impression_pdf_bug).
+  const compagnonsExportRef = useRef<HTMLDivElement>(null)
+  const [exportingCompagnons, setExportingCompagnons] = useState(false)
+  const lancerExportCompagnons = async () => {
+    if (!compagnonsExportRef.current) return
+    setExportingCompagnons(true)
     try {
-      await exporterFichePDF(pdfExportRef.current, character.nomPersonnage || 'personnage')
+      await exporterFichesCompagnonsPDF(compagnonsExportRef.current)
     } finally {
-      setExportingPdf(false)
+      setExportingCompagnons(false)
     }
   }
   // Beaucoup de champs (SheetField, SheetTextarea, curseurs, cases à cocher…) dimensionnent leur police
   // en vw multiplié par --zoom-scale (voir le panneau de fiche desktop plus bas, --zoom-scale: zoom/60)
-  // — cette variable n'est normalement posée que sur CE panneau, absent du conteneur d'export (hors
-  // écran, hors de son arbre). Sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1% de la
-  // fenêtre du navigateur au lieu de 1% de la largeur réelle de la page A4 capturée.
+  // — cette variable n'est normalement posée que sur CE panneau, absent du conteneur d'export compagnons
+  // (hors écran, hors de son arbre). Sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1%
+  // de la fenêtre du navigateur au lieu de 1% de la largeur réelle de la page capturée.
   // La formule zoom/60 est calibrée pour donner une taille proportionnelle à la largeur du PANNEAU (pas
   // de la fenêtre) : à zoom%, panneau_px ≈ zoom/100 * fenêtre_px, donc taille_px = Xvw * zoom/60 =
   // X/100 * fenêtre_px * zoom/60 = X/60 * panneau_px (indépendant de zoom% et de la largeur de fenêtre,
   // exactement le but recherché). Pour le conteneur d'export, panneau_px est fixe (210mm en px) et ne
   // dépend pas d'un pourcentage de la fenêtre — reprendre la même relation (taille_px = X/60 * panneau_px)
-  // donne : zoom-scale = (panneau_px / fenêtre_px) * (100/60). Le premier essai avait oublié ce facteur
-  // 100/60 (≈1,67), rendant tout ~40% de sa taille voulue (texte anormalement petit/mal positionné).
-  // Correction empirique (0.88) constatée sur un export réel (fiche-beldin.pdf, inspecté directement) :
-  // les champs calibrés tout près d'une ligne/bordure décorative (titre de rang sous sa case à cocher,
-  // trait psychologique sous le séparateur, nom de compagnon dans son cartouche) touchaient légèrement
-  // ce qui les surplombe — texte un peu trop grand par rapport à la référence de calibrage, malgré une
-  // dérivation qui tenait pourtant compte du facteur 100/60. À réévaluer si un futur export montre
-  // encore ce chevauchement (remonter la valeur) ou, à l'inverse, un texte visiblement trop petit
-  // ailleurs (la redescendre) — ajuster en inspectant un PDF réel (pdftoppm + Read), pas en déduisant.
+  // donne : zoom-scale = (panneau_px / fenêtre_px) * (100/60), avec une réduction empirique (0.88)
+  // constatée sur un export réel (fiche-beldin.pdf, inspecté directement) : les champs calibrés tout
+  // près d'une ligne/bordure décorative touchaient légèrement ce qui les surplombe. À réévaluer en
+  // inspectant un PDF réel (pdftoppm + Read) si besoin, pas en déduisant.
   const [zoomScaleExport, setZoomScaleExport] = useState(1)
   useEffect(() => {
     const update = () => {
@@ -230,6 +230,68 @@ function AppContent() {
     if (skipAutoSheetPage.current) { skipAutoSheetPage.current = false; return }
     setSheetPage(SHEET_PAGE_PAR_ETAPE[step] ?? 'recto')
   }, [step])
+
+  useEffect(() => {
+    const BASE_PT = 12
+    const MIN_PT = 5
+    const before = () => {
+      const printContainer = document.querySelector<HTMLElement>('.print-only')
+      if (!printContainer) return
+      const rectoEl = printContainer.querySelector<HTMLElement>('.print-page-recto')
+      const versoEl = printContainer.querySelector<HTMLElement>('.print-page-verso')
+
+      // Rendre visible hors-écran avec les dimensions d'impression pour mesurer
+      printContainer.style.cssText = 'display:block;position:fixed;top:-10000px;left:0;'
+      if (rectoEl) rectoEl.style.cssText = 'width:210mm;height:297mm;overflow:hidden;position:relative;'
+      if (versoEl) versoEl.style.cssText = 'width:210mm;height:297mm;overflow:hidden;position:relative;'
+      printContainer.getBoundingClientRect() // force reflow
+
+      printContainer.querySelectorAll<HTMLElement>('.tdr-field').forEach(el => {
+        // Recalcule le line-height des textareas pour les dimensions d'impression (297mm)
+        if (el.tagName === 'TEXTAREA') {
+          const lhPct = parseFloat((el as HTMLElement).dataset.lhPct ?? '0')
+          const ptPct = parseFloat((el as HTMLElement).dataset.ptPct ?? '0')
+          if (lhPct) el.style.lineHeight = `${(lhPct / 100 * 297).toFixed(2)}mm`
+          if (ptPct) el.style.paddingTop = `${(ptPct / 100 * 297).toFixed(2)}mm`
+        }
+
+        el.style.setProperty('font-size', `${BASE_PT}pt`, 'important')
+        const w = el.clientWidth
+        if (!w) return
+        let size = BASE_PT
+        while (el.scrollWidth > w + 1 && size > MIN_PT) {
+          size = +(size - 0.5).toFixed(1)
+          el.style.setProperty('font-size', `${size}pt`, 'important')
+        }
+        if (el.tagName === 'TEXTAREA') {
+          const h = el.clientHeight
+          if (h) {
+            while (el.scrollHeight > h + 1 && size > MIN_PT) {
+              size = +(size - 0.5).toFixed(1)
+              el.style.setProperty('font-size', `${size}pt`, 'important')
+            }
+          }
+        }
+      })
+
+      // Recalcule le transform portrait : scale uniquement si les tx/ty sont d'anciennes valeurs pixels
+      printContainer.querySelectorAll<HTMLElement>('.portrait-img').forEach(el => {
+        const s  = parseFloat(el.dataset.scale ?? '1') || 1
+        const tx = parseFloat(el.dataset.tx ?? '0')
+        const ty = parseFloat(el.dataset.ty ?? '0')
+        const safeTx = Math.abs(tx) > 3 ? 0 : tx
+        const safeTy = Math.abs(ty) > 3 ? 0 : ty
+        el.style.setProperty('transform', `scale(${s}) translate(${safeTx / s * 100}%, ${safeTy / s * 100}%)`, 'important')
+      })
+
+      // Restaurer — le CSS @media print prendra le relais
+      printContainer.style.cssText = ''
+      if (rectoEl) rectoEl.style.cssText = ''
+      if (versoEl) versoEl.style.cssText = ''
+    }
+    window.addEventListener('beforeprint', before)
+    return () => window.removeEventListener('beforeprint', before)
+  }, [])
 
   useEffect(() => {
     const onResize = () => setScreenWidth(window.innerWidth)
@@ -368,35 +430,40 @@ function AppContent() {
     setSheetPage('recto')
   }
 
-  // Conteneur d'export PDF (recto/verso/voies/compagnons) : hors écran mais toujours monté avec une
-  // vraie mise en page (pas display:none), html2canvas ayant besoin de dimensions réelles pour capturer
-  // — voir exportFichePdf.ts. Provider isolé à false : sinon les pastilles 🖨/🚫 du mode « préparer
-  // l'export » (qui vaut forcément true ici, seule condition d'affichage du bouton) apparaîtraient dans
-  // le PDF, html2canvas capturant le DOM tel quel sans notion de média impression.
-  // fieldPositions/sheetImage doivent être passés ici aussi, sinon l'export ignore tout le calibrage —
-  // et depuis que les champs portent une page, un champ déplacé apparaîtrait sur sa fiche d'origine au
-  // lieu de celle où il a été posé.
-  const pdfExportContainer = (
-    <div ref={pdfExportRef} className="pdf-export no-print"
-      style={{ position: 'fixed', top: 0, left: -99999, '--zoom-scale': zoomScaleExport, '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
+  const printContainer = (
+    <div className="print-only" style={{ '--portrait-scale': character.portraitScale ?? 1 } as React.CSSProperties}>
+      {/* fieldPositions/sheetImage doivent être passés ici aussi, sinon l'impression ignore tout le
+          calibrage — et depuis que les champs portent une page, un champ déplacé s'imprimerait sur
+          sa fiche d'origine au lieu de celle où il a été posé. */}
+      <div className="print-page-recto">
+        <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
+      </div>
+      <div className="print-page-verso">
+        <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
+      </div>
+      <div className="print-page-voies">
+        <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
+          fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
+      </div>
+    </div>
+  )
+
+  // Fiches compagnons : hors du print-only ci-dessus, l'impression native (@page/window.print) restant
+  // cassée sur Windows et Linux (voir exportCompagnonsPdf.ts) — export PDF par capture d'image à la
+  // place. Conteneur toujours monté (hors écran plutôt que display:none, html2canvas a besoin d'une
+  // mise en page réelle pour capturer). Provider isolé à false : sinon les pastilles 🖨/🚫 du mode
+  // « préparer l'impression » (qui vaut forcément true ici, seule condition d'affichage du bouton
+  // d'export) apparaîtraient dans le PDF, html2canvas capturant le DOM tel quel sans notion de média
+  // impression. --zoom-scale : voir la note plus haut sur zoomScaleExport.
+  const compagnonsExportContainer = showCompagnonsTab && (
+    <div ref={compagnonsExportRef} className="pdf-export no-print"
+      style={{ position: 'fixed', top: 0, left: -99999, '--zoom-scale': zoomScaleExport } as React.CSSProperties}>
       <ModeImpressionContext.Provider value={false}>
         <PdfExportContext.Provider value={true}>
-          <div className="print-page-recto">
-            <CharacterSheetRecto character={character} onChange={() => {}} activeStep={-1}
-              fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
-          </div>
-          <div className="print-page-verso">
-            <CharacterSheetVerso character={character} onChange={() => {}} activeStep={-1}
-              fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
-          </div>
-          <div className="print-page-voies">
-            <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
-              fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
-          </div>
-          {showCompagnonsTab && (
-            <CharacterSheetCompagnons character={character} onChange={() => {}}
-              fieldPositions={fieldPositions} toutesLesPages />
-          )}
+          <CharacterSheetCompagnons character={character} onChange={() => {}}
+            fieldPositions={fieldPositions} toutesLesPages />
         </PdfExportContext.Provider>
       </ModeImpressionContext.Provider>
     </div>
@@ -615,7 +682,8 @@ function AppContent() {
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-        {pdfExportContainer}
+        {printContainer}
+        {compagnonsExportContainer}
 
         {/* Zone de contenu — Fiche et Création/Jeu restent montés (display seul change) pour ne pas perdre l'état du mode de jeu en changeant d'onglet */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -811,12 +879,19 @@ function AppContent() {
           <span style={{ fontSize: 13, color: 'rgba(245,236,215,0.75)' }}>
             {t('impression.consigne')}
           </span>
-          <button onClick={lancerExportPDF} disabled={exportingPdf}
-            style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700,
-              cursor: exportingPdf ? 'wait' : 'pointer', opacity: exportingPdf ? 0.6 : 1,
+          <button onClick={() => { document.body.removeAttribute('data-print'); window.print() }}
+            style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
-            {exportingPdf ? t('impression.exportEnCours') : t('impression.lancer')}
+            {t('impression.lancer')}
           </button>
+          {showCompagnonsTab && (
+            <button onClick={lancerExportCompagnons} disabled={exportingCompagnons}
+              style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700,
+                cursor: exportingCompagnons ? 'wait' : 'pointer', opacity: exportingCompagnons ? 0.6 : 1,
+                border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
+              {exportingCompagnons ? t('impression.exportCompagnonsEnCours') : t('impression.exportCompagnons')}
+            </button>
+          )}
           <button onClick={() => setModeImpression(false)}
             style={{ padding: '5px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
               border: '1px solid rgba(245,236,215,0.2)', background: 'transparent', color: 'rgba(245,236,215,0.6)', fontFamily: 'inherit' }}>
@@ -825,7 +900,8 @@ function AppContent() {
         </div>
       )}
 
-      {pdfExportContainer}
+      {printContainer}
+      {compagnonsExportContainer}
 
       {import.meta.env.DEV && (
         <div style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 9999, background: 'rgba(0,0,0,0.75)', color: 'rgba(201,168,76,0.9)', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 4, pointerEvents: 'none' }}>
