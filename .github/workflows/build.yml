@@ -179,6 +179,29 @@ jobs:
       - name: Init Android project
         run: npx @tauri-apps/cli@^2 android init
 
+      # Depuis Android 9 (API 28), le trafic non chiffré (ws://, http://) est bloqué par défaut par le
+      # système au niveau de la WebView de l'app — silencieusement, sans erreur visible. Ça n'affecte pas
+      # la découverte réseau (socket UDP brute côté Rust, hors du contrôle de cette politique), donc la
+      # découverte par code de partie fonctionne mais la connexion WebSocket qui suit échoue juste après
+      # (voir reseauProtocole.ts/useReseauClient.ts) — symptôme observé : ligne de découverte OK dans le
+      # journal MJ, mais le mobile ne se dit jamais connecté. Le projet Android est régénéré à chaque run
+      # (jamais committé, voir l'étape "Init Android project" ci-dessus) : pas de manifeste persistant à
+      # éditer une fois pour toutes, donc on le patche ici après génération, avant le build.
+      - name: Allow local network (cleartext) traffic
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = 'src-tauri/gen/android/app/src/main/AndroidManifest.xml';
+            let m = fs.readFileSync(path, 'utf8');
+            if (!m.includes('usesCleartextTraffic')) {
+              m = m.replace('<application', '<application\n        android:usesCleartextTraffic=\"true\"');
+              fs.writeFileSync(path, m);
+              console.log('Patched AndroidManifest.xml: usesCleartextTraffic=true');
+            } else {
+              console.log('usesCleartextTraffic already present, nothing to do');
+            }
+          "
+
       - name: Generate icons
         run: npx @tauri-apps/cli@^2 icon src-tauri/icon-manifest.json
 

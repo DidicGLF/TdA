@@ -1,4 +1,5 @@
 import type { Character } from '../types/character'
+import type { ObjetMagiqueEntry } from '../types/gameData'
 import { empreinte } from './empreinte'
 
 // Petit hash déterministe (djb2) d'une chaîne — empreinte() renvoie une sérialisation JSON canonique
@@ -63,6 +64,15 @@ export type MessageReseau =
   // lui-même) : image affichée en plein écran dès réception côté joueur (voir imageAffichee dans
   // useReseauClient.ts). dataUrl déjà compressée (compresserImage, même réglage que les portraits).
   | { type: 'image-mj'; dataUrl: string }
+  // MJ → un ou plusieurs joueurs (même diffusion ciblée/à tous que 'image-mj', choisie au niveau du
+  // transport côté MJ) : objet magique transmis tel quel — même forme JSON que l'export/import fichier
+  // existant (voir exporterObjet dans ObjetMagiqueDetail.tsx et ressembleAObjetMagique dans
+  // importTypage.ts), juste transporté par WebSocket plutôt que par un fichier glissé-déposé. Côté
+  // joueur, fusionné dans son catalogue perso ET ajouté à ses objets possédés directement (voir
+  // gererObjetMagiqueRecuRef dans GameModePanel.tsx) — contrairement à un import fichier classique qui
+  // ne fait qu'alimenter le catalogue, recevoir un objet en Mode de jeu doit se traduire immédiatement
+  // par "je l'ai" sans étape manuelle supplémentaire dans EquipementModal.
+  | { type: 'objet-magique-mj'; objet: ObjetMagiqueEntry }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -86,7 +96,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -98,4 +108,7 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   messageMJ: 'rgba(201,168,76,0.95)',      // or — message privé du MJ, doit se démarquer du reste
   messageJoueur: 'rgba(120,210,220,0.95)', // turquoise — réponse d'un joueur, distincte de tout le reste
   imageMJ: 'rgba(201,168,76,0.95)',        // or — même famille que messageMJ, distinguée par l'icône 🖼
+  // Même violet que l'onglet/les boutons "Objets magiques" ailleurs dans l'app (EquipementModal.tsx),
+  // pour rester reconnaissable d'un coup d'œil comme la même famille de fonctionnalité.
+  objetMagique: 'rgba(180,130,255,0.95)',
 }

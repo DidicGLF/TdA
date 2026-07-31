@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
 type CharacterPatch = Partial<Character>
-import type { DescMap, Grant } from '../../types/gameData'
+import type { DescMap, Grant, ObjetMagiqueEntry } from '../../types/gameData'
 import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula, computeAvantages } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
@@ -122,6 +122,10 @@ interface Props {
   character: Character
   descriptions: DescMap
   onChange: (patch: CharacterPatch) => void
+  // Réception réseau d'un objet magique (voir 'objet-magique-mj') : géré par l'appelant (App.tsx), PAS
+  // via `onChange` — `character` ici est la copie de session du Mode de jeu (jetée à la fermeture, voir
+  // App.tsx::closeGameMode), alors qu'un objet reçu doit rester acquis sur la vraie fiche.
+  onObjetMagiqueRecu?: (objet: ObjetMagiqueEntry) => void
   onClose: () => void
   screenWidth: number
 }
@@ -144,7 +148,7 @@ function boostKey(ab: { voieNom: string; rangIdx: number; grantIdx: number }): s
   return `ab-${ab.voieNom}-${ab.rangIdx}-${ab.grantIdx}`
 }
 
-export default function GameModePanel({ character, descriptions, onChange, onClose, screenWidth }: Props) {
+export default function GameModePanel({ character, descriptions, onChange, onObjetMagiqueRecu, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
   const { armes, armures } = useGameData()
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
@@ -190,7 +194,12 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
   // (voir plus bas) et lue uniquement depuis le callback réseau, jamais pendant le rendu.
   const gererDegatsRecusRef = useRef<(d: DegatsRecus) => void>(() => {})
   const onDegatsRecus = useCallback((d: DegatsRecus) => gererDegatsRecusRef.current(d), [])
-  const reseau = useReseauClient(onDegatsRecus)
+  // Même indirection par ref que gererDegatsRecusRef juste au-dessus (voir sa note) : le prop
+  // onObjetMagiqueRecu (fourni par App.tsx) change de référence à chaque rendu, alors que le callback
+  // passé à useReseauClient doit rester stable (useCallback à deps vides).
+  const gererObjetMagiqueRecuRef = useRef<(o: ObjetMagiqueEntry) => void>(() => {})
+  const onObjetMagiqueRecuReseau = useCallback((o: ObjetMagiqueEntry) => gererObjetMagiqueRecuRef.current(o), [])
+  const reseau = useReseauClient(onDegatsRecus, onObjetMagiqueRecuReseau)
   // Marque le message/l'image du MJ comme lu(e) dès que le panneau est ouvert — à l'ouverture, mais
   // aussi si un nouveau message arrive alors que le panneau est DÉJÀ ouvert (sinon messageNonLu repasse
   // à true sans que ce useEffect ne se redéclenche, puisque reseauPanelOuvert lui ne change pas : le
@@ -825,6 +834,15 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
       }
       appliquerDegats(typeDegats, montant, t('gameMode.reseau.degatsRecusLabel'))
     }
+  })
+
+  // Réception réseau d'un objet magique envoyé par le MJ (voir 'objet-magique-mj' dans
+  // reseauProtocole.ts) — délégué à onObjetMagiqueRecu (App.tsx), PAS géré ici via onChange : `character`
+  // dans ce composant est la copie de session du Mode de jeu, jetée à la fermeture (voir la note sur
+  // onObjetMagiqueRecu dans Props ci-dessus) — un objet reçu doit au contraire rester acquis sur la vraie
+  // fiche, donc écrire directement sur `character`/setObjetsMagiques côté App.tsx.
+  useEffect(() => {
+    gererObjetMagiqueRecuRef.current = objet => onObjetMagiqueRecu?.(objet)
   })
 
   const handleTakeDamage = (type: string) => {

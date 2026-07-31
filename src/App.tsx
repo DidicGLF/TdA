@@ -27,6 +27,8 @@ import NotesGraph from './components/NotesGraph'
 import SaveStatusIndicator from './components/SaveStatusIndicator'
 import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
+import type { ObjetMagiqueEntry } from './types/gameData'
+import { patchPossessionObjetMagique } from './utils/objetsMagiquesPerso'
 import { getCompagnonsDisponibles } from './utils/compagnons'
 import { ModeImpressionContext } from './hooks/useChampsFiche'
 import { saveDataFileToBundle } from './utils/tauriStorage'
@@ -54,7 +56,7 @@ function AppContent() {
   const { languages } = useLocaleContext()
   const {
     data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages,
-    notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages,
+    notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages, setObjetsMagiques,
   } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
@@ -140,6 +142,24 @@ function AppContent() {
   const openGameMode = () => setGameCharacter(JSON.parse(JSON.stringify(character)))
   const closeGameMode = () => { setShowGameMode(false); setGameCharacter(null) }
   const gameOnChange = (patch: Partial<Character>) => setGameCharacter(prev => prev ? { ...prev, ...patch } : prev)
+  // Réception réseau d'un objet magique (voir 'objet-magique-mj' dans reseauProtocole.ts et
+  // GameModePanel.tsx) : DOIT écrire sur `character` (setCharacter), pas seulement sur `gameCharacter`
+  // comme gameOnChange — sinon l'objet reçu disparaît en fermant le Mode de jeu (gameCharacter est jeté,
+  // voir la note ci-dessus), alors qu'un objet transmis par le MJ doit rester acquis. Répercuté aussi sur
+  // gameCharacter s'il existe, pour que le joueur le voie tout de suite sans avoir à rouvrir le Mode de
+  // jeu. Chaque objet a son propre calcul de patch (armes/armures synthétisées) car `character` et
+  // `gameCharacter` peuvent avoir divergé pendant la session (armes déjà changées en jeu).
+  const recevoirObjetMagiqueReseau = (objet: ObjetMagiqueEntry) => {
+    setObjetsMagiques(prev => [...prev.filter(o => o.id !== objet.id), objet])
+    setCharacter(prev => {
+      if ((prev.objetsMagiquesPossedes ?? []).includes(objet.id)) return prev
+      return { ...prev, objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id], ...patchPossessionObjetMagique(prev, objet, true) }
+    })
+    setGameCharacter(prev => {
+      if (!prev || (prev.objetsMagiquesPossedes ?? []).includes(objet.id)) return prev
+      return { ...prev, objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id], ...patchPossessionObjetMagique(prev, objet, true) }
+    })
+  }
   const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [ficheLocked, setFicheLocked] = useState(true)
@@ -703,7 +723,7 @@ function AppContent() {
 
           <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
             {showGameMode ? (
-              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
+              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
             ) : (
               <>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
@@ -1326,7 +1346,7 @@ function AppContent() {
             />
           </>
         ) : showGameMode ? (
-          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onClose={closeGameMode} screenWidth={screenWidth} />
+          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>

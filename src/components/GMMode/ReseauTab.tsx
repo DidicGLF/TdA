@@ -6,6 +6,7 @@ import type { EvenementReseau } from '../../utils/reseau'
 import { decoderMessage, encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 import type { CategorieJournal } from '../../utils/reseauProtocole'
 import { compresserImage } from '../../utils/imageStore'
+import { useGameData } from '../../context/GameDataContext'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -46,6 +47,7 @@ interface Props {
 // la découverte réseau côté joueur et l'échange de jets/dégâts.
 export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, setClientsConnectes }: Props) {
   const { t } = useTranslation()
+  const { objetsMagiques } = useGameData()
   const [demarre, setDemarre] = useState(false)
   const [port, setPort] = useState<number | null>(null)
   const [code, setCode] = useState<string | null>(null)
@@ -83,6 +85,17 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
       else envoyerAClientReseau(cible, contenu)
     }
     reader.readAsDataURL(file)
+  }
+
+  // Envoi d'un objet magique (voir 'objet-magique-mj' dans reseauProtocole.ts) — même choix de transport
+  // que l'image (à tous vs ciblé) selon d'où l'appel vient, le catalogue objetsMagiques est déjà le
+  // même que celui utilisé par ObjetsMagiquesTab/EquipementModal (livré + perso fusionnés).
+  const envoyerObjetMagique = (cible: number | 'tous', objetId: string) => {
+    const objet = objetsMagiques.find(o => o.id === objetId)
+    if (!objet) return
+    const contenu = encoderMessage({ type: 'objet-magique-mj', objet })
+    if (cible === 'tous') envoyerATousReseau(contenu)
+    else envoyerAClientReseau(cible, contenu)
   }
 
   useEffect(() => {
@@ -213,7 +226,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       onChange={e => setMessageATous(e.target.value)}
                       placeholder={t('gmMode.reseau.envoyerATousPlaceholder')}
                       style={{
-                        flex: 1, padding: '6px 10px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,
+                        flex: '1 1 auto', minWidth: 0, padding: '6px 10px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,
                         background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 15,
                       }}
                     />
@@ -236,6 +249,20 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                     >
                       🖼
                     </button>
+                    {objetsMagiques.length > 0 && (
+                      <select
+                        value=""
+                        onChange={e => { if (e.target.value) envoyerObjetMagique('tous', e.target.value) }}
+                        title={t('gmMode.reseau.envoyerObjetATousTitle')}
+                        style={{
+                          flex: '0 0 auto', width: 150, minWidth: 0, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                          border: '1px solid rgba(180,130,255,0.4)', background: 'rgba(180,130,255,0.12)', color: 'rgba(180,130,255,0.9)',
+                        }}
+                      >
+                        <option value="">📦 {t('gmMode.reseau.envoyerObjetPlaceholder')}</option>
+                        {objetsMagiques.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
+                      </select>
+                    )}
                   </div>
                 </>
               )}
@@ -311,6 +338,20 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                         >
                           🖼
                         </button>
+                        {objetsMagiques.length > 0 && (
+                          <select
+                            value=""
+                            onChange={e => { if (e.target.value) envoyerObjetMagique(c.connexionId, e.target.value) }}
+                            title={t('gmMode.reseau.envoyerObjetPriveeTitle')}
+                            style={{
+                              flex: '0 0 auto', width: 40, minWidth: 0, padding: '3px 2px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                              border: '1px solid rgba(180,130,255,0.4)', background: 'rgba(180,130,255,0.12)', color: 'rgba(180,130,255,0.9)',
+                            }}
+                          >
+                            <option value="">📦</option>
+                            {objetsMagiques.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
+                          </select>
+                        )}
                       </div>
                       <button
                         onClick={() => deconnecterClientReseau(c.connexionId)}

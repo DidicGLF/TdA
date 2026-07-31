@@ -4,6 +4,7 @@ import { PORT_RESEAU } from '../utils/reseau'
 import { encoderMessage, decoderMessage, idPJ } from '../utils/reseauProtocole'
 import type { CategorieJournal } from '../utils/reseauProtocole'
 import type { Character } from '../types/character'
+import type { ObjetMagiqueEntry } from '../types/gameData'
 
 // Client réseau côté joueur (Mode de jeu) — se connecte au serveur MJ (voir src-tauri/src/reseau.rs et
 // src/components/GMMode/CombatTab.tsx). Un client WebSocket ne nécessite aucun code Rust/Tauri : la CSP
@@ -26,7 +27,7 @@ export interface DegatsRecus {
 // d'état, ce que les règles des Hooks découragent. Le composant appelant garde sa propre logique
 // d'application des dégâts à jour dans une ref (voir GameModePanel.tsx) pour ne pas avoir à la définir
 // avant l'appel à ce hook.
-export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
+export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void, onObjetMagiqueRecu?: (o: ObjetMagiqueEntry) => void) {
   const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
   const [journal, setJournal] = useState<LigneJournalReseau[]>([])
@@ -44,6 +45,8 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
   const prochainId = useRef(0)
   const onDegatsRecusRef = useRef(onDegatsRecus)
   useEffect(() => { onDegatsRecusRef.current = onDegatsRecus })
+  const onObjetMagiqueRecuRef = useRef(onObjetMagiqueRecu)
+  useEffect(() => { onObjetMagiqueRecuRef.current = onObjetMagiqueRecu })
   // Mémorisé pour pouvoir se réidentifier sur demande (voir 'qui-etes-vous' ci-dessous) sans redemander
   // le personnage à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet
   // qui démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
@@ -92,6 +95,10 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void) {
         if (entries.length >= 30) delete imagesRecuesRef.current[Number(entries[0][0])]
         imagesRecuesRef.current[id] = message.dataUrl
         setImageAffichee(message.dataUrl)
+        setMessageNonLu(true)
+      } else if (message?.type === 'objet-magique-mj') {
+        onObjetMagiqueRecuRef.current?.(message.objet)
+        ajouterJournal(t('gameMode.reseau.objetMagiqueMJJournal', { nom: message.objet.nom }), 'objetMagique')
         setMessageNonLu(true)
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,

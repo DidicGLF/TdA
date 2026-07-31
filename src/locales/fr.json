@@ -406,6 +406,7 @@
       "armesLabel": "Armes",
       "armuresLabel": "Armures",
       "objetsMagiquesLabel": "Objets magiques",
+      "emplacementObjetMagique": "Objet magique équipé",
       "objetEquipe": "Équipé",
       "objetNonEquipe": "Possédé, non équipé",
       "deuxMains": "2 mains",
@@ -1023,6 +1024,7 @@
       "envoyer": "Envoyer",
       "messagePriveJournal": "🔒 Message du MJ : {{texte}}",
       "imageMJJournal": "🖼 Image reçue du MJ — cliquer pour la revoir",
+      "objetMagiqueMJJournal": "📦 Objet magique reçu du MJ : {{nom}}",
       "fermerImageTitle": "Fermer",
       "journalVide": "Aucun message reçu pour l'instant."
     },
@@ -1438,6 +1440,9 @@
       "envoyerMessagePriveTitle": "Envoyer en privé à ce joueur (invisible des autres)",
       "envoyerImagePriveeTitle": "Envoyer une image en privé à ce joueur (invisible des autres)",
       "envoyerImageATousTitle": "Envoyer une image à tous les joueurs connectés",
+      "envoyerObjetPlaceholder": "Objet magique…",
+      "envoyerObjetATousTitle": "Envoyer un objet magique à tous les joueurs connectés",
+      "envoyerObjetPriveeTitle": "Envoyer un objet magique à ce joueur",
       "deconnecterJoueur": "Déconnecter"
     },
     "batailleMasse": {

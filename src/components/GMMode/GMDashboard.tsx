@@ -139,7 +139,7 @@ export default function GMDashboard({ onBack }: Props) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, overflowX: 'auto' }}>
-        {(['bestiaire', 'adversite', 'bataille', 'objetsMagiques', 'reseau', 'notes'] as Tab[]).map(tb => (
+        {(['bestiaire', 'adversite', 'bataille', 'objetsMagiques', 'notes', 'reseau'] as Tab[]).map(tb => (
           <button key={tb} onClick={() => setTab(tb)} style={{
             padding: '6px 16px', borderRadius: '4px 4px 0 0',
             border: '1px solid rgba(201,168,76,0.4)',
