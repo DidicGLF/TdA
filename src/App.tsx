@@ -138,11 +138,18 @@ function AppContent() {
   // dépend pas d'un pourcentage de la fenêtre — reprendre la même relation (taille_px = X/60 * panneau_px)
   // donne : zoom-scale = (panneau_px / fenêtre_px) * (100/60). Le premier essai avait oublié ce facteur
   // 100/60 (≈1,67), rendant tout ~40% de sa taille voulue (texte anormalement petit/mal positionné).
+  // Correction empirique (0.88) constatée sur un export réel (fiche-beldin.pdf, inspecté directement) :
+  // les champs calibrés tout près d'une ligne/bordure décorative (titre de rang sous sa case à cocher,
+  // trait psychologique sous le séparateur, nom de compagnon dans son cartouche) touchaient légèrement
+  // ce qui les surplombe — texte un peu trop grand par rapport à la référence de calibrage, malgré une
+  // dérivation qui tenait pourtant compte du facteur 100/60. À réévaluer si un futur export montre
+  // encore ce chevauchement (remonter la valeur) ou, à l'inverse, un texte visiblement trop petit
+  // ailleurs (la redescendre) — ajuster en inspectant un PDF réel (pdftoppm + Read), pas en déduisant.
   const [zoomScaleExport, setZoomScaleExport] = useState(1)
   useEffect(() => {
     const update = () => {
       const pageMmEnPx = 210 * 96 / 25.4 // 210mm en px CSS (96dpi, référence du navigateur pour les unités mm)
-      setZoomScaleExport((pageMmEnPx / window.innerWidth) * (100 / 60))
+      setZoomScaleExport((pageMmEnPx / window.innerWidth) * (100 / 60) * 0.88)
     }
     update()
     window.addEventListener('resize', update)
