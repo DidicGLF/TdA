@@ -136,12 +136,11 @@ body {
   display: none !important;
 }
 
-/* Pas d'override de taille ici (contrairement à l'ancien CSS d'impression native) : SheetField/
-   SheetTextarea calculent déjà eux-mêmes une taille de police qui tient dans leur boîte (calc(vw *
-   var(--zoom-scale))) — un forçage uniforme ici (ex. 12pt partout) écraserait ce calcul champ par
-   champ et redonnerait exactement le bug qu'il est censé éviter (texte qui déborde/est tronqué). Voir
-   --zoom-scale posé sur .pdf-export dans App.tsx : c'est lui qui rend ce calcul vw correct hors d'un
-   vrai contexte d'impression navigateur. */
+/* Pas de forçage de taille ICI en CSS (contrairement à l'ancien CSS d'impression native, ex. 12pt
+   partout) : ça écraserait le calcul déjà fait champ par champ (soit par SheetField/SheetTextarea en
+   vw*var(--zoom-scale), soit par le forçage JS ciblé de exportFichePdf.ts) et redonnerait le bug que
+   l'un ou l'autre vise à éviter (texte qui déborde/est tronqué). Voir --zoom-scale posé sur .pdf-export
+   dans App.tsx (nécessaire aux éléments hors .tdr-field : curseurs, cases à cocher, descriptions…). */
 
 /* Texte-repère affiché dans les champs vides pendant le calibrage : il matérialise l'emplacement et
    la ligne de base du texte, un cadre en pointillés seul étant difficile à positionner au pixel près.

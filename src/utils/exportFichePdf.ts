@@ -4,12 +4,43 @@ import jsPDF from 'jspdf'
 const A4_LARGEUR_MM = 210
 const A4_HAUTEUR_MM = 297
 const A5_HAUTEUR_MM = 148
+const BASE_PT = 12
+const MIN_PT = 5
+
+// Filet de sécurité pour la taille de police des champs (.tdr-field) : SheetField/SheetTextarea la
+// calculent déjà eux-mêmes en vw*var(--zoom-scale) (voir .pdf-export dans App.tsx pour la valeur posée
+// ici), mais cette formule est plus délicate à vérifier sans accès visuel direct au résultat — un forçage
+// en pt, basé sur la géométrie RÉELLE mesurée (clientWidth/scrollWidth, indépendante de --zoom-scale),
+// reprend le mécanisme déjà éprouvé par l'ancienne impression native (window.print/beforeprint, qui a
+// fonctionné correctement) plutôt que de dépendre uniquement d'une formule vw pas encore confirmée en
+// conditions réelles. N'ajuste PAS l'interligne/padding-top des zones de texte : ceux-ci sont déjà
+// calculés par SheetTextarea à partir de la hauteur RÉELLE mesurée du conteneur (indépendante de
+// --zoom-scale), donc déjà fiables.
+function ajusterPoliceChamps(container: HTMLElement) {
+  container.querySelectorAll<HTMLElement>('.tdr-field').forEach(el => {
+    el.style.setProperty('font-size', `${BASE_PT}pt`, 'important')
+    const w = el.clientWidth
+    if (!w) return
+    let size = BASE_PT
+    while (el.scrollWidth > w + 1 && size > MIN_PT) {
+      size = +(size - 0.5).toFixed(1)
+      el.style.setProperty('font-size', `${size}pt`, 'important')
+    }
+    if (el.tagName === 'TEXTAREA') {
+      const h = el.clientHeight
+      if (h) {
+        while (el.scrollHeight > h + 1 && size > MIN_PT) {
+          size = +(size - 0.5).toFixed(1)
+          el.style.setProperty('font-size', `${size}pt`, 'important')
+        }
+      }
+    }
+  })
+}
 
 // Filet de rattrapage pour d'anciens personnages dont le recadrage de portrait (tx/ty) a été enregistré
 // en pixels bruts par une version antérieure du pan/zoom (aujourd'hui en pourcentage) — une valeur aussi
-// grande produirait une image visiblement décalée dans le PDF. Le reste du dimensionnement (police,
-// interligne…) n'a pas besoin d'équivalent ici : SheetField/SheetTextarea le calculent déjà eux-mêmes
-// correctement dès lors que --zoom-scale est juste (voir .pdf-export dans App.tsx).
+// grande produirait une image visiblement décalée dans le PDF.
 function corrigerPortraitsLegacy(container: HTMLElement) {
   container.querySelectorAll<HTMLElement>('.portrait-img').forEach(el => {
     const s  = parseFloat(el.dataset.scale ?? '1') || 1
@@ -36,9 +67,10 @@ function sluggifier(nom: string): string {
 // chose. Contrepartie : texte non sélectionnable dans le PDF (rendu en image) — jugé acceptable pour
 // une fiche destinée à être imprimée/remplie à la main plutôt que lue à l'écran.
 export async function exporterFichePDF(container: HTMLElement, nomPersonnage: string): Promise<void> {
+  ajusterPoliceChamps(container)
   corrigerPortraitsLegacy(container)
-  // Laisse le navigateur appliquer le transform qu'on vient de poser avant de capturer — sinon
-  // html2canvas peut lire une mise en page pas encore repeinte.
+  // Laisse le navigateur appliquer les styles qu'on vient de poser avant de capturer — sinon html2canvas
+  // peut lire une mise en page pas encore repeinte.
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })

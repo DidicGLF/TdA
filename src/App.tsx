@@ -127,18 +127,22 @@ function AppContent() {
     }
   }
   // Beaucoup de champs (SheetField, SheetTextarea, curseurs, cases à cocher…) dimensionnent leur police
-  // en vw multiplié par --zoom-scale (voir le panneau de fiche desktop plus bas) : cette variable n'est
-  // normalement posée que sur CE panneau, absent du conteneur d'export (hors écran, hors de son arbre)
-  // — sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1% de la fenêtre du navigateur au
-  // lieu de 1% de la largeur réelle de la page A4 capturée, faussant toutes les tailles calculées en
-  // vw (texte, curseurs, boutons…). Calculée dès le tout premier rendu (état React, pas une mutation
-  // DOM après coup) pour que les useLayoutEffect de ces composants voient la bonne valeur dès leur
-  // tout premier passage, plutôt que de figer une décision de taille prise avec la mauvaise échelle.
+  // en vw multiplié par --zoom-scale (voir le panneau de fiche desktop plus bas, --zoom-scale: zoom/60)
+  // — cette variable n'est normalement posée que sur CE panneau, absent du conteneur d'export (hors
+  // écran, hors de son arbre). Sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1% de la
+  // fenêtre du navigateur au lieu de 1% de la largeur réelle de la page A4 capturée.
+  // La formule zoom/60 est calibrée pour donner une taille proportionnelle à la largeur du PANNEAU (pas
+  // de la fenêtre) : à zoom%, panneau_px ≈ zoom/100 * fenêtre_px, donc taille_px = Xvw * zoom/60 =
+  // X/100 * fenêtre_px * zoom/60 = X/60 * panneau_px (indépendant de zoom% et de la largeur de fenêtre,
+  // exactement le but recherché). Pour le conteneur d'export, panneau_px est fixe (210mm en px) et ne
+  // dépend pas d'un pourcentage de la fenêtre — reprendre la même relation (taille_px = X/60 * panneau_px)
+  // donne : zoom-scale = (panneau_px / fenêtre_px) * (100/60). Le premier essai avait oublié ce facteur
+  // 100/60 (≈1,67), rendant tout ~40% de sa taille voulue (texte anormalement petit/mal positionné).
   const [zoomScaleExport, setZoomScaleExport] = useState(1)
   useEffect(() => {
     const update = () => {
       const pageMmEnPx = 210 * 96 / 25.4 // 210mm en px CSS (96dpi, référence du navigateur pour les unités mm)
-      setZoomScaleExport(pageMmEnPx / window.innerWidth)
+      setZoomScaleExport((pageMmEnPx / window.innerWidth) * (100 / 60))
     }
     update()
     window.addEventListener('resize', update)
