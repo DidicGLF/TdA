@@ -565,6 +565,21 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         // "hors catalogue" (voir patchPossessionObjetMagique, partagée avec la réception réseau).
         ...(objet ? patchPossessionObjetMagique(character, objet, !enPossession) : {}),
       }
+      // Un objet magique possédé est un objet comme un autre : il doit apparaître dans le texte libre
+      // d'inventaire (appendInv/removeInv, déjà utilisés par addArme/removeArme) — pas seulement les
+      // objets de slot arme/armure/bouclier qui, eux, ont en plus un emplacement dédié (voir
+      // patchPossessionObjetMagique ci-dessus) ; un focalisateur/accessoire n'a AUCUN autre moyen
+      // d'apparaître sur la fiche une fois possédé.
+      if (objet) {
+        if (enPossession) {
+          const stripped = stripExposants(objet.nom)
+          const estSlotte = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
+            || character.armuresEquipees.some(a => a.nom === objet.nom && a.equipe)
+          patch.inventaire = removeInv(estSlotte ? `${stripped} (Equip)` : stripped)
+        } else {
+          patch.inventaire = appendInv(stripExposants(objet.nom))
+        }
+      }
       onChange(patch)
     }
     const toggleEquipe = (id: string) => {

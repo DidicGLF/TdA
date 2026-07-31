@@ -151,13 +151,29 @@ function AppContent() {
   // `gameCharacter` peuvent avoir divergé pendant la session (armes déjà changées en jeu).
   const recevoirObjetMagiqueReseau = (objet: ObjetMagiqueEntry) => {
     setObjetsMagiques(prev => [...prev.filter(o => o.id !== objet.id), objet])
+    // Un objet magique reçu est un objet comme un autre : apparaît dans le texte libre d'inventaire
+    // (même règle que togglePossede dans EquipementModal.tsx) — toujours un gain ici (jamais de retrait,
+    // le réseau ne fait que transmettre), donc toujours la branche "append", jamais "remove".
+    const nomStripped = objet.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
     setCharacter(prev => {
       if ((prev.objetsMagiquesPossedes ?? []).includes(objet.id)) return prev
-      return { ...prev, objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id], ...patchPossessionObjetMagique(prev, objet, true) }
+      const inv = prev.inventaire.trim()
+      return {
+        ...prev,
+        objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id],
+        inventaire: inv ? `${inv}, ${nomStripped}` : nomStripped,
+        ...patchPossessionObjetMagique(prev, objet, true),
+      }
     })
     setGameCharacter(prev => {
       if (!prev || (prev.objetsMagiquesPossedes ?? []).includes(objet.id)) return prev
-      return { ...prev, objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id], ...patchPossessionObjetMagique(prev, objet, true) }
+      const inv = prev.inventaire.trim()
+      return {
+        ...prev,
+        objetsMagiquesPossedes: [...(prev.objetsMagiquesPossedes ?? []), objet.id],
+        inventaire: inv ? `${inv}, ${nomStripped}` : nomStripped,
+        ...patchPossessionObjetMagique(prev, objet, true),
+      }
     })
   }
   const isAndroid = /android/i.test(navigator.userAgent)
