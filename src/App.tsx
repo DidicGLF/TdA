@@ -443,13 +443,6 @@ function AppContent() {
               <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(201,168,76,0.3)' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <button onClick={() => { setAppMode(null); setShowMobileGestion(false) }} style={{
-                padding: '14px 20px', background: 'transparent', border: 'none',
-                borderBottom: '1px solid rgba(201,168,76,0.1)',
-                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
-              }}>
-                {t('gmMode.changerMode')}
-              </button>
               <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
                 padding: '14px 20px', background: 'transparent', border: 'none',
                 borderBottom: '1px solid rgba(201,168,76,0.1)',
@@ -564,6 +557,11 @@ function AppContent() {
   // ─── Layout mobile (< 1200px) ───────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
+      <button onClick={() => setAppMode(null)} style={{
+        flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+        border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+        color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+      }}>{t('toolbar.accueil')}</button>
       {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
@@ -861,6 +859,12 @@ function AppContent() {
         style={{
           width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined,
           flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto',
+          // paddingRight : décale le contenu (bouton Gestion, bord de la fiche) de la scrollbar native,
+          // qui sinon chevauche l'un et l'autre — surtout visible avec une scrollbar "overlay" qui se
+          // dessine par-dessus le contenu au lieu de réserver sa propre largeur. Valeur au-delà de la
+          // largeur déjà élargie de la scrollbar au survol (pas juste sa forme étroite au repos), sinon
+          // le chevauchement revient dès que la souris s'en approche.
+          paddingRight: showFullRunes ? undefined : 20,
           display: 'flex', flexDirection: 'column', background: '#111',
           // Les tailles de police des champs de la feuille sont exprimées en vw (relatif à TOUTE la
           // fenêtre), pas en % de ce conteneur — dézoomer (réduire zoom%) réduit donc la largeur du
@@ -874,10 +878,21 @@ function AppContent() {
         {/* Toolbar — outer sticky shell (contenant block pour le dropdown Gestion) */}
         <div ref={gestionRef} style={{
           position: 'sticky', top: 0, zIndex: 35, background: '#111',
+          display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0 0 8px',
         }}>
+          {/* Accueil — hors de la ligne scrollable, toujours visible tout à gauche (plus dans le menu
+              Gestion : trop caché pour une action aussi fréquente que "revenir à l'accueil"). */}
+          <button onClick={() => setAppMode(null)} style={{
+            flexShrink: 0, padding: '4px 12px', borderRadius: 4,
+            border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+            whiteSpace: 'nowrap',
+          }}>
+            {t('toolbar.accueil')}
+          </button>
           {/* Inner scrollable */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
+            display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
             {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
@@ -958,15 +973,6 @@ function AppContent() {
               {t('toolbar.jouer')}
             </button>
 
-            {/* Zoom */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 4, flexShrink: 0 }}>
-              <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>−</button>
-              <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
-              <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
-            </div>
-
             {/* Bouton Gestion (dans le scroll) */}
             <button
               onClick={() => setShowGestion(g => !g)}
@@ -991,15 +997,6 @@ function AppContent() {
               borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
               minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}>
-              {/* Changer de mode */}
-              <button onClick={() => { setAppMode(null); setShowGestion(false) }} style={{
-                padding: '10px 16px', background: 'transparent', border: 'none',
-                borderBottom: '1px solid rgba(201,168,76,0.1)',
-                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
-              }}>
-                {t('gmMode.changerMode')}
-              </button>
-
               {/* Données du jeu */}
               <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
                 padding: '10px 16px', background: 'transparent', border: 'none',
@@ -1272,9 +1269,16 @@ function AppContent() {
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)
           }}
-          style={{ width: 6, flexShrink: 0, cursor: 'col-resize', background: 'rgba(201,168,76,0.2)' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.5)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.2)' }}
+          // marginLeft : dégagement par rapport à la scrollbar de la feuille (voir paddingRight du
+          // conteneur de la feuille) — réduit par rapport au premier essai (16px), trop éloigné une fois
+          // vu en place. La zone reste large (8px) pour rester facile à saisir, mais ne se dessine plus
+          // que par un trait pointillé fin en son centre plutôt que tout le bloc rempli.
+          style={{
+            width: 8, flexShrink: 0, marginLeft: 8, cursor: 'col-resize',
+            borderLeft: '1px dashed rgba(201,168,76,0.35)',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'rgba(201,168,76,0.8)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'rgba(201,168,76,0.35)' }}
         />
       <div className="no-print" style={{
         flex: 1, minWidth: 300,

@@ -229,6 +229,7 @@
     "ongletCreation": "Creation"
   },
   "toolbar": {
+    "accueil": "🏠 Home",
     "personnages": "Characters",
     "imprimer": "Print",
     "jouer": "Play",
@@ -1122,7 +1123,6 @@
   },
   "gmMode": {
     "titre": "Game Master Mode",
-    "changerMode": "⇄ Switch mode",
     "aVenir": "{{outil}} — coming soon",
     "bestiaireRecherche": "Search a creature…",
     "bestiaireTriNom": "Name",

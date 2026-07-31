@@ -229,6 +229,7 @@
     "ongletCreation": "Création"
   },
   "toolbar": {
+    "accueil": "🏠 Accueil",
     "personnages": "Personnages",
     "imprimer": "Imprimer",
     "jouer": "Jouer",
@@ -1122,7 +1123,6 @@
   },
   "gmMode": {
     "titre": "Mode Maître de Jeu",
-    "changerMode": "⇄ Changer de mode",
     "aVenir": "{{outil}} — en construction",
     "bestiaireRecherche": "Rechercher une créature…",
     "bestiaireTriNom": "Nom",
