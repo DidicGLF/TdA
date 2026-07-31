@@ -193,13 +193,17 @@ jobs:
             const fs = require('fs');
             const path = 'src-tauri/gen/android/app/src/main/AndroidManifest.xml';
             let m = fs.readFileSync(path, 'utf8');
-            if (!m.includes('usesCleartextTraffic')) {
-              m = m.replace('<application', '<application\n        android:usesCleartextTraffic=\"true\"');
-              fs.writeFileSync(path, m);
-              console.log('Patched AndroidManifest.xml: usesCleartextTraffic=true');
-            } else {
-              console.log('usesCleartextTraffic already present, nothing to do');
-            }
+            // Le gabarit Tauri peut déjà déclarer usesCleartextTraffic explicitement (souvent à 'false'
+            // par sécurité par défaut) — se contenter de vérifier sa PRÉSENCE (comme la version précédente
+            // de ce script) rate ce cas : l'attribut est bien là, mais avec la mauvaise valeur, jamais
+            // corrigée. On force donc toujours la valeur à 'true', qu'il soit déjà présent ou non.
+            const attr = /android:usesCleartextTraffic\s*=\s*\"[^\"]*\"/
+            m = attr.test(m)
+              ? m.replace(attr, 'android:usesCleartextTraffic=\"true\"')
+              : m.replace('<application', '<application\n        android:usesCleartextTraffic=\"true\"')
+            fs.writeFileSync(path, m)
+            const tag = m.match(/<application[^>]*>/)
+            console.log('AndroidManifest.xml application tag:', tag ? tag[0] : '(non trouvé !)')
           "
 
       - name: Generate icons
