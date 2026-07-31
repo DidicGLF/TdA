@@ -172,7 +172,15 @@ export default function GMDashboard({ onBack }: Props) {
                 {t('notes.graphe')}
               </div>
             </div>
-            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={gmNotes} />
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={gmNotes}
+              onSetRelation={(sourceId, targetId, type) => setGmNotes(prev => prev.map(n => n.id !== sourceId ? n : {
+                ...n,
+                relations: type
+                  ? [...(n.relations ?? []).filter(r => r.versId !== targetId), { versId: targetId, type }]
+                  : (n.relations ?? []).filter(r => r.versId !== targetId),
+                modifieLe: new Date().toISOString(),
+              }))}
+            />
           </div>
         </div>
       ) : (

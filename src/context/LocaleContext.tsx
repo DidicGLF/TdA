@@ -114,7 +114,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
         const filename = path.split('/').pop()!
         const dest = `ui/${filename}`
         const exists = await localeFileExists(dest)
-        if (!exists) {
+        // En dev (npm run tauri dev), le disque appartient au développeur qui teste ses propres
+        // changements de code, jamais à un vrai utilisateur final avec des traductions perso à préserver
+        // (celles-ci ne s'éditent que via un éventuel éditeur de traduction UI, pas en jouant) — la copie
+        // disque doit donc toujours refléter le fichier source, sinon un texte modifié dans
+        // src/locales/*.json (libellé, phrase d'aide...) reste périmé en Tauri jusqu'à suppression
+        // manuelle du fichier disque (symptôme récurrent, vu au moins deux fois avant d'être compris).
+        // Ne s'applique volontairement pas aux fichiers "content" (traductions de voies/peuples/...),
+        // que Didic édite réellement en testant l'app — les écraser perdrait ce travail.
+        if (import.meta.env.DEV) {
+          await writeLocaleFile(dest, JSON.stringify(mod.default, null, 2))
+        } else if (!exists) {
           await writeLocaleFile(dest, JSON.stringify(mod.default, null, 2))
         } else {
           // Fill in any new keys/sections added to the bundled UI file (e.g. new features),

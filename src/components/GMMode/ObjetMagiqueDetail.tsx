@@ -156,11 +156,17 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
   const prefixPuissance = t('gmMode.objetMagiqueDetail.puissance')
   const prefixPouvoir = `${t('gmMode.objetMagiqueDetail.pouvoir')}: `
 
+  // Rien dans les règles ne limite à un seul enchantement de Puissance/Pouvoir par objet (seul le
+  // plafond de niveau de magie borne le cumul) — on exclut donc seulement une éventuelle entrée de
+  // même nom (édition d'un bonus déjà posé), jamais tous les Puissance/Pouvoir existants, pour que
+  // plusieurs bonus distincts s'additionnent au lieu de se remplacer.
   const ajouterPuissance = () => {
     const niveauMagie = puissanceBonus + 1
-    if (totalActuel + niveauMagie > plafond) { avertirPlafond(); return }
     const nom = `${prefixPuissance} (${puissanceCarac} +${puissanceBonus})`
-    setEnchantements([...enchantements.filter(e => !e.nom.startsWith(prefixPuissance)), {
+    const reste = enchantements.filter(e => e.nom !== nom)
+    const resteTotal = reste.reduce((s, e) => s + e.niveauMagie, 0) + (objet.niveauMagieBase ?? 0)
+    if (resteTotal + niveauMagie > plafond) { avertirPlafond(); return }
+    setEnchantements([...reste, {
       nom, niveauMagie, effets: [{ stat: puissanceCarac, valeur: String(puissanceBonus) }],
       texte: `+${puissanceBonus} ${puissanceCarac}`,
     }])
@@ -168,10 +174,11 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
 
   const ajouterPouvoir = () => {
     if (!pouvoirNom.trim()) return
-    if (totalActuel + pouvoirNiveau > plafond) { avertirPlafond(); return }
-    setEnchantements([...enchantements.filter(e => !e.nom.startsWith(prefixPouvoir)), {
-      nom: `${prefixPouvoir}${pouvoirNom.trim()}`, niveauMagie: pouvoirNiveau, texte: pouvoirTexte.trim() || undefined,
-    }])
+    const nom = `${prefixPouvoir}${pouvoirNom.trim()}`
+    const reste = enchantements.filter(e => e.nom !== nom)
+    const resteTotal = reste.reduce((s, e) => s + e.niveauMagie, 0) + (objet.niveauMagieBase ?? 0)
+    if (resteTotal + pouvoirNiveau > plafond) { avertirPlafond(); return }
+    setEnchantements([...reste, { nom, niveauMagie: pouvoirNiveau, texte: pouvoirTexte.trim() || undefined }])
     setPouvoirNom(''); setPouvoirNiveau(1); setPouvoirTexte('')
   }
 
@@ -555,13 +562,13 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <button onClick={forger} style={{
               padding: '10px 20px', borderRadius: 6, fontSize: 15, fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${GOLD}`, background: 'rgba(201,168,76,0.15)', color: GOLD,
               fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
             }}>
-              🔨 {t('gmMode.objetMagiqueDetail.forger')}
+              {t('gmMode.objetMagiqueDetail.forger')}
             </button>
             {forgeMsg && <span style={{ fontSize: 13, color: 'rgba(140,215,160,0.95)' }}>{forgeMsg}</span>}
           </div>

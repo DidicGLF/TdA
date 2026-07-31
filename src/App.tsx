@@ -1294,7 +1294,15 @@ function AppContent() {
                 {t('notes.graphe')}
               </div>
             </div>
-            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes} />
+            <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes}
+              onSetRelation={(sourceId, targetId, type) => setNotes(prev => prev.map(n => n.id !== sourceId ? n : {
+                ...n,
+                relations: type
+                  ? [...(n.relations ?? []).filter(r => r.versId !== targetId), { versId: targetId, type }]
+                  : (n.relations ?? []).filter(r => r.versId !== targetId),
+                modifieLe: new Date().toISOString(),
+              }))}
+            />
           </>
         ) : calibrate ? (
           <>

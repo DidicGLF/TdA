@@ -21,7 +21,7 @@ import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/lev
 import type { VoieKey } from '../utils/levelUp'
 import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
 import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
-import { getVoieRangChoixGrants, getChoixOptions, applyVoieRangChoix, applyVoieRangChoixAvancee, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement } from '../utils/voieRangChoix'
+import { getVoieRangChoixGrants, getChoixOptions, applyVoieRangChoix, applyVoieRangChoixAvancee, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement, getBonusFormationsCount } from '../utils/voieRangChoix'
 import CarteVoieModal from './CarteVoieModal'
 import { usePeupleName, useTraitName, useTraitDesc, useCompagnonName, useEquipementName, useVoieName, useTranslatedDescriptions, useProfilName } from '../hooks/useContentTranslation'
 import { TRAITS_PSYCHOLOGIE, labelProfilPsychologie } from '../data/psychologieTraits'
@@ -1706,7 +1706,10 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     'Armes de duel', 'Armes d\'hast', 'Armes de trait', 'Armes de tir',
     'Armes de jet', 'Armures légères', 'Armures lourdes',
   ]
-  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  // + les emplacements supplémentaires accordés par un grant FORMATION sur un rang de voie possédé
+  // (voir getBonusFormationsCount) — toujours à choix libre parmi la liste, jamais imposés.
+  const maxFormations = (character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1)
+    + getBonusFormationsCount(character, descriptions)
   const countFormations = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
 
   const toggle = (f: string) => {
@@ -2405,8 +2408,10 @@ function Step7({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
 
 function Step8({ character, modeVoies, onSave, onPrint, onPlay }: Pick<Props, 'character'> & { modeVoies: 'libre' | 'profil'; onSave?: () => void; onPrint?: () => void; onPlay?: () => void }) {
   const { t } = useTranslation()
+  const { data: descriptions } = useGameData()
   const { disponibles: ptsDisponibles } = calcPointsCapacite(character)
-  const maxFormations = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const maxFormations = (character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1)
+    + getBonusFormationsCount(character, descriptions)
   const nbFormationsChoisies = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
   const totalArmes = character.armes.length + character.armuresEquipees.length
 
@@ -2571,8 +2576,10 @@ export default function CreationWizard({ step, maxStep, character, onChange, onN
   const [modeVoies, setModeVoies] = React.useState<'libre' | 'profil'>(() =>
     character.profil ? 'profil' : (character.voie1.nom || character.voie2.nom || character.voie3.nom) ? 'libre' : 'profil'
   )
+  const { data: descriptionsWizard } = useGameData()
   const ptsDisp = calcPointsCapacite(character).disponibles
-  const maxForms = character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1
+  const maxForms = (character.famille === 'combattants' ? 3 : character.famille === 'aventuriers' ? 2 : 1)
+    + getBonusFormationsCount(character, descriptionsWizard)
   const nbForms  = character.formationsMartiales.filter(f => f !== 'Armes de paysan (gratuit)').length
   // Voie1/2/3 ne peuvent être remplies que via un profil appliqué (qui renseigne aussi character.profil)
   // ou le mode libre — les trois noms déjà présents suffisent donc à prouver que l'étape est complète,

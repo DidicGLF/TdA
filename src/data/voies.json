@@ -443,5 +443,20 @@
     "nom": "Voie de l'espace temps",
     "famille": "mystiques",
     "categorie": "prestige"
+  },
+  {
+    "nom": "Voie des arts runiques",
+    "famille": "mystiques",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie de l'érudition",
+    "famille": "",
+    "categorie": "profil"
+  },
+  {
+    "nom": "Voie des animistes",
+    "famille": "mystiques",
+    "categorie": "profil"
   }
 ]

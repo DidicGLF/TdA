@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Note } from '../types/gameData'
+import type { Note, RelationType } from '../types/gameData'
 
 const GOLD = '#c9a84c'
 
@@ -8,7 +8,16 @@ const GOLD = '#c9a84c'
 // réel via viewBox, pas besoin de mesurer les pixels du panneau (ResizeObserver, etc.).
 const CANVAS = 560
 
-type GraphEdge = { source: string; target: string }
+// Symbole affiché au milieu d'un lien du graphe pour la relation choisie — uniquement là, jamais
+// ailleurs dans l'interface (voir Note.relations).
+const RELATION_SYMBOLES: Record<RelationType, { glyphe: string; couleur: string }> = {
+  amical: { glyphe: '♥', couleur: '#7fd88f' },
+  ennemi: { glyphe: '⚔', couleur: '#e05555' },
+  neutre: { glyphe: '●', couleur: 'rgba(245,236,215,0.6)' },
+}
+const RELATION_TYPES: RelationType[] = ['amical', 'ennemi', 'neutre']
+
+type GraphEdge = { source: string; target: string; relation?: RelationType }
 type Point = { x: number; y: number }
 
 // Repère tous les [[Titre]] d'une note — même syntaxe que le rendu Markdown léger de NotesTab.
@@ -156,11 +165,19 @@ interface Props {
   // Injecté par l'appelant (comme dans NotesTab) pour que le même graphe serve aux notes joueur et
   // aux notes MJ, deux bibliothèques distinctes.
   notes: Note[]
+  // Applique le choix fait dans le menu ouvert au clic sur un lien — sourceId est la note dont le
+  // contenu porte le [[Titre]] (celle qui stocke Note.relations), targetId la note visée ; type=null
+  // efface la relation. Laissé à l'appelant plutôt que reçu déjà résolu : NotesGraph ne connaît pas le
+  // setState des deux bibliothèques de notes (joueur/MJ) qui l'utilisent.
+  onSetRelation: (sourceId: string, targetId: string, type: RelationType | null) => void
 }
 
-export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
+export default function NotesGraph({ selectedId, onOpenNote, notes, onSetRelation }: Props) {
   const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement>(null)
+  // Menu de choix de relation, ouvert au clic sur un lien — coordonnées écran (pas celles, internes au
+  // SVG, du viewBox) pour se positionner simplement en `position: fixed`, indépendamment du zoom/pan.
+  const [relationMenu, setRelationMenu] = useState<{ source: string; target: string; x: number; y: number } | null>(null)
   // Positions déplacées à la souris — prioritaires sur celles calculées par la disposition à ressorts,
   // et conservées même si le graphe se recalcule ensuite (ajout d'une autre note, d'un autre lien...).
   const [manualPositions, setManualPositions] = useState<Map<string, Point>>(new Map())
@@ -180,7 +197,10 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
     for (const n of notes) {
       for (const cible of extraireLiens(n.contenu)) {
         const match = parTitre.get(cible.toLowerCase())
-        if (match && match.id !== n.id) edges.push({ source: n.id, target: match.id })
+        if (match && match.id !== n.id) {
+          const relation = n.relations?.find(r => r.versId === match.id)?.type
+          edges.push({ source: n.id, target: match.id, relation })
+        }
       }
     }
     const nodeIds = notes.map(n => n.id)
@@ -319,9 +339,25 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
           const a = posDe(e.source), b = posDe(e.target)
           if (!a || !b) return null
           const estAttenue = selectedId !== null && !(connectes.has(e.source) && connectes.has(e.target))
+          const sym = e.relation ? RELATION_SYMBOLES[e.relation] : null
           return (
-            <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-              stroke={estAttenue ? 'rgba(201,168,76,0.08)' : 'rgba(201,168,76,0.35)'} strokeWidth={1.5} />
+            <g key={i}>
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                stroke={estAttenue ? 'rgba(201,168,76,0.08)' : 'rgba(201,168,76,0.35)'} strokeWidth={1.5} />
+              {/* Zone de clic élargie et invisible — un trait de 1.5px est trop fin à viser pour ouvrir
+                  le menu de relation. stopPropagation empêche ce clic de démarrer aussi le pan du fond. */}
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={14}
+                style={{ cursor: 'pointer' }}
+                onPointerDown={ev => ev.stopPropagation()}
+                onClick={ev => { ev.stopPropagation(); setRelationMenu({ source: e.source, target: e.target, x: ev.clientX, y: ev.clientY }) }}
+              />
+              {sym && (
+                <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} textAnchor="middle" dominantBaseline="central"
+                  fontSize={13} fill={sym.couleur} opacity={estAttenue ? 0.2 : 1} style={{ pointerEvents: 'none' }}>
+                  {sym.glyphe}
+                </text>
+              )}
+            </g>
           )
         })}
         {nodeIds.map(id => {
@@ -362,6 +398,35 @@ export default function NotesGraph({ selectedId, onOpenNote, notes }: Props) {
         })}
         </g>
       </svg>
+      {relationMenu && (
+        <>
+          <div onClick={() => setRelationMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: 'fixed', left: relationMenu.x, top: relationMenu.y, zIndex: 41,
+            transform: 'translate(-50%, 8px)',
+            background: 'rgba(15,12,8,0.97)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 6,
+            padding: 4, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 140,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+          }}>
+            {RELATION_TYPES.map(type => (
+              <button key={type} onClick={() => { onSetRelation(relationMenu.source, relationMenu.target, type); setRelationMenu(null) }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 4,
+                  background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tdr-parchment)', fontSize: 13, textAlign: 'left' }}>
+                <span style={{ color: RELATION_SYMBOLES[type].couleur, fontSize: 14, width: 16, textAlign: 'center', flexShrink: 0 }}>
+                  {RELATION_SYMBOLES[type].glyphe}
+                </span>
+                {t(`notes.relation.${type}`)}
+              </button>
+            ))}
+            <button onClick={() => { onSetRelation(relationMenu.source, relationMenu.target, null); setRelationMenu(null) }}
+              style={{ padding: '5px 8px', marginTop: 2, background: 'transparent', border: 'none',
+                borderTop: '1px solid rgba(201,168,76,0.15)', cursor: 'pointer',
+                color: 'rgba(245,236,215,0.45)', fontSize: 12, textAlign: 'left' }}>
+              {t('notes.relation.aucune')}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

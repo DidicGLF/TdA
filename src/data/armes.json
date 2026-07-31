@@ -1,5 +1,5 @@
 {
-  "notes": "",
+  "notes": "¹ Arme tenue à deux mains.\n² Critique sur 19 ou 20.\n³ Règles spéciales, voir ci-dessous.\n⁴ Score minimum en FOR requis : 12 pour l'arc long, 14 pour le composite.\n⁵ Nécessite une action limitée pour ajouter le Mod. de Carac. aux DM.\n⁶ Nécessite une action d'attaque pour être rechargée.\n⁷ Nécessite une action limitée pour être rechargée.\n* Nécessite une capacité pour être maîtrisée.",
   "groupes": [
     {
       "groupe": "Armes au contact",
@@ -11,13 +11,15 @@
               "nom": "Bâton¹",
               "dm": "(1d4)",
               "mod": "FOR",
-              "prix": "-"
+              "prix": "-",
+              "deuxMains": true
             },
             {
               "nom": "Bâton ferré¹",
               "dm": "1d6",
               "mod": "FOR",
-              "prix": "2 pa"
+              "prix": "2 pa",
+              "deuxMains": true
             },
             {
               "nom": "Dague",
@@ -35,7 +37,8 @@
               "nom": "Grande hache de bûcheron *¹",
               "dm": "2d4",
               "mod": "FOR",
-              "prix": "10 pa"
+              "prix": "10 pa",
+              "deuxMains": true
             }
           ],
           "notes": ""
@@ -76,25 +79,29 @@
               "nom": "Épée à deux mains¹",
               "dm": "2d6",
               "mod": "FOR",
-              "prix": "10 pa"
+              "prix": "10 pa",
+              "deuxMains": true
             },
             {
               "nom": "Épée bâtarde¹³",
               "dm": "1d12",
               "mod": "FOR",
-              "prix": "9 pa"
+              "prix": "9 pa",
+              "deuxMains": true
             },
             {
               "nom": "Marteau à deux mains¹",
               "dm": "3d4",
               "mod": "FOR",
-              "prix": "12 pa"
+              "prix": "12 pa",
+              "deuxMains": true
             },
             {
               "nom": "Hache à deux mains¹",
               "dm": "2d6",
               "mod": "FOR",
-              "prix": "10 pa"
+              "prix": "10 pa",
+              "deuxMains": true
             }
           ]
         },
@@ -105,25 +112,29 @@
               "nom": "Épieu³",
               "dm": "1d6",
               "mod": "FOR",
-              "prix": "3 pa"
+              "prix": "3 pa",
+              "deuxMains": true
             },
             {
               "nom": "Lance¹³",
               "dm": "1d8",
               "mod": "FOR",
-              "prix": "6 pa"
+              "prix": "6 pa",
+              "deuxMains": true
             },
             {
               "nom": "Lance de cavalerie¹³",
               "dm": "2d6",
               "mod": "FOR",
-              "prix": "12 pa"
+              "prix": "12 pa",
+              "deuxMains": true
             },
             {
               "nom": "Pique¹³",
               "dm": "1d8",
               "mod": "FOR",
-              "prix": "5 pa"
+              "prix": "5 pa",
+              "deuxMains": true
             }
           ]
         },
@@ -220,21 +231,24 @@
               "dm": "1d6",
               "mod": "FOR",
               "portee": "50 m",
-              "prix": "15 pa"
+              "prix": "15 pa",
+              "deuxMains": true
             },
             {
               "nom": "Arc court¹",
               "dm": "1d6",
               "mod": "-",
               "portee": "30 m",
-              "prix": "4 pa"
+              "prix": "4 pa",
+              "deuxMains": true
             },
             {
               "nom": "Arc long¹⁴",
               "dm": "1d8",
               "mod": "-",
               "portee": "50 m",
-              "prix": "5 pa"
+              "prix": "5 pa",
+              "deuxMains": true
             }
           ]
         },
@@ -253,21 +267,24 @@
               "dm": "2d4",
               "mod": "-",
               "portee": "30 m",
-              "prix": "10 pa"
+              "prix": "10 pa",
+              "deuxMains": true
             },
             {
               "nom": "Arbalète lourde¹⁷",
               "dm": "3d4",
               "mod": "-",
               "portee": "60 m",
-              "prix": "12 pa"
+              "prix": "12 pa",
+              "deuxMains": true
             },
             {
               "nom": "Arbalète à répétition*¹³",
               "dm": "2d4",
               "mod": "-",
               "portee": "60 m",
-              "prix": "-"
+              "prix": "-",
+              "deuxMains": true
             }
           ]
         }

@@ -1142,7 +1142,7 @@
     },
     {
       "nom": "Élixirs de Protection",
-      "desc": "Le PJ peut préparer une potion de Peau d'écorce (rang 1 de la voie des forêts), d'Image décalée (rang 1 de la voie des illusions) ou de Protection contre les éléments (rang 3 de la voie de la magie élémentaliste). Les effets de ces potions ne sont pas cumulables."
+      "desc": "Le PJ peut préparer une potion de Corps de chêne (rang 2 de la voie de la création élémentaire), de\nForme gazeuse (rang 4 de la maîtrise élémentaire) ou de Peau de mercure (rang 2 de la voie des\npentacles). Les effets de ces potions ne sont pas cumulables."
     }
   ],
   "Voie des arts druidiques": [
@@ -1433,16 +1433,16 @@
       "desc": "Le PJ peut lancer ce sort sur lui ou sur tout allié (portée : au contact) pour la durée d'un combat. La cible obtient alors un bonus de +2 en DEF et pour tous les tests de résistance contre les attaques des morts-vivants, des démons, des élémentaires et des créatures conjurées (appelées d'un autre plan par magie).\n**==Capacité avancée : ==**le bonus de DEF passe à +4."
     },
     {
-      "nom": "Délivrance*",
-      "desc": "En touchant sa cible, le PJ annule les pénalités infligées par les sorts, les malédictions, la pétrification et les capacités spéciales d'autres personnages ou de créatures (douleur, mutila- tion, poisons, etc.)."
+      "nom": "Chant de soins *",
+      "desc": "Le PJ entonne une litanie réconfortante d’une durée de cinq minutes. Pendant toute la durée du chant, ses alliés (et lui-même) peuvent doubler les PV récupérés lors de la consommation d’un PR.\nCe sort ne peut bénéficier des effets de concentration."
     },
     {
-      "nom": "Sanctuaire*",
-      "desc": "Quand le PJ lance ce sort, tous les adversaires qui veulent l'attaquer doivent d'abord réussir un test de SAG difficulté 15. S'ils échouent, ils ne peuvent pas l'attaquer. Les effets de ce sort durent [5 + Mod de SAG] tours, mais s'il tente la moindre attaque, le sort prend fin immédiatement."
+      "nom": "Délivrance *",
+      "desc": "En touchant sa cible, le PJ annule les pénalités infligées par les sorts, les malédictions, la pétrification et les capacités spéciales d’autres personnages ou de créatures (douleur, mutilation, poisons, etc.)."
     },
     {
-      "nom": "Rituel de puissance",
-      "desc": "Sur une attaque magique, le PJ peut utiliser un d12 en attaque au lieu du d20 habituel. Si l'attaque est réussie, il ajoute 2d6 aux DM. Cette capacité s'utilise uniquement avec les sorts nécessitant un test d'attaque et infligeant des DM. Si les DM sont répartis sur plusieurs tours, seuls les DM initiaux sont modifiés."
+      "nom": " Sanctuaire *",
+      "desc": "Quand le PJ lance ce sort, tous les adversaires qui veulent l’attaquer doivent d’abord réussir un test de SAG difficulté 16. S’ils échouent, ils ne peuvent pas l’attaquer. Les effets de ce sort durent [5 + Mod de SAG] tours, mais si le PJ tente la moindre attaque, le sort prend fin immédiatement."
     }
   ],
   "Voie des sombres savoirs": [
@@ -5458,6 +5458,103 @@
     {
       "nom": "Arrêt du temps*",
       "desc": "Une fois par jour, le PJ peut arrêter le temps pendant [1d6 + Mod. d’INT] tours. Lui seul peut agir pendant cette période, lancer un sort sur lui-même ou sur l’environnement par exemple, toucher des objets, se déplacer, etc. La moindre interaction avec un être vivant (que ce soit en le touchant ou en lui lançant un sort) met un terme au sort et le temps reprend instantanément son cours."
+    }
+  ],
+  "Voie des arts runiques": [
+    {
+      "nom": "Forge (L)",
+      "desc": "Le PJ obtient un bonus de +5 aux tests d’orfèvrerie ou de forge. Au prix d’une action limitée, il peut\nenflammer son arme pour une durée de [5 + Mod. de SAG] tours et gagne alors un bonus aux DM de\n+1 par rang atteint dans cette voie avec cette arme (DM de feu).\n**==Capacité avancée :==** le bonus aux tests passe à +10 et enflammer son arme ne nécessite plus qu’une\naction mouvement au lieu d’une action limitée."
+    },
+    {
+      "nom": "Art traditionnel",
+      "desc": "Le PJ peut confectionner des armes ou armures traditionnelles. Il est limité aux objets traditionnels de\nson peuple (exception : les Humains doivent choisir une tradition parmi celles des Elfes, Nains, et\nOrcs) et ne peut produire que des objets d’un niveau de magie égale à son [niveau / 3] (arrondi à\nl’inférieur).\nIl faut un mois de travail et la dépense de 150 po par niveau de magie pour créer l’objet.\nUn objet traditionnel ne peut être amélioré pour changer de qualité (par exemple passer de qualité\nstandard à une qualité supérieure). Il doit être créé directement de la qualité souhaitée.\n**==Capacité avancée :==** Le PJ a grandement perfectionné sa technique et a besoin de moins de matériel\npour forger un objet : 100 po par niveau de magie suffisent maintenant."
+    },
+    {
+      "nom": "Expertise de la forge",
+      "desc": "Le PJ gagne une expertise martiale supplémentaire.\nIl gagne un bonus de +1 en attaque ou en DEF lorsqu’il utilise un équipement qu’il a forgé lui-même.",
+      "grants": []
+    },
+    {
+      "nom": "Résistance de l'artisan",
+      "desc": "Le PJ est habitué à travailler dans des conditions extrêmes tout en gardant son sang-froid et sa\nconcentration. Il réduit tous les DM de feu et de froid subis de 5 points.",
+      "effects": [
+        {
+          "stat": "RD_FEU",
+          "value": 5
+        },
+        {
+          "stat": "RD_FROID",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "nom": "Artisan runique",
+      "desc": "Le PJ peut graver des runes sur des armes et armures traditionnelles de son peuple (exception : les\nHumains doivent choisir une tradition parmi celles des Elfes, Nains, et Orcs).\nIl peut ainsi appliquer des enchantements issus de la liste des « enchantements supplémentaires »,\nou créer des focalisateurs magiques (cf. LdM p. 187-188) pour un niveau de magie total égale à\n[niveau / 3] arrondi à l’inférieur.\nIl faut un mois de travail et la dépense de 150 po par niveau de magie supplémentaire de l’objet pour\nappliquer les runes.\nUn objet peut être amélioré plusieurs fois, dans la limite de niveau de magie autorisée pour le PJ.\nUn objet traditionnel ne peut avoir un niveau de magie supérieur à 5."
+    }
+  ],
+  "Voie de l'érudition": [
+    {
+      "nom": "Identification de créature (L)",
+      "desc": "Une fois par combat, le PJ peut identifier une créature en réalisant un test d’INT difficulté [10 + NC\ncréature]. En cas de réussite, il peut poser une question au MJ relative aux caracs. du monstre. Au\nrang 3 atteint dans la voie, le PJ et ses alliés bénéficient d’un bonus de +1 en attaque contre les\ncréatures « identifiées ». Au rang 5 atteint dans la voie, le PJ et ses alliés bénéficient d’un bonus de +1\naux DM contre les créatures « identifiées ».\nCette capacité n’est d’aucun effet sur les humanoïdes.\n**==Capacité avancée : ==**le PJ bénéficie d’un bonus de +5 aux tests d’identification."
+    },
+    {
+      "nom": "Connaissance des langues oubliées",
+      "desc": "Le PJ sait lire et écrire les langages oubliés et les dialectes des autres peuples. Il est capable de les\nparler aussi avec une certaine difficulté et peut échanger quelques phrases grossières.\n**==Capacité avancée :==** le PJ est un expert en langues exotiques et les parle couramment. Il bénéficie d’un\nbonus de +5 à ses tests de CHA lors d'interactions sociales effectuées à l’aide d’un dialecte exotique."
+    },
+    {
+      "nom": "Médecine traditionnelle",
+      "desc": "Le PJ dispose de connaissances en médecine traditionnelle, usant d’infusions, manipulant les lignes énergétiques et autre technique d’acupuncture qui améliorent la vitesse de guérison. Lorsque le PJ et ses alliés dépensent 1 PR pour regagner des PV, ils lancent 2 DV et conservent le meilleur résultat."
+    },
+    {
+      "nom": "Manœuvres astucieuses",
+      "desc": "Les lois de la physique n’ont plus de secret pour le PJ. Il peut réaliser les manœuvres bloquer, repousser et renverser (cf. LdJ p. 110) en ajoutant son [Mod. d’INT] aux tests d’attaque de contact, ainsi qu’aux tests de caracs. opposés qui suivent."
+    },
+    {
+      "nom": "Don extraordinaire",
+      "desc": "Le PJ peut choisir n’importe quelle capacité de rang 1 à 3 de son choix au sein d’une voie de la famille\ndes mystiques."
+    }
+  ],
+  "Voie des animistes": [
+    {
+      "nom": "Langage des animaux",
+      "desc": "Le PJ peut communiquer avec les animaux qui, en général, se comportent avec lui de manière amicale. Il gagne un bonus de +5 à tous les tests destinés à influencer un animal. La communication reste primitive et limitée à l'intelligence de l'animal et à son point de vue (prédateur, proie, etc.).\n**==Capacité avancée : ==**en réussissant un test d’INT difficulté 20 (le bonus de la capacité s’applique à ce test), le PJ peut\nréussir à entretenir une conversation beaucoup plus poussée avec l’animal, lui prêtant des raisonnements humanoïdes."
+    },
+    {
+      "nom": "Nuée d'insectes*",
+      "desc": "En réussissant un test d'attaque magique (portée 20 m), le PJ libère sur sa cible une nuée d'insectes volants qui la piquent, aveuglent et la suivent pendant [5 + Mod. de SAG] tours. La victime subit 1 point de DM par tour et un malus de -2 à toutes ses actions. Les DM de zone détruisent la nuée.\n**==Capacité avancée : ==**la victime subit 2 DM par tour et un malus de -3 à toutes ses actions."
+    },
+    {
+      "nom": "Le guetteur",
+      "desc": "Le PJ reçoit un oiseau de proie comme com- pagnon animal. Il possède un lien télépathique avec lui et peut percevoir par ses sens avec un bonus de +5 aux tests fondés sur la perception. \n**Oiseau de proie : **Init. 15, DEF 15, PV [niveau du PJ x 3]. Attaque de contact = [attaque magique du PJ], DM 1d4.",
+      "grants": [
+        {
+          "type": "COMPAGNON",
+          "nom": "Oiseau de proie"
+        }
+      ]
+    },
+    {
+      "nom": "Masque du prédateur*",
+      "desc": "Lorsqu'il est sous l'effet de ce sort, le PJ prend les traits d'un fauve ou d'un loup. Il gagne son Mod. d'INT en initiative, en attaque et aux DM et peut voir dans la nuit (comme un Elfe) pendant [5 + Mod. de SAG] tours, il gagne son Mod d'INT en initiative, en attaque et aux DM et peut voir dans la nuit (comme un Elfe)."
+    },
+    {
+      "nom": "Sagesse héroïque",
+      "desc": "Le PJ augmente son score de SAG de +2 et peut désormais lancer deux d20 à chaque fois qu'un test de SAG lui est demandé et conserver le meilleur résultat.",
+      "effects": [
+        {
+          "stat": "SAG",
+          "value": 2
+        }
+      ],
+      "grants": [
+        {
+          "type": "AVANTAGE",
+          "stat": "SAG",
+          "lancer": 2,
+          "garder": 1
+        }
+      ]
     }
   ]
 }

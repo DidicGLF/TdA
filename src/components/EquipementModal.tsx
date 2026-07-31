@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, Fragment } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { Character } from '../types/character'
 import { useGameData } from '../context/GameDataContext'
@@ -25,6 +25,9 @@ const S = {
   parchment: 'var(--tdr-parchment)',
   border: 'rgba(201,168,76,0.25)',
   bg: 'rgba(15,12,8,0.92)',
+  // Violet déjà utilisé dans ce fichier pour "Mode édition" — repris ici pour distinguer visuellement les
+  // objets magiques (doré = armes/armures) des autres sections plutôt qu'inventer une nouvelle couleur.
+  magic: 'rgba(180,130,255,0.9)',
 }
 
 const cell: React.CSSProperties = {
@@ -66,6 +69,10 @@ const NIVEAU_MAGIE_CONSEILLE = [0, 0, 1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 
 
 const isDistance = (groupe: string) => groupe.toLowerCase().includes('distance')
 
+// Même ordre/regroupement que le reste de la modale (armes/armures : sections par catégorie avec table
+// Nom/DM/+Mod/Prix) plutôt qu'une liste plate — voir gmMode.objetMagiqueDetail.categorie pour les libellés.
+const OBJETS_MAGIQUES_CATEGORIES = ['traditionnel', 'focalisateur', 'legendaire'] as const
+
 const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
 
 type DragSrc =
@@ -91,6 +98,8 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   // Sur petit écran, la colonne des types deviendrait illisible à côté de la liste des armes : on la
   // replie dans un menu flottant pour rendre tout l'écran à la liste.
   const [menuTypesOuvert, setMenuTypesOuvert] = useState(false)
+  // Objets magiques : id de l'objet dont la liste d'enchantements est dépliée (un seul à la fois).
+  const [expandedObjet, setExpandedObjet] = useState<string | null>(null)
 
   const { armes: armesCtx, setArmes: saveArmes, armures: armuresCtx, setArmures: saveArmures, objetsMagiques } = useGameData()
   const [groupes,      setGroupes]      = useState<GroupeArme[]> (() => JSON.parse(JSON.stringify(armesCtx.groupes)))
@@ -583,6 +592,12 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
       onChange({ objetsMagiquesEquipes: equipes.includes(id) ? equipes.filter(x => x !== id) : [...equipes, id] })
     }
 
+    // Mêmes catégories que la colonne de gauche des armes/armures (ancres cliquables qui font défiler
+    // jusqu'à la table correspondante à droite, via le même scrollTo/sectionRefs/activeKey déjà utilisés
+    // par ces deux sections) — seules celles ayant au moins un objet apparaissent, pour que la colonne de
+    // gauche corresponde toujours exactement à ce qui est ancré à droite.
+    const catsAvecObjets = OBJETS_MAGIQUES_CATEGORIES.filter(cat => objetsMagiques.some(o => o.categorie === cat))
+
     return (
       <div
         style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(0,0,0,0.75)',
@@ -590,21 +605,24 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
         <div style={{ background: 'rgba(18,14,9,0.99)', border: `1px solid ${S.border}`,
-          borderRadius: 8, width: '90vw', maxWidth: 700, maxHeight: '85vh',
+          borderRadius: 8, width: '90vw', maxWidth: 1040, maxHeight: '85vh',
           display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.9)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 20px', borderBottom: `1px solid ${S.border}`, flexShrink: 0, gap: 10 }}>
             <div style={{ display: 'flex', gap: 6 }}>
-              {(['armes', 'armures', 'objetsMagiques'] as const).map(s => (
-                <button key={s} onClick={() => setSection(s)} style={{
-                  padding: '4px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
-                  border: `1px solid ${S.gold}`,
-                  background: section === s ? 'rgba(201,168,76,0.2)' : 'transparent',
-                  color: S.gold, fontWeight: section === s ? 700 : 400,
-                }}>
-                  {t(`equipement.${s}`)}
-                </button>
-              ))}
+              {(['armes', 'armures', 'objetsMagiques'] as const).map(s => {
+                const magic = s === 'objetsMagiques'
+                return (
+                  <button key={s} onClick={() => { setSection(s); setActiveKey(magic ? '0' : '0-0') }} style={{
+                    padding: '4px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
+                    border: `1px solid ${magic ? S.magic : S.gold}`,
+                    background: section === s ? (magic ? 'rgba(180,130,255,0.2)' : 'rgba(201,168,76,0.2)') : 'transparent',
+                    color: magic ? S.magic : S.gold, fontWeight: section === s ? 700 : 400,
+                  }}>
+                    {t(`equipement.${s}`)}
+                  </button>
+                )
+              })}
             </div>
             <button onClick={onClose} style={{
               background: 'none', border: 'none', color: S.parchment,
@@ -618,41 +636,155 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             <span style={{ color: S.parchment, opacity: 0.5 }}>/ {conseille} {t('equipement.conseilleNiveau', { n: character.niveau })}</span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-            {objetsMagiques.length === 0 && (
-              <div style={{ padding: 20, textAlign: 'center', opacity: 0.5, fontSize: 14 }}>{t('equipement.aucunObjetMagique')}</div>
-            )}
-            {objetsMagiques.map(o => {
-              const possede = possedes.includes(o.id)
-              const equipe = equipes.includes(o.id)
-              return (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 20px', borderBottom: `1px solid rgba(201,168,76,0.08)` }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, color: S.parchment }}>{o.nom}</div>
-                    <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', marginTop: 2 }}>
-                      {t(`gmMode.objetMagiqueDetail.categorie.${o.categorie}`)} · {t('gmMode.objetMagiqueDetail.niveauAbrege', { n: o.niveauMagie })} · {o.valeur} po
-                    </div>
+          {/* ── Corps : même structure que les armes/armures (colonne de catégories à gauche, tables à
+              droite) plutôt qu'une mise en page différente — cohérence entre les 3 sections. */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+
+            {/* Menu ancres */}
+            {isMobile && !menuTypesOuvert ? null : (
+            <div style={isMobile ? {
+              position: 'absolute', top: 0, bottom: 0, left: 0, zIndex: 20,
+              width: 'min(76vw, 300px)', background: 'rgba(18,14,9,0.99)',
+              borderRight: `1px solid ${S.border}`, boxShadow: '4px 0 24px rgba(0,0,0,0.7)',
+              display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            } : { width: 'clamp(90px, 28vw, 210px)', flexShrink: 0, borderRight: `1px solid ${S.border}`,
+              display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+              onClick={isMobile ? () => setMenuTypesOuvert(false) : undefined}>
+              <div style={{ flex: 1 }}>
+                {catsAvecObjets.map((cat, idx) => (
+                  <div key={cat} onClick={() => scrollTo(`${idx}`, idx)} style={{
+                    padding: '8px 12px', fontSize: 14, cursor: 'pointer',
+                    color: activeKey === `${idx}` ? S.gold : S.parchment,
+                    background: activeKey === `${idx}` ? 'rgba(201,168,76,0.1)' : 'transparent',
+                    borderLeft: activeKey === `${idx}` ? `3px solid ${S.gold}` : '3px solid transparent',
+                    transition: 'all 0.1s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {t(`gmMode.objetMagiqueDetail.categorie.${cat}`)}
                   </div>
-                  <button onClick={() => togglePossede(o.id)} style={{
-                    padding: '5px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
-                    border: `1px solid ${possede ? 'rgba(120,200,140,0.6)' : S.border}`,
-                    background: possede ? 'rgba(120,200,140,0.15)' : 'transparent',
-                    color: possede ? 'rgba(140,215,160,0.9)' : S.parchment,
+                ))}
+              </div>
+            </div>
+            )}
+
+            {/* Voile de fermeture du tiroir */}
+            {isMobile && menuTypesOuvert && (
+              <div onClick={() => setMenuTypesOuvert(false)}
+                style={{ position: 'absolute', inset: 0, zIndex: 15, background: 'rgba(0,0,0,0.5)' }} />
+            )}
+
+            {/* Toutes les tables */}
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: isMobile ? '0 10px 24px' : '0 18px 24px', minWidth: 0 }}>
+              {isMobile && (
+                <button onClick={() => setMenuTypesOuvert(true)} style={{
+                  position: 'sticky', top: 8, zIndex: 10, marginTop: 8,
+                  padding: '6px 14px', borderRadius: 5, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1px solid ${S.border}`, background: 'rgba(30,24,16,0.97)', color: S.gold,
+                }}>☰ {t('equipement.types')}</button>
+              )}
+              {objetsMagiques.length === 0 && (
+                <div style={{ padding: 20, textAlign: 'center', opacity: 0.5, fontSize: 14 }}>{t('equipement.aucunObjetMagique')}</div>
+              )}
+              {/* DM/+Mod ne sont renseignés que pour un objet de slot arme (sinon DEF dérivé pour
+                  armure/bouclier, "—" pour focalisateur/accessoire). Les enchantements appliqués se
+                  déplient en cliquant sur le nom (évite une colonne de plus dans une table déjà dense). */}
+              {catsAvecObjets.map((cat, idx) => {
+                const items = objetsMagiques.filter(o => o.categorie === cat)
+                return (
+                  <div key={cat} ref={el => { sectionRefs.current[idx] = el }} style={{
+                    paddingTop: idx === 0 ? 16 : 24, paddingBottom: 16, marginBottom: 8,
+                    borderTop: idx > 0 ? `2px solid rgba(201,168,76,0.2)` : 'none',
                   }}>
-                    {possede ? t('equipement.possede') : t('equipement.ajouter')}
-                  </button>
-                  <button onClick={() => toggleEquipe(o.id)} disabled={!possede} style={{
-                    padding: '5px 12px', borderRadius: 4, fontSize: 13, cursor: possede ? 'pointer' : 'default',
-                    border: `1px solid ${equipe ? S.gold : S.border}`,
-                    background: equipe ? 'rgba(201,168,76,0.2)' : 'transparent',
-                    color: equipe ? S.gold : S.parchment, opacity: possede ? 1 : 0.35,
-                  }}>
-                    {equipe ? t('equipement.equipe') : t('equipement.equiper')}
-                  </button>
-                </div>
-              )
-            })}
+                    <div style={{ fontFamily: "'Cinzel', serif", fontSize: 15, color: S.gold, marginBottom: 8 }}>
+                      {t(`gmMode.objetMagiqueDetail.categorie.${cat}`)}
+                    </div>
+                    <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
+                      <thead><tr>
+                        <th style={{ ...headCell, textAlign: 'left' }}>{t('equipement.colArme')}</th>
+                        <th style={{ ...headCell, textAlign: 'center', width: 70 }}>DM</th>
+                        <th style={{ ...headCell, textAlign: 'center', width: 65 }}>+ Mod</th>
+                        <th style={{ ...headCell, textAlign: 'center', width: 100, whiteSpace: 'nowrap' }}>{t('gmMode.objetMagiqueDetail.niveauMagieSection')}</th>
+                        <th style={{ ...headCell, textAlign: 'center', width: 70 }}>{t('equipement.colPrix')}</th>
+                        <th style={{ ...headCell, width: 150, textAlign: 'center' }} />
+                      </tr></thead>
+                      <tbody>
+                        {items.map(o => {
+                          const possede = possedes.includes(o.id)
+                          const equipe = equipes.includes(o.id)
+                          const expanded = expandedObjet === o.id
+                          const defDerive = o.slot === 'armure' || o.slot === 'bouclier'
+                            ? o.enchantements.reduce((s, e) => s + (e.effets ?? []).filter(ef => ef.stat === 'DEF').reduce((s2, ef) => s2 + (parseInt(ef.valeur) || 0), 0), 0)
+                            : null
+                          const dmCol = o.slot === 'arme' ? (o.armeDm || '—') : defDerive !== null && defDerive > 0 ? `DEF +${defDerive}` : '—'
+                          const modCol = o.slot === 'arme' && o.armeAttaque ? t(`stats.${o.armeAttaque}`) : '—'
+                          return (
+                            <Fragment key={o.id}>
+                              <tr>
+                                <td style={cell}>
+                                  <button
+                                    onClick={() => setExpandedObjet(expanded ? null : o.id)}
+                                    disabled={o.enchantements.length === 0}
+                                    style={{
+                                      background: 'none', border: 'none', padding: 0,
+                                      cursor: o.enchantements.length ? 'pointer' : 'default',
+                                      color: S.parchment, fontSize: 15, textAlign: 'left',
+                                      display: 'flex', alignItems: 'center', gap: 6,
+                                    }}
+                                  >
+                                    {o.enchantements.length > 0 && (
+                                      <span style={{ color: S.gold, fontSize: 11, display: 'inline-block',
+                                        transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
+                                    )}
+                                    {o.nom}
+                                  </button>
+                                </td>
+                                <td style={{ ...cell, textAlign: 'center' }}>{dmCol}</td>
+                                <td style={{ ...cell, textAlign: 'center', color: S.gold }}>{modCol}</td>
+                                <td style={{ ...cell, textAlign: 'center' }}>{o.niveauMagie}</td>
+                                <td style={{ ...cell, textAlign: 'center', opacity: 0.6 }}>{o.valeur} po</td>
+                                <td style={{ ...cell, textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+                                    <button onClick={() => togglePossede(o.id)} style={{
+                                      padding: '3px 9px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                                      border: `1px solid ${possede ? 'rgba(120,200,140,0.6)' : S.border}`,
+                                      background: possede ? 'rgba(120,200,140,0.15)' : 'transparent',
+                                      color: possede ? 'rgba(140,215,160,0.9)' : S.parchment,
+                                    }}>
+                                      {possede ? t('equipement.possede') : t('equipement.ajouter')}
+                                    </button>
+                                    <button onClick={() => toggleEquipe(o.id)} disabled={!possede} style={{
+                                      padding: '3px 9px', borderRadius: 4, fontSize: 12, cursor: possede ? 'pointer' : 'default',
+                                      border: `1px solid ${equipe ? S.gold : S.border}`,
+                                      background: equipe ? 'rgba(201,168,76,0.2)' : 'transparent',
+                                      color: equipe ? S.gold : S.parchment, opacity: possede ? 1 : 0.35,
+                                    }}>
+                                      {equipe ? t('equipement.equipe') : t('equipement.equiper')}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {expanded && o.enchantements.length > 0 && (
+                                <tr>
+                                  <td colSpan={6} style={{ ...cell, background: 'rgba(255,255,255,0.03)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 0 2px 20px' }}>
+                                      {o.enchantements.map((e, i) => (
+                                        <div key={i} style={{ fontSize: 13 }}>
+                                          <span style={{ color: S.gold }}>{e.nom}</span>
+                                          {e.texte && <span style={{ color: 'rgba(245,236,215,0.6)' }}> — {e.texte}</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -714,7 +846,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
               ))}
               <button onClick={() => setSection('objetsMagiques')} style={{
                 flex: 1, padding: '6px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
-                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+                border: `1px solid ${S.magic}`, background: 'rgba(180,130,255,0.1)', color: S.magic,
               }}>{t('equipement.objetsMagiques')}</button>
             </div>
             <select
@@ -930,7 +1062,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
             {!catalogueSeul && (
               <button onClick={() => setSection('objetsMagiques')} style={{
                 padding: '4px 14px', borderRadius: 4, fontSize: 15, cursor: 'pointer',
-                border: `1px solid ${S.border}`, background: 'transparent', color: S.parchment,
+                border: `1px solid ${S.magic}`, background: 'rgba(180,130,255,0.1)', color: S.magic,
               }}>
                 {t('equipement.objetsMagiques')}
               </button>
