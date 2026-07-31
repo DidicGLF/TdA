@@ -4,6 +4,7 @@ import type { Character } from '../types/character'
 import { useGameData } from '../context/GameDataContext'
 import { useModalBackButton } from '../hooks/useModalBackButton'
 import { useEquipementName } from '../hooks/useContentTranslation'
+import { patchPossessionObjetMagique } from '../utils/objetsMagiquesPerso'
 
 type EntreeArme   = { nom: string; dm: string; mod: string; prix: string; portee?: string; deuxMains?: boolean }
 type EntreeArmure = { nom: string; def: number; prix: string }
@@ -559,31 +560,24 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         objetsMagiquesPossedes: enPossession ? possedes.filter(x => x !== id) : [...possedes, id],
         // Retirer un objet de la possession le déséquipe aussi, sans quoi ses bonus resteraient actifs.
         objetsMagiquesEquipes: enPossession ? equipes.filter(x => x !== id) : equipes,
+        // Synthétise/retire une Arme ou ArmureEquipee classique correspondante, pour que l'objet apparaisse
+        // dans la liste d'armes/armures et soit plaçable dans un emplacement comme n'importe quelle arme
+        // "hors catalogue" (voir patchPossessionObjetMagique, extrait pour être réutilisable ailleurs).
+        ...(objet ? patchPossessionObjetMagique(character, objet, !enPossession) : {}),
       }
-      // Synthétise/retire une Arme ou ArmureEquipee classique correspondante, pour que l'objet apparaisse
-      // dans la liste d'armes/armures et soit plaçable dans un emplacement comme n'importe quelle arme
-      // "hors catalogue" — le reste de l'app (fiche, wizard) n'a besoin d'aucune modification, il résout
-      // déjà toute arme par nom sans se soucier de son origine (voir plan spicy-seeking-canyon).
-      if (objet?.slot === 'arme') {
+      // Un objet magique possédé est un objet comme un autre : il doit apparaître dans le texte libre
+      // d'inventaire (appendInv/removeInv, déjà utilisés par addArme/removeArme) — pas seulement les
+      // objets de slot arme/armure/bouclier qui, eux, ont en plus un emplacement dédié (voir
+      // patchPossessionObjetMagique ci-dessus) ; un focalisateur/accessoire n'a AUCUN autre moyen
+      // d'apparaître sur la fiche une fois possédé.
+      if (objet) {
         if (enPossession) {
-          patch.armes = character.armes.filter(a => a.nom !== objet.nom)
-          if (stripExposants(character.arme1) === stripExposants(objet.nom)) { patch.arme1 = ''; patch.dmArme1 = '' }
-          if (stripExposants(character.arme2) === stripExposants(objet.nom)) { patch.arme2 = ''; patch.dmArme2 = '' }
-        } else if (!character.armes.some(a => a.nom === objet.nom)) {
-          patch.armes = [...character.armes, {
-            nom: objet.nom, dm: objet.armeDm ?? '', attaque: objet.armeAttaque ?? 'FOR',
-            special: objet.description ?? '',
-          }]
-        }
-      } else if (objet?.slot === 'armure' || objet?.slot === 'bouclier') {
-        if (enPossession) {
-          patch.armuresEquipees = character.armuresEquipees.filter(a => a.nom !== objet.nom)
-        } else if (!character.armuresEquipees.some(a => a.nom === objet.nom)) {
-          // Le "def" de base n'a pas de champ dédié côté objet magique : il se déduit des enchantements
-          // de type DEF déjà présents (pas de double saisie pour le MJ).
-          const defDerive = objet.enchantements.reduce((s, e) =>
-            s + (e.effets ?? []).filter(ef => ef.stat === 'DEF').reduce((s2, ef) => s2 + (parseInt(ef.valeur) || 0), 0), 0)
-          patch.armuresEquipees = [...character.armuresEquipees, { nom: objet.nom, def: defDerive, prix: '' }]
+          const stripped = stripExposants(objet.nom)
+          const estSlotte = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
+            || character.armuresEquipees.some(a => a.nom === objet.nom && a.equipe)
+          patch.inventaire = removeInv(estSlotte ? `${stripped} (Equip)` : stripped)
+        } else {
+          patch.inventaire = appendInv(stripExposants(objet.nom))
         }
       }
       onChange(patch)

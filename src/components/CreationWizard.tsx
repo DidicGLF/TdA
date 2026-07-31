@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
+import type { ObjetMagiqueEntry } from '../types/gameData'
 import { getMod, getGolemVoieRang, normaliserTresorerie } from '../types/character'
 import { findCulture, findTrait } from '../data/peuples'
 import PROFILS_RAW from '../data/profils.json'
@@ -1631,23 +1632,91 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     // ne lance que le dé (même bug que equipeArmeSlot dans EquipementModal.tsx).
     return a ? `${a.dm}${a.attaque ? ` Mod.${a.attaque}` : ''}` : ''
   }
-  const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure', nom: string) => {
+  // ref : nom pour arme/armure (identité = nom, comme partout ailleurs dans l'app), id pour objetMagique
+  // (un objet magique se réfère par id, pas par nom — voir Note dans gameData.ts).
+  const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure' | 'objetMagique', ref: string) => {
     e.dataTransfer.setData('cat', cat)
-    e.dataTransfer.setData('nom', nom)
+    e.dataTransfer.setData('nom', ref)
+  }
+  // Deux emplacements visibles (comme mainD/mainG/corps), donc au plus 2 objets magiques équipés à la
+  // fois — pas de swap positionnel : un objet équipé prend le premier emplacement libre (index 0 puis
+  // 1), aucune des deux cases n'a de sens propre (contrairement à main droite/gauche), donc peu importe
+  // celle visée par le glisser-déposer.
+  const [dragOverObjetMagique, setDragOverObjetMagique] = React.useState<number | null>(null)
+  const MAX_OBJETS_MAGIQUES_EQUIPES = 2
+  const toggleObjetMagiqueEquipe = (id: string) => {
+    const equipes = character.objetsMagiquesEquipes ?? []
+    if (equipes.includes(id)) {
+      onChange({ objetsMagiquesEquipes: equipes.filter(x => x !== id) })
+    } else if (equipes.length < MAX_OBJETS_MAGIQUES_EQUIPES) {
+      onChange({ objetsMagiquesEquipes: [...equipes, id] })
+    }
+  }
+  const handleObjetMagiqueSlotDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverObjetMagique(null)
+    const cat = e.dataTransfer.getData('cat')
+    const id = e.dataTransfer.getData('nom')
+    if (cat !== 'objetMagique' || !id) return
+    const equipes = character.objetsMagiquesEquipes ?? []
+    if (!equipes.includes(id) && equipes.length < MAX_OBJETS_MAGIQUES_EQUIPES) {
+      onChange({ objetsMagiquesEquipes: [...equipes, id] })
+    }
+  }
+  // Sous-ligne d'un objet magique équipé (même principe que item.sub pour arme/armure) : DM+carac pour
+  // une arme, sinon la somme de tous les effets chiffrés portés par ses enchantements (FOR/DEX/DEF/etc.,
+  // pas seulement DEF — une bague +1 FOR doit apparaître ici comme n'importe quel autre bonus), sinon le
+  // niveau de magie s'il n'a aucun effet chiffré du tout.
+  const subObjetMagique = (objet: ObjetMagiqueEntry) => {
+    const parStat = new Map<string, number>()
+    for (const e of objet.enchantements) for (const ef of e.effets ?? []) {
+      parStat.set(ef.stat, (parStat.get(ef.stat) ?? 0) + (parseInt(ef.valeur) || 0))
+    }
+    const effets = [...parStat.entries()].filter(([, v]) => v !== 0)
+      .map(([stat, v]) => `${t(`stats.${stat}`, stat)} ${v >= 0 ? '+' : ''}${v}`).join(' · ')
+    return objet.slot === 'arme'
+      ? [`DM ${objet.armeDm || '—'}${objet.armeAttaque ? ` ${t(`stats.${objet.armeAttaque}`)}` : ''}`, effets].filter(Boolean).join(' · ')
+      : effets || t('gmMode.objetMagiqueDetail.niveauAbrege', { n: objet.niveauMagie })
   }
   // Équipe une armure de corps (jamais un bouclier) en déséquipant l'éventuelle autre armure de corps
   // déjà portée — un bouclier peut être porté en plus, indépendamment (cf. equipeArmure dans
   // EquipementModal).
+  // Marque/démarque "(Equip)" sur la ligne d'un objet dans le texte libre d'inventaire — même logique
+  // que EquipementModal.tsx (markEquipe/unmarkEquipe), portée ici car les emplacements du wizard
+  // équipent directement (glisser-déposer) sans jamais passer par cette modale : cette marque restait
+  // invisible tant que seul EquipementModal la posait.
+  const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+  const markEquipe = (inv: string, nom: string) => {
+    const s = stripExposants(nom)
+    if (inv.includes(nom)) return inv.replace(nom, `${s} (Equip)`)
+    if (inv.includes(s))   return inv.replace(s,   `${s} (Equip)`)
+    return inv
+  }
+  const unmarkEquipe = (inv: string, nom: string) => {
+    const s = stripExposants(nom)
+    if (inv.includes(`${s} (Equip)`))   return inv.replace(`${s} (Equip)`, s)
+    if (inv.includes(`${nom} (Equip)`)) return inv.replace(`${nom} (Equip)`, s)
+    return inv
+  }
   const equiperCorps = (nom: string) => {
-    onChange({ armuresEquipees: character.armuresEquipees.map(a =>
-      isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }
-    ) })
+    const prevNom = character.armuresEquipees.find(a => a.equipe && !isBouclier(a.nom))?.nom
+    let inv = character.inventaire
+    if (prevNom) inv = unmarkEquipe(inv, prevNom)
+    inv = markEquipe(inv, nom)
+    onChange({
+      armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }),
+      inventaire: inv,
+    })
   }
   // Équipe le bouclier nom (déséquipant l'éventuel autre bouclier) et libère la main gauche (arme2) où
   // il vient se placer — voir la note sur shieldNom plus haut. Aucun effet si aucune main n'est libre.
   const equiperBouclier = (nom: string) => {
     if (character.arme1 && is2H(character.arme1)) return
-    onChange({ arme2: '', dmArme2: '',
+    let inv = character.inventaire
+    if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+    if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+    inv = markEquipe(inv, nom)
+    onChange({ arme2: '', dmArme2: '', inventaire: inv,
       armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? { ...a, equipe: a.nom === nom } : a) })
   }
   // Déséquipe le bouclier porté, le cas échéant — utilisé quand une arme prend sa main.
@@ -1657,13 +1726,23 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   }
   const assignToSlot = (slot: 'mainD' | 'mainG' | 'corps', nom: string, cat: 'arme' | 'armure') => {
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      let inv = character.inventaire
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', inventaire: inv, ...desequiperBouclier() })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), inventaire: inv })
       } else {
         if (character.arme1 && is2H(character.arme1)) return
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), inventaire: inv, ...desequiperBouclier() })
       }
     } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
       equiperCorps(nom)
@@ -1677,13 +1756,23 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const cat = e.dataTransfer.getData('cat')
     const nom = e.dataTransfer.getData('nom')
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      let inv = character.inventaire
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', inventaire: inv, ...desequiperBouclier() })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), inventaire: inv })
       } else {
         if (character.arme1 && is2H(character.arme1)) { setDragOver(null); return }
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), inventaire: inv, ...desequiperBouclier() })
       }
     } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
       equiperCorps(nom)
@@ -1693,12 +1782,22 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     setDragOver(null)
   }
   const clearSlot = (slot: 'mainD' | 'mainG' | 'corps', nom?: string) => {
-    if (slot === 'mainD') onChange({ arme1: '', dmArme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '', dmArme2: '' } : {}) })
-    else if (slot === 'mainG') {
-      if (nom && isBouclier(nom)) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
-      else onChange({ arme2: '', dmArme2: '' })
+    if (slot === 'mainD') {
+      const twoH = !!(character.arme1 && is2H(character.arme1))
+      let inv = character.inventaire
+      if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+      if (twoH && character.arme2) inv = unmarkEquipe(inv, character.arme2)
+      onChange({ arme1: '', dmArme1: '', inventaire: inv, ...(twoH ? { arme2: '', dmArme2: '' } : {}) })
+    } else if (slot === 'mainG') {
+      const cible = nom ?? shieldNom ?? character.arme2
+      const inv = cible ? unmarkEquipe(character.inventaire, cible) : character.inventaire
+      if (cible && isBouclier(cible)) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === cible ? { ...a, equipe: false } : a), inventaire: inv })
+      else onChange({ arme2: '', dmArme2: '', inventaire: inv })
     }
-    else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
+    else if (slot === 'corps' && nom) {
+      const inv = unmarkEquipe(character.inventaire, nom)
+      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a), inventaire: inv })
+    }
   }
 
   const FORMATIONS = [
@@ -1840,6 +1939,49 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 )
               })}
             </div>
+            {/* Deux emplacements objet magique, côte à côte comme main droite/gauche/corps ci-dessus —
+                pas de swap positionnel (voir MAX_OBJETS_MAGIQUES_EQUIPES) : chaque case affiche
+                simplement le 1er/2e objet actuellement équipé. */}
+            {objetsMagiquesPossedes.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                {[0, 1].map(slotIdx => {
+                  const id = objetsMagiquesEquipes[slotIdx]
+                  const objet = id ? objetsMagiques.find(o => o.id === id) : undefined
+                  const isOver = dragOverObjetMagique === slotIdx
+                  return (
+                    <div key={slotIdx}
+                      onDragOver={e => { e.preventDefault(); setDragOverObjetMagique(slotIdx) }}
+                      onDragLeave={() => setDragOverObjetMagique(null)}
+                      onDrop={handleObjetMagiqueSlotDrop}
+                      style={{
+                        flex: 1, minHeight: 40,
+                        border: `1px dashed ${isOver ? 'rgba(160,90,230,0.9)' : 'rgba(160,90,230,0.35)'}`,
+                        borderRadius: 6,
+                        background: isOver ? 'rgba(160,90,230,0.12)' : 'rgba(160,90,230,0.05)',
+                        padding: '6px 8px', transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                    >
+                      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.45, marginBottom: 5 }}>
+                        {t('wizard.step5.emplacementObjetMagique')}
+                      </div>
+                      {!objet ? (
+                        <div style={{ opacity: 0.2, fontSize: 12, fontStyle: 'italic' }}>{isMobile ? t('wizard.step5.appuyer') : t('wizard.step5.glisserIci')}</div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                          <div>
+                            <div style={{ fontSize: 12, color: 'var(--tdr-parchment)' }}>{objet.nom}</div>
+                            <div style={{ fontSize: 10, opacity: 0.5 }}>{subObjetMagique(objet)}</div>
+                          </div>
+                          <button onClick={() => toggleObjetMagiqueEquipe(objet.id)}
+                            style={{ background: 'none', border: 'none', color: 'rgba(160,90,230,0.7)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+                          >×</button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             {/* Items draggables */}
             {character.armes.length > 0 && (
               <>
@@ -1883,10 +2025,10 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 </div>
               </>
             )}
-            {/* Objets magiques possédés — pas de glisser-déposer vers un emplacement (voir la modale
-                Objets magiques, ouverte via le même bouton "Choisir armes & armures" ci-dessus, pour
-                les posséder/équiper) : juste un rappel de ce qui est équipé, doré comme un objet équipé
-                dans un emplacement ci-dessus, ou grisé comme les armes/armures simplement possédées. */}
+            {/* Objets magiques possédés — glisser sur l'emplacement ci-dessus (ou cliquer directement le
+                badge, plus simple sur mobile) pour équiper/déséquiper. Toujours violet (jamais doré
+                comme un emplacement arme/armure) : un objet magique reste un objet magique équipé ou
+                non, contrairement aux armes/armures dont la couleur marque plutôt "dans un emplacement". */}
             {objetsMagiquesPossedes.length > 0 && (
               <>
                 <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4, marginTop: 8 }}>{t('wizard.step5.objetsMagiquesLabel')}</div>
@@ -1897,15 +2039,18 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                     const equipe = objetsMagiquesEquipes.includes(id)
                     return (
                       <span key={id}
+                        draggable={!isMobile}
+                        onDragStart={e => handleDragStart(e, 'objetMagique', id)}
+                        onClick={() => toggleObjetMagiqueEquipe(id)}
                         onMouseEnter={e => showTip([objet.nom, t('gmMode.objetMagiqueDetail.niveauAbrege', { n: objet.niveauMagie }), ...(equipe ? [t('wizard.step5.objetEquipe')] : [t('wizard.step5.objetNonEquipe')])], e)}
                         onMouseMove={moveTip}
                         onMouseLeave={() => setEqTip(null)}
                         style={{
-                          padding: '2px 8px', borderRadius: 3, fontSize: 12,
-                          background: equipe ? 'rgba(201,168,76,0.18)' : 'rgba(160,90,230,0.1)',
-                          border: `1px solid ${equipe ? 'rgba(201,168,76,0.5)' : 'rgba(160,90,230,0.3)'}`,
+                          padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: isMobile ? 'pointer' : 'grab',
+                          background: 'rgba(160,90,230,0.15)',
+                          border: '1px solid rgba(160,90,230,0.4)',
                           color: 'var(--tdr-parchment)', userSelect: 'none',
-                          opacity: equipe ? 1 : 0.6,
+                          opacity: equipe ? 0.4 : 1,
                         }}>{objet.nom}</span>
                     )
                   })}

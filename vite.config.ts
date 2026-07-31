@@ -66,6 +66,10 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Sans ça, Vite n'écoute que sur localhost : injoignable depuis un autre appareil du réseau local
+    // (téléphone, tablette) même une fois le pare-feu ouvert — le serveur de dev lui-même ne reçoit
+    // jamais la connexion. host:true l'ouvre à toutes les interfaces.
+    host: true,
     watch: {
       ignored: ['**/src/data/**'],
     },

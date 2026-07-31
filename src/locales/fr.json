@@ -406,6 +406,7 @@
       "armesLabel": "Armes",
       "armuresLabel": "Armures",
       "objetsMagiquesLabel": "Objets magiques",
+      "emplacementObjetMagique": "Objet magique équipé",
       "objetEquipe": "Équipé",
       "objetNonEquipe": "Possédé, non équipé",
       "deuxMains": "2 mains",
