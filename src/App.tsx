@@ -34,6 +34,7 @@ import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
+import { exporterFichesCompagnonsPDF } from './utils/exportCompagnonsPdf'
 
 // Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
 // Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
@@ -112,6 +113,18 @@ function AppContent() {
   // Prépare l'impression : la fiche affiche une pastille par champ pour choisir ce qui figure sur
   // la version papier, avant de lancer réellement l'impression.
   const [modeImpression, setModeImpression] = useState(false)
+  // Fiches compagnons : export PDF par capture (voir compagnonsExportContainer/exportCompagnonsPdf.ts).
+  const compagnonsExportRef = useRef<HTMLDivElement>(null)
+  const [exportingCompagnons, setExportingCompagnons] = useState(false)
+  const lancerExportCompagnons = async () => {
+    if (!compagnonsExportRef.current) return
+    setExportingCompagnons(true)
+    try {
+      await exporterFichesCompagnonsPDF(compagnonsExportRef.current)
+    } finally {
+      setExportingCompagnons(false)
+    }
+  }
   const [calibrageSauve, setCalibrageSauve] = useState<'ok' | 'erreur' | null>(null)
   // Le calibrage est réservé à l'auteur du jeu : il conditionne l'alignement des champs sur les fonds
   // livrés, qu'un utilisateur final n'a aucune raison de modifier (et qu'il casserait sans le vouloir).
@@ -405,15 +418,18 @@ function AppContent() {
         <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
           fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
       </div>
-      {/* Une fiche A5 par compagnon débloqué (voir CharacterSheetCompagnons/FicheCompagnon), chacune
-          déjà wrappée dans .print-page-compagnon par le composant lui-même — toutesLesPages sort
-          toutes les fiches d'un coup plutôt que la seule page actuellement affichée à l'écran.
-          Rendu conditionnel : sans compagnon débloqué, le composant affiche un message "aucun
-          compagnon" qu'il ne faut pas imprimer (voir showCompagnonsTab, même condition que l'onglet). */}
-      {showCompagnonsTab && (
-        <CharacterSheetCompagnons character={character} onChange={() => {}}
-          fieldPositions={fieldPositions} toutesLesPages />
-      )}
+    </div>
+  )
+
+  // Fiches compagnons : hors du print-only ci-dessus, l'impression native (@page/window.print) restant
+  // cassée sur Windows et Linux (voir exportCompagnonsPdf.ts) — export PDF par capture d'image à la
+  // place. Conteneur toujours monté (hors écran plutôt que display:none, html2canvas a besoin d'une
+  // mise en page réelle pour capturer) plutôt que monté à la demande, pour éviter d'attendre le rendu/
+  // chargement des images de fond juste avant la capture.
+  const compagnonsExportContainer = showCompagnonsTab && (
+    <div ref={compagnonsExportRef} style={{ position: 'fixed', top: 0, left: -99999, width: 1600 }}>
+      <CharacterSheetCompagnons character={character} onChange={() => {}}
+        fieldPositions={fieldPositions} toutesLesPages />
     </div>
   )
 
@@ -631,6 +647,7 @@ function AppContent() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         {printContainer}
+        {compagnonsExportContainer}
 
         {/* Zone de contenu — Fiche et Création/Jeu restent montés (display seul change) pour ne pas perdre l'état du mode de jeu en changeant d'onglet */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -831,6 +848,14 @@ function AppContent() {
               border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
             {t('impression.lancer')}
           </button>
+          {showCompagnonsTab && (
+            <button onClick={lancerExportCompagnons} disabled={exportingCompagnons}
+              style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700,
+                cursor: exportingCompagnons ? 'wait' : 'pointer', opacity: exportingCompagnons ? 0.6 : 1,
+                border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
+              {exportingCompagnons ? t('impression.exportCompagnonsEnCours') : t('impression.exportCompagnons')}
+            </button>
+          )}
           <button onClick={() => setModeImpression(false)}
             style={{ padding: '5px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
               border: '1px solid rgba(245,236,215,0.2)', background: 'transparent', color: 'rgba(245,236,215,0.6)', fontFamily: 'inherit' }}>
@@ -840,6 +865,7 @@ function AppContent() {
       )}
 
       {printContainer}
+      {compagnonsExportContainer}
 
       {import.meta.env.DEV && (
         <div style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 9999, background: 'rgba(0,0,0,0.75)', color: 'rgba(201,168,76,0.9)', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 4, pointerEvents: 'none' }}>

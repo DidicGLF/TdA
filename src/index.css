@@ -102,22 +102,6 @@ body {
   margin: 0;
 }
 
-/* Fiche de compagnon : A5 à l'italienne, deux par feuille A4 portrait.
-   Tentative du 2026-07-30 (unifier en A4 portrait comme les 3 autres @page, pour éviter le mélange de
-   tailles/orientations soupçonné de causer l'étirement + rotation à 90° sous Windows) REVERTÉE le même
-   jour : sur Linux, résultat pire qu'avant — la fiche A5 arrive maintenant visiblement coupée en
-   plusieurs morceaux (pas juste une marge grignotée comme le bug déjà connu sur recto/verso/voies).
-   Cause exacte non identifiée avec certitude (voir [[project_impression_pdf_bug]]) : hypothèse principale,
-   un saut de page implicite qui ne se produit plus de façon fiable entre tdr-voies et tdr-compagnon
-   maintenant qu'ils déclarent la même taille de page — mais pas vérifié en profondeur. Retour à l'état
-   d'origine (A5 landscape) : pas une solution non plus (le bug de troncature existait déjà avant, côté
-   Linux), mais un état CONNU plutôt qu'une régression non comprise. Ne pas retenter de correctif CSS sur
-   ce point sans un plan clair — voir la note associée. */
-@page tdr-compagnon {
-  size: A5 landscape;
-  margin: 0;
-}
-
 @media print {
   html, body, #root {
     background: white !important;
@@ -160,14 +144,6 @@ body {
 
   .print-page-voies {
     page: tdr-voies;
-  }
-
-  .print-page-compagnon {
-    page: tdr-compagnon;
-    width: 210mm;
-    height: 148mm;
-    overflow: hidden;
-    position: relative;
   }
 
   .sheet-bg {
