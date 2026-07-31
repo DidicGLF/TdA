@@ -44,6 +44,13 @@ export default function SheetField({
     // donc ce calcul (mesuré en pixels réels via clientWidth/scrollWidth) reste valable à tout niveau de
     // zoom sans avoir besoin d'être relancé quand zoom change.
     el.style.fontSize = `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`
+    // Centrage vertical du <div> d'export : après deux essais infructueux avec display:flex +
+    // align-items (flex-end puis flex-start, sans effet visible constaté sur un export réel dans les
+    // deux sens — html2canvas a un support connu comme peu fiable de flexbox), on abandonne flexbox
+    // pour la technique classique "line-height = hauteur de la boîte", qui centre verticalement une
+    // seule ligne de texte via le flux de texte normal (pas de flex) — déjà utilisée avec succès par
+    // SheetTextarea dans ce même export (voir project_impression_pdf_bug).
+    if (pdfExport) el.style.lineHeight = `${el.clientHeight}px`
     if (el.clientWidth === 0) return
     let size = BASE_FONT
     while (el.scrollWidth > el.clientWidth + 1 && size > MIN_FONT) {
@@ -67,25 +74,13 @@ export default function SheetField({
           width: `${width}%`,
           height: `${height}%`,
           transform: 'translate(-50%, -50%)',
-          display: 'flex',
-          // flex-start (pas center) + un peu de marge au-dessus du texte : un <input> natif centre son
-          // texte différemment d'un <div> flex-centré (constaté sur un export réel — voir
-          // project_impression_pdf_bug), le texte apparaissant décalé vers le bas par rapport à la ligne
-          // du fond sur laquelle il est censé reposer. (Un premier essai avec flex-end allait dans le
-          // mauvais sens : flex-end pousse vers le BAS de la boîte sur l'axe transverse d'un flex en
-          // ligne, pas vers le haut — confirmé en aggravant le décalage plutôt qu'en le corrigeant.)
-          // Marge haute en em (relative à la taille de police de CE champ) plutôt qu'en % de hauteur de
-          // la boîte — un % de padding vertical se calcule en CSS sur la LARGEUR du bloc, pas sa hauteur,
-          // ce qui aurait donné un décalage incohérent d'un champ à l'autre.
-          alignItems: 'flex-start',
-          justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
           textAlign: align,
           overflow: 'hidden',
           whiteSpace: 'nowrap',
           fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
           fontFamily: "'Crimson Text', Georgia, serif",
           color: '#1a1510',
-          padding: '0.2em 3px 0',
+          padding: '0 3px',
           boxSizing: 'border-box',
         }}
       >
