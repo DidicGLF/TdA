@@ -68,7 +68,14 @@ export default function SheetField({
           height: `${height}%`,
           transform: 'translate(-50%, -50%)',
           display: 'flex',
-          alignItems: 'center',
+          // flex-end (pas center) + un peu de marge sous le texte : un <input> natif centre son texte
+          // différemment d'un <div> flex-centré (constaté sur un export réel — voir
+          // project_impression_pdf_bug) — le texte apparaissait décalé vers le haut par rapport à la
+          // ligne du fond sur laquelle il est censé reposer. Marge basse en em (relative à la taille de
+          // police de CE champ) plutôt qu'en % de hauteur de la boîte — un % de padding vertical se
+          // calcule en CSS sur la LARGEUR du bloc, pas sa hauteur, ce qui aurait donné un décalage
+          // incohérent d'un champ à l'autre.
+          alignItems: 'flex-end',
           justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
           textAlign: align,
           overflow: 'hidden',
@@ -76,7 +83,7 @@ export default function SheetField({
           fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
           fontFamily: "'Crimson Text', Georgia, serif",
           color: '#1a1510',
-          padding: '0 3px',
+          padding: '0 3px 0.2em',
           boxSizing: 'border-box',
         }}
       >

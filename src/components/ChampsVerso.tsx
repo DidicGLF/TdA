@@ -74,18 +74,25 @@ export default function ChampsVerso({
   // reserveByDefault (comme f() dans ChampsRecto/useChampsFiche) : un champ tout neuf, sans encore
   // d'entrée dans fieldPositions, part directement en réserve plutôt qu'à une position devinée — voir
   // feedback_nouveaux_champs_en_reserve. Les appels existants l'omettent (false), comportement inchangé.
-  const fp = (label: string, t: number, l: number, w: number, h: number, reserveByDefault = false) => {
+  // temporaireParDefaut (comme f() dans ChampsRecto/useChampsFiche) : une donnée de session (PV/PM
+  // restants, trésorerie…) ne s'imprime pas par défaut, sauf choix contraire de l'utilisateur — imprime
+  // ET le temporaire renvoyé au champ (qui pilote sa classe CSS tdr-temporaire) doivent dépendre de LA
+  // MÊME décision finale, sinon la pastille peut afficher "imprime" alors que le champ reste masqué par
+  // CSS (ou l'inverse) — bug vécu avec Trésorerie/Gemmes/Inventaire, qui passaient `temporaire` en dur
+  // à côté d'un `imprime` par défaut à true, complètement déconnectés l'un de l'autre.
+  const fp = (label: string, t: number, l: number, w: number, h: number, reserveByDefault = false, temporaireParDefaut = false) => {
     const ov = fieldPositions?.[label]
     const top = ov?.top ?? t, left = ov?.left ?? l, width = ov?.width ?? w, height = ov?.height ?? h
+    const imprime = ov?.imprimer ?? !temporaireParDefaut
     return {
       top, left, width, height,
       reserved: ov?.reserved === true || (!ov && reserveByDefault),
       reservePortalTarget,
       // Reposer un champ depuis la réserve l'assigne à la fiche EN COURS (geste de changement de page).
       onReserveToggle: (r: boolean) => cbReserve(label, r, r ? { top, left, width, height } : { top, left, width, height, page }),
-      // Décision d'impression : par défaut le champ figure sur le papier (cf. FieldPosition.imprimer).
-      imprime: ov?.imprimer ?? true,
-      onToggleImpression: () => cbReserve(label, ov?.reserved === true, { imprimer: !(ov?.imprimer ?? true) } as never),
+      imprime,
+      temporaire: !imprime,
+      onToggleImpression: () => cbReserve(label, ov?.reserved === true, { imprimer: !imprime } as never),
     }
   }
   const { data: rawData } = useGameData()
@@ -294,8 +301,7 @@ export default function ChampsVerso({
 
       {/* === INVENTAIRE === */}
       {visible("Inventaire") && <DraggableTextarea
-        {...fp("Inventaire", 40.9, 73.3, 44.2, 15.5)}
-        temporaire
+        {...fp("Inventaire", 40.9, 73.3, 44.2, 15.5, false, true)}
         value={character.inventaire}
         onChange={v => onChange({ inventaire: v })}
         calibrate={calibrate} label="Inventaire"
@@ -588,8 +594,8 @@ export default function ChampsVerso({
           (l'identifiant de calibrage). Argent/Cuivre/Gemmes sont de nouveaux champs, réservés par
           défaut (voir fp reserveByDefault). */}
       {visible("Trésorerie") && <DraggableField
-        {...fp("Trésorerie", 72.2, 49.9, 29.2, 2.0)}
-        temporaire type="number"
+        {...fp("Trésorerie", 72.2, 49.9, 29.2, 2.0, false, true)}
+        type="number"
         value={character.piecesOr}
         onChange={v => onChange(normaliserTresorerie(parseInt(v) || 0, character.piecesArgent, character.piecesCuivre))}
         calibrate={calibrate} label="Trésorerie" title={t('wizard.step7.or')}
@@ -597,24 +603,23 @@ export default function ChampsVerso({
         active={activeStep === 6}
       />}
       {visible("Argent") && <DraggableField
-        {...fp("Argent", 72.2, 49.9, 29.2, 2.0, true)}
-        temporaire type="number"
+        {...fp("Argent", 72.2, 49.9, 29.2, 2.0, true, true)}
+        type="number"
         value={character.piecesArgent}
         onChange={v => onChange(normaliserTresorerie(character.piecesOr, parseInt(v) || 0, character.piecesCuivre))}
         calibrate={calibrate} label="Argent"
         containerRef={containerRef} onMoved={cb}
       />}
       {visible("Cuivre") && <DraggableField
-        {...fp("Cuivre", 72.2, 49.9, 29.2, 2.0, true)}
-        temporaire type="number"
+        {...fp("Cuivre", 72.2, 49.9, 29.2, 2.0, true, true)}
+        type="number"
         value={character.piecesCuivre}
         onChange={v => onChange(normaliserTresorerie(character.piecesOr, character.piecesArgent, parseInt(v) || 0))}
         calibrate={calibrate} label="Cuivre"
         containerRef={containerRef} onMoved={cb}
       />}
       {visible("Gemmes") && <DraggableTextarea
-        {...fp("Gemmes", 72.2, 49.9, 29.2, 6.0, true)}
-        temporaire
+        {...fp("Gemmes", 72.2, 49.9, 29.2, 6.0, true, true)}
         value={character.gemmes} onChange={v => onChange({ gemmes: v })}
         calibrate={calibrate} label="Gemmes"
         containerRef={containerRef} onMoved={cb}
