@@ -1,4 +1,5 @@
-import { useRef, useLayoutEffect } from 'react'
+import { useRef, useLayoutEffect, useContext } from 'react'
+import { PdfExportContext } from '../hooks/modeImpression'
 
 interface SheetFieldProps {
   top: number
@@ -27,10 +28,16 @@ export default function SheetField({
   top, left, width, height = 2.2,
   value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false, placeholder, temporaire,
 }: SheetFieldProps) {
+  // html2canvas ne reproduit pas fidèlement le rendu natif d'un <input> (texte constaté décalé/rogné
+  // dans le PDF exporté — voir project_impression_pdf_bug) : dans le conteneur d'export, on affiche donc
+  // la valeur dans un <div> ordinaire (bien supporté par html2canvas) plutôt qu'un vrai champ de saisie,
+  // avec le même calcul d'ajustement de police.
+  const pdfExport = useContext(PdfExportContext)
   const ref = useRef<HTMLInputElement>(null)
+  const refDiv = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
-    const el = ref.current
+    const el = pdfExport ? refDiv.current : ref.current
     if (!el) return
     // calc(...vw * var(--zoom-scale, 1)) plutôt que Xvw seul : voir la note sur le conteneur zoomable
     // dans App.tsx. Boîte et police sont alors proportionnelles au même facteur (--zoom-scale ∝ zoom%),
@@ -45,7 +52,38 @@ export default function SheetField({
     }
     // width/height dans les dépendances : sans eux, redimensionner un champ en calibrage ne
     // recalculait pas la police, qui restait ajustée à l'ancienne largeur.
-  }, [value, width, height])
+  }, [value, width, height, pdfExport])
+
+  if (pdfExport) {
+    return (
+      <div
+        ref={refDiv}
+        title={title}
+        className={temporaire ? "tdr-field tdr-temporaire" : "tdr-field"}
+        style={{
+          position: 'absolute',
+          top: `${top}%`,
+          left: `${left}%`,
+          width: `${width}%`,
+          height: `${height}%`,
+          transform: 'translate(-50%, -50%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+          textAlign: align,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
+          fontFamily: "'Crimson Text', Georgia, serif",
+          color: '#1a1510',
+          padding: '0 3px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {value}
+      </div>
+    )
+  }
 
   return (
     <input

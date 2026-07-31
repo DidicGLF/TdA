@@ -4,30 +4,6 @@ import jsPDF from 'jspdf'
 const A4_LARGEUR_MM = 210
 const A4_HAUTEUR_MM = 297
 const A5_HAUTEUR_MM = 148
-const BASE_PT = 12
-const MIN_PT = 5
-
-// Filet de sécurité pour la taille de police des champs SIMPLES (input, un seul champ par ligne) :
-// SheetField la calcule déjà elle-même en vw*var(--zoom-scale) (voir .pdf-export dans App.tsx), mais un
-// forçage en pt basé sur la géométrie RÉELLE mesurée (clientWidth/scrollWidth, indépendante de
-// --zoom-scale) reprend le mécanisme déjà éprouvé par l'ancienne impression native.
-// Volontairement PAS appliqué aux <textarea> (SheetTextarea) : leur interligne et padding-top sont
-// calculés à part (hauteur réelle du conteneur, indépendante de --zoom-scale) en fonction de LEUR PROPRE
-// taille de police — leur imposer ici une taille différente désynchronise les deux et pousse le texte
-// visuellement trop bas dans sa ligne (glyphe petit dans un interligne prévu pour un glyphe plus grand).
-// Pour les zones de texte, on fait donc confiance à SheetTextarea + --zoom-scale (déjà corrigé) en bloc.
-function ajusterPoliceChamps(container: HTMLElement) {
-  container.querySelectorAll<HTMLElement>('input.tdr-field').forEach(el => {
-    el.style.setProperty('font-size', `${BASE_PT}pt`, 'important')
-    const w = el.clientWidth
-    if (!w) return
-    let size = BASE_PT
-    while (el.scrollWidth > w + 1 && size > MIN_PT) {
-      size = +(size - 0.5).toFixed(1)
-      el.style.setProperty('font-size', `${size}pt`, 'important')
-    }
-  })
-}
 
 // Filet de rattrapage pour d'anciens personnages dont le recadrage de portrait (tx/ty) a été enregistré
 // en pixels bruts par une version antérieure du pan/zoom (aujourd'hui en pourcentage) — une valeur aussi
@@ -58,10 +34,9 @@ function sluggifier(nom: string): string {
 // chose. Contrepartie : texte non sélectionnable dans le PDF (rendu en image) — jugé acceptable pour
 // une fiche destinée à être imprimée/remplie à la main plutôt que lue à l'écran.
 export async function exporterFichePDF(container: HTMLElement, nomPersonnage: string): Promise<void> {
-  ajusterPoliceChamps(container)
   corrigerPortraitsLegacy(container)
-  // Laisse le navigateur appliquer les styles qu'on vient de poser avant de capturer — sinon html2canvas
-  // peut lire une mise en page pas encore repeinte.
+  // Laisse le navigateur appliquer le transform qu'on vient de poser avant de capturer — sinon
+  // html2canvas peut lire une mise en page pas encore repeinte.
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
