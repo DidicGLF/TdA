@@ -82,26 +82,10 @@ body {
   min-height: 100vh;
 }
 
-/* ===== IMPRESSION ===== */
-.print-only {
-  display: none;
-}
+/* ===== IMPRESSION / EXPORT PDF ===== */
 
-@page tdr-recto {
-  size: A4 portrait;
-  margin: 0;
-}
-
-@page tdr-verso {
-  size: A4 portrait;
-  margin: 0;
-}
-
-@page tdr-voies {
-  size: A4 portrait;
-  margin: 0;
-}
-
+/* window.print() garde un usage indépendant (DescriptionsEditor, sa propre feuille de style injectée) —
+   .no-print masque le chrome de l'app (barre d'outils, fiche éditable) si jamais il est déclenché. */
 @media print {
   html, body, #root {
     background: white !important;
@@ -112,70 +96,51 @@ body {
   .no-print {
     display: none !important;
   }
+}
 
-  /* Le conteneur flex de l'app passe en block pour que les sauts de page fonctionnent */
-  .app-root {
-    display: block !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
+/* Export PDF de la fiche (recto/verso/voies/fiches compagnons) : conteneur toujours monté hors écran
+   (voir App.tsx, pdfExportContainer) et capturé en image via html2canvas (exportFichePdf.ts) — ces
+   dimensions en mm donnent des pixels réels à capturer, indépendamment d'un vrai contexte d'impression
+   navigateur (@media print), qu'on n'utilise plus pour la fiche (window.print() restait cassé sur au
+   moins une page, et de toute façon aucun moyen de récupérer le fichier généré pour le fusionner avec
+   un export PDF). .sheet-bg n'a pas besoin d'override ici : width:100% (déjà en style inline) + le
+   ratio réel de l'image de fond donnent la bonne hauteur pour chaque taille de page (A4 ou A5). */
+.pdf-export .print-page-recto,
+.pdf-export .print-page-verso,
+.pdf-export .print-page-voies {
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  position: relative;
+}
 
-  .print-only {
-    display: block !important;
-  }
+.pdf-export .print-page-compagnon {
+  width: 210mm;
+  height: 148mm;
+  overflow: hidden;
+  position: relative;
+}
 
-  .print-page-recto,
-  .print-page-verso,
-  .print-page-voies {
-    display: block;
-    width: 210mm;
-    height: 297mm;
-    overflow: hidden;
-    position: relative;
-  }
+/* Données de session : jamais exportées. La fiche papier doit rester vierge sur tout ce que le joueur
+   fera évoluer en cours de partie (PV/PM restants, équipement, trésorerie…), sinon il ne peut pas le
+   corriger sur le papier. L'emplacement du champ reste visible et vide. */
+.pdf-export .tdr-temporaire {
+  display: none !important;
+}
 
-  .print-page-recto {
-    page: tdr-recto;
-  }
+.pdf-export .tdr-field {
+  font-size: 12pt !important;
+  overflow: visible !important;
+}
 
-  .print-page-verso {
-    page: tdr-verso;
-  }
-
-  .print-page-voies {
-    page: tdr-voies;
-  }
-
-  .sheet-bg {
-    width: 210mm;
-    height: 297mm;
-    display: block;
-  }
-
-  /* Données de session : jamais imprimées. La fiche papier doit rester vierge sur tout ce que le
-     joueur fera évoluer en cours de partie (PV/PM restants, équipement, trésorerie…), sinon il ne
-     peut pas le corriger sur le papier. L'emplacement du fond imprimé reste visible et vide. */
-  .tdr-temporaire {
-    display: none !important;
-  }
-
-  .tdr-field {
-    font-size: 12pt !important;
-    overflow: visible !important;
-  }
-
-  textarea.tdr-field {
-    overflow: hidden !important;
-  }
-
-
-
+.pdf-export textarea.tdr-field {
+  overflow: hidden !important;
 }
 
 /* Texte-repère affiché dans les champs vides pendant le calibrage : il matérialise l'emplacement et
    la ligne de base du texte, un cadre en pointillés seul étant difficile à positionner au pixel près.
-   Purement visuel — il n'entre jamais dans la valeur du champ ni dans l'impression (le calibrage
-   n'étant pas actif à l'impression). */
+   Purement visuel — il n'entre jamais dans la valeur du champ ni dans l'export PDF (le calibrage
+   n'étant pas actif dans le conteneur d'export). */
 .tdr-field::placeholder {
   color: rgba(160, 90, 230, 0.55);
   opacity: 1;

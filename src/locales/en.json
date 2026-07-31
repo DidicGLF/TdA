@@ -267,9 +267,8 @@
   },
   "impression": {
     "consigne": "Click a badge to include or exclude a field from the printed sheet",
-    "lancer": "🖨 Print",
-    "exportCompagnons": "📄 Companion sheets (PDF)",
-    "exportCompagnonsEnCours": "Generating…",
+    "lancer": "📄 Download PDF",
+    "exportEnCours": "Generating…",
     "fermer": "Close"
   },
   "calibrage": {
