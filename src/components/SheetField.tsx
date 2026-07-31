@@ -73,7 +73,10 @@ export default function SheetField({
           left: `${left}%`,
           width: `${width}%`,
           height: `${height}%`,
-          transform: 'translate(-50%, -50%)',
+          // Léger décalage vers le bas (0.08em) en plus du centrage line-height=hauteur — constaté sur
+          // un export réel légèrement trop haut avec un centrage géométrique pur (voir
+          // project_impression_pdf_bug pour l'historique des essais précédents).
+          transform: 'translate(-50%, -50%) translateY(0.08em)',
           textAlign: align,
           overflow: 'hidden',
           whiteSpace: 'nowrap',
