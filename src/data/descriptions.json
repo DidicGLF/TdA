@@ -918,7 +918,8 @@
           ],
           "formula": "MOD_CHA",
           "temporaire": true,
-          "usage": "1"
+          "usage": "1",
+          "cout_pm": "3"
         }
       ]
     },

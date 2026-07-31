@@ -483,6 +483,16 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
         ? { rangNom: ab.rangNom, temporaire: true }
         : { rangNom: ab.rangNom, voieNom: ab.voieNom, rangIdx: ab.rangIdx })
     }
+    // Bonus temporaire à valeur fixe (pas en dés, donc absent de activeDeDegats ci-dessus) ciblant
+    // DM_ARME — ex. "Attaque flamboyante" (voie du charme rang 3, +Mod.CHA). Même consommation qu'un
+    // bonus de jet classique (voir roll()) : retiré de activeBoosts une fois utilisé.
+    const dmBoost = activeBoosts.find(b => b.stat === 'DM_ARME')
+    if (dmBoost) {
+      total += dmBoost.bonus
+      displayParts.push(`+${dmBoost.bonus} (${dmBoost.label})`)
+      formulaParts.push(String(dmBoost.bonus))
+      setActiveBoosts(prev => prev.filter(b => b.id !== dmBoost.id))
+    }
     pushResult({ label: `💥 ${label} — ${t('gameMode.sufDm')}`, formula: formulaParts.join(' + '), sides: 6, roll: total, modifier: null, total, rollDisplay: displayParts.join(' '), flash: false, contributingEffects })
   }
 
@@ -1103,15 +1113,25 @@ export default function GameModePanel({ character, descriptions, onChange, onClo
           <div style={{ fontSize: 13, color: `rgba(245,236,215,0.4)`, marginBottom: 4 }}>{t('gameMode.attacksSection')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
             {[
-              { label: t('gameMode.attContact'), val: attaques.contact },
-              { label: t('gameMode.attDistance'), val: attaques.distance },
-              { label: t('gameMode.attMagic'), val: attaques.magique },
-            ].map(({ label, val }) => (
-              <button key={label} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '4px 2px', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => roll(20, label, val)}>
-                <span style={{ fontSize: 11, color: `rgba(245,236,215,0.5)` }}>{label}</span>
-                <span style={{ color: GOLD, fontSize: 22, fontWeight: 700 }}>{val >= 0 ? '+' : ''}{val}</span>
-              </button>
-            ))}
+              { label: t('gameMode.attContact'), val: attaques.contact, stat: 'ATT_CONTACT' },
+              { label: t('gameMode.attDistance'), val: attaques.distance, stat: 'ATT_DISTANCE' },
+              { label: t('gameMode.attMagic'), val: attaques.magique, stat: 'ATT_MAGIQUE' },
+            ].map(({ label, val, stat }) => {
+              // Même mécanique que les boutons de caractéristiques ci-dessous (boost/boostedMod) —
+              // manquait ici : `roll` n'appliquait jamais un bonus temporaire ciblant ATT_CONTACT/
+              // DISTANCE/MAGIQUE faute de recevoir `stat`, et l'affichage ne le montrait pas non plus
+              // (ex. "Attaque flamboyante", voie du charme rang 3, formula MOD_CHA sur ATT_CONTACT).
+              const boost = activeBoosts.find(b => b.stat === stat)
+              const boostedVal = boost ? val + boost.bonus : val
+              return (
+                <button key={label} disabled={isUnconscious} style={{ ...btnStyle(!!boost), flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '4px 2px', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => roll(20, label, val, stat)}>
+                  <span style={{ fontSize: 11, color: boost ? '#ffe94d' : `rgba(245,236,215,0.5)`, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {label}{boost && <span style={{ fontSize: 10 }}>{boost.bonus >= 0 ? '+' : ''}{boost.bonus}</span>}
+                  </span>
+                  <span style={{ color: boost ? '#ffe94d' : GOLD, fontSize: 22, fontWeight: 700 }}>{boostedVal >= 0 ? '+' : ''}{boostedVal}</span>
+                </button>
+              )
+            })}
           </div>
 
           {(character.arme1 || character.arme2) && (

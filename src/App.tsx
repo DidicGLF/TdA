@@ -681,9 +681,11 @@ function AppContent() {
                 </div>
                 <div style={{ padding: '0 4px 80px' }}>
                   {sheetPage === 'recto' ? (
-                    <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step} />
+                    <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step}
+                      fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
                   ) : sheetPage === 'verso' ? (
-                    <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                    <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
+                      fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
                   ) : sheetPage === 'compagnons' ? (
                     <CharacterSheetCompagnons character={character} onChange={onChange} fieldPositions={fieldPositions} />
                   ) : sheetPage === 'voies' ? (
