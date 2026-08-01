@@ -73,6 +73,9 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // plus bas) pour toujours appeler la version la plus récente — sinon les dégâts reçus par réseau
   // s'appliqueraient toujours sur l'état de session du tout premier rendu.
   const handleAttaquePJRef = useRef<(pj: CombatSession['pjs'][number], montant: number, type: string) => void>(() => {})
+  // Même besoin, pour appliquer une valeur de PV reçue par réseau (voir 'pv-actualises') sur la session
+  // la plus récente — updatePJ est redéfini à chaque rendu comme handleAttaquePJ ci-dessus.
+  const updatePJRef = useRef<(id: string, patch: Partial<CombatSession['pjs'][number]>) => void>(() => {})
   // Même besoin que handleAttaquePJRef ci-dessus : l'écoute réseau doit retrouver le PJ par nom dans la
   // session la PLUS RÉCENTE, pas celle du rendu où elle s'est abonnée. Synchronisée dans un effet (pas
   // pendant le rendu) : écrire une ref pendant le rendu est interdit par les règles des Hooks.
@@ -420,6 +423,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
         const monIdPJ = clientsPJRef.current[e.id]
         const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
         if (pj) handleAttaquePJRef.current(pj, message.montant, message.typeDegats)
+      } else if (message.type === 'pv-actualises') {
+        // Le joueur vient de se soigner ou de perdre des PV de son côté (voir applyPVLoss/applyHeal
+        // dans GameModePanel.tsx) — jusqu'ici jamais transmis au MJ (contrairement aux dégâts infligés
+        // ou reçus, déjà couverts par 'degats'/'degats-recus'), sa carte restait figée.
+        const monIdPJ = clientsPJRef.current[e.id]
+        const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
+        if (pj) updatePJRef.current(pj.id, { pvActuels: message.pvActuels })
       }
     }).then(fn => {
       if (annule) { fn(); return }
@@ -476,8 +486,22 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     onSessionChange({ ...session, compagnons: session.compagnons.map(c => c.id === id ? { ...c, ...patch } : c) })
   }
 
+  // Si le patch touche pvActuels (édition manuelle du champ PV dans PJCard, ou réception réseau
+  // 'pv-actualises' ci-dessus via updatePJRef) et que ce PJ est connecté, le lui transmettre — sinon un
+  // MJ qui tue/soigne un PJ à la main ne le prévient jamais (voir reseauProtocole.ts). Idempotent si
+  // l'appel vient déjà d'un 'pv-actualises' reçu de ce même PJ : il recevra en retour la valeur qu'il
+  // vient d'envoyer, sans effet (pas de nouvel aller-retour côté joueur, voir GameModePanel.tsx).
   const updatePJ = (id: string, patch: Partial<CombatSession['pjs'][number]>) => {
     onSessionChange({ ...session, pjs: session.pjs.map(p => p.id === id ? { ...p, ...patch } : p) })
+    if (patch.pvActuels !== undefined) {
+      const pj = session.pjs.find(p => p.id === id)
+      if (pj) {
+        const connexionId = Object.entries(clientsPJRef.current).find(([, idpj]) => idpj === idPJ(pj.character))?.[0]
+        if (connexionId !== undefined) {
+          envoyerAClientReseau(Number(connexionId), encoderMessage({ type: 'pv-actualises', pvActuels: patch.pvActuels }))
+        }
+      }
+    }
   }
 
   // Retire aussi les compagnons de ce PJ (voir pjProprietaireId) : sans lui, ses cartes resteraient
@@ -662,6 +686,8 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // l'avertissement.
   // eslint-disable-next-line react-hooks/refs
   handleAttaquePJRef.current = handleAttaquePJ
+  // eslint-disable-next-line react-hooks/refs
+  updatePJRef.current = updatePJ
 
   // Pose un effet de dégâts sur la durée sur la cible actuelle du PJ (poison, brûlure, ...) — encaissé
   // automatiquement à chaque « Tour suivant » (voir tickerDots), sans appliquer de dégâts immédiats :

@@ -206,6 +206,12 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
         } else if (message?.type === 'message-joueur') {
           const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
           ajouterJournal(t('gmMode.reseau.messageJoueurEvt', { nom, texte: message.texte }), 'messageJoueur')
+        } else if (message?.type === 'pv-actualises') {
+          // Le PJ s'est soigné ou a perdu des PV de son côté (voir applyPVLoss/applyHeal dans
+          // GameModePanel.tsx) — la carte de la rencontre est mise à jour ailleurs (CombatTab.tsx a sa
+          // propre écoute réseau, voir sa note), cette ligne n'est qu'une trace visible dans ce journal.
+          const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
+          ajouterJournal(t('gmMode.reseau.pvActualisesEvt', { nom, pv: message.pvActuels }), 'pvActualises')
         } else {
           // Pas un message de protocole reconnu (texte de test brut, voir "message de test") : affiché tel quel.
           ajouterJournal(t('gmMode.reseau.messageEvt', { id: e.id, contenu: e.contenu }))
@@ -213,7 +219,17 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
       }
     }
     let desabonner = () => {}
-    ecouterReseau(gerer).then(fn => { if (annule) fn(); else desabonner = fn })
+    ecouterReseau(gerer).then(fn => {
+      if (annule) { fn(); return }
+      desabonner = fn
+      // Redemande à tous les clients déjà connectés de se réidentifier (voir reseauProtocole.ts et le
+      // même correctif dans CombatTab.tsx) : identitesRef/clientsConnectes viennent d'être recréés vides
+      // par ce (re)montage — ex. après un aller-retour par le Mode de jeu, qui démonte GMDashboard —
+      // mais leur connexion WebSocket, elle, est restée ouverte. Sans ça, la carte du joueur restait
+      // vide jusqu'à sa prochaine (re)connexion, alors que "X client(s) connecté(s)" (compté côté
+      // serveur Rust, indépendant de cet état React) continuait d'afficher le bon nombre.
+      envoyerATousReseau(encoderMessage({ type: 'qui-etes-vous' }))
+    })
     return () => { annule = true; desabonner() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

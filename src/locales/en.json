@@ -1037,6 +1037,9 @@
       "imageMJJournal": "🖼 Image received from the GM — click to view again",
       "objetMagiqueMJJournal": "📦 Magic item received from the GM: {{nom}}",
       "objetClassiqueMJJournal": "📦 Item received from the GM: {{nom}}",
+      "pvActualisesMJJournal": "❤️ The GM changed your HP: {{pv}}",
+      "pvActualisesHistoryLabel": "HP changed by the GM",
+      "pvActualisesFormule": "→ {{pv}} HP",
       "fermerImageTitle": "Close",
       "journalVide": "No messages received yet."
     },
@@ -1440,6 +1443,7 @@
       "identificationEvt": "Client #{{id}} — The character {{nom}} ({{cle}}) was transmitted.",
       "degatsEvt": "Client #{{id}} — {{nom}} ({{cle}}) deals {{montant}} DM ({{type}}).",
       "messageJoueurEvt": "💬 {{nom}}: {{texte}}",
+      "pvActualisesEvt": "❤️ {{nom}} — HP: {{pv}}",
       "horsTauri": "Network is only available in the installed app (not in the browser preview).",
       "envoyerATousPlaceholder": "Test message to broadcast…",
       "envoyerATous": "Send to all",

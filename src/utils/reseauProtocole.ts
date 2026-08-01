@@ -81,6 +81,17 @@ export type MessageReseau =
   // recevoirObjetClassiqueReseau dans App.tsx) — même traitement immédiat que la réception d'un objet
   // magique, pas une simple entrée de catalogue à activer manuellement plus tard.
   | { type: 'objet-classique-mj'; categorie: 'arme' | 'armure'; objet: Arme | ArmureEquipee }
+  // Bidirectionnel (joueur → MJ ET MJ → joueur, même forme dans les deux sens) : la valeur ACTUELLE de
+  // pvActuels/pvRestants du PJ, hors des deux cas déjà couverts par 'degats'/'degats-recus' (dégâts
+  // infligés PAR ce PJ à une cible, ou REÇUS d'une attaque de créature) — un soin (applyHeal), une perte
+  // de PV hors attaque de créature (applyPVLoss), ou une édition manuelle du champ PV côté MJ
+  // (updatePJ dans CombatTab.tsx) ne passaient par AUCUN de ces deux messages, donc jamais transmis :
+  // le MJ ne voyait pas un soin du joueur, et le joueur ne voyait pas le MJ le tuer/soigner à la main.
+  // Toujours la valeur absolue (pas un delta) pour rester correct même si un message se perd. Ne
+  // déclenche jamais de renvoi en retour à la réception (voir GameModePanel.tsx/CombatTab.tsx) : la
+  // valeur reçue est appliquée localement sans repasser par les fonctions qui émettent ce message, pour
+  // ne jamais faire d'aller-retour.
+  | { type: 'pv-actualises'; pvActuels: number }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -104,7 +115,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique' | 'pvActualises'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -121,4 +132,7 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   objetMagique: 'rgba(180,130,255,0.95)',
   // Gris-acier plutôt que doré/violet (déjà pris) — équipement ordinaire, pas une famille dorée/magique.
   objetClassique: 'rgba(170,180,195,0.9)',
+  // Vert-de-gris neutre, ni la couleur "dégâts" (rouge/orange) ni "soin" — la valeur peut monter ou
+  // descendre selon le cas (soin, mort par édition manuelle...), pas de connotation univoque possible.
+  pvActualises: 'rgba(150,190,160,0.9)',
 }

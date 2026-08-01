@@ -31,6 +31,10 @@ export function useReseauClient(
   onDegatsRecus?: (d: DegatsRecus) => void,
   onObjetMagiqueRecu?: (o: ObjetMagiqueEntry) => void,
   onObjetClassiqueRecu?: (categorie: 'arme' | 'armure', objet: Arme | ArmureEquipee) => void,
+  // MJ → joueur : le MJ vient de modifier pvActuels à la main (voir 'pv-actualises' dans
+  // reseauProtocole.ts) — appliqué directement à pvRestants, sans repasser par applyPVLoss/applyHeal
+  // (qui émettent CE MÊME message vers le MJ), pour ne jamais faire d'aller-retour.
+  onPvActualisesRecu?: (pv: number) => void,
 ) {
   const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
@@ -53,6 +57,8 @@ export function useReseauClient(
   useEffect(() => { onObjetMagiqueRecuRef.current = onObjetMagiqueRecu })
   const onObjetClassiqueRecuRef = useRef(onObjetClassiqueRecu)
   useEffect(() => { onObjetClassiqueRecuRef.current = onObjetClassiqueRecu })
+  const onPvActualisesRecuRef = useRef(onPvActualisesRecu)
+  useEffect(() => { onPvActualisesRecuRef.current = onPvActualisesRecu })
   // Mémorisé pour pouvoir se réidentifier sur demande (voir 'qui-etes-vous' ci-dessous) sans redemander
   // le personnage à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet
   // qui démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
@@ -109,6 +115,13 @@ export function useReseauClient(
       } else if (message?.type === 'objet-classique-mj') {
         onObjetClassiqueRecuRef.current?.(message.categorie, message.objet)
         ajouterJournal(t('gameMode.reseau.objetClassiqueMJJournal', { nom: message.objet.nom }), 'objetClassique')
+        setMessageNonLu(true)
+      } else if (message?.type === 'pv-actualises') {
+        // Le MJ vient de modifier les PV à la main (voir reseauProtocole.ts) — appliqué directement,
+        // sans passer par applyPVLoss/applyHeal côté GameModePanel (qui émettraient ce même message en
+        // retour vers le MJ, créant un aller-retour inutile).
+        onPvActualisesRecuRef.current?.(message.pvActuels)
+        ajouterJournal(t('gameMode.reseau.pvActualisesMJJournal', { pv: message.pvActuels }), 'pvActualises')
         setMessageNonLu(true)
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,

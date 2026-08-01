@@ -207,7 +207,11 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
     (categorie: 'arme' | 'armure', o: Arme | ArmureEquipee) => gererObjetClassiqueRecuRef.current(categorie, o),
     [],
   )
-  const reseau = useReseauClient(onDegatsRecus, onObjetMagiqueRecuReseau, onObjetClassiqueRecuReseau)
+  // Même indirection : le MJ vient de modifier pvActuels à la main (voir 'pv-actualises' dans
+  // reseauProtocole.ts) — setCurrentPV/applyPVLoss/applyHeal (définis plus bas) n'existent pas encore ici.
+  const gererPvActualisesRecuRef = useRef<(pv: number) => void>(() => {})
+  const onPvActualisesRecuReseau = useCallback((pv: number) => gererPvActualisesRecuRef.current(pv), [])
+  const reseau = useReseauClient(onDegatsRecus, onObjetMagiqueRecuReseau, onObjetClassiqueRecuReseau, onPvActualisesRecuReseau)
   // Marque le message/l'image du MJ comme lu(e) dès que le panneau est ouvert — à l'ouverture, mais
   // aussi si un nouveau message arrive alors que le panneau est DÉJÀ ouvert (sinon messageNonLu repasse
   // à true sans que ce useEffect ne se redéclenche, puisque reseauPanelOuvert lui ne change pas : le
@@ -223,6 +227,13 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
   // donc envoyé générique ; le MJ l'affiche comme tel dans son journal.
   const envoyerDegatsReseau = (montant: number) => {
     if (reseau.connecte && montant > 0) reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: '' }))
+  }
+
+  // Transmission automatique au MJ de toute nouvelle valeur de PV (soin ou perte hors attaque de
+  // créature, déjà couverte séparément par 'degats-recus') — voir applyPVLoss/applyHeal plus bas et la
+  // note sur 'pv-actualises' dans reseauProtocole.ts. Valeur absolue, pas un delta.
+  const envoyerPvReseau = (pv: number) => {
+    if (reseau.connecte) reseau.envoyer(encoderMessage({ type: 'pv-actualises', pvActuels: pv }))
   }
 
   const rechercherEtConnecter = async () => {
@@ -757,6 +768,7 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
     const wasAlive = !isDead
     setCurrentPV(newPV)
     onChange({ pvRestants: newPV })
+    envoyerPvReseau(newPV)
     if (wasAlive && isResisting && newPV <= -conValeur) {
       pushHistory({ label: t('gameMode.deathHistoryLabel'), formula: t('gameMode.pvZero'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
     } else if (wasConscious && newPV <= 0 && !isResisting) {
@@ -774,6 +786,7 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
     const healed = newPV - pvActuels
     setCurrentPV(newPV)
     onChange({ pvRestants: newPV })
+    envoyerPvReseau(newPV)
     if (newPV > 0) setOgreResisting(false)
     pushHistory({ label, formula: formula ?? `+${healed} ${t('gameMode.pv')}`, sides: 6, roll: healed, modifier: null, total: healed, costType, rollDisplay, flash: false })
   }
@@ -866,6 +879,17 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
   // 'objet-classique-mj').
   useEffect(() => {
     gererObjetClassiqueRecuRef.current = (categorie, objet) => onObjetClassiqueRecu?.(categorie, objet)
+  })
+  // Réception réseau d'une nouvelle valeur de PV fixée par le MJ à la main (voir 'pv-actualises' dans
+  // reseauProtocole.ts) — appliquée directement, PAS via applyPVLoss/applyHeal (qui émettraient ce même
+  // message en retour vers le MJ, créant un aller-retour inutile).
+  useEffect(() => {
+    gererPvActualisesRecuRef.current = pv => {
+      setCurrentPV(pv)
+      onChange({ pvRestants: pv })
+      if (pv > 0) setOgreResisting(false)
+      pushHistory({ label: t('gameMode.reseau.pvActualisesHistoryLabel'), formula: t('gameMode.reseau.pvActualisesFormule', { pv }), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+    }
   })
 
   const handleTakeDamage = (type: string) => {
