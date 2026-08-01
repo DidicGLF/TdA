@@ -484,8 +484,10 @@ function AppContent() {
       enchantementEncombrement: c.enchantementEncombrement ?? 0,
       arme1: c.arme1 ?? '',
       arme2: c.arme2 ?? '',
+      arme3: c.arme3 ?? '',
       dmArme1: c.dmArme1 ?? '',
       dmArme2: c.dmArme2 ?? '',
+      dmArme3: c.dmArme3 ?? '',
     }
     setCharacter(normalized)
     skipAutoSheetPage.current = true

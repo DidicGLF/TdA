@@ -21,10 +21,11 @@ function evaluateCondition(condition: Condition, character: Character): boolean 
       const armes = condition.armes.map(normalizeArmeName)
       const arme1 = character.arme1 ? normalizeArmeName(character.arme1) : null
       const arme2 = character.arme2 ? normalizeArmeName(character.arme2) : null
-      return armes.some(a => a === arme1 || a === arme2)
+      const arme3 = character.arme3 ? normalizeArmeName(character.arme3) : null
+      return armes.some(a => a === arme1 || a === arme2 || a === arme3)
     }
     case 'noArme':
-      return !character.arme1
+      return !character.arme1 && !character.arme2 && !character.arme3
   }
 }
 
@@ -427,9 +428,9 @@ export function computeAttaquesTotaux(
     return cat !== null && !canUseFormation(cat)
   }
   const mal = (arme: string, type: string) => armeSansForm(arme) && getArmeAttType(arme) === type ? MALUS : 0
-  const malusArmesContact = ((character.arme1 && mal(character.arme1, 'FOR')) || (character.arme2 && mal(character.arme2, 'FOR'))) ? MALUS : 0
-  const malusArmesDist    = ((character.arme1 && mal(character.arme1, 'DEX')) || (character.arme2 && mal(character.arme2, 'DEX'))) ? MALUS : 0
-  const malusArmesMag     = ((character.arme1 && mal(character.arme1, 'INT')) || (character.arme2 && mal(character.arme2, 'INT'))) ? MALUS : 0
+  const malusArmesContact = ((character.arme1 && mal(character.arme1, 'FOR')) || (character.arme2 && mal(character.arme2, 'FOR')) || (character.arme3 && mal(character.arme3, 'FOR'))) ? MALUS : 0
+  const malusArmesDist    = ((character.arme1 && mal(character.arme1, 'DEX')) || (character.arme2 && mal(character.arme2, 'DEX')) || (character.arme3 && mal(character.arme3, 'DEX'))) ? MALUS : 0
+  const malusArmesMag     = ((character.arme1 && mal(character.arme1, 'INT')) || (character.arme2 && mal(character.arme2, 'INT')) || (character.arme3 && mal(character.arme3, 'INT'))) ? MALUS : 0
 
   // Recalcule Niveau + Mod. actuel (base + bonus de voies/cristaux) + bonus de famille,
   // au lieu de se fier à attaqueContact/attaqueDistance/attaqueMagique figés au dernier level-up

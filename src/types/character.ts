@@ -134,8 +134,10 @@ export interface Character {
   attaqueMagique: number
   arme1: string
   arme2: string
+  arme3: string
   dmArme1: string
   dmArme2: string
+  dmArme3: string
   armes: Arme[]
   armuresEquipees: ArmureEquipee[]
 
@@ -297,8 +299,10 @@ export const defaultCharacter = (): Character => ({
   attaqueMagique: 0,
   arme1: '',
   arme2: '',
+  arme3: '',
   dmArme1: '',
   dmArme2: '',
+  dmArme3: '',
   armes: [],
   armuresEquipees: [],
 

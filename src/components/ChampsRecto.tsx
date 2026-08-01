@@ -369,11 +369,14 @@ export default function ChampsRecto({
           return cat !== null && !canUseFormation(cat)
         }
         const malusArmesContact = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'FOR')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'FOR')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'FOR')
+          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'FOR')) ? MALUS_SANS_FORM : 0
         const malusArmesDist    = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'DEX')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'DEX')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'DEX')
+          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'DEX')) ? MALUS_SANS_FORM : 0
         const malusArmesMag     = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'INT')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'INT')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'INT')
+          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'INT')) ? MALUS_SANS_FORM : 0
 
         const initContribs = effects['INIT'] ?? []
         const initBonus = sumStat(initContribs)
@@ -668,6 +671,35 @@ export default function ChampsRecto({
               ...groupContribs(bonusContribs2),
             ], total: dm2 } : undefined
             return f({ label: "DM Arme 2", tooltipTitle: t('recto.dmArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: locked, align: "center", formula: formula2 })
+          })()}
+          {/* Arme 3 : 3e emplacement, indépendant des mains (voir EquipementModal.tsx equipeArmeSlot) —
+              pas de blocage arme à 2 mains ni de conflit bouclier, mais compte comme une arme équipée
+              partout ailleurs (malus sans formation ci-dessus, Mode de jeu). Nouveau champ → réserve de
+              calibrage par défaut (reserveByDefault), pas de position devinée sur la feuille. */}
+          {f({ label: "Arme 3",    top: 36.5, left: 85.8, width: 19.9, height: 2.0, value: character.arme3,   onChange: v => onChange({ arme3: v }), reserveByDefault: true })}
+          {(calibrate || character.arme3) && f({ label: "ATT Arme 3", tooltipTitle: t('recto.attArme', { arme: character.arme3 ?? '3' }), top: 39.1, left: 79.2, width: 5.0, height: 2.0, value: character.arme3 ? attTotalPourArme(character.arme3) : '—', onChange: () => {}, readOnly: locked, align: "center",
+            formula: character.arme3 ? formulaArme(character.arme3) : undefined, reserveByDefault: true })}
+          {(calibrate || character.arme3) && (() => {
+            const e3 = character.arme3 ? findArmeEntry(armes, character.arme3) : null
+            const modVal3 = e3?.mod === 'FOR' ? FOR.mod : e3?.mod === 'DEX' ? DEX.mod : null
+            const bonusContribs3 = character.arme3 ? dmArmeBonusContribs(character.arme3) : []
+            const bonus3 = sumStat(bonusContribs3)
+            const invEntry3 = !e3 && character.arme3 ? character.armes.find(a => a.nom === character.arme3) : null
+            const invModVal3 = invEntry3?.attaque === 'FOR' ? FOR.mod : invEntry3?.attaque === 'DEX' ? DEX.mod : null
+            const dm3base = e3
+              ? `${e3.dm}${modVal3 !== null ? ' ' + fmt(modVal3) : ''}`
+              : invEntry3 ? `${invEntry3.dm}${invModVal3 !== null ? ' ' + fmt(invModVal3) : ''}` : character.dmArme3
+            const dm3 = bonus3 !== 0 ? `${dm3base} ${fmt(bonus3)}` : dm3base
+            const formula3 = e3 ? { lines: [
+              { label: t('recto.tlDes'), value: e3.dm },
+              ...(modVal3 !== null ? [{ label: t(`stats.mod${e3.mod}`), value: fmt(modVal3) }] : []),
+              ...groupContribs(bonusContribs3),
+            ], total: dm3 } : invEntry3 ? { lines: [
+              { label: t('recto.tlDes'), value: invEntry3.dm },
+              ...(invModVal3 !== null ? [{ label: t(`stats.mod${invEntry3.attaque}`), value: fmt(invModVal3) }] : []),
+              ...groupContribs(bonusContribs3),
+            ], total: dm3 } : undefined
+            return f({ label: "DM Arme 3", tooltipTitle: t('recto.dmArme', { arme: character.arme3 ?? '3' }), top: 39.1, left: 91.1, width: 9.1, height: 2.0, value: dm3, onChange: () => {}, readOnly: locked, align: "center", formula: formula3, reserveByDefault: true })
           })()}
 
           {/* PV / PM / PC */}

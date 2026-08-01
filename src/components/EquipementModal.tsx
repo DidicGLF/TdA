@@ -281,13 +281,14 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     if (!character || !onChange) return
     const a = character.armes[idx]
     const stripped = stripExposants(a.nom)
-    const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
+    const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped || stripExposants(character.arme3) === stripped
     const patch: Partial<Character> = {
       armes: character.armes.filter((_, i) => i !== idx),
       inventaire: removeInv(isEquipped ? `${stripped} (Équipé(e))` : stripped),
     }
     if (stripExposants(character.arme1) === stripped) { patch.arme1 = ''; patch.dmArme1 = '' }
     if (stripExposants(character.arme2) === stripped) { patch.arme2 = ''; patch.dmArme2 = '' }
+    if (stripExposants(character.arme3) === stripped) { patch.arme3 = ''; patch.dmArme3 = '' }
     onChange(patch)
   }
 
@@ -298,13 +299,16 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const n = nom.toLowerCase()
     return n.includes('deux mains') || n.includes('arc')
   }
-  const equipeArmeSlot = (nom: string | null, slot: 1 | 2) => {
+  // Emplacement 3 : indépendant des mains (voir CreationWizard.tsx, même règle) — ni bloqué par une arme
+  // à 2 mains en emplacement 1, ni en conflit avec le bouclier ; compte néanmoins comme une arme équipée
+  // partout ailleurs (malus sans formation, Mode de jeu).
+  const equipeArmeSlot = (nom: string | null, slot: 1 | 2 | 3) => {
     if (!character || !onChange) return
     // Une arme à 2 mains occupe les deux mains : rien ne peut aller en emplacement 2 tant que
     // l'emplacement 1 en tient une.
     if (slot === 2 && character.arme1 && is2H(character.arme1)) return
     const arme = nom ? character.armes.find(a => a.nom === nom) : null
-    const prevNom = slot === 1 ? character.arme1 : character.arme2
+    const prevNom = slot === 1 ? character.arme1 : slot === 2 ? character.arme2 : character.arme3
     const stripped = nom ? stripExposants(nom) : null
     let inv = character.inventaire
     if (prevNom) inv = unmarkEquipe(inv, prevNom)
@@ -316,11 +320,13 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const dm = arme ? `${arme.dm}${arme.attaque ? ` Mod.${arme.attaque}` : ''}` : ''
     const patch: Partial<Character> = slot === 1
       ? { arme1: stripped ?? '', dmArme1: dm }
-      : { arme2: stripped ?? '', dmArme2: dm }
+      : slot === 2
+      ? { arme2: stripped ?? '', dmArme2: dm }
+      : { arme3: stripped ?? '', dmArme3: dm }
     // Poser une arme à 2 mains en emplacement 1 libère l'emplacement 2 (plus de main disponible) ; poser
     // une arme (n'importe laquelle) en emplacement 2, ou une arme à 2 mains en emplacement 1, prend la
     // main que le bouclier porté occupait — il est donc déséquipé (cf. equipeBouclier, même logique
-    // inverse : l'équiper libère l'emplacement 2).
+    // inverse : l'équiper libère l'emplacement 2). L'emplacement 3 n'entre jamais dans ces échanges de main.
     if (slot === 1 && nom && is2H(nom)) {
       if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
       patch.arme2 = ''
@@ -332,6 +338,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     patch.inventaire = inv
     onChange(patch)
   }
+  // Valeur d'un emplacement d'arme par numéro — évite de répéter le ternaire 1/2/3 dans les deux blocs
+  // d'affichage dupliqués (desktop et footer récap) ci-dessous.
+  const armeSlotValue = (slot: 1 | 2 | 3) => (slot === 1 ? character?.arme1 : slot === 2 ? character?.arme2 : character?.arme3) ?? ''
   const addArmure = (e: EntreeArmure) => {
     if (!character || !onChange) return
     onChange({
@@ -574,6 +583,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         if (enPossession) {
           const stripped = stripExposants(objet.nom)
           const estSlotte = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
+            || stripExposants(character.arme3) === stripped
             || character.armuresEquipees.some(a => a.nom === objet.nom && a.equipe)
           patch.inventaire = removeInv(estSlotte ? `${stripped} (Équipé(e))` : stripped)
         } else {
@@ -902,7 +912,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.armes')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                   {character.armes.map((a, i) => {
-                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
+                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : stripExposants(character.arme3) === stripExposants(a.nom) ? 3 : null
                     return (
                       <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '4px 10px', borderRadius: 3, fontSize: 14,
@@ -916,11 +926,12 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                     )
                   })}
                 </div>
-                {([1, 2] as const).map(slot => {
-                  const current = slot === 1 ? character.arme1 : character.arme2
+                {([1, 2, 3] as const).map(slot => {
+                  const current = armeSlotValue(slot)
                   const color = 'rgba(100,160,255,0.8)'
                   // Emplacement 2 entièrement indisponible si l'emplacement 1 tient une arme à 2 mains
-                  // (plus de main libre) — cf. equipeArmeSlot.
+                  // (plus de main libre) — cf. equipeArmeSlot. L'emplacement 3 n'est jamais bloqué : il
+                  // ne se dispute pas les mains avec 1/2 (voir equipeArmeSlot).
                   const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
                   return (
                     <div key={slot} style={{ marginBottom: 12, opacity: slotBloque ? 0.4 : 1 }}>
@@ -931,8 +942,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                           {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
-                          const otherSlot = slot === 1 ? character.arme2 : character.arme1
-                          const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
+                          const takenByOther = ([1, 2, 3] as const)
+                            .filter(s => s !== slot)
+                            .some(s => stripExposants(armeSlotValue(s)) === stripExposants(a.nom))
                           const isCurrent = stripExposants(current) === stripExposants(a.nom)
                           // Une arme à 2 mains ne peut jamais aller en emplacement 2 (elle occupe les
                           // deux mains, donc toujours placée en emplacement 1 — cf. wizard de création).
@@ -1356,7 +1368,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 {/* Tags avec ✕ */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                   {character.armes.map((a, i) => {
-                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
+                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : stripExposants(character.arme3) === stripExposants(a.nom) ? 3 : null
                     return (
                       <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '2px 8px', borderRadius: 3, fontSize: 14,
@@ -1371,8 +1383,8 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                   })}
                 </div>
                 {/* Slots d'équipement */}
-                {([1, 2] as const).map(slot => {
-                  const current = slot === 1 ? character.arme1 : character.arme2
+                {([1, 2, 3] as const).map(slot => {
+                  const current = armeSlotValue(slot)
                   const label   = t('equipement.emplacement', { n: slot })
                   const color   = 'rgba(100,160,255,0.8)'
                   const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
@@ -1385,8 +1397,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                           {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
-                          const otherSlot = slot === 1 ? character.arme2 : character.arme1
-                          const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
+                          const takenByOther = ([1, 2, 3] as const)
+                            .filter(s => s !== slot)
+                            .some(s => stripExposants(armeSlotValue(s)) === stripExposants(a.nom))
                           const isCurrent   = stripExposants(current) === stripExposants(a.nom)
                           const disabled = takenByOther || slotBloque || (slot === 2 && is2H(a.nom))
                           return (

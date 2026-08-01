@@ -23,6 +23,7 @@ export function patchPossessionObjetMagique(character: Character, objet: ObjetMa
       patch.armes = character.armes.filter(a => a.nom !== objet.nom)
       if (stripExposants(character.arme1) === stripExposants(objet.nom)) { patch.arme1 = ''; patch.dmArme1 = '' }
       if (stripExposants(character.arme2) === stripExposants(objet.nom)) { patch.arme2 = ''; patch.dmArme2 = '' }
+      if (stripExposants(character.arme3) === stripExposants(objet.nom)) { patch.arme3 = ''; patch.dmArme3 = '' }
     } else if (!character.armes.some(a => a.nom === objet.nom)) {
       patch.armes = [...character.armes, {
         nom: objet.nom, dm: objet.armeDm ?? '', attaque: objet.armeAttaque ?? 'FOR',
