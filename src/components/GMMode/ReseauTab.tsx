@@ -288,17 +288,17 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
             {/* Vue d'ensemble des joueurs connectés (voir clientsConnectes) — utile pour distinguer deux
                 PJ homonymes (nom + joueur + peuple + fragment d'idPJ affichés), et pour déconnecter un
                 client précis sans devoir arrêter tout le serveur. */}
-            <div style={{ flex: '0 0 260px', minWidth: 220 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            <div style={{ flex: '0 0 340px', minWidth: 280 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
                 {t('gmMode.reseau.joueursConnectes')}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {clientsConnectes.length === 0
                   ? <span style={{ fontSize: 14, opacity: 0.4 }}>{t('gmMode.reseau.aucunJoueurConnecte')}</span>
                   : clientsConnectes.map(c => (
                     <div key={c.connexionId} style={{
-                      padding: '8px 10px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
-                      background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: 3,
+                      padding: '12px 14px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
+                      background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: 5,
                     }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: PARCHMENT }}>{c.nom}</div>
                       <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)' }}>
@@ -307,7 +307,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontFamily: 'monospace' }}>
                         #{c.connexionId} · {c.idPJ.slice(0, 6)}
                       </div>
-                      <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                         <input
                           value={messagesPrives[c.connexionId] ?? ''}
                           onChange={e => setMessagesPrives(prev => ({ ...prev, [c.connexionId]: e.target.value }))}
@@ -356,7 +356,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       <button
                         onClick={() => deconnecterClientReseau(c.connexionId)}
                         style={{
-                          alignSelf: 'flex-start', marginTop: 2, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                          alignSelf: 'flex-start', marginTop: 4, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
                           border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
                         }}
                       >
