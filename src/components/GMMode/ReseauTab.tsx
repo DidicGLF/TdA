@@ -325,9 +325,12 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                         onChange={e => { if (e.target.value) envoyerObjetSelectionne('tous', e.target.value) }}
                         title={t('gmMode.reseau.envoyerObjetATousTitle')}
                         style={{
-                          flex: '0 0 auto', width: 150, minWidth: 0, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                          flex: '0 0 auto', width: 150, minWidth: 0, boxSizing: 'border-box',
+                          padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                          textAlign: 'center', textAlignLast: 'center',
+                          appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
                           border: '1px solid rgba(180,130,255,0.4)', background: 'rgba(180,130,255,0.12)', color: 'rgba(180,130,255,0.9)',
-                        }}
+                        } as React.CSSProperties}
                       >
                         <option value="">📦 {t('gmMode.reseau.envoyerObjetPlaceholder')}</option>
                         {optionsObjets()}
@@ -416,9 +419,16 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                             onChange={e => { if (e.target.value) envoyerObjetSelectionne(c.connexionId, e.target.value) }}
                             title={t('gmMode.reseau.envoyerObjetPriveeTitle')}
                             style={{
-                              flex: '0 0 auto', width: 56, minWidth: 0, padding: '6px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                              // Largeur fixe : sans elle, la boîte fermée du <select> s'élargit selon la
+                              // largeur de sa PLUS LONGUE option (nom d'arme/armure), pas juste 📦 —
+                              // c'est exactement le bug de chevauchement avec le champ de texte voisin
+                              // déjà rencontré et corrigé une première fois sur ce même sélecteur.
+                              flex: '0 0 auto', width: 44, minWidth: 0, boxSizing: 'border-box',
+                              padding: '6px 0', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                              textAlign: 'center', textAlignLast: 'center',
+                              appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
                               border: '1px solid rgba(180,130,255,0.4)', background: 'rgba(180,130,255,0.12)', color: 'rgba(180,130,255,0.9)',
-                            }}
+                            } as React.CSSProperties}
                           >
                             <option value="">📦</option>
                             {optionsObjets()}
