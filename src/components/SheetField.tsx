@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useContext } from 'react'
+import { useRef, useLayoutEffect, useEffect, useContext } from 'react'
 import { PdfExportContext } from '../hooks/modeImpression'
 
 interface SheetFieldProps {
@@ -36,13 +36,14 @@ export default function SheetField({
   const ref = useRef<HTMLInputElement>(null)
   const refDiv = useRef<HTMLDivElement>(null)
 
-  useLayoutEffect(() => {
+  // calc(...vw * var(--zoom-scale, 1)) plutôt que Xvw seul : voir la note sur le conteneur zoomable
+  // dans App.tsx. Boîte et police sont alors proportionnelles au même facteur (--zoom-scale ∝ zoom%),
+  // donc ce calcul (mesuré en pixels réels via clientWidth/scrollWidth) reste valable à tout niveau de
+  // zoom sans avoir besoin d'être relancé quand zoom change SEUL — voir toutefois le ResizeObserver
+  // plus bas pour le cas où la 1re mesure tombe avant que la mise en page soit stable.
+  const ajusterPolice = () => {
     const el = pdfExport ? refDiv.current : ref.current
     if (!el) return
-    // calc(...vw * var(--zoom-scale, 1)) plutôt que Xvw seul : voir la note sur le conteneur zoomable
-    // dans App.tsx. Boîte et police sont alors proportionnelles au même facteur (--zoom-scale ∝ zoom%),
-    // donc ce calcul (mesuré en pixels réels via clientWidth/scrollWidth) reste valable à tout niveau de
-    // zoom sans avoir besoin d'être relancé quand zoom change.
     el.style.fontSize = `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`
     // Centrage vertical du <div> d'export : après deux essais infructueux avec display:flex +
     // align-items (flex-end puis flex-start, sans effet visible constaté sur un export réel dans les
@@ -57,9 +58,29 @@ export default function SheetField({
       size = +(size - 0.05).toFixed(2)
       el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     }
+  }
+
+  useLayoutEffect(() => {
+    ajusterPolice()
     // width/height dans les dépendances : sans eux, redimensionner un champ en calibrage ne
     // recalculait pas la police, qui restait ajustée à l'ancienne largeur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, width, height, pdfExport])
+
+  // Filet de sécurité : si la 1re mesure ci-dessus tombe avant que le conteneur (image de fond) ait
+  // fini de se mettre en page, clientWidth vaut 0 et la réduction ne se relance jamais (aucune des
+  // dépendances ci-dessus ne change ensuite pour un champ pré-rempli au chargement, ex. Nom/identité,
+  // Nom armure/bouclier — jamais réédité donc jamais recalculé). Constaté sur mobile, où le chargement
+  // de l'image de fond est plus lent : un ResizeObserver sur le champ lui-même relance le calcul dès
+  // que sa taille réelle change, quelle qu'en soit la cause (mise en page enfin stable, zoom, rotation).
+  useEffect(() => {
+    const el = pdfExport ? refDiv.current : ref.current
+    if (!el) return
+    const ro = new ResizeObserver(() => ajusterPolice())
+    ro.observe(el)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfExport])
 
   if (pdfExport) {
     return (

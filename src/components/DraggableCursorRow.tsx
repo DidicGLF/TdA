@@ -93,33 +93,55 @@ export default function DraggableCursorRow({
   // pendant le déplacement, pas seulement au relâchement.
   const lastValue = useRef(value)
   useEffect(() => { lastValue.current = value }, [value])
-  const handleMarkerMouseDown = (e: React.MouseEvent) => {
+  // Glisser le repère à la souris ET au doigt (tactile) — le marqueur est utilisé en jeu normal, pas
+  // seulement en calibrage, donc doit fonctionner sur mobile. addEventListener('mousemove'/'mouseup') ne
+  // suffit pas : un navigateur mobile ne synthétise fiablement qu'un mousedown initial à partir d'un
+  // touchstart, jamais les mousemove/mouseup continus pendant le geste — d'où le marqueur figé au doigt
+  // constaté sur Android. touchmove/touchend en plus, avec { passive: false } pour pouvoir preventDefault
+  // (sinon la page défile au lieu de faire glisser le repère).
+  const handleMarkerStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (calibrate) return
     e.preventDefault()
     e.stopPropagation()
     const stepLenSq = stepX * stepX + stepY * stepY || 1
 
-    const snapFromEvent = (ev: MouseEvent) => {
+    const snapFromPoint = (clientX: number, clientY: number) => {
       const rect = containerRef.current!.getBoundingClientRect()
-      const mouseTop  = (ev.clientY - rect.top)  / rect.height * 100
-      const mouseLeft = (ev.clientX - rect.left) / rect.width  * 100
-      const dx = mouseLeft - pos.left
-      const dy = mouseTop  - pos.top
+      const pointTop  = (clientY - rect.top)  / rect.height * 100
+      const pointLeft = (clientX - rect.left) / rect.width  * 100
+      const dx = pointLeft - pos.left
+      const dy = pointTop  - pos.top
       const t = (dx * stepX + dy * stepY) / stepLenSq
       return Math.max(0, Math.min(count - 1, Math.round(t)))
     }
-    const onMove = (ev: MouseEvent) => {
-      const idx = snapFromEvent(ev)
+    const applyPoint = (clientX: number, clientY: number) => {
+      const idx = snapFromPoint(clientX, clientY)
       if (idx !== lastValue.current) { lastValue.current = idx; onValueChange(idx) }
     }
-    const onUp = (ev: MouseEvent) => {
-      const idx = snapFromEvent(ev)
-      if (idx !== lastValue.current) { lastValue.current = idx; onValueChange(idx) }
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
+    const onMouseMove = (ev: MouseEvent) => applyPoint(ev.clientX, ev.clientY)
+    const onMouseUp = (ev: MouseEvent) => {
+      applyPoint(ev.clientX, ev.clientY)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
     }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
+    const onTouchMove = (ev: TouchEvent) => {
+      ev.preventDefault()
+      const t = ev.touches[0]
+      if (t) applyPoint(t.clientX, t.clientY)
+    }
+    const onTouchEnd = (ev: TouchEvent) => {
+      const t = ev.changedTouches[0]
+      if (t) applyPoint(t.clientX, t.clientY)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+    }
+    if ('touches' in e) {
+      document.addEventListener('touchmove', onTouchMove, { passive: false })
+      document.addEventListener('touchend', onTouchEnd)
+    } else {
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    }
   }
 
   if (reserved) {
@@ -168,14 +190,17 @@ export default function DraggableCursorRow({
         }} />
       ))}
       <div
-        onMouseDown={handleMarkerMouseDown}
+        onMouseDown={handleMarkerStart}
+        onTouchStart={handleMarkerStart}
         style={{
           position: 'absolute',
           top: `${markerTop}%`, left: `${markerLeft}%`,
           transform: `translate(-50%, -50%) rotate(${angleDeg}deg)`,
-          // Même taille que le curseur du wizard (14x24px) pour commencer — à revoir si besoin d'un
-          // comportement qui suit le zoom de la fiche comme les autres champs (calc(vw * --zoom-scale)).
-          width: 14, height: 24,
+          // Suit désormais le zoom de la fiche (calc(vw * --zoom-scale), même technique que les cases à
+          // cocher voisines à 0.85vw) au lieu d'une taille fixe en pixels — un repère à taille fixe
+          // devenait disproportionné une fois la fiche réduite pour tenir sur un petit écran mobile.
+          // Ratio ~14:24 conservé (marqueur d'origine).
+          width: 'calc(0.85vw * var(--zoom-scale, 1))', height: 'calc(1.45vw * var(--zoom-scale, 1))',
           backgroundImage: `url("${CURSEUR_ICON_SVG}")`,
           backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'contain',
           cursor: calibrate ? 'default' : 'grab',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useContext } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useContext } from 'react'
 import { majusculeInitiale } from '../utils/texte'
 import type { RefObject, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -50,7 +50,7 @@ export default function DraggableRangDesc({
   useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
   useEffect(() => { if (!dragging.current) setHeight(initHeight) }, [initHeight])
 
-  useLayoutEffect(() => {
+  const ajusterPolice = useCallback(() => {
     const el = ref.current
     if (!el || el.clientHeight === 0) return
     // calc(...vw * var(--zoom-scale, 1)) — voir la note dans App.tsx (conteneur zoomable) et SheetField.
@@ -60,7 +60,23 @@ export default function DraggableRangDesc({
       size = +(size - 0.03).toFixed(2)
       el.style.fontSize = `calc(${size}vw * var(--zoom-scale, 1))`
     }
-  }, [texteBrut, width, height])
+  }, [])
+
+  useLayoutEffect(() => {
+    ajusterPolice()
+  }, [ajusterPolice, texteBrut, width, height])
+
+  // Filet de sécurité (voir SheetField.tsx, même bug) : si la 1re mesure ci-dessus tombe avant que le
+  // conteneur (image de fond) ait fini de se mettre en page, clientHeight vaut 0 et la réduction ne se
+  // relance jamais pour un texte de rang déjà acquis au chargement (jamais réédité, donc aucune des
+  // dépendances ci-dessus ne change plus ensuite) — constaté sur mobile, chargement d'image plus lent.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(() => ajusterPolice())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ajusterPolice])
 
   const glisser = (e: React.MouseEvent, mode: 'pos' | 'largeur' | 'hauteur') => {
     e.preventDefault()
