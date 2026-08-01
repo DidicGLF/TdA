@@ -26,6 +26,7 @@ export interface ClientConnecte {
   nom: string
   nomJoueur: string
   peuple: string
+  niveau: number
   idPJ: string
 }
 
@@ -125,7 +126,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
           identitesRef.current[e.id] = { nom: message.nom, idPJ: message.idPJ }
           setClientsConnectes(prev => [
             ...prev.filter(c => c.connexionId !== e.id),
-            { connexionId: e.id, nom: message.character.nomPersonnage, nomJoueur: message.character.nomJoueur, peuple: message.character.peuple, idPJ: message.idPJ },
+            { connexionId: e.id, nom: message.character.nomPersonnage, nomJoueur: message.character.nomJoueur, peuple: message.character.peuple, niveau: message.character.niveau, idPJ: message.idPJ },
           ])
           ajouterJournal(t('gmMode.reseau.identificationEvt', { id: e.id, nom: message.nom, cle: message.idPJ.slice(0, 6) }), 'identification')
         } else if (message?.type === 'degats') {
@@ -300,9 +301,11 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       padding: '12px 14px', borderRadius: 6, border: `1px solid ${SECTION_BORDER}`,
                       background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: 5,
                     }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: PARCHMENT }}>{c.nom}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: PARCHMENT }}>
+                        {t('gmMode.reseau.nomEtPeuple', { nom: c.nom, peuple: c.peuple || '—' })}
+                      </div>
                       <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.6)' }}>
-                        {t('gmMode.reseau.joueurEtPeuple', { joueur: c.nomJoueur || '—', peuple: c.peuple || '—' })}
+                        {t('gmMode.reseau.niveauEtJoueur', { niveau: c.niveau, joueur: c.nomJoueur || '—' })}
                       </div>
                       <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontFamily: 'monospace' }}>
                         #{c.connexionId} · {c.idPJ.slice(0, 6)}
