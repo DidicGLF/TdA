@@ -1681,16 +1681,42 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   // Équipe une armure de corps (jamais un bouclier) en déséquipant l'éventuelle autre armure de corps
   // déjà portée — un bouclier peut être porté en plus, indépendamment (cf. equipeArmure dans
   // EquipementModal).
+  // Marque/démarque "(Equip)" sur la ligne d'un objet dans le texte libre d'inventaire — même logique
+  // que EquipementModal.tsx (markEquipe/unmarkEquipe), portée ici car les emplacements du wizard
+  // équipent directement (glisser-déposer) sans jamais passer par cette modale : cette marque restait
+  // invisible tant que seul EquipementModal la posait.
+  const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+  const markEquipe = (inv: string, nom: string) => {
+    const s = stripExposants(nom)
+    if (inv.includes(nom)) return inv.replace(nom, `${s} (Equip)`)
+    if (inv.includes(s))   return inv.replace(s,   `${s} (Equip)`)
+    return inv
+  }
+  const unmarkEquipe = (inv: string, nom: string) => {
+    const s = stripExposants(nom)
+    if (inv.includes(`${s} (Equip)`))   return inv.replace(`${s} (Equip)`, s)
+    if (inv.includes(`${nom} (Equip)`)) return inv.replace(`${nom} (Equip)`, s)
+    return inv
+  }
   const equiperCorps = (nom: string) => {
-    onChange({ armuresEquipees: character.armuresEquipees.map(a =>
-      isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }
-    ) })
+    const prevNom = character.armuresEquipees.find(a => a.equipe && !isBouclier(a.nom))?.nom
+    let inv = character.inventaire
+    if (prevNom) inv = unmarkEquipe(inv, prevNom)
+    inv = markEquipe(inv, nom)
+    onChange({
+      armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? a : { ...a, equipe: a.nom === nom }),
+      inventaire: inv,
+    })
   }
   // Équipe le bouclier nom (déséquipant l'éventuel autre bouclier) et libère la main gauche (arme2) où
   // il vient se placer — voir la note sur shieldNom plus haut. Aucun effet si aucune main n'est libre.
   const equiperBouclier = (nom: string) => {
     if (character.arme1 && is2H(character.arme1)) return
-    onChange({ arme2: '', dmArme2: '',
+    let inv = character.inventaire
+    if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+    if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+    inv = markEquipe(inv, nom)
+    onChange({ arme2: '', dmArme2: '', inventaire: inv,
       armuresEquipees: character.armuresEquipees.map(a => isBouclier(a.nom) ? { ...a, equipe: a.nom === nom } : a) })
   }
   // Déséquipe le bouclier porté, le cas échéant — utilisé quand une arme prend sa main.
@@ -1700,13 +1726,23 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   }
   const assignToSlot = (slot: 'mainD' | 'mainG' | 'corps', nom: string, cat: 'arme' | 'armure') => {
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      let inv = character.inventaire
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', inventaire: inv, ...desequiperBouclier() })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), inventaire: inv })
       } else {
         if (character.arme1 && is2H(character.arme1)) return
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), inventaire: inv, ...desequiperBouclier() })
       }
     } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
       equiperCorps(nom)
@@ -1720,13 +1756,23 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     const cat = e.dataTransfer.getData('cat')
     const nom = e.dataTransfer.getData('nom')
     if ((slot === 'mainD' || slot === 'mainG') && cat === 'arme') {
+      let inv = character.inventaire
       if (is2H(nom)) {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', ...desequiperBouclier() })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), arme2: '', dmArme2: '', inventaire: inv, ...desequiperBouclier() })
       } else if (slot === 'mainD') {
-        onChange({ arme1: nom, dmArme1: dmPourArme(nom) })
+        if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+        inv = markEquipe(inv, nom)
+        onChange({ arme1: nom, dmArme1: dmPourArme(nom), inventaire: inv })
       } else {
         if (character.arme1 && is2H(character.arme1)) { setDragOver(null); return }
-        onChange({ arme2: nom, dmArme2: dmPourArme(nom), ...desequiperBouclier() })
+        if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
+        if (shieldNom) inv = unmarkEquipe(inv, shieldNom)
+        inv = markEquipe(inv, nom)
+        onChange({ arme2: nom, dmArme2: dmPourArme(nom), inventaire: inv, ...desequiperBouclier() })
       }
     } else if (slot === 'corps' && cat === 'armure' && !isBouclier(nom)) {
       equiperCorps(nom)
@@ -1736,12 +1782,22 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     setDragOver(null)
   }
   const clearSlot = (slot: 'mainD' | 'mainG' | 'corps', nom?: string) => {
-    if (slot === 'mainD') onChange({ arme1: '', dmArme1: '', ...(character.arme1 && is2H(character.arme1) ? { arme2: '', dmArme2: '' } : {}) })
-    else if (slot === 'mainG') {
-      if (nom && isBouclier(nom)) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
-      else onChange({ arme2: '', dmArme2: '' })
+    if (slot === 'mainD') {
+      const twoH = !!(character.arme1 && is2H(character.arme1))
+      let inv = character.inventaire
+      if (character.arme1) inv = unmarkEquipe(inv, character.arme1)
+      if (twoH && character.arme2) inv = unmarkEquipe(inv, character.arme2)
+      onChange({ arme1: '', dmArme1: '', inventaire: inv, ...(twoH ? { arme2: '', dmArme2: '' } : {}) })
+    } else if (slot === 'mainG') {
+      const cible = nom ?? shieldNom ?? character.arme2
+      const inv = cible ? unmarkEquipe(character.inventaire, cible) : character.inventaire
+      if (cible && isBouclier(cible)) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === cible ? { ...a, equipe: false } : a), inventaire: inv })
+      else onChange({ arme2: '', dmArme2: '', inventaire: inv })
     }
-    else if (slot === 'corps' && nom) onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a) })
+    else if (slot === 'corps' && nom) {
+      const inv = unmarkEquipe(character.inventaire, nom)
+      onChange({ armuresEquipees: character.armuresEquipees.map(a => a.nom === nom ? { ...a, equipe: false } : a), inventaire: inv })
+    }
   }
 
   const FORMATIONS = [

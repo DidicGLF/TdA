@@ -179,7 +179,12 @@ export default function DraggableCursorRow({
           backgroundImage: `url("${CURSEUR_ICON_SVG}")`,
           backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'contain',
           cursor: calibrate ? 'default' : 'grab',
-        }}
+          // Les navigateurs n'impriment pas les images/couleurs de fond CSS par défaut (case "Graphiques
+          // d'arrière-plan" du dialogue d'impression, décochée par défaut) — sans ceci, ce repère (une
+          // image de fond, pas un <img>) disparaissait à l'impression alors qu'il s'affiche à l'écran.
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact',
+        } as React.CSSProperties}
       />
       {modeImpression && onToggleImpression && (
         <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />

@@ -82,7 +82,7 @@ body {
   min-height: 100vh;
 }
 
-/* ===== IMPRESSION ===== */
+/* ===== IMPRESSION (recto/verso/voies, native) / EXPORT PDF (fiches compagnons, html2canvas) ===== */
 .print-only {
   display: none;
 }
@@ -99,22 +99,6 @@ body {
 
 @page tdr-voies {
   size: A4 portrait;
-  margin: 0;
-}
-
-/* Fiche de compagnon : A5 à l'italienne, deux par feuille A4 portrait.
-   Tentative du 2026-07-30 (unifier en A4 portrait comme les 3 autres @page, pour éviter le mélange de
-   tailles/orientations soupçonné de causer l'étirement + rotation à 90° sous Windows) REVERTÉE le même
-   jour : sur Linux, résultat pire qu'avant — la fiche A5 arrive maintenant visiblement coupée en
-   plusieurs morceaux (pas juste une marge grignotée comme le bug déjà connu sur recto/verso/voies).
-   Cause exacte non identifiée avec certitude (voir [[project_impression_pdf_bug]]) : hypothèse principale,
-   un saut de page implicite qui ne se produit plus de façon fiable entre tdr-voies et tdr-compagnon
-   maintenant qu'ils déclarent la même taille de page — mais pas vérifié en profondeur. Retour à l'état
-   d'origine (A5 landscape) : pas une solution non plus (le bug de troncature existait déjà avant, côté
-   Linux), mais un état CONNU plutôt qu'une régression non comprise. Ne pas retenter de correctif CSS sur
-   ce point sans un plan clair — voir la note associée. */
-@page tdr-compagnon {
-  size: A5 landscape;
   margin: 0;
 }
 
@@ -162,14 +146,6 @@ body {
     page: tdr-voies;
   }
 
-  .print-page-compagnon {
-    page: tdr-compagnon;
-    width: 210mm;
-    height: 148mm;
-    overflow: hidden;
-    position: relative;
-  }
-
   .sheet-bg {
     width: 210mm;
     height: 297mm;
@@ -191,15 +167,35 @@ body {
   textarea.tdr-field {
     overflow: hidden !important;
   }
+}
 
+/* Fiches compagnons : impression native (@page/window.print) restée cassée sur Windows ET Linux
+   (étirement + troncature — voir project_impression_pdf_bug) — export PDF dédié par capture d'image
+   (html2canvas, voir App.tsx/exportCompagnonsPdf.ts) à la place, indépendant du moteur d'impression du
+   navigateur/OS. Conteneur toujours monté hors écran (pas display:none — html2canvas a besoin d'une
+   vraie mise en page pour capturer), donc ces dimensions s'appliquent en dehors de tout contexte
+   d'impression réel. */
+.pdf-export .print-page-compagnon {
+  width: 210mm;
+  height: 148mm;
+  overflow: hidden;
+  position: relative;
+}
 
+.pdf-export .tdr-temporaire {
+  display: none !important;
+}
 
+/* .no-print (boutons d'outils, bascule image/description, pastilles…) n'est normalement masqué que
+   dans un vrai contexte d'impression navigateur (@media print, ci-dessus) — jamais déclenché par
+   html2canvas, qui capture le DOM affiché à l'écran tel quel. */
+.pdf-export .no-print {
+  display: none !important;
 }
 
 /* Texte-repère affiché dans les champs vides pendant le calibrage : il matérialise l'emplacement et
    la ligne de base du texte, un cadre en pointillés seul étant difficile à positionner au pixel près.
-   Purement visuel — il n'entre jamais dans la valeur du champ ni dans l'impression (le calibrage
-   n'étant pas actif à l'impression). */
+   Purement visuel — il n'entre jamais dans la valeur du champ ni dans l'impression/l'export. */
 .tdr-field::placeholder {
   color: rgba(160, 90, 230, 0.55);
   opacity: 1;

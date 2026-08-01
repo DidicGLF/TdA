@@ -129,7 +129,7 @@ export default function GMDashboard({ onBack }: Props) {
           background: 'transparent', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 4,
           color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, padding: '4px 10px',
         }}>
-          {t('gmMode.changerMode')}
+          {t('toolbar.accueil')}
         </button>
         <span style={{ fontSize: 18, fontWeight: 700, color: GOLD, flex: 1, textAlign: 'center', fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
           {t('gmMode.titre')}

@@ -30,12 +30,13 @@ import { GameDataProvider, useGameData } from './context/GameDataContext'
 import type { ObjetMagiqueEntry } from './types/gameData'
 import { patchPossessionObjetMagique } from './utils/objetsMagiquesPerso'
 import { getCompagnonsDisponibles } from './utils/compagnons'
-import { ModeImpressionContext } from './hooks/useChampsFiche'
+import { ModeImpressionContext, PdfExportContext } from './hooks/useChampsFiche'
 import { saveDataFileToBundle } from './utils/tauriStorage'
 import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
+import { exporterFichesCompagnonsPDF } from './utils/exportCompagnonsPdf'
 
 // Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
 // Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
@@ -114,6 +115,48 @@ function AppContent() {
   // Prépare l'impression : la fiche affiche une pastille par champ pour choisir ce qui figure sur
   // la version papier, avant de lancer réellement l'impression.
   const [modeImpression, setModeImpression] = useState(false)
+  // Fiches compagnons : export PDF dédié par capture d'image (voir compagnonsExportContainer/
+  // exportCompagnonsPdf.ts) — l'impression native (@page/window.print) reste cassée sur Windows ET
+  // Linux pour cette fiche (étirement + troncature). Recto/verso/voies restent en impression native
+  // (déjà correcte sur Windows) : générer TOUTE la fiche par capture d'image a été tenté, mais le rendu
+  // d'un <input> par html2canvas reste trop imprécis (texte mal centré verticalement sur son support
+  // ligné) même après plusieurs correctifs ciblés — Didic a préféré revenir à ce qui marchait déjà
+  // plutôt que de continuer à itérer sur un rendu pixel-perfect (voir project_impression_pdf_bug).
+  const compagnonsExportRef = useRef<HTMLDivElement>(null)
+  const [exportingCompagnons, setExportingCompagnons] = useState(false)
+  const lancerExportCompagnons = async () => {
+    if (!compagnonsExportRef.current) return
+    setExportingCompagnons(true)
+    try {
+      await exporterFichesCompagnonsPDF(compagnonsExportRef.current)
+    } finally {
+      setExportingCompagnons(false)
+    }
+  }
+  // Beaucoup de champs (SheetField, SheetTextarea, curseurs, cases à cocher…) dimensionnent leur police
+  // en vw multiplié par --zoom-scale (voir le panneau de fiche desktop plus bas, --zoom-scale: zoom/60)
+  // — cette variable n'est normalement posée que sur CE panneau, absent du conteneur d'export compagnons
+  // (hors écran, hors de son arbre). Sans elle, var(--zoom-scale, 1) retombe à 1, et 1vw vaut alors 1%
+  // de la fenêtre du navigateur au lieu de 1% de la largeur réelle de la page capturée.
+  // La formule zoom/60 est calibrée pour donner une taille proportionnelle à la largeur du PANNEAU (pas
+  // de la fenêtre) : à zoom%, panneau_px ≈ zoom/100 * fenêtre_px, donc taille_px = Xvw * zoom/60 =
+  // X/100 * fenêtre_px * zoom/60 = X/60 * panneau_px (indépendant de zoom% et de la largeur de fenêtre,
+  // exactement le but recherché). Pour le conteneur d'export, panneau_px est fixe (210mm en px) et ne
+  // dépend pas d'un pourcentage de la fenêtre — reprendre la même relation (taille_px = X/60 * panneau_px)
+  // donne : zoom-scale = (panneau_px / fenêtre_px) * (100/60), avec une réduction empirique (0.88)
+  // constatée sur un export réel (fiche-beldin.pdf, inspecté directement) : les champs calibrés tout
+  // près d'une ligne/bordure décorative touchaient légèrement ce qui les surplombe. À réévaluer en
+  // inspectant un PDF réel (pdftoppm + Read) si besoin, pas en déduisant.
+  const [zoomScaleExport, setZoomScaleExport] = useState(1)
+  useEffect(() => {
+    const update = () => {
+      const pageMmEnPx = 210 * 96 / 25.4 // 210mm en px CSS (96dpi, référence du navigateur pour les unités mm)
+      setZoomScaleExport((pageMmEnPx / window.innerWidth) * (100 / 60) * 0.88)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
   const [calibrageSauve, setCalibrageSauve] = useState<'ok' | 'erreur' | null>(null)
   // Le calibrage est réservé à l'auteur du jeu : il conditionne l'alignement des champs sur les fonds
   // livrés, qu'un utilisateur final n'a aucune raison de modifier (et qu'il casserait sans le vouloir).
@@ -225,23 +268,6 @@ function AppContent() {
   }, [step])
 
   useEffect(() => {
-    const onResize = () => setScreenWidth(window.innerWidth)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  useEffect(() => {
-    if (!showGestion) return
-    const handler = (e: MouseEvent) => {
-      if (gestionRef.current && !gestionRef.current.contains(e.target as Node))
-        setShowGestion(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showGestion])
-
-
-  useEffect(() => {
     const BASE_PT = 12
     const MIN_PT = 5
     const before = () => {
@@ -302,6 +328,22 @@ function AppContent() {
     window.addEventListener('beforeprint', before)
     return () => window.removeEventListener('beforeprint', before)
   }, [])
+
+  useEffect(() => {
+    const onResize = () => setScreenWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (!showGestion) return
+    const handler = (e: MouseEvent) => {
+      if (gestionRef.current && !gestionRef.current.contains(e.target as Node))
+        setShowGestion(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showGestion])
 
   // Chargement initial de la bibliothèque
   useEffect(() => {
@@ -441,15 +483,25 @@ function AppContent() {
         <CharacterSheetVoies character={character} onChange={() => {}} activeStep={-1}
           fieldPositions={fieldPositions} sheetImage={sheetImages.voies || undefined} />
       </div>
-      {/* Une fiche A5 par compagnon débloqué (voir CharacterSheetCompagnons/FicheCompagnon), chacune
-          déjà wrappée dans .print-page-compagnon par le composant lui-même — toutesLesPages sort
-          toutes les fiches d'un coup plutôt que la seule page actuellement affichée à l'écran.
-          Rendu conditionnel : sans compagnon débloqué, le composant affiche un message "aucun
-          compagnon" qu'il ne faut pas imprimer (voir showCompagnonsTab, même condition que l'onglet). */}
-      {showCompagnonsTab && (
-        <CharacterSheetCompagnons character={character} onChange={() => {}}
-          fieldPositions={fieldPositions} toutesLesPages />
-      )}
+    </div>
+  )
+
+  // Fiches compagnons : hors du print-only ci-dessus, l'impression native (@page/window.print) restant
+  // cassée sur Windows et Linux (voir exportCompagnonsPdf.ts) — export PDF par capture d'image à la
+  // place. Conteneur toujours monté (hors écran plutôt que display:none, html2canvas a besoin d'une
+  // mise en page réelle pour capturer). Provider isolé à false : sinon les pastilles 🖨/🚫 du mode
+  // « préparer l'impression » (qui vaut forcément true ici, seule condition d'affichage du bouton
+  // d'export) apparaîtraient dans le PDF, html2canvas capturant le DOM tel quel sans notion de média
+  // impression. --zoom-scale : voir la note plus haut sur zoomScaleExport.
+  const compagnonsExportContainer = showCompagnonsTab && (
+    <div ref={compagnonsExportRef} className="pdf-export no-print"
+      style={{ position: 'fixed', top: 0, left: -99999, '--zoom-scale': zoomScaleExport } as React.CSSProperties}>
+      <ModeImpressionContext.Provider value={false}>
+        <PdfExportContext.Provider value={true}>
+          <CharacterSheetCompagnons character={character} onChange={() => {}}
+            fieldPositions={fieldPositions} toutesLesPages />
+        </PdfExportContext.Provider>
+      </ModeImpressionContext.Provider>
     </div>
   )
 
@@ -479,13 +531,6 @@ function AppContent() {
               <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(201,168,76,0.3)' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <button onClick={() => { setAppMode(null); setShowMobileGestion(false) }} style={{
-                padding: '14px 20px', background: 'transparent', border: 'none',
-                borderBottom: '1px solid rgba(201,168,76,0.1)',
-                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
-              }}>
-                {t('gmMode.changerMode')}
-              </button>
               <button onClick={() => { setShowDescEditor(d => !d); setShowMobileGestion(false) }} style={{
                 padding: '14px 20px', background: 'transparent', border: 'none',
                 borderBottom: '1px solid rgba(201,168,76,0.1)',
@@ -600,6 +645,11 @@ function AppContent() {
   // ─── Layout mobile (< 1200px) ───────────────────────────────────────────
   const mobileToolbarButtons = (
     <>
+      <button onClick={() => setAppMode(null)} style={{
+        flexShrink: 0, padding: '6px 12px', borderRadius: 4,
+        border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+        color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+      }}>{t('toolbar.accueil')}</button>
       {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
@@ -669,6 +719,7 @@ function AppContent() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--tdr-dark)', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         {printContainer}
+        {compagnonsExportContainer}
 
         {/* Zone de contenu — Fiche et Création/Jeu restent montés (display seul change) pour ne pas perdre l'état du mode de jeu en changeant d'onglet */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -719,9 +770,11 @@ function AppContent() {
                 </div>
                 <div style={{ padding: '0 4px 80px' }}>
                   {sheetPage === 'recto' ? (
-                    <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step} />
+                    <CharacterSheetRecto character={sheetCharacter} onChange={sheetOnChange} activeStep={step}
+                      fieldPositions={fieldPositions} sheetImage={sheetImages.recto || undefined} />
                   ) : sheetPage === 'verso' ? (
-                    <CharacterSheetVerso character={character} onChange={onChange} activeStep={step} />
+                    <CharacterSheetVerso character={character} onChange={onChange} activeStep={step}
+                      fieldPositions={fieldPositions} sheetImage={sheetImages.verso || undefined} />
                   ) : sheetPage === 'compagnons' ? (
                     <CharacterSheetCompagnons character={character} onChange={onChange} fieldPositions={fieldPositions} />
                   ) : sheetPage === 'voies' ? (
@@ -867,6 +920,14 @@ function AppContent() {
               border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
             {t('impression.lancer')}
           </button>
+          {showCompagnonsTab && (
+            <button onClick={lancerExportCompagnons} disabled={exportingCompagnons}
+              style={{ padding: '5px 16px', borderRadius: 4, fontSize: 13, fontWeight: 700,
+                cursor: exportingCompagnons ? 'wait' : 'pointer', opacity: exportingCompagnons ? 0.6 : 1,
+                border: '1px solid rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.15)', color: 'var(--tdr-gold)', fontFamily: 'inherit' }}>
+              {exportingCompagnons ? t('impression.exportCompagnonsEnCours') : t('impression.exportCompagnons')}
+            </button>
+          )}
           <button onClick={() => setModeImpression(false)}
             style={{ padding: '5px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
               border: '1px solid rgba(245,236,215,0.2)', background: 'transparent', color: 'rgba(245,236,215,0.6)', fontFamily: 'inherit' }}>
@@ -876,6 +937,7 @@ function AppContent() {
       )}
 
       {printContainer}
+      {compagnonsExportContainer}
 
       {import.meta.env.DEV && (
         <div style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 9999, background: 'rgba(0,0,0,0.75)', color: 'rgba(201,168,76,0.9)', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 4, pointerEvents: 'none' }}>
@@ -897,6 +959,12 @@ function AppContent() {
         style={{
           width: showFullRunes ? '100%' : `${zoom}%`, height: showFullRunes ? '100%' : undefined,
           flexShrink: 0, minWidth: 280, overflowY: showFullRunes ? 'hidden' : 'auto',
+          // paddingRight : décale le contenu (bouton Gestion, bord de la fiche) de la scrollbar native,
+          // qui sinon chevauche l'un et l'autre — surtout visible avec une scrollbar "overlay" qui se
+          // dessine par-dessus le contenu au lieu de réserver sa propre largeur. Valeur au-delà de la
+          // largeur déjà élargie de la scrollbar au survol (pas juste sa forme étroite au repos), sinon
+          // le chevauchement revient dès que la souris s'en approche.
+          paddingRight: showFullRunes ? undefined : 20,
           display: 'flex', flexDirection: 'column', background: '#111',
           // Les tailles de police des champs de la feuille sont exprimées en vw (relatif à TOUTE la
           // fenêtre), pas en % de ce conteneur — dézoomer (réduire zoom%) réduit donc la largeur du
@@ -910,10 +978,21 @@ function AppContent() {
         {/* Toolbar — outer sticky shell (contenant block pour le dropdown Gestion) */}
         <div ref={gestionRef} style={{
           position: 'sticky', top: 0, zIndex: 35, background: '#111',
+          display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0 0 8px',
         }}>
+          {/* Accueil — hors de la ligne scrollable, toujours visible tout à gauche (plus dans le menu
+              Gestion : trop caché pour une action aussi fréquente que "revenir à l'accueil"). */}
+          <button onClick={() => setAppMode(null)} style={{
+            flexShrink: 0, padding: '4px 12px', borderRadius: 4,
+            border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
+            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', letterSpacing: '0.04em', fontSize: 14,
+            whiteSpace: 'nowrap',
+          }}>
+            {t('toolbar.accueil')}
+          </button>
           {/* Inner scrollable */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 0',
+            display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
             {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
@@ -994,15 +1073,6 @@ function AppContent() {
               {t('toolbar.jouer')}
             </button>
 
-            {/* Zoom */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 4, flexShrink: 0 }}>
-              <button onClick={() => setZoom(z => { const n = Math.max(30, z - 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>−</button>
-              <span style={{ fontSize: 14, color: 'rgba(245,236,215,0.6)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
-              <button onClick={() => setZoom(z => { const n = Math.min(82, z + 5); localStorage.setItem('tdr-zoom', String(n)); return n })}
-                style={{ color: 'var(--tdr-gold)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
-            </div>
-
             {/* Bouton Gestion (dans le scroll) */}
             <button
               onClick={() => setShowGestion(g => !g)}
@@ -1027,15 +1097,6 @@ function AppContent() {
               borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
               minWidth: 220, display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}>
-              {/* Changer de mode */}
-              <button onClick={() => { setAppMode(null); setShowGestion(false) }} style={{
-                padding: '10px 16px', background: 'transparent', border: 'none',
-                borderBottom: '1px solid rgba(201,168,76,0.1)',
-                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
-              }}>
-                {t('gmMode.changerMode')}
-              </button>
-
               {/* Données du jeu */}
               <button onClick={() => { setShowDescEditor(d => !d); setShowGestion(false) }} style={{
                 padding: '10px 16px', background: 'transparent', border: 'none',
@@ -1308,9 +1369,16 @@ function AppContent() {
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)
           }}
-          style={{ width: 6, flexShrink: 0, cursor: 'col-resize', background: 'rgba(201,168,76,0.2)' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.5)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(201,168,76,0.2)' }}
+          // marginLeft : dégagement par rapport à la scrollbar de la feuille (voir paddingRight du
+          // conteneur de la feuille) — réduit par rapport au premier essai (16px), trop éloigné une fois
+          // vu en place. La zone reste large (8px) pour rester facile à saisir, mais ne se dessine plus
+          // que par un trait pointillé fin en son centre plutôt que tout le bloc rempli.
+          style={{
+            width: 8, flexShrink: 0, marginLeft: 8, cursor: 'col-resize',
+            borderLeft: '1px dashed rgba(201,168,76,0.35)',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'rgba(201,168,76,0.8)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'rgba(201,168,76,0.35)' }}
         />
       <div className="no-print" style={{
         flex: 1, minWidth: 300,

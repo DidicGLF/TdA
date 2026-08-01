@@ -704,16 +704,21 @@ export default function ChampsRecto({
             const cbRowMoved = onCheckboxRowMoved ?? (() => {})
             if (fp?.reserved === true) return reserveChip(label, { top: rTop, left: rLeft, width: rStepX, height: rStepY })
             if (!surCettePage(label)) return null
+            // Donnée de session (cases cochées au crayon) : imprime ET temporaire (qui pilote la classe
+            // CSS tdr-temporaire) doivent dépendre de LA MÊME décision, sinon la pastille peut afficher
+            // "imprime" alors que le champ reste masqué par CSS — imprime par défaut à false ici (pas
+            // true comme avant), cohérent avec « une donnée de session ne s'imprime pas par défaut ».
+            const imprimePm = fp?.imprimer ?? false
             return (
               <DraggableCheckboxRow
                 label={label} top={rTop} left={rLeft} perRow={rPerRow} stepX={rStepX} stepY={rStepY}
-                count={pmAffiche} checkedCount={character.pmRestants ?? pmAffiche} temporaire
+                count={pmAffiche} checkedCount={character.pmRestants ?? pmAffiche} temporaire={!imprimePm}
                 onValueChange={v => onChange({ pmRestants: v })}
                 calibrate={calibrate} containerRef={containerRef}
                 onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
                 onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY, perRow: rPerRow })}
-                imprime={fp?.imprimer ?? true}
-                onToggleImpression={() => cbReserve(label, fp?.reserved === true, { imprimer: !(fp?.imprimer ?? true) } as never)}
+                imprime={imprimePm}
+                onToggleImpression={() => cbReserve(label, fp?.reserved === true, { imprimer: !imprimePm } as never)}
               />
             )
           })()}
