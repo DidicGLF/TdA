@@ -535,7 +535,7 @@ export default function ChampsVerso({
           <DraggableField
             key={label}
             top={rTop} left={rLeft} width={rWidth} height={rHeight}
-            value={labelProfilPsychologie(trait, character.psychologie?.[trait.cle] ?? 5)}
+            value={labelProfilPsychologie(trait, character.psychologie?.[trait.cle] ?? 5, character.genre)}
             onChange={() => {}} readOnly align="center"
             calibrate={calibrate} label={label} containerRef={containerRef} onMoved={cb}
             imprime={tfp?.imprimer ?? true}

@@ -2496,7 +2496,7 @@ function Step6({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
               {trait.nom} <span className="normal-case italic opacity-60">({trait.sousTitre})</span>
             </div>
             <div className="text-base italic mt-1" style={{ color: 'var(--tdr-gold)' }}>
-              {labelProfilPsychologie(trait, valeur)}
+              {labelProfilPsychologie(trait, valeur, character.genre)}
             </div>
             <div className="mt-1">
               <input
