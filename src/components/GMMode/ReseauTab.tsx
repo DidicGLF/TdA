@@ -310,14 +310,14 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontFamily: 'monospace' }}>
                         #{c.connexionId} · {c.idPJ.slice(0, 6)}
                       </div>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                         <input
                           value={messagesPrives[c.connexionId] ?? ''}
                           onChange={e => setMessagesPrives(prev => ({ ...prev, [c.connexionId]: e.target.value }))}
                           onKeyDown={e => { if (e.key === 'Enter') envoyerMessagePrive(c.connexionId) }}
                           placeholder={t('gmMode.reseau.messagePrivePlaceholder')}
                           style={{
-                            flex: 1, minWidth: 0, padding: '3px 6px', borderRadius: 4, fontSize: 13,
+                            flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 4, fontSize: 15,
                             border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT,
                           }}
                         />
@@ -325,7 +325,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                           onClick={() => envoyerMessagePrive(c.connexionId)}
                           title={t('gmMode.reseau.envoyerMessagePriveTitle')}
                           style={{
-                            padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                            padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                             border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                           }}
                         >
@@ -335,7 +335,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                           onClick={() => choisirImagePour(c.connexionId)}
                           title={t('gmMode.reseau.envoyerImagePriveeTitle')}
                           style={{
-                            padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                            padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                             border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                           }}
                         >
@@ -347,7 +347,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                             onChange={e => { if (e.target.value) envoyerObjetMagique(c.connexionId, e.target.value) }}
                             title={t('gmMode.reseau.envoyerObjetPriveeTitle')}
                             style={{
-                              flex: '0 0 auto', width: 40, minWidth: 0, padding: '3px 2px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                              flex: '0 0 auto', width: 56, minWidth: 0, padding: '6px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                               border: '1px solid rgba(180,130,255,0.4)', background: 'rgba(180,130,255,0.12)', color: 'rgba(180,130,255,0.9)',
                             }}
                           >
@@ -359,7 +359,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       <button
                         onClick={() => deconnecterClientReseau(c.connexionId)}
                         style={{
-                          alignSelf: 'flex-start', marginTop: 4, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                          alignSelf: 'flex-start', marginTop: 6, padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                           border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
                         }}
                       >
