@@ -291,9 +291,19 @@ export default function ChampsRecto({
           if (racialMod !== 0) lines.push({ label: peupleName(character.peuple), value: racialMod > 0 ? `+${racialMod}` : `${racialMod}` })
           if (voieBonus !== 0) lines.push(...groupContribs(voieContribs))
           const caracFormula: { lines: TooltipLine[]; total: string | number } = { lines, total: effectiveVal }
+          // Fiche déverrouillée : la Valeur devient éditable directement (dépasse le cadre du point-buy
+          // du wizard — ex. ajuster un score après création, ou une valeur hors norme comme 66). Le champ
+          // affiche effectiveVal (base + bonus de voie temporaires) : on retranche voieBonus de la saisie
+          // pour que la valeur RÉELLEMENT tapée reste ce qui s'affiche ensuite, pas base+bonus en trop.
+          // Mod. recalculé et stocké avec la même formule que le wizard (getMod, sans plafond haut — voir
+          // types/character.ts) : n'importe quelle valeur donne un modificateur, y compris hors norme.
+          const setValeur = (v: string) => {
+            const finalVal = (parseInt(v) || 0) - voieBonus
+            onChange({ caracteristiques: { ...character.caracteristiques, [key]: { valeur: finalVal, mod: getMod(finalVal) } } })
+          }
           return (
             <React.Fragment key={key}>
-              {f({ label: `${key} val`, tooltipTitle: t(`stats.${key}`), top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: () => {}, readOnly: locked, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
+              {f({ label: `${key} val`, tooltipTitle: t(`stats.${key}`), top, left: 16.3, width: wVal, height: 2.0, value: effectiveVal, onChange: setValeur, readOnly: locked, type: "number", align: "center", active: activeStep === 2, formula: caracFormula })}
               {f({ label: `${key} mod`, top, left: 23, width: 5.1, height: 2.0, value: effectiveMod >= 0 ? `+${effectiveMod}` : `${effectiveMod}`, onChange: () => {}, readOnly: locked, align: "center" })}
             </React.Fragment>
           )
