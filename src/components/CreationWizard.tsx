@@ -1728,21 +1728,21 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   // Équipe une armure de corps (jamais un bouclier) en déséquipant l'éventuelle autre armure de corps
   // déjà portée — un bouclier peut être porté en plus, indépendamment (cf. equipeArmure dans
   // EquipementModal).
-  // Marque/démarque "(Equip)" sur la ligne d'un objet dans le texte libre d'inventaire — même logique
+  // Marque/démarque "(Équipé(e))" sur la ligne d'un objet dans le texte libre d'inventaire — même logique
   // que EquipementModal.tsx (markEquipe/unmarkEquipe), portée ici car les emplacements du wizard
   // équipent directement (glisser-déposer) sans jamais passer par cette modale : cette marque restait
   // invisible tant que seul EquipementModal la posait.
   const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
   const markEquipe = (inv: string, nom: string) => {
     const s = stripExposants(nom)
-    if (inv.includes(nom)) return inv.replace(nom, `${s} (Equip)`)
-    if (inv.includes(s))   return inv.replace(s,   `${s} (Equip)`)
+    if (inv.includes(nom)) return inv.replace(nom, `${s} (Équipé(e))`)
+    if (inv.includes(s))   return inv.replace(s,   `${s} (Équipé(e))`)
     return inv
   }
   const unmarkEquipe = (inv: string, nom: string) => {
     const s = stripExposants(nom)
-    if (inv.includes(`${s} (Equip)`))   return inv.replace(`${s} (Equip)`, s)
-    if (inv.includes(`${nom} (Equip)`)) return inv.replace(`${nom} (Equip)`, s)
+    if (inv.includes(`${s} (Équipé(e))`))   return inv.replace(`${s} (Équipé(e))`, s)
+    if (inv.includes(`${nom} (Équipé(e))`)) return inv.replace(`${nom} (Équipé(e))`, s)
     return inv
   }
   const equiperCorps = (nom: string) => {

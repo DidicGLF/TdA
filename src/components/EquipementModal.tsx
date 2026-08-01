@@ -284,7 +284,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
     const patch: Partial<Character> = {
       armes: character.armes.filter((_, i) => i !== idx),
-      inventaire: removeInv(isEquipped ? `${stripped} (Equip)` : stripped),
+      inventaire: removeInv(isEquipped ? `${stripped} (Équipé(e))` : stripped),
     }
     if (stripExposants(character.arme1) === stripped) { patch.arme1 = ''; patch.dmArme1 = '' }
     if (stripExposants(character.arme2) === stripped) { patch.arme2 = ''; patch.dmArme2 = '' }
@@ -342,7 +342,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const removeArmure = (idx: number) => {
     if (!character || !onChange) return
     const a = character.armuresEquipees[idx]
-    const invNom = a.equipe ? `${a.nom} (Equip)` : a.nom
+    const invNom = a.equipe ? `${a.nom} (Équipé(e))` : a.nom
     onChange({
       armuresEquipees: character.armuresEquipees.filter((_, i) => i !== idx),
       inventaire: removeInv(invNom),
@@ -353,14 +353,14 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
   const markEquipe = (inv: string, nom: string) => {
     const s = stripExposants(nom)
-    if (inv.includes(nom)) return inv.replace(nom, `${s} (Equip)`)
-    if (inv.includes(s))   return inv.replace(s,   `${s} (Equip)`)
+    if (inv.includes(nom)) return inv.replace(nom, `${s} (Équipé(e))`)
+    if (inv.includes(s))   return inv.replace(s,   `${s} (Équipé(e))`)
     return inv
   }
   const unmarkEquipe = (inv: string, nom: string) => {
     const s = stripExposants(nom)
-    if (inv.includes(`${s} (Equip)`))   return inv.replace(`${s} (Equip)`, s)
-    if (inv.includes(`${nom} (Equip)`)) return inv.replace(`${nom} (Equip)`, s)
+    if (inv.includes(`${s} (Équipé(e))`))   return inv.replace(`${s} (Équipé(e))`, s)
+    if (inv.includes(`${nom} (Équipé(e))`)) return inv.replace(`${nom} (Équipé(e))`, s)
     return inv
   }
 
@@ -575,7 +575,7 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
           const stripped = stripExposants(objet.nom)
           const estSlotte = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
             || character.armuresEquipees.some(a => a.nom === objet.nom && a.equipe)
-          patch.inventaire = removeInv(estSlotte ? `${stripped} (Equip)` : stripped)
+          patch.inventaire = removeInv(estSlotte ? `${stripped} (Équipé(e))` : stripped)
         } else {
           patch.inventaire = appendInv(stripExposants(objet.nom))
         }
