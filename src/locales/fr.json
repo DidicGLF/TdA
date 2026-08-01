@@ -319,6 +319,9 @@
       "distribution": "Distribution",
       "aleatoire": "Aléatoire",
       "lancerDes": "Lancer les dés (4d6, garder 3)",
+      "saisirDes": "✏️ Saisir les dés",
+      "saisirDesDesc": "Entrez vos 6 valeurs déjà tirées (3 à 18 chacune) — pratique pour recréer sur l'appli un personnage déjà joué sur papier.",
+      "validerDes": "Valider",
       "tousAssignes": "Tous les scores sont assignés",
       "modRaciaux": "Modificateurs raciaux —"
     },

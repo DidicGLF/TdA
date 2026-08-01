@@ -402,6 +402,11 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const modCaracs = findCulture(peuples, character.peuple, character.culture)?.modCaracs ?? {}
 
   const [method, setMethod] = React.useState<'distribution' | 'aleatoire'>('distribution')
+  // Saisie manuelle des 6 valeurs du mode aléatoire (voir bouton dédié plus bas) : un joueur qui recrée
+  // sur l'appli un personnage déjà joué sur papier veut retrouver EXACTEMENT ses scores déjà tirés, pas
+  // relancer les dés en espérant retomber sur les mêmes valeurs — demandé explicitement par Didic.
+  const [manualDesOuvert, setManualDesOuvert] = React.useState(false)
+  const [manualDesValeurs, setManualDesValeurs] = React.useState<string[]>(['', '', '', '', '', ''])
   // Les caracs sont "non assignées" si toutes sont encore à la valeur par défaut (10)
   const isUnassigned = CARACS.every(({ key }) => character.caracteristiques[key].valeur === 10)
 
@@ -476,14 +481,56 @@ function Step2({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
       </div>
 
       {method === 'aleatoire' && (
-        <button
-          onClick={rollDice}
-          className="w-full py-1.5 rounded text-base border"
-          style={{ borderColor: 'rgba(201,168,76,0.5)', color: 'var(--tdr-parchment)' }}
-        >
-          {t('wizard.step2.lancerDes')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { rollDice(); setManualDesOuvert(false) }}
+            className="flex-1 py-1.5 rounded text-base border"
+            style={{ borderColor: 'rgba(201,168,76,0.5)', color: 'var(--tdr-parchment)' }}
+          >
+            {t('wizard.step2.lancerDes')}
+          </button>
+          <button
+            onClick={() => { setManualDesOuvert(o => !o); setManualDesValeurs(['', '', '', '', '', '']) }}
+            className="flex-1 py-1.5 rounded text-base border"
+            style={{ borderColor: 'rgba(201,168,76,0.5)', color: manualDesOuvert ? 'var(--tdr-gold)' : 'var(--tdr-parchment)' }}
+          >
+            {t('wizard.step2.saisirDes')}
+          </button>
+        </div>
       )}
+
+      {method === 'aleatoire' && manualDesOuvert && (() => {
+        const valeursValides = manualDesValeurs.map(v => parseInt(v))
+        const toutesValides = valeursValides.every(v => Number.isInteger(v) && v >= 3 && v <= 18)
+        return (
+          <div style={{ padding: '8px 10px', borderRadius: 5, background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)' }}>
+            <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 6 }}>{t('wizard.step2.saisirDesDesc')}</div>
+            <div className="flex flex-wrap gap-2" style={{ marginBottom: 8 }}>
+              {manualDesValeurs.map((v, i) => (
+                <input
+                  key={i} type="number" min={3} max={18} value={v}
+                  onChange={e => setManualDesValeurs(mv => mv.map((x, idx) => idx === i ? e.target.value : x))}
+                  className="border rounded px-2 py-1 text-base text-center"
+                  style={{ ...INPUT_STYLE, width: 52 }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                if (!toutesValides) return
+                setPool([...valeursValides].sort((a, b) => a - b))
+                setAssigned({ FOR: null, DEX: null, CON: null, INT: null, SAG: null, CHA: null })
+                setManualDesOuvert(false)
+              }}
+              disabled={!toutesValides}
+              className="w-full py-1 rounded text-base border"
+              style={{ borderColor: 'var(--tdr-gold)', color: 'var(--tdr-gold)', opacity: toutesValides ? 1 : 0.4, cursor: toutesValides ? 'pointer' : 'not-allowed' }}
+            >
+              {t('wizard.step2.validerDes')}
+            </button>
+          </div>
+        )
+      })()}
 
       <div className="flex flex-wrap gap-1 min-h-8">
         {pool.map((v, i) => (

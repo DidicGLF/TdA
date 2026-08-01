@@ -319,6 +319,9 @@
       "distribution": "Distribution",
       "aleatoire": "Random",
       "lancerDes": "Roll dice (4d6, keep 3)",
+      "saisirDes": "✏️ Enter dice values",
+      "saisirDesDesc": "Enter your 6 already-rolled values (3 to 18 each) — handy for recreating a character already played on paper.",
+      "validerDes": "Confirm",
       "tousAssignes": "All scores assigned",
       "modRaciaux": "Racial modifiers —"
     },
