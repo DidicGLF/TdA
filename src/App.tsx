@@ -462,6 +462,13 @@ function AppContent() {
       ...c,
       ...tresorerieMigree,
       tresorerie: undefined,
+      // Migration : marqueur "(Equip)" (ancien nom de la mention "objet équipé" dans l'inventaire
+      // texte libre) → "(Équipé(e))" — voir markEquipe/unmarkEquipe dans EquipementModal.tsx/
+      // CreationWizard.tsx, qui ne reconnaissent plus que le nouveau marqueur pour ajouter/retirer
+      // cette mention. Sans cette migration, un personnage sauvegardé avant ce changement garderait
+      // l'ancienne mention pour toujours (déséquiper l'objet ne la retirerait plus, la fonction
+      // cherchant désormais le nouveau texte).
+      inventaire: c.inventaire.replace(/\(Equip\)/g, '(Équipé(e))'),
       compagnonsFiches: compagnonsFichesMigre,
       compagnonsOverrides: undefined,
       talentMagique: typeof tm === 'string' ? { nom: tm, desc: '' } : (tm ?? { nom: '', desc: '' }),
