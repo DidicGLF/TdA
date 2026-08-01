@@ -1028,6 +1028,7 @@
       "messagePriveJournal": "🔒 Message du MJ : {{texte}}",
       "imageMJJournal": "🖼 Image reçue du MJ — cliquer pour la revoir",
       "objetMagiqueMJJournal": "📦 Objet magique reçu du MJ : {{nom}}",
+      "objetClassiqueMJJournal": "📦 Objet reçu du MJ : {{nom}}",
       "fermerImageTitle": "Fermer",
       "journalVide": "Aucun message reçu pour l'instant."
     },
@@ -1443,9 +1444,12 @@
       "envoyerMessagePriveTitle": "Envoyer en privé à ce joueur (invisible des autres)",
       "envoyerImagePriveeTitle": "Envoyer une image en privé à ce joueur (invisible des autres)",
       "envoyerImageATousTitle": "Envoyer une image à tous les joueurs connectés",
-      "envoyerObjetPlaceholder": "Objet magique…",
-      "envoyerObjetATousTitle": "Envoyer un objet magique à tous les joueurs connectés",
-      "envoyerObjetPriveeTitle": "Envoyer un objet magique à ce joueur",
+      "envoyerObjetPlaceholder": "Objet…",
+      "envoyerObjetATousTitle": "Envoyer un objet à tous les joueurs connectés",
+      "envoyerObjetPriveeTitle": "Envoyer un objet à ce joueur",
+      "groupeObjetsMagiques": "Objets magiques",
+      "groupeArmes": "Armes",
+      "groupeArmures": "Armures",
       "deconnecterJoueur": "Déconnecter"
     },
     "batailleMasse": {

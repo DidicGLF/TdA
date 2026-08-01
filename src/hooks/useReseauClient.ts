@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PORT_RESEAU } from '../utils/reseau'
 import { encoderMessage, decoderMessage, idPJ } from '../utils/reseauProtocole'
 import type { CategorieJournal } from '../utils/reseauProtocole'
-import type { Character } from '../types/character'
+import type { Character, Arme, ArmureEquipee } from '../types/character'
 import type { ObjetMagiqueEntry } from '../types/gameData'
 
 // Client réseau côté joueur (Mode de jeu) — se connecte au serveur MJ (voir src-tauri/src/reseau.rs et
@@ -27,7 +27,11 @@ export interface DegatsRecus {
 // d'état, ce que les règles des Hooks découragent. Le composant appelant garde sa propre logique
 // d'application des dégâts à jour dans une ref (voir GameModePanel.tsx) pour ne pas avoir à la définir
 // avant l'appel à ce hook.
-export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void, onObjetMagiqueRecu?: (o: ObjetMagiqueEntry) => void) {
+export function useReseauClient(
+  onDegatsRecus?: (d: DegatsRecus) => void,
+  onObjetMagiqueRecu?: (o: ObjetMagiqueEntry) => void,
+  onObjetClassiqueRecu?: (categorie: 'arme' | 'armure', objet: Arme | ArmureEquipee) => void,
+) {
   const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
   const [journal, setJournal] = useState<LigneJournalReseau[]>([])
@@ -47,6 +51,8 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void, onObje
   useEffect(() => { onDegatsRecusRef.current = onDegatsRecus })
   const onObjetMagiqueRecuRef = useRef(onObjetMagiqueRecu)
   useEffect(() => { onObjetMagiqueRecuRef.current = onObjetMagiqueRecu })
+  const onObjetClassiqueRecuRef = useRef(onObjetClassiqueRecu)
+  useEffect(() => { onObjetClassiqueRecuRef.current = onObjetClassiqueRecu })
   // Mémorisé pour pouvoir se réidentifier sur demande (voir 'qui-etes-vous' ci-dessous) sans redemander
   // le personnage à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet
   // qui démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
@@ -99,6 +105,10 @@ export function useReseauClient(onDegatsRecus?: (d: DegatsRecus) => void, onObje
       } else if (message?.type === 'objet-magique-mj') {
         onObjetMagiqueRecuRef.current?.(message.objet)
         ajouterJournal(t('gameMode.reseau.objetMagiqueMJJournal', { nom: message.objet.nom }), 'objetMagique')
+        setMessageNonLu(true)
+      } else if (message?.type === 'objet-classique-mj') {
+        onObjetClassiqueRecuRef.current?.(message.categorie, message.objet)
+        ajouterJournal(t('gameMode.reseau.objetClassiqueMJJournal', { nom: message.objet.nom }), 'objetClassique')
         setMessageNonLu(true)
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,

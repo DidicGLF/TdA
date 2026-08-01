@@ -1,4 +1,4 @@
-import type { Character } from '../types/character'
+import type { Character, Arme, ArmureEquipee } from '../types/character'
 import type { ObjetMagiqueEntry } from '../types/gameData'
 import { empreinte } from './empreinte'
 
@@ -73,6 +73,14 @@ export type MessageReseau =
   // ne fait qu'alimenter le catalogue, recevoir un objet en Mode de jeu doit se traduire immédiatement
   // par "je l'ai" sans étape manuelle supplémentaire dans EquipementModal.
   | { type: 'objet-magique-mj'; objet: ObjetMagiqueEntry }
+  // MJ → un ou plusieurs joueurs (même diffusion ciblée/à tous que 'objet-magique-mj') : objet CLASSIQUE
+  // (arme/armure du catalogue livré, sans enchantement) — même geste que ci-dessus mais pour l'équipement
+  // ordinaire, demandé par Didic en plus des objets magiques. categorie distingue Arme d'ArmureEquipee
+  // (formes différentes, voir types/character.ts) puisque le message ne porte qu'un objet à la fois.
+  // Côté joueur, ajouté directement à armes/armuresEquipees ET à l'inventaire texte (voir
+  // recevoirObjetClassiqueReseau dans App.tsx) — même traitement immédiat que la réception d'un objet
+  // magique, pas une simple entrée de catalogue à activer manuellement plus tard.
+  | { type: 'objet-classique-mj'; categorie: 'arme' | 'armure'; objet: Arme | ArmureEquipee }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -96,7 +104,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -111,4 +119,6 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   // Même violet que l'onglet/les boutons "Objets magiques" ailleurs dans l'app (EquipementModal.tsx),
   // pour rester reconnaissable d'un coup d'œil comme la même famille de fonctionnalité.
   objetMagique: 'rgba(180,130,255,0.95)',
+  // Gris-acier plutôt que doré/violet (déjà pris) — équipement ordinaire, pas une famille dorée/magique.
+  objetClassique: 'rgba(170,180,195,0.9)',
 }

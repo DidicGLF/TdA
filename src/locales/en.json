@@ -1028,6 +1028,7 @@
       "messagePriveJournal": "🔒 Message from the GM: {{texte}}",
       "imageMJJournal": "🖼 Image received from the GM — click to view again",
       "objetMagiqueMJJournal": "📦 Magic item received from the GM: {{nom}}",
+      "objetClassiqueMJJournal": "📦 Item received from the GM: {{nom}}",
       "fermerImageTitle": "Close",
       "journalVide": "No messages received yet."
     },
@@ -1443,9 +1444,12 @@
       "envoyerMessagePriveTitle": "Send privately to this player (invisible to others)",
       "envoyerImagePriveeTitle": "Send an image privately to this player (invisible to others)",
       "envoyerImageATousTitle": "Send an image to all connected players",
-      "envoyerObjetPlaceholder": "Magic item…",
-      "envoyerObjetATousTitle": "Send a magic item to all connected players",
-      "envoyerObjetPriveeTitle": "Send a magic item to this player",
+      "envoyerObjetPlaceholder": "Item…",
+      "envoyerObjetATousTitle": "Send an item to all connected players",
+      "envoyerObjetPriveeTitle": "Send an item to this player",
+      "groupeObjetsMagiques": "Magic items",
+      "groupeArmes": "Weapons",
+      "groupeArmures": "Armor",
       "deconnecterJoueur": "Disconnect"
     },
     "batailleMasse": {

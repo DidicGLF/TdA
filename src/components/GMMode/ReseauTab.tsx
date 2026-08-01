@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { demarrerServeurReseau, arreterServeurReseau, etatServeurReseau, envoyerATousReseau, envoyerAClientReseau, deconnecterClientReseau, ecouterReseau } from '../../utils/reseau'
@@ -48,7 +48,19 @@ interface Props {
 // la découverte réseau côté joueur et l'échange de jets/dégâts.
 export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, setClientsConnectes }: Props) {
   const { t } = useTranslation()
-  const { objetsMagiques } = useGameData()
+  const { objetsMagiques, armes, armures } = useGameData()
+  // Catalogue livré+perso déjà fusionné (voir useGameData) — mis à plat pour la liste d'envoi, comme
+  // objetsMagiques l'est déjà nativement. entrees.nom sert d'identifiant (unique au sein de sa liste,
+  // comme partout ailleurs dans l'app — ex. EquipementModal).
+  const armesListe = useMemo(
+    () => armes.groupes.flatMap(g => g.categories.flatMap(c => c.entrees)) as
+      { nom: string; dm: string; mod: string; prix: string; portee?: string; deuxMains?: boolean }[],
+    [armes],
+  )
+  const armuresListe = useMemo(
+    () => armures.categories.flatMap(c => c.entrees),
+    [armures],
+  )
   const [demarre, setDemarre] = useState(false)
   const [port, setPort] = useState<number | null>(null)
   const [code, setCode] = useState<string | null>(null)
@@ -98,6 +110,63 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
     if (cible === 'tous') envoyerATousReseau(contenu)
     else envoyerAClientReseau(cible, contenu)
   }
+
+  // Envoi d'un objet CLASSIQUE (arme/armure du catalogue, sans enchantement — voir 'objet-classique-mj')
+  // — même transport que ci-dessus. Conversion vers la forme Arme/ArmureEquipee du personnage (mod →
+  // attaque, def brut) : même geste que addArme/addArmure dans EquipementModal.tsx.
+  const envoyerObjetClassique = (cible: number | 'tous', categorie: 'arme' | 'armure', nom: string) => {
+    const contenu = categorie === 'arme'
+      ? (() => {
+          const e = armesListe.find(x => x.nom === nom)
+          if (!e) return null
+          return encoderMessage({
+            type: 'objet-classique-mj', categorie,
+            objet: { nom: e.nom, dm: e.dm, attaque: e.mod, special: '', prix: e.prix, portee: e.portee, deuxMains: e.deuxMains },
+          })
+        })()
+      : (() => {
+          const e = armuresListe.find(x => x.nom === nom)
+          if (!e) return null
+          return encoderMessage({ type: 'objet-classique-mj', categorie, objet: { nom: e.nom, def: e.def, prix: e.prix, equipe: false } })
+        })()
+    if (!contenu) return
+    if (cible === 'tous') envoyerATousReseau(contenu)
+    else envoyerAClientReseau(cible, contenu)
+  }
+
+  // Point d'entrée unique des deux sélecteurs "Envoyer objet" (à tous et par joueur) : la valeur d'une
+  // <option> encode son type ("magique:<id>" / "arme:<nom>" / "armure:<nom>") pour dispatcher vers la
+  // bonne fonction d'envoi sans dupliquer la logique de sélection dans les deux endroits où elle apparaît.
+  const envoyerObjetSelectionne = (cible: number | 'tous', valeur: string) => {
+    const separateur = valeur.indexOf(':')
+    if (separateur === -1) return
+    const type = valeur.slice(0, separateur)
+    const id = valeur.slice(separateur + 1)
+    if (type === 'magique') envoyerObjetMagique(cible, id)
+    else if (type === 'arme' || type === 'armure') envoyerObjetClassique(cible, type, id)
+  }
+
+  // Options communes aux deux sélecteurs "Envoyer objet" — un <optgroup> par catégorie pour une
+  // démarcation visuelle claire entre objets magiques et équipement classique (demandé par Didic).
+  const optionsObjets = () => (
+    <>
+      {objetsMagiques.length > 0 && (
+        <optgroup label={t('gmMode.reseau.groupeObjetsMagiques')}>
+          {objetsMagiques.map(o => <option key={`m-${o.id}`} value={`magique:${o.id}`}>{o.nom}</option>)}
+        </optgroup>
+      )}
+      {armesListe.length > 0 && (
+        <optgroup label={t('gmMode.reseau.groupeArmes')}>
+          {armesListe.map(e => <option key={`a-${e.nom}`} value={`arme:${e.nom}`}>{e.nom}</option>)}
+        </optgroup>
+      )}
+      {armuresListe.length > 0 && (
+        <optgroup label={t('gmMode.reseau.groupeArmures')}>
+          {armuresListe.map(e => <option key={`r-${e.nom}`} value={`armure:${e.nom}`}>{e.nom}</option>)}
+        </optgroup>
+      )}
+    </>
+  )
 
   useEffect(() => {
     etatServeurReseau().then(etat => { setDemarre(etat.demarre); setPort(etat.port); setCode(etat.code); setClients(etat.clients) })
@@ -250,10 +319,10 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                     >
                       🖼
                     </button>
-                    {objetsMagiques.length > 0 && (
+                    {(objetsMagiques.length > 0 || armesListe.length > 0 || armuresListe.length > 0) && (
                       <select
                         value=""
-                        onChange={e => { if (e.target.value) envoyerObjetMagique('tous', e.target.value) }}
+                        onChange={e => { if (e.target.value) envoyerObjetSelectionne('tous', e.target.value) }}
                         title={t('gmMode.reseau.envoyerObjetATousTitle')}
                         style={{
                           flex: '0 0 auto', width: 150, minWidth: 0, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
@@ -261,7 +330,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                         }}
                       >
                         <option value="">📦 {t('gmMode.reseau.envoyerObjetPlaceholder')}</option>
-                        {objetsMagiques.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
+                        {optionsObjets()}
                       </select>
                     )}
                   </div>
@@ -341,10 +410,10 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                         >
                           🖼
                         </button>
-                        {objetsMagiques.length > 0 && (
+                        {(objetsMagiques.length > 0 || armesListe.length > 0 || armuresListe.length > 0) && (
                           <select
                             value=""
-                            onChange={e => { if (e.target.value) envoyerObjetMagique(c.connexionId, e.target.value) }}
+                            onChange={e => { if (e.target.value) envoyerObjetSelectionne(c.connexionId, e.target.value) }}
                             title={t('gmMode.reseau.envoyerObjetPriveeTitle')}
                             style={{
                               flex: '0 0 auto', width: 56, minWidth: 0, padding: '6px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
@@ -352,7 +421,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                             }}
                           >
                             <option value="">📦</option>
-                            {objetsMagiques.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
+                            {optionsObjets()}
                           </select>
                         )}
                       </div>

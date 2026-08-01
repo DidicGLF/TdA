@@ -3,7 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { useLocaleContext } from './context/LocaleContext'
 import { loadDataFileDossier, saveDataFile } from './utils/tauriStorage'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import type { Character, CompagnonOverride } from './types/character'
+import type { Character, CompagnonOverride, Arme, ArmureEquipee } from './types/character'
 import { defaultCharacter, getGolemVoieRang, hasVoieEtheree, hasCristauxVoie } from './types/character'
 import type { SavedEntry } from './components/SaveLoadPanel'
 import CharacterSheetRecto from './components/CharacterSheetRecto'
@@ -218,6 +218,27 @@ function AppContent() {
         ...patchPossessionObjetMagique(prev, objet, true),
       }
     })
+  }
+  // Réception réseau d'un objet CLASSIQUE (arme/armure du catalogue, sans enchantement — voir
+  // 'objet-classique-mj' dans reseauProtocole.ts) : même principe que recevoirObjetMagiqueReseau
+  // ci-dessus (écrit sur `character` ET `gameCharacter`), mais ajoute directement à armes/armuresEquipees
+  // — pas d'emplacement à synthétiser (l'objet EST déjà une entrée d'arme/armure classique), le joueur
+  // l'équipe ensuite lui-même comme n'importe quelle autre arme/armure de son inventaire.
+  const recevoirObjetClassiqueReseau = (categorie: 'arme' | 'armure', objet: Arme | ArmureEquipee) => {
+    const nomStripped = objet.nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+    const appliquer = (prev: Character): Character => {
+      const dejaPossede = categorie === 'arme'
+        ? prev.armes.some(a => a.nom === objet.nom)
+        : prev.armuresEquipees.some(a => a.nom === objet.nom)
+      if (dejaPossede) return prev
+      const inv = prev.inventaire.trim()
+      const inventaire = inv ? `${inv}, ${nomStripped}` : nomStripped
+      return categorie === 'arme'
+        ? { ...prev, armes: [...prev.armes, objet as Arme], inventaire }
+        : { ...prev, armuresEquipees: [...prev.armuresEquipees, objet as ArmureEquipee], inventaire }
+    }
+    setCharacter(appliquer)
+    setGameCharacter(prev => prev ? appliquer(prev) : prev)
   }
   const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
@@ -792,7 +813,7 @@ function AppContent() {
 
           <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
             {showGameMode ? (
-              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
+              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onObjetClassiqueRecu={recevoirObjetClassiqueReseau} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
             ) : (
               <>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
@@ -1430,7 +1451,7 @@ function AppContent() {
             />
           </>
         ) : showGameMode ? (
-          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onClose={closeGameMode} screenWidth={screenWidth} />
+          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onObjetClassiqueRecu={recevoirObjetClassiqueReseau} onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>
