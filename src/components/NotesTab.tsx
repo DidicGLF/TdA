@@ -215,6 +215,19 @@ function getCaretRect(racine: HTMLElement): { top: number; left: number; ligneHa
   return { top: rect.top - racineRect.top, left: rect.left - racineRect.left, ligneHauteur: rect.height || 18 }
 }
 
+// Position/largeur (relative au conteneur, comme getCaretRect) de la sélection EN COURS (pas
+// collapsée, contrairement à getCaretRect qui force range.collapse(true)) — ancre la barre d'outils
+// flottante (gras/italique/lien/image) juste au-dessus du texte sélectionné.
+function getSelectionRect(racine: HTMLElement): { top: number; left: number } | null {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
+  const range = sel.getRangeAt(0)
+  const rect = range.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0) return null
+  const racineRect = racine.getBoundingClientRect()
+  return { top: rect.top - racineRect.top, left: rect.left - racineRect.left + rect.width / 2 }
+}
+
 // Position (relative au conteneur, comme getCaretRect) d'un décalage de caractère arbitraire — pas
 // besoin d'y avoir la sélection, contrairement à getCaretRect — utilisée pour placer une icône
 // d'ancre directement dans le texte (voir le rendu des ancresPositions dans NoteEditor).
@@ -520,6 +533,12 @@ const toolbarBtnStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
   color: 'rgba(245,236,215,0.75)', cursor: 'pointer', fontSize: 13, padding: '4px 10px', fontFamily: 'inherit',
 }
+// Boutons carrés de la barre d'outils flottante (gras/italique/lien/image, voir bulleFormatPos).
+const bulleFormatBtnStyle: React.CSSProperties = {
+  background: 'transparent', border: 'none', borderRadius: 4,
+  color: PARCHMENT, cursor: 'pointer', fontSize: 14, width: 28, height: 28,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', padding: 0,
+}
 const metaInputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
   color: PARCHMENT, fontSize: 13, padding: '4px 8px', fontFamily: 'inherit',
@@ -564,6 +583,10 @@ function NoteEditor({
   const [selection, setSelection] = useState<{ debut: number; fin: number } | null>(null)
   const [lienQuery, setLienQuery] = useState<string | null>(null)
   const [caretPos, setCaretPos] = useState<{ top: number; left: number; ligneHauteur: number } | null>(null)
+  // Barre d'outils flottante (gras/italique/lien/image) — n'apparaît que sur une VRAIE sélection de
+  // texte (pas juste un curseur), et jamais en même temps que la liste de suggestions [[...]] (les deux
+  // se disputeraient la même zone au-dessus du texte).
+  const [bulleFormatPos, setBulleFormatPos] = useState<{ top: number; left: number } | null>(null)
   const [preview, setPreview] = useState<HoverInfo | null>(null)
   const [previewRect, setPreviewRect] = useState<{ top: number; left: number } | null>(null)
   // L'aperçu d'image peut porter une clé (images/…) ou une ancienne data URL : useImage résout les deux.
@@ -758,6 +781,49 @@ function NoteEditor({
     if (titreValide) onEnsureNote(titreValide)
   }
 
+  // Barre d'outils flottante au-dessus de la sélection (voir bulleFormatPos) — un utilisateur qui ne
+  // connaît pas la syntaxe Markdown (**gras**, *italique*) a du mal à formater son texte au clavier
+  // seul, demandé explicitement par Didic. Enveloppe la sélection avec le marqueur ; sélection vide
+  // (bouton cliqué sans rien sélectionner d'abord) : insère une paire de marqueurs vide et place le
+  // curseur ENTRE les deux pour taper directement dedans, plutôt que de laisser le curseur après.
+  const appliquerFormatage = (marqueur: '**' | '*') => {
+    const el = editableRef.current
+    if (!el) return
+    const sel = selection ?? { debut: contenu.length, fin: contenu.length }
+    const texteSelectionne = contenu.slice(sel.debut, sel.fin)
+    appliquerChangement(sel.debut, sel.fin, `${marqueur}${texteSelectionne}${marqueur}`)
+    if (texteSelectionne === '') {
+      const pos = sel.debut + marqueur.length
+      setSelection({ debut: pos, fin: pos })
+    }
+    requestAnimationFrame(() => el.focus())
+  }
+
+  // Bouton lien de la barre flottante : remplace la sélection par "[[" + le texte sélectionné (comme
+  // si l'utilisateur venait de le retaper après un "[[" manuel) — appliquerChangement détecte alors
+  // tout seul ce lien en cours (lienEnCours) et ouvre la liste de suggestions existante ci-dessous,
+  // déjà filtrée sur le texte qui était sélectionné. Sélection vide : ouvre la liste non filtrée
+  // (toutes les notes), voir le bouton dédié "créer une note vide" dans cette liste.
+  const ouvrirLienDepuisSelection = () => {
+    const el = editableRef.current
+    if (!el) return
+    const sel = selection ?? { debut: contenu.length, fin: contenu.length }
+    const texteSelectionne = contenu.slice(sel.debut, sel.fin)
+    appliquerChangement(sel.debut, sel.fin, `[[${texteSelectionne}`)
+    requestAnimationFrame(() => el.focus())
+  }
+
+  // Option "créer une note vide" de la liste de suggestions [[...]] (voir plus bas) : contrairement à
+  // choisirSuggestion (qui ne peut choisir qu'une note DÉJÀ existante dans la liste), celle-ci crée
+  // d'abord la note si besoin (onEnsureNote, comme le ferait taper un titre inédit puis "]]" à la
+  // main) avant d'insérer le lien — un titre vide (liste ouverte sans avoir rien tapé) retombe sur
+  // "Sans titre" plutôt que de créer un lien "[[]]" invisible/inutilisable.
+  const creerNoteVideEtLier = () => {
+    const titre = (lienQuery ?? '').trim() || t('notes.sansTitre')
+    onEnsureNote(titre)
+    choisirSuggestion(titre)
+  }
+
   // Recharge contenu/sélection depuis le DOM réel — utilisé uniquement pour la composition IME
   // (accents via touche morte, saisie CJK...) qu'on laisse le navigateur gérer nativement (voir
   // composingRef ci-dessous), et comme filet de sécurité si un type d'événement imprévu passait au
@@ -892,6 +958,7 @@ function NoteEditor({
     if (!el || !selection || document.activeElement !== el) return
     definirSelection(el, selection.debut, selection.fin)
     setCaretPos(lienQuery !== null && selection.debut === selection.fin ? getCaretRect(el) : null)
+    setBulleFormatPos(lienQuery === null && selection.debut !== selection.fin ? getSelectionRect(el) : null)
   }, [contenu, selection, lienQuery])
 
   // Écouteur natif (pas une prop React onBeforeInput) attaché une seule fois : passe systématiquement
@@ -950,6 +1017,15 @@ function NoteEditor({
       .map(n => ({ type: 'note' as const, titre: n.titre, key: `note-${n.id}` }))
       .slice(0, 8)
   }, [lienQuery, notes, note.id, bestiaire, rencontres])
+  // "Créer une note vide" (voir creerNoteVideEtLier) n'a de sens qu'en liste de notes classique — pas
+  // en train de parcourir le bestiaire/les rencontres (mots-clés réservés [[créature/[[rencontre, voir
+  // le useMemo ci-dessus) : mêmes conditions que la branche correspondante, pour rester synchronisé
+  // si ces mots-clés changent un jour.
+  const estListeSpeciale = lienQuery !== null && (() => {
+    const q = normaliser(lienQuery)
+    return (!!bestiaire && q.length >= 3 && normaliser('créature').startsWith(q))
+      || (!!rencontres && q.length >= 3 && normaliser('rencontre').startsWith(q))
+  })()
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, minHeight: 0 }}>
@@ -1342,7 +1418,11 @@ function NoteEditor({
                 </svg>
               ))}
               {/* Suggestions de liens [[...]] — ancrées juste sous le curseur. */}
-              {lienQuery !== null && suggestions.length > 0 && caretPos && (
+              {/* Sans la branche "!estListeSpeciale" : sans elle, une recherche de note qui ne matche
+                  encore rien (ex. titre tout juste commencé à taper) n'affichait AUCUN menu — donc pas
+                  d'endroit où cliquer "créer une note vide" non plus, alors que c'est justement le cas
+                  où on en a le plus besoin. */}
+              {lienQuery !== null && (suggestions.length > 0 || !estListeSpeciale) && caretPos && (
                 <div style={{
                   position: 'absolute', top: caretPos.top + caretPos.ligneHauteur, left: caretPos.left,
                   minWidth: 160, maxWidth: 320, zIndex: 10,
@@ -1368,6 +1448,46 @@ function NoteEditor({
                       )}
                     </button>
                   ))}
+                  {!estListeSpeciale && (
+                    <button
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={creerNoteVideEtLier}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none',
+                        borderTop: suggestions.length > 0 ? `1px solid ${SECTION_BORDER}` : 'none',
+                        color: GOLD, cursor: 'pointer', fontSize: 14, padding: '7px 12px', fontFamily: 'inherit', fontWeight: 600,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.12)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      ＋ {t('notes.creerNoteVide')}
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Barre d'outils flottante au-dessus d'une sélection de texte (voir bulleFormatPos) —
+                  onMouseDown avec preventDefault sur tout le bloc (même motif que les boutons de
+                  suggestion ci-dessus) : sans ça, cliquer un bouton déplacerait le focus hors du
+                  contentEditable AVANT le clic, perdant la sélection dont ces actions ont besoin. */}
+              {bulleFormatPos && (
+                <div
+                  onMouseDown={e => e.preventDefault()}
+                  style={{
+                    position: 'absolute', top: bulleFormatPos.top - 40, left: bulleFormatPos.left,
+                    transform: 'translateX(-50%)', display: 'flex', gap: 2, zIndex: 20,
+                    background: 'rgba(15,12,8,0.98)', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
+                    padding: 3, boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  <button type="button" title={t('notes.formatGras')} onClick={() => appliquerFormatage('**')}
+                    style={{ ...bulleFormatBtnStyle, fontWeight: 700 }}>G</button>
+                  <button type="button" title={t('notes.formatItalique')} onClick={() => appliquerFormatage('*')}
+                    style={{ ...bulleFormatBtnStyle, fontStyle: 'italic' }}>I</button>
+                  <button type="button" title={t('notes.formatLien')} onClick={ouvrirLienDepuisSelection}
+                    style={bulleFormatBtnStyle}>🔗</button>
+                  <button type="button" title={t('notes.formatImage')} onClick={() => imageInputRef.current?.click()}
+                    style={bulleFormatBtnStyle}>🖼️</button>
                 </div>
               )}
             </div>
