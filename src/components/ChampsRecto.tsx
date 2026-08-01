@@ -66,6 +66,15 @@ interface Props {
   onCheckboxRowMoved?: (label: string, top: number, left: number, perRow: number, stepX: number, stepY: number) => void
 }
 
+// Positions des 3 emplacements de fiche (ficheArme1/2/3) — 1 et 2 reprennent les coordonnées
+// historiques des anciens champs de main (déjà calibrées de longue date sur l'image de la feuille) ;
+// 3 est nouveau, sans position connue (voir reserveByDefault plus bas).
+const FICHE_ARME_POS = [
+  { top: 22.1, left: 85.7, width: 20.0, attTop: 24.6, attLeft: 79.1, dmTop: 24.7, dmLeft: 90.9, dmWidth: 9.0 },
+  { top: 29.3, left: 85.8, width: 19.9, attTop: 31.9, attLeft: 79.2, dmTop: 31.9, dmLeft: 91.1, dmWidth: 9.1 },
+  { top: 36.5, left: 85.8, width: 19.9, attTop: 39.1, attLeft: 79.2, dmTop: 39.1, dmLeft: 91.1, dmWidth: 9.1 },
+]
+
 const PR_CHECKBOXES = [
   { nom: 'PR 1', top: 58.2, left: 21.1 },
   { nom: 'PR 2', top: 58.2, left: 23.4 },
@@ -369,14 +378,11 @@ export default function ChampsRecto({
           return cat !== null && !canUseFormation(cat)
         }
         const malusArmesContact = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'FOR')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'FOR')
-          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'FOR')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'FOR')) ? MALUS_SANS_FORM : 0
         const malusArmesDist    = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'DEX')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'DEX')
-          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'DEX')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'DEX')) ? MALUS_SANS_FORM : 0
         const malusArmesMag     = ((character.arme1 && armeSansForm(character.arme1) && getArmeAttType(character.arme1) === 'INT')
-          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'INT')
-          || (character.arme3 && armeSansForm(character.arme3) && getArmeAttType(character.arme3) === 'INT')) ? MALUS_SANS_FORM : 0
+          || (character.arme2 && armeSansForm(character.arme2) && getArmeAttType(character.arme2) === 'INT')) ? MALUS_SANS_FORM : 0
 
         const initContribs = effects['INIT'] ?? []
         const initBonus = sumStat(initContribs)
@@ -445,7 +451,7 @@ export default function ChampsRecto({
           {f({ label: "Déf mod DEX", top: 38.1, left: 56.1, width: 5.0, height: 2.0, value: fmt(DEX.mod), onChange: () => {}, readOnly: locked, align: "center" })}
 
           {/* Défense : armure */}
-          {f({ label: "Déf armure", top: 38.1, left: 66.2, width: 5.0, height: 2.0, value: armorDef > 0 ? `+${armorDef}` : '0', onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Déf armure", top: 38.1, left: 66.2, width: 5.0, height: 2.0, value: armorDef > 0 ? `+${armorDef}` : '', onChange: () => {}, readOnly: locked, align: "center" })}
           {!calibrate && (
             <div style={{ position: 'absolute', top: '38.1%', left: '66.2%', width: '5%', height: '2%',
               transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
@@ -468,7 +474,7 @@ export default function ChampsRecto({
           )}
 
           {/* Défense : bouclier */}
-          {f({ label: "Déf bouclier", top: 38.1, left: 78.8, width: 5.0, height: 2.0, value: shieldDef > 0 ? `+${shieldDef}` : '0', onChange: () => {}, readOnly: locked, align: "center" })}
+          {f({ label: "Déf bouclier", top: 38.1, left: 78.8, width: 5.0, height: 2.0, value: shieldDef > 0 ? `+${shieldDef}` : '', onChange: () => {}, readOnly: locked, align: "center" })}
           {!calibrate && (
             <div style={{ position: 'absolute', top: '38.1%', left: '78.8%', width: '5%', height: '2%',
               transform: 'translate(-50%, -50%)', zIndex: 20, cursor: 'help' }}
@@ -500,23 +506,53 @@ export default function ChampsRecto({
             value: character.armuresEquipees.find(a => isBouclier(a.nom) && a.equipe)?.nom ?? '',
             onChange: () => {}, readOnly: locked, reserveByDefault: true })}
 
-          {/* Défense : bonus — l'affichage inclut les effets de voies/cristaux et les bonus temporaires actuellement
-              actifs en Mode de jeu (activeBoostContributions), en plus du bonus manuel stocké ; la valeur brute
-              stockée (bonusDefense) n'est modifiée que par une saisie manuelle, donc pas de double-comptage sur
-              "DEF total" qui, lui, continue de n'ajouter que la valeur brute + defFromVoies séparément. */}
+          {/* Défense : décomposition — remplace l'ancien champ combiné "Bonus DEF" (jamais utilisé pour la
+              saisie manuelle en pratique, cf. bonusDefense ci-dessous) par le détail par source demandé :
+              Objet 1/2 = les 2 objets magiques équipés (objetsMagiquesEquipes, max 2 — voir
+              CreationWizard.tsx MAX_OBJETS_MAGIQUES_EQUIPES), Capacité 1/2 = jusqu'à 2 contributions DEF
+              de voies/rangs (hors cristaux et objets magiques, qui ont leurs propres sources). Chaque
+              paire NOM + DEF suit la même convention que Arme N / ATT Arme N / DM Arme N plus haut : le
+              champ "Objet N"/"Capacité N" affiche le NOM, un champ "DEF Objet N"/"DEF Capacité N" séparé
+              affiche le score chiffré. "DEF total" ci-dessous reste inchangé, toujours correct :
+              bonusDefense (résiduel, non affiché nulle part sur la fiche mais toujours compté) +
+              defFromVoies. Nouveaux champs → réserve de calibrage par défaut. */}
           {(() => {
-            const defContribsPourAffichage = [...(effects['DEF'] ?? []), ...activeBoostContributions(character, 'DEF')]
-            const bonusDefAffiche = (character.bonusDefense ?? 0) + sumStat(defContribsPourAffichage)
-            const bonusDefLines = [
-              { label: t('recto.tlBonusDef'), value: fmt(character.bonusDefense ?? 0) },
-              ...groupContribs(defContribsPourAffichage),
-            ]
-            return f({ label: "Bonus DEF", tooltipTitle: t('recto.bonusDef'), top: 38.1, left: 87.2, width: 5.0, height: 2.0,
-              value: locked ? fmt(bonusDefAffiche) : (character.bonusDefense ?? 0),
-              onChange: locked ? () => {} : v => { const n = parseInt(v); onChange({ bonusDefense: isNaN(n) ? 0 : n }) },
-              readOnly: locked, align: "center",
-              tooltipDesc: locked ? undefined : t('recto.bonusDefDisp'),
-              formula: locked ? { lines: bonusDefLines, total: bonusDefAffiche } : undefined })
+            const defObjet = (id: string | undefined) => {
+              const objet = id ? objetsMagiques.find(o => o.id === id) : undefined
+              if (!objet) return null
+              let total = 0
+              for (const ench of objet.enchantements) for (const ef of ench.effets ?? []) if (ef.stat === 'DEF') total += parseInt(ef.valeur) || 0
+              return { nom: objet.nom, total }
+            }
+            const objetsEquipesIds = character.objetsMagiquesEquipes ?? []
+            const objet1 = defObjet(objetsEquipesIds[0])
+            const objet2 = defObjet(objetsEquipesIds[1])
+            return <React.Fragment>
+              {f({ label: "Objet 1", top: 38.1, left: 61.5, width: 10.0, height: 2.0,
+                value: objet1?.nom ?? '', onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+              {(calibrate || objet1) && f({ label: "DEF Objet 1", top: 38.1, left: 72.0, width: 4.0, height: 2.0,
+                value: objet1 ? fmt(objet1.total) : '—', onChange: () => {}, readOnly: locked, align: "center", reserveByDefault: true })}
+              {f({ label: "Objet 2", top: 40.5, left: 61.5, width: 10.0, height: 2.0,
+                value: objet2?.nom ?? '', onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+              {(calibrate || objet2) && f({ label: "DEF Objet 2", top: 40.5, left: 72.0, width: 4.0, height: 2.0,
+                value: objet2 ? fmt(objet2.total) : '—', onChange: () => {}, readOnly: locked, align: "center", reserveByDefault: true })}
+            </React.Fragment>
+          })()}
+          {(() => {
+            const capaciteContribs = (effects['DEF'] ?? []).filter(c => c.voie !== 'cristaux' && c.voie !== 'objets-magiques')
+            const capaciteLines = groupContribs(capaciteContribs)
+            const cap1 = capaciteLines[0]
+            const cap2 = capaciteLines[1]
+            return <React.Fragment>
+              {f({ label: "Capacité 1", top: 38.1, left: 77.0, width: 10.0, height: 2.0,
+                value: cap1?.label ?? '', onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+              {(calibrate || cap1) && f({ label: "DEF Capacité 1", top: 38.1, left: 87.5, width: 4.0, height: 2.0,
+                value: cap1 ? cap1.value : '—', onChange: () => {}, readOnly: locked, align: "center", reserveByDefault: true })}
+              {f({ label: "Capacité 2", top: 40.5, left: 77.0, width: 10.0, height: 2.0,
+                value: cap2?.label ?? '', onChange: () => {}, readOnly: locked, reserveByDefault: true })}
+              {(calibrate || cap2) && f({ label: "DEF Capacité 2", top: 40.5, left: 87.5, width: 4.0, height: 2.0,
+                value: cap2 ? cap2.value : '—', onChange: () => {}, readOnly: locked, align: "center", reserveByDefault: true })}
+            </React.Fragment>
           })()}
 
           {/* Défense : total */}
@@ -607,38 +643,47 @@ export default function ChampsRecto({
               ...groupContribs(effects['ATT_MAGIQUE'] ?? []),
             ], total: fmt(attMagTotal) } })}
 
-          {/* Armes */}
-          {f({ label: "Arme 1",    top: 22.1, left: 85.7, width: 20.0, height: 2.0, value: character.arme1,   onChange: v => onChange({ arme1: v }) })}
-          {(calibrate || character.arme1) && f({ label: "ATT Arme 1", tooltipTitle: t('recto.attArme', { arme: character.arme1 ?? '1' }), top: 24.6, left: 79.1, width: 5.0, height: 2.0, value: character.arme1 ? attTotalPourArme(character.arme1) : '—', onChange: () => {}, readOnly: locked, align: "center",
-            formula: character.arme1 ? formulaArme(character.arme1) : undefined })}
-          {(calibrate || character.arme1) && (() => {
-            const e1 = character.arme1 ? findArmeEntry(armes, character.arme1) : null
-            const modVal1 = e1?.mod === 'FOR' ? FOR.mod : e1?.mod === 'DEX' ? DEX.mod : null
-            const bonusContribs1 = character.arme1 ? dmArmeBonusContribs(character.arme1) : []
-            const bonus1 = sumStat(bonusContribs1)
-            // Si l'arme n'est pas dans le catalogue officiel (arme personnalisée non enregistrée), se rabat sur
-            // l'inventaire du personnage (toujours à jour) plutôt que sur le champ hérité dmArme1 (qui peut être
-            // vide si l'arme a été équipée avant que ce fallback n'existe).
-            const invEntry1 = !e1 && character.arme1 ? character.armes.find(a => a.nom === character.arme1) : null
-            // invEntry1.attaque est une clé de stat brute ('FOR'/'DEX', voir addArme dans EquipementModal.tsx),
-            // pas un modificateur chiffré : la résoudre ici comme pour e1/modVal1 ci-dessus, sinon le montant
-            // affiché perd son bonus (ex. "2d6 FOR" au lieu de "2d6 +3").
-            const invModVal1 = invEntry1?.attaque === 'FOR' ? FOR.mod : invEntry1?.attaque === 'DEX' ? DEX.mod : null
-            const dm1base = e1
-              ? `${e1.dm}${modVal1 !== null ? ' ' + fmt(modVal1) : ''}`
-              : invEntry1 ? `${invEntry1.dm}${invModVal1 !== null ? ' ' + fmt(invModVal1) : ''}` : character.dmArme1
-            const dm1 = bonus1 !== 0 ? `${dm1base} ${fmt(bonus1)}` : dm1base
-            const formula1 = e1 ? { lines: [
-              { label: t('recto.tlDes'), value: e1.dm },
-              ...(modVal1 !== null ? [{ label: t(`stats.mod${e1.mod}`), value: fmt(modVal1) }] : []),
-              ...groupContribs(bonusContribs1),
-            ], total: dm1 } : invEntry1 ? { lines: [
-              { label: t('recto.tlDes'), value: invEntry1.dm },
-              ...(invModVal1 !== null ? [{ label: t(`stats.mod${invEntry1.attaque}`), value: fmt(invModVal1) }] : []),
-              ...groupContribs(bonusContribs1),
-            ], total: dm1 } : undefined
-            return f({ label: "DM Arme 1", tooltipTitle: t('recto.dmArme', { arme: character.arme1 ?? '1' }), top: 24.7, left: 90.9, width: 9.0, height: 2.0, value: dm1, onChange: () => {}, readOnly: locked, align: "center", formula: formula1 })
-          })()}
+          {/* Armes — emplacements de la FICHE (character.ficheArme1/2/3), distincts des mains
+              (character.arme1/arme2) : toujours choisis dans la modale Équipement parmi les armes
+              possédées (jamais de saisie libre ici), donc toujours résolvables via le catalogue ou
+              character.armes. Arme 1 et Arme 2 gardent leurs positions déjà calibrées de longue date
+              (c'était les anciens champs de main) ; Arme 3 reste en réserve de calibrage (nouveau,
+              jamais positionné). Pas de repère si aussi équipée en main — essayé (point, emoji, texte),
+              abandonné : décision explicite de l'utilisateur, aucune marque affichée. */}
+          {([1, 2, 3] as const).map(n => {
+            const pos = FICHE_ARME_POS[n - 1]
+            const nom = n === 1 ? character.ficheArme1 : n === 2 ? character.ficheArme2 : character.ficheArme3
+            const e = nom ? findArmeEntry(armes, nom) : null
+            const modVal = e?.mod === 'FOR' ? FOR.mod : e?.mod === 'DEX' ? DEX.mod : null
+            const bonusContribs = nom ? dmArmeBonusContribs(nom) : []
+            const bonus = sumStat(bonusContribs)
+            const invEntry = !e && nom ? character.armes.find(a => a.nom === nom) : null
+            const invModVal = invEntry?.attaque === 'FOR' ? FOR.mod : invEntry?.attaque === 'DEX' ? DEX.mod : null
+            const dmBase = e
+              ? `${e.dm}${modVal !== null ? ' ' + fmt(modVal) : ''}`
+              : invEntry ? `${invEntry.dm}${invModVal !== null ? ' ' + fmt(invModVal) : ''}` : ''
+            const dm = bonus !== 0 ? `${dmBase} ${fmt(bonus)}` : dmBase
+            const formula = e ? { lines: [
+              { label: t('recto.tlDes'), value: e.dm },
+              ...(modVal !== null ? [{ label: t(`stats.mod${e.mod}`), value: fmt(modVal) }] : []),
+              ...groupContribs(bonusContribs),
+            ], total: dm } : invEntry ? { lines: [
+              { label: t('recto.tlDes'), value: invEntry.dm },
+              ...(invModVal !== null ? [{ label: t(`stats.mod${invEntry.attaque}`), value: fmt(invModVal) }] : []),
+              ...groupContribs(bonusContribs),
+            ], total: dm } : undefined
+            const ficheKey = n === 1 ? 'ficheArme1' : n === 2 ? 'ficheArme2' : 'ficheArme3'
+            return <React.Fragment key={n}>
+              {f({ label: `Arme ${n}`, top: pos.top, left: pos.left, width: pos.width, height: 2.0,
+                value: nom, onChange: v => onChange({ [ficheKey]: v }), readOnly: locked,
+                reserveByDefault: n === 3 })}
+              {(calibrate || nom) && f({ label: `ATT Arme ${n}`, tooltipTitle: t('recto.attArme', { arme: nom || String(n) }), top: pos.attTop, left: pos.attLeft, width: 5.0, height: 2.0,
+                value: nom ? attTotalPourArme(nom) : '—', onChange: () => {}, readOnly: locked, align: "center",
+                formula: nom ? formulaArme(nom) : undefined, reserveByDefault: n === 3 })}
+              {(calibrate || nom) && f({ label: `DM Arme ${n}`, tooltipTitle: t('recto.dmArme', { arme: nom || String(n) }), top: pos.dmTop, left: pos.dmLeft, width: pos.dmWidth, height: 2.0,
+                value: dm, onChange: () => {}, readOnly: locked, align: "center", formula, reserveByDefault: n === 3 })}
+            </React.Fragment>
+          })}
           {!calibrate && !character.arme1 && diceEffects['DM_MAINS_NUES'] && (() => {
             const { diceStr } = diceEffects['DM_MAINS_NUES']
             const forMod = getMod(FOR.valeur)
@@ -646,60 +691,6 @@ export default function ChampsRecto({
             return f({ label: "DM mains nues", tooltipTitle: t('recto.dmMainsNues'), top: 24.3, left: 91.4, width: 9.0, height: 2.0,
               value: dm, onChange: () => {}, readOnly: locked, align: "center",
               formula: { lines: [{ label: t('recto.tlDes'), value: diceStr }, { label: t('stats.modFOR'), value: fmt(forMod) }], total: dm } })
-          })()}
-          {f({ label: "Arme 2",    top: 29.3, left: 85.8, width: 19.9, height: 2.0, value: character.arme2,   onChange: v => onChange({ arme2: v }) })}
-          {(calibrate || character.arme2) && f({ label: "ATT Arme 2", tooltipTitle: t('recto.attArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 79.2, width: 5.0, height: 2.0, value: character.arme2 ? attTotalPourArme(character.arme2) : '—', onChange: () => {}, readOnly: locked, align: "center",
-            formula: character.arme2 ? formulaArme(character.arme2) : undefined })}
-          {(calibrate || character.arme2) && (() => {
-            const e2 = character.arme2 ? findArmeEntry(armes, character.arme2) : null
-            const modVal2 = e2?.mod === 'FOR' ? FOR.mod : e2?.mod === 'DEX' ? DEX.mod : null
-            const bonusContribs2 = character.arme2 ? dmArmeBonusContribs(character.arme2) : []
-            const bonus2 = sumStat(bonusContribs2)
-            const invEntry2 = !e2 && character.arme2 ? character.armes.find(a => a.nom === character.arme2) : null
-            const invModVal2 = invEntry2?.attaque === 'FOR' ? FOR.mod : invEntry2?.attaque === 'DEX' ? DEX.mod : null
-            const dm2base = e2
-              ? `${e2.dm}${modVal2 !== null ? ' ' + fmt(modVal2) : ''}`
-              : invEntry2 ? `${invEntry2.dm}${invModVal2 !== null ? ' ' + fmt(invModVal2) : ''}` : character.dmArme2
-            const dm2 = bonus2 !== 0 ? `${dm2base} ${fmt(bonus2)}` : dm2base
-            const formula2 = e2 ? { lines: [
-              { label: t('recto.tlDes'), value: e2.dm },
-              ...(modVal2 !== null ? [{ label: t(`stats.mod${e2.mod}`), value: fmt(modVal2) }] : []),
-              ...groupContribs(bonusContribs2),
-            ], total: dm2 } : invEntry2 ? { lines: [
-              { label: t('recto.tlDes'), value: invEntry2.dm },
-              ...(invModVal2 !== null ? [{ label: t(`stats.mod${invEntry2.attaque}`), value: fmt(invModVal2) }] : []),
-              ...groupContribs(bonusContribs2),
-            ], total: dm2 } : undefined
-            return f({ label: "DM Arme 2", tooltipTitle: t('recto.dmArme', { arme: character.arme2 ?? '2' }), top: 31.9, left: 91.1, width: 9.1, height: 2.0, value: dm2, onChange: () => {}, readOnly: locked, align: "center", formula: formula2 })
-          })()}
-          {/* Arme 3 : 3e emplacement, indépendant des mains (voir EquipementModal.tsx equipeArmeSlot) —
-              pas de blocage arme à 2 mains ni de conflit bouclier, mais compte comme une arme équipée
-              partout ailleurs (malus sans formation ci-dessus, Mode de jeu). Nouveau champ → réserve de
-              calibrage par défaut (reserveByDefault), pas de position devinée sur la feuille. */}
-          {f({ label: "Arme 3",    top: 36.5, left: 85.8, width: 19.9, height: 2.0, value: character.arme3,   onChange: v => onChange({ arme3: v }), reserveByDefault: true })}
-          {(calibrate || character.arme3) && f({ label: "ATT Arme 3", tooltipTitle: t('recto.attArme', { arme: character.arme3 ?? '3' }), top: 39.1, left: 79.2, width: 5.0, height: 2.0, value: character.arme3 ? attTotalPourArme(character.arme3) : '—', onChange: () => {}, readOnly: locked, align: "center",
-            formula: character.arme3 ? formulaArme(character.arme3) : undefined, reserveByDefault: true })}
-          {(calibrate || character.arme3) && (() => {
-            const e3 = character.arme3 ? findArmeEntry(armes, character.arme3) : null
-            const modVal3 = e3?.mod === 'FOR' ? FOR.mod : e3?.mod === 'DEX' ? DEX.mod : null
-            const bonusContribs3 = character.arme3 ? dmArmeBonusContribs(character.arme3) : []
-            const bonus3 = sumStat(bonusContribs3)
-            const invEntry3 = !e3 && character.arme3 ? character.armes.find(a => a.nom === character.arme3) : null
-            const invModVal3 = invEntry3?.attaque === 'FOR' ? FOR.mod : invEntry3?.attaque === 'DEX' ? DEX.mod : null
-            const dm3base = e3
-              ? `${e3.dm}${modVal3 !== null ? ' ' + fmt(modVal3) : ''}`
-              : invEntry3 ? `${invEntry3.dm}${invModVal3 !== null ? ' ' + fmt(invModVal3) : ''}` : character.dmArme3
-            const dm3 = bonus3 !== 0 ? `${dm3base} ${fmt(bonus3)}` : dm3base
-            const formula3 = e3 ? { lines: [
-              { label: t('recto.tlDes'), value: e3.dm },
-              ...(modVal3 !== null ? [{ label: t(`stats.mod${e3.mod}`), value: fmt(modVal3) }] : []),
-              ...groupContribs(bonusContribs3),
-            ], total: dm3 } : invEntry3 ? { lines: [
-              { label: t('recto.tlDes'), value: invEntry3.dm },
-              ...(invModVal3 !== null ? [{ label: t(`stats.mod${invEntry3.attaque}`), value: fmt(invModVal3) }] : []),
-              ...groupContribs(bonusContribs3),
-            ], total: dm3 } : undefined
-            return f({ label: "DM Arme 3", tooltipTitle: t('recto.dmArme', { arme: character.arme3 ?? '3' }), top: 39.1, left: 91.1, width: 9.1, height: 2.0, value: dm3, onChange: () => {}, readOnly: locked, align: "center", formula: formula3, reserveByDefault: true })
           })()}
 
           {/* PV / PM / PC */}

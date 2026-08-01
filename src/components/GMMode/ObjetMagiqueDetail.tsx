@@ -14,7 +14,25 @@ const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
-const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
+// Stats disponibles pour un enchantement de Puissance — les 6 caractéristiques (seules prévues par le
+// livre des règles), plus DEF/RD/ATT_CONTACT/ATT_DISTANCE/ATT_MAGIQUE : des stats "simples" déjà gérées
+// automatiquement partout ailleurs (computeEffects.ts les additionne exactement comme les caracs, via
+// sumStat(effects[stat])) mais qu'aucune option du livre ne couvrait jusqu'ici. `value` = la clé stockée
+// dans l'effet (reconnue par computeEffects.ts) ; `label` = le texte affiché dans le menu et dans le nom
+// généré de l'enchantement (ex. "Puissance (ATT distance +2)"), plus lisible que la clé brute.
+const PUISSANCE_STATS = [
+  { value: 'FOR', label: 'FOR' },
+  { value: 'DEX', label: 'DEX' },
+  { value: 'CON', label: 'CON' },
+  { value: 'INT', label: 'INT' },
+  { value: 'SAG', label: 'SAG' },
+  { value: 'CHA', label: 'CHA' },
+  { value: 'DEF', label: 'DEF' },
+  { value: 'RD', label: 'RD' },
+  { value: 'ATT_CONTACT', label: 'ATT contact' },
+  { value: 'ATT_DISTANCE', label: 'ATT distance' },
+  { value: 'ATT_MAGIQUE', label: 'ATT magique' },
+] as const
 const TRADITIONS: TraditionPeuple[] = ['elfe', 'nain', 'orc', 'gobelin', 'ogre']
 const CATEGORIES: ObjetMagiqueCategorie[] = ['traditionnel', 'focalisateur', 'legendaire']
 const SLOTS: ObjetMagiqueSlot[] = ['arme', 'armure', 'bouclier', 'focalisateur', 'accessoire']
@@ -89,7 +107,7 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
   const [choixDegatsArme, setChoixDegatsArme] = useState<string>('FEU')
   const [choixDegatsArmure, setChoixDegatsArmure] = useState<string>('FEU')
   const [choixDegatsFocalisateur, setChoixDegatsFocalisateur] = useState<string>('FEU')
-  const [puissanceCarac, setPuissanceCarac] = useState<typeof CARACS[number]>('FOR')
+  const [puissanceStat, setPuissanceStat] = useState<typeof PUISSANCE_STATS[number]['value']>('FOR')
   const [puissanceBonus, setPuissanceBonus] = useState(1)
   const [pouvoirNom, setPouvoirNom] = useState('')
   const [pouvoirNiveau, setPouvoirNiveau] = useState(1)
@@ -161,14 +179,15 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
   // même nom (édition d'un bonus déjà posé), jamais tous les Puissance/Pouvoir existants, pour que
   // plusieurs bonus distincts s'additionnent au lieu de se remplacer.
   const ajouterPuissance = () => {
+    const label = PUISSANCE_STATS.find(s => s.value === puissanceStat)?.label ?? puissanceStat
     const niveauMagie = puissanceBonus + 1
-    const nom = `${prefixPuissance} (${puissanceCarac} +${puissanceBonus})`
+    const nom = `${prefixPuissance} (${label} +${puissanceBonus})`
     const reste = enchantements.filter(e => e.nom !== nom)
     const resteTotal = reste.reduce((s, e) => s + e.niveauMagie, 0) + (objet.niveauMagieBase ?? 0)
     if (resteTotal + niveauMagie > plafond) { avertirPlafond(); return }
     setEnchantements([...reste, {
-      nom, niveauMagie, effets: [{ stat: puissanceCarac, valeur: String(puissanceBonus) }],
-      texte: `+${puissanceBonus} ${puissanceCarac}`,
+      nom, niveauMagie, effets: [{ stat: puissanceStat, valeur: String(puissanceBonus) }],
+      texte: `+${puissanceBonus} ${label}`,
     }])
   }
 
@@ -447,8 +466,8 @@ export default function ObjetMagiqueDetail({ objet, onChange, onDelete, lectureS
               <div style={sectionTitleStyle}>{t('gmMode.objetMagiqueDetail.puissance')}</div>
               <div style={{ fontSize: 13, opacity: 0.55, fontStyle: 'italic' }}>{t('gmMode.objetMagiqueDetail.puissanceHint')}</div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select value={puissanceCarac} style={{ ...selectStyle, width: 90 }} onChange={e => setPuissanceCarac(e.target.value as typeof CARACS[number])}>
-                  {CARACS.map(c => <option key={c} value={c} style={optionStyle}>{c}</option>)}
+                <select value={puissanceStat} style={{ ...selectStyle, width: 120 }} onChange={e => setPuissanceStat(e.target.value as typeof PUISSANCE_STATS[number]['value'])}>
+                  {PUISSANCE_STATS.map(s => <option key={s.value} value={s.value} style={optionStyle}>{s.label}</option>)}
                 </select>
                 <span>+</span>
                 <NumberField value={puissanceBonus} min={1} onChange={n => setPuissanceBonus(n ?? 1)} style={{ ...inputStyle, width: 60 }} />

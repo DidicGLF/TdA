@@ -526,7 +526,7 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
 
   const getDeDegatsWeapon = (ab: AvailableBonus): string | undefined => {
     if (!ab.deDegatsParArme) return undefined
-    const equipped = [character.arme1, character.arme2, character.arme3].filter(Boolean)
+    const equipped = [character.arme1, character.arme2].filter(Boolean)
     if (equipped.length <= 1) return equipped[0]
     return deDegatsWeapon[boostKey(ab)]
   }
@@ -605,7 +605,7 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
       ])
     }
     if (ab.deDegats) {
-      const equipped = [character.arme1, character.arme2, character.arme3].filter(Boolean)
+      const equipped = [character.arme1, character.arme2].filter(Boolean)
       if (equipped.length === 1) setDeDegatsWeapon(prev => ({ ...prev, [key]: equipped[0] }))
     }
     if (ab.choix) {
@@ -1389,14 +1389,13 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
             })}
           </div>
 
-          {(character.arme1 || character.arme2 || character.arme3) && (
+          {(character.arme1 || character.arme2) && (
             <>
               <div style={{ fontSize: 13, color: `rgba(245,236,215,0.4)`, marginBottom: 4 }}>{t('gameMode.damageSection')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                 {[
                   ...(character.arme1 ? [{ label: character.arme1, nomArme: character.arme1, fallback: character.dmArme1 }] : []),
                   ...(character.arme2 ? [{ label: character.arme2, nomArme: character.arme2, fallback: character.dmArme2 }] : []),
-                  ...(character.arme3 ? [{ label: character.arme3, nomArme: character.arme3, fallback: character.dmArme3 }] : []),
                 ].map(({ label, nomArme, fallback }) => {
                   const nbBonus = activeDeDegats.filter(ab => !ab.deDegatsParArme || getDeDegatsWeapon(ab) === nomArme).length
                   return (
@@ -1620,7 +1619,7 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
                 </div>
               ))}
               {availableBonuses.map((ab, i) => {
-                const equippedWeapons = [character.arme1, character.arme2, character.arme3].filter(Boolean)
+                const equippedWeapons = [character.arme1, character.arme2].filter(Boolean)
                 const weaponKey = boostKey(ab)
                 const needsWeaponChoice = !!ab.deDegats && !!ab.deDegatsParArme && equippedWeapons.length >= 2
                 const resolvedWeapon = ab.deDegats ? getDeDegatsWeapon(ab) : undefined

@@ -134,12 +134,17 @@ export interface Character {
   attaqueMagique: number
   arme1: string
   arme2: string
-  arme3: string
   dmArme1: string
   dmArme2: string
-  dmArme3: string
   armes: Arme[]
   armuresEquipees: ArmureEquipee[]
+  // Emplacements de la FICHE (pas des mains) : jusqu'à 3 armes possédées affichées sur le recto avec
+  // leur ATT/DM propres, indépendamment de ce qui est équipé en main (arme1/arme2 ci-dessus). Distinct
+  // de la mécanique d'équipement en main — voir EquipementModal.tsx (section mains vs section
+  // emplacements) et ChampsRecto.tsx (repère visuel si une fiche-arme est aussi équipée en main).
+  ficheArme1: string
+  ficheArme2: string
+  ficheArme3: string
 
   // Voies
   voiePeuple: VoiePersonnage
@@ -299,12 +304,13 @@ export const defaultCharacter = (): Character => ({
   attaqueMagique: 0,
   arme1: '',
   arme2: '',
-  arme3: '',
   dmArme1: '',
   dmArme2: '',
-  dmArme3: '',
   armes: [],
   armuresEquipees: [],
+  ficheArme1: '',
+  ficheArme2: '',
+  ficheArme3: '',
 
   voiePeuple: { nom: '', rangs: [false, false, false, false, false] },
   voieCulturelle: { nom: '', rangs: [false, false, false, false, false] },

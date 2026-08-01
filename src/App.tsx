@@ -458,6 +458,13 @@ function AppContent() {
     const tresorerieMigree = legacyTresorerie !== undefined && c.piecesOr === undefined
       ? { piecesOr: parseInt(legacyTresorerie) || 0, piecesArgent: 0, piecesCuivre: 0, gemmes: c.gemmes ?? (legacyEstMontantOrSeul ? '' : legacyTresorerie) }
       : {}
+    // Migration : les emplacements de fiche (ficheArme1/2/3, affichage indépendant des mains — voir
+    // types/character.ts) sont nouveaux. Un personnage sauvegardé avant leur introduction n'a aucun des
+    // 3 champs définis : on les préremplit une seule fois avec les armes déjà possédées, sinon la fiche
+    // d'un personnage existant qui avait déjà des armes se retrouverait vide sans action de sa part.
+    const ficheArmeMigree = (c.ficheArme1 === undefined && c.ficheArme2 === undefined && c.ficheArme3 === undefined)
+      ? { ficheArme1: c.armes[0]?.nom ?? '', ficheArme2: c.armes[1]?.nom ?? '', ficheArme3: c.armes[2]?.nom ?? '' }
+      : { ficheArme1: c.ficheArme1 ?? '', ficheArme2: c.ficheArme2 ?? '', ficheArme3: c.ficheArme3 ?? '' }
     const normalized = {
       ...c,
       ...tresorerieMigree,
@@ -484,10 +491,9 @@ function AppContent() {
       enchantementEncombrement: c.enchantementEncombrement ?? 0,
       arme1: c.arme1 ?? '',
       arme2: c.arme2 ?? '',
-      arme3: c.arme3 ?? '',
       dmArme1: c.dmArme1 ?? '',
       dmArme2: c.dmArme2 ?? '',
-      dmArme3: c.dmArme3 ?? '',
+      ...ficheArmeMigree,
     }
     setCharacter(normalized)
     skipAutoSheetPage.current = true

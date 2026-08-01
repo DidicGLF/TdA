@@ -699,18 +699,18 @@
     "width": 9
   },
   "Arme 2": {
-    "top": 72.1,
-    "left": 65.3,
+    "top": 72.4,
+    "left": 64.1,
     "width": 19.9
   },
   "ATT Arme 2": {
-    "top": 72.1,
+    "top": 72.4,
     "left": 83.3,
     "width": 5
   },
   "DM Arme 2": {
-    "top": 72.1,
-    "left": 91.1,
+    "top": 72.4,
+    "left": 91.05,
     "width": 9.1
   },
   "ATT mag total": {
@@ -1529,7 +1529,8 @@
     "width": 7.4,
     "height": 2,
     "reserved": false,
-    "page": "verso"
+    "page": "verso",
+    "imprimer": false
   },
   "Capacités supp.": {
     "top": 80.2,
@@ -1595,6 +1596,94 @@
   "Armes de paysan": {
     "top": 67.5,
     "left": 6.2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Arme 3": {
+    "top": 77.8,
+    "left": 64.1,
+    "width": 19.9,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "ATT Arme 3": {
+    "top": 77.8,
+    "left": 83.3,
+    "width": 5,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "DM Arme 3": {
+    "top": 77.8,
+    "left": 91.2,
+    "width": 9.1,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Objet 1": {
+    "top": 55.5,
+    "left": 59.6,
+    "width": 14.4,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Objet 2": {
+    "top": 58.3,
+    "left": 59.6,
+    "width": 14.3,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Capacité 1": {
+    "top": 50.1,
+    "left": 82.6,
+    "width": 13.7,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "Capacité 2": {
+    "top": 52.8,
+    "left": 82.6,
+    "width": 13.4,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "DEF Objet 1": {
+    "top": 55.5,
+    "left": 70.8,
+    "width": 4.8,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "DEF Objet 2": {
+    "top": 58.3,
+    "left": 70.8,
+    "width": 4.9,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "DEF Capacité 1": {
+    "top": 50.1,
+    "left": 93.3,
+    "width": 4.9,
+    "height": 2,
+    "page": "recto",
+    "reserved": false
+  },
+  "DEF Capacité 2": {
+    "top": 52.6,
+    "left": 93.3,
+    "width": 5,
+    "height": 2,
     "page": "recto",
     "reserved": false
   }

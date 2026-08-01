@@ -23,12 +23,19 @@ export function patchPossessionObjetMagique(character: Character, objet: ObjetMa
       patch.armes = character.armes.filter(a => a.nom !== objet.nom)
       if (stripExposants(character.arme1) === stripExposants(objet.nom)) { patch.arme1 = ''; patch.dmArme1 = '' }
       if (stripExposants(character.arme2) === stripExposants(objet.nom)) { patch.arme2 = ''; patch.dmArme2 = '' }
-      if (stripExposants(character.arme3) === stripExposants(objet.nom)) { patch.arme3 = ''; patch.dmArme3 = '' }
+      if (stripExposants(character.ficheArme1) === stripExposants(objet.nom)) patch.ficheArme1 = ''
+      if (stripExposants(character.ficheArme2) === stripExposants(objet.nom)) patch.ficheArme2 = ''
+      if (stripExposants(character.ficheArme3) === stripExposants(objet.nom)) patch.ficheArme3 = ''
     } else if (!character.armes.some(a => a.nom === objet.nom)) {
       patch.armes = [...character.armes, {
         nom: objet.nom, dm: objet.armeDm ?? '', attaque: objet.armeAttaque ?? 'FOR',
         special: objet.description ?? '',
       }]
+      // Auto-assignation au 1er emplacement de fiche libre — même règle que addArme dans
+      // EquipementModal.tsx (affichage indépendant des mains, voir ficheArme1/2/3).
+      if (!character.ficheArme1) patch.ficheArme1 = objet.nom
+      else if (!character.ficheArme2) patch.ficheArme2 = objet.nom
+      else if (!character.ficheArme3) patch.ficheArme3 = objet.nom
     }
   } else if (objet.slot === 'armure' || objet.slot === 'bouclier') {
     if (!possede) {

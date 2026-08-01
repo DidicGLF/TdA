@@ -92,6 +92,9 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)
+  // Glisser-déposer d'une arme vers la main droite/gauche (footer récap desktop) — état distinct de
+  // dragOver ci-dessus (qui sert au réordonnancement du catalogue en mode édition).
+  const [dragOverMain, setDragOverMain] = useState<1 | 2 | null>(null)
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const isMobile = window.innerWidth < 1200
   const [mobileCatKey, setMobileCatKey] = useState('0-0')
@@ -272,23 +275,32 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
 
   const addArme = (e: EntreeArme) => {
     if (!character || !onChange) return
-    onChange({
+    const patch: Partial<Character> = {
       armes: [...character.armes, { nom: e.nom, dm: e.dm, attaque: e.mod, special: '', prix: e.prix, portee: e.portee, deuxMains: e.deuxMains }],
       inventaire: appendInv(stripExposants(e.nom)),
-    })
+    }
+    // Auto-assignation au 1er emplacement de fiche libre — voir ficheArme1/2/3 dans types/character.ts :
+    // affichage indépendant des mains, pas besoin d'une action manuelle pour qu'une arme possédée
+    // apparaisse sur la fiche.
+    if (!character.ficheArme1) patch.ficheArme1 = e.nom
+    else if (!character.ficheArme2) patch.ficheArme2 = e.nom
+    else if (!character.ficheArme3) patch.ficheArme3 = e.nom
+    onChange(patch)
   }
   const removeArme = (idx: number) => {
     if (!character || !onChange) return
     const a = character.armes[idx]
     const stripped = stripExposants(a.nom)
-    const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped || stripExposants(character.arme3) === stripped
+    const isEquipped = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
     const patch: Partial<Character> = {
       armes: character.armes.filter((_, i) => i !== idx),
       inventaire: removeInv(isEquipped ? `${stripped} (Équipé(e))` : stripped),
     }
     if (stripExposants(character.arme1) === stripped) { patch.arme1 = ''; patch.dmArme1 = '' }
     if (stripExposants(character.arme2) === stripped) { patch.arme2 = ''; patch.dmArme2 = '' }
-    if (stripExposants(character.arme3) === stripped) { patch.arme3 = ''; patch.dmArme3 = '' }
+    if (stripExposants(character.ficheArme1) === stripped) patch.ficheArme1 = ''
+    if (stripExposants(character.ficheArme2) === stripped) patch.ficheArme2 = ''
+    if (stripExposants(character.ficheArme3) === stripped) patch.ficheArme3 = ''
     onChange(patch)
   }
 
@@ -299,16 +311,16 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const n = nom.toLowerCase()
     return n.includes('deux mains') || n.includes('arc')
   }
-  // Emplacement 3 : indépendant des mains (voir CreationWizard.tsx, même règle) — ni bloqué par une arme
-  // à 2 mains en emplacement 1, ni en conflit avec le bouclier ; compte néanmoins comme une arme équipée
-  // partout ailleurs (malus sans formation, Mode de jeu).
-  const equipeArmeSlot = (nom: string | null, slot: 1 | 2 | 3) => {
+  // Équipement en MAIN (arme1/arme2) — pilote le malus sans formation et le Mode de jeu. Distinct des
+  // emplacements de fiche (ficheArme1/2/3, voir assignFicheSlot ci-dessous) : équiper en main ne change
+  // jamais l'affichage de la fiche, et inversement.
+  const equipeArmeSlot = (nom: string | null, slot: 1 | 2) => {
     if (!character || !onChange) return
     // Une arme à 2 mains occupe les deux mains : rien ne peut aller en emplacement 2 tant que
     // l'emplacement 1 en tient une.
     if (slot === 2 && character.arme1 && is2H(character.arme1)) return
     const arme = nom ? character.armes.find(a => a.nom === nom) : null
-    const prevNom = slot === 1 ? character.arme1 : slot === 2 ? character.arme2 : character.arme3
+    const prevNom = slot === 1 ? character.arme1 : character.arme2
     const stripped = nom ? stripExposants(nom) : null
     let inv = character.inventaire
     if (prevNom) inv = unmarkEquipe(inv, prevNom)
@@ -320,13 +332,11 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     const dm = arme ? `${arme.dm}${arme.attaque ? ` Mod.${arme.attaque}` : ''}` : ''
     const patch: Partial<Character> = slot === 1
       ? { arme1: stripped ?? '', dmArme1: dm }
-      : slot === 2
-      ? { arme2: stripped ?? '', dmArme2: dm }
-      : { arme3: stripped ?? '', dmArme3: dm }
+      : { arme2: stripped ?? '', dmArme2: dm }
     // Poser une arme à 2 mains en emplacement 1 libère l'emplacement 2 (plus de main disponible) ; poser
     // une arme (n'importe laquelle) en emplacement 2, ou une arme à 2 mains en emplacement 1, prend la
     // main que le bouclier porté occupait — il est donc déséquipé (cf. equipeBouclier, même logique
-    // inverse : l'équiper libère l'emplacement 2). L'emplacement 3 n'entre jamais dans ces échanges de main.
+    // inverse : l'équiper libère l'emplacement 2).
     if (slot === 1 && nom && is2H(nom)) {
       if (character.arme2) inv = unmarkEquipe(inv, character.arme2)
       patch.arme2 = ''
@@ -338,9 +348,17 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
     patch.inventaire = inv
     onChange(patch)
   }
-  // Valeur d'un emplacement d'arme par numéro — évite de répéter le ternaire 1/2/3 dans les deux blocs
-  // d'affichage dupliqués (desktop et footer récap) ci-dessous.
-  const armeSlotValue = (slot: 1 | 2 | 3) => (slot === 1 ? character?.arme1 : slot === 2 ? character?.arme2 : character?.arme3) ?? ''
+  // Emplacement de FICHE (ficheArme1/2/3) — quelle arme possédée s'affiche dans quel emplacement de la
+  // fiche recto, indépendamment de la main. Pas de restriction (2 mains, bouclier) : les 3 emplacements
+  // sont symétriques. Ne touche jamais l'inventaire (le marqueur "(Équipé(e))" ne concerne que la main).
+  const assignFicheSlot = (nom: string | null, slot: 1 | 2 | 3) => {
+    if (!character || !onChange) return
+    const key = slot === 1 ? 'ficheArme1' : slot === 2 ? 'ficheArme2' : 'ficheArme3'
+    onChange({ [key]: nom ?? '' })
+  }
+  // Évite de répéter le ternaire 1/2/3 dans les deux blocs d'affichage dupliqués (mobile et footer
+  // récap desktop) ci-dessous.
+  const ficheSlotValue = (slot: 1 | 2 | 3) => (slot === 1 ? character?.ficheArme1 : slot === 2 ? character?.ficheArme2 : character?.ficheArme3) ?? ''
   const addArmure = (e: EntreeArmure) => {
     if (!character || !onChange) return
     onChange({
@@ -583,7 +601,6 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         if (enPossession) {
           const stripped = stripExposants(objet.nom)
           const estSlotte = stripExposants(character.arme1) === stripped || stripExposants(character.arme2) === stripped
-            || stripExposants(character.arme3) === stripped
             || character.armuresEquipees.some(a => a.nom === objet.nom && a.equipe)
           patch.inventaire = removeInv(estSlotte ? `${stripped} (Équipé(e))` : stripped)
         } else {
@@ -912,39 +929,42 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                 <div style={{ fontSize: 12, color: S.gold, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>{t('equipement.armes')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                   {character.armes.map((a, i) => {
-                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : stripExposants(character.arme3) === stripExposants(a.nom) ? 3 : null
+                    const main = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
+                    const fiche = stripExposants(character.ficheArme1) === stripExposants(a.nom) ? 1 : stripExposants(character.ficheArme2) === stripExposants(a.nom) ? 2 : stripExposants(character.ficheArme3) === stripExposants(a.nom) ? 3 : null
                     return (
                       <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '4px 10px', borderRadius: 3, fontSize: 14,
-                        background: slot ? 'rgba(100,160,255,0.12)' : 'rgba(201,168,76,0.12)',
-                        border: `1px solid ${slot ? 'rgba(100,160,255,0.3)' : S.border}`,
-                        color: slot ? 'rgba(100,160,255,0.9)' : S.parchment }}>
-                        {slot && <span style={{ fontSize: 11, opacity: 0.7 }}>E{slot} · </span>}
+                        background: main ? 'rgba(100,160,255,0.12)' : 'rgba(201,168,76,0.12)',
+                        border: `1px solid ${main ? 'rgba(100,160,255,0.3)' : S.border}`,
+                        color: main ? 'rgba(100,160,255,0.9)' : S.parchment }}>
+                        {main && <span style={{ fontSize: 11, opacity: 0.7 }}>✋{main === 1 ? 'D' : 'G'} · </span>}
+                        {fiche && <span style={{ fontSize: 11, opacity: 0.7, color: 'rgba(160,90,230,0.9)' }}>F{fiche} · </span>}
                         {eqName(a.nom)} <span style={{ opacity: 0.5 }}>{a.dm}</span>
                         <button onClick={() => removeArme(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 16, padding: 0, lineHeight: 1 }}>✕</button>
                       </span>
                     )
                   })}
                 </div>
-                {([1, 2, 3] as const).map(slot => {
-                  const current = armeSlotValue(slot)
+
+                {/* Équiper en main — pilote le malus sans formation et le Mode de jeu (voir equipeArmeSlot). */}
+                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.mainsTitre')}</div>
+                {([1, 2] as const).map(slot => {
+                  const current = slot === 1 ? character.arme1 : character.arme2
                   const color = 'rgba(100,160,255,0.8)'
                   // Emplacement 2 entièrement indisponible si l'emplacement 1 tient une arme à 2 mains
-                  // (plus de main libre) — cf. equipeArmeSlot. L'emplacement 3 n'est jamais bloqué : il
-                  // ne se dispute pas les mains avec 1/2 (voir equipeArmeSlot).
+                  // (plus de main libre) — cf. equipeArmeSlot.
                   const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
                   return (
                     <div key={slot} style={{ marginBottom: 12, opacity: slotBloque ? 0.4 : 1 }}>
-                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.emplacement', { n: slot })}</div>
+                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{slot === 1 ? t('wizard.step5.mainDroite') : t('wizard.step5.mainGauche')}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
-                          <input type="radio" name={`arme-slot-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color, width: 18, height: 18 }} />
+                          <input type="radio" name={`arme-main-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color, width: 18, height: 18 }} />
                           {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
-                          const takenByOther = ([1, 2, 3] as const)
-                            .filter(s => s !== slot)
-                            .some(s => stripExposants(armeSlotValue(s)) === stripExposants(a.nom))
+                          const otherSlot = slot === 1 ? character.arme2 : character.arme1
+                          const takenByOther = stripExposants(otherSlot) === stripExposants(a.nom)
                           const isCurrent = stripExposants(current) === stripExposants(a.nom)
                           // Une arme à 2 mains ne peut jamais aller en emplacement 2 (elle occupe les
                           // deux mains, donc toujours placée en emplacement 1 — cf. wizard de création).
@@ -954,9 +974,45 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
                               cursor: disabled ? 'not-allowed' : 'pointer',
                               opacity: disabled && !takenByOther ? 0.4 : 1,
                               color: isCurrent ? color : S.parchment }}>
-                              <input type="radio" name={`arme-slot-${slot}`}
+                              <input type="radio" name={`arme-main-${slot}`}
                                 checked={isCurrent} disabled={disabled}
                                 onChange={() => equipeArmeSlot(a.nom, slot)}
+                                style={{ accentColor: color, width: 18, height: 18 }} />
+                              {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Emplacements de la fiche — indépendants des mains (voir assignFicheSlot). */}
+                <div style={{ fontSize: 11, color: 'rgba(160,90,230,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, marginTop: 4 }}>{t('equipement.ficheTitre')}</div>
+                {([1, 2, 3] as const).map(slot => {
+                  const current = ficheSlotValue(slot)
+                  const color = 'rgba(160,90,230,0.85)'
+                  return (
+                    <div key={slot} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.emplacement', { n: slot })}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer', color: S.parchment }}>
+                          <input type="radio" name={`arme-fiche-${slot}`} checked={!current} onChange={() => assignFicheSlot(null, slot)} style={{ accentColor: color, width: 18, height: 18 }} />
+                          {t('equipement.aucune')}
+                        </label>
+                        {character.armes.map((a, i) => {
+                          const takenByOther = ([1, 2, 3] as const)
+                            .filter(s => s !== slot)
+                            .some(s => stripExposants(ficheSlotValue(s)) === stripExposants(a.nom))
+                          const isCurrent = stripExposants(current) === stripExposants(a.nom)
+                          return (
+                            <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15,
+                              cursor: takenByOther ? 'not-allowed' : 'pointer',
+                              opacity: takenByOther ? 0.4 : 1,
+                              color: isCurrent ? color : S.parchment }}>
+                              <input type="radio" name={`arme-fiche-${slot}`}
+                                checked={isCurrent} disabled={takenByOther}
+                                onChange={() => assignFicheSlot(a.nom, slot)}
                                 style={{ accentColor: color, width: 18, height: 18 }} />
                               {eqName(a.nom)} <span style={{ opacity: 0.5, fontSize: 13 }}>{a.dm}</span>
                             </label>
@@ -1359,58 +1415,101 @@ export default function EquipementModal({ character, onChange, onClose }: Props)
         {/* ── Footer récap ── */}
         {!editMode && character && (character.armes.length > 0 || character.armuresEquipees.length > 0) && (
           <div style={{ borderTop: `1px solid ${S.border}`, padding: '10px 20px',
-            flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 200, overflowY: 'auto' }}>
+            flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
 
             {/* Armes */}
             {character.armes.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: S.gold, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{t('equipement.armes')}</div>
-                {/* Tags avec ✕ */}
+                {/* Tags avec ✕ — glissables vers les cases main D/main G ci-dessous */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                   {character.armes.map((a, i) => {
-                    const slot = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : stripExposants(character.arme3) === stripExposants(a.nom) ? 3 : null
+                    const main = stripExposants(character.arme1) === stripExposants(a.nom) ? 1 : stripExposants(character.arme2) === stripExposants(a.nom) ? 2 : null
+                    const fiche = stripExposants(character.ficheArme1) === stripExposants(a.nom) ? 1 : stripExposants(character.ficheArme2) === stripExposants(a.nom) ? 2 : stripExposants(character.ficheArme3) === stripExposants(a.nom) ? 3 : null
                     return (
-                      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '2px 8px', borderRadius: 3, fontSize: 14,
-                        background: slot ? 'rgba(100,160,255,0.12)' : 'rgba(201,168,76,0.12)',
-                        border: `1px solid ${slot ? 'rgba(100,160,255,0.3)' : S.border}`,
-                        color: slot ? 'rgba(100,160,255,0.9)' : S.parchment }}>
-                        {slot && <span style={{ fontSize: 11, opacity: 0.7 }}>E{slot} ·</span>}
+                      <span key={i}
+                        draggable
+                        onDragStart={e => e.dataTransfer.setData('nomArme', a.nom)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '2px 8px', borderRadius: 3, fontSize: 14, cursor: 'grab',
+                        background: main ? 'rgba(100,160,255,0.12)' : 'rgba(201,168,76,0.12)',
+                        border: `1px solid ${main ? 'rgba(100,160,255,0.3)' : S.border}`,
+                        color: main ? 'rgba(100,160,255,0.9)' : S.parchment }}>
+                        {main && <span style={{ fontSize: 11, opacity: 0.7 }}>✋{main === 1 ? 'D' : 'G'} ·</span>}
+                        {fiche && <span style={{ fontSize: 11, opacity: 0.7, color: 'rgba(160,90,230,0.9)' }}>F{fiche} ·</span>}
                         {a.nom} <span style={{ opacity: 0.5 }}>{a.dm}</span>
                         <button onClick={() => removeArme(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 14, padding: 0, lineHeight: 1 }}>✕</button>
                       </span>
                     )
                   })}
                 </div>
-                {/* Slots d'équipement */}
+
+                {/* Main droite / main gauche — glisser-déposer, pilote malus sans formation + Mode de jeu */}
+                <div style={{ fontSize: 11, color: 'rgba(100,160,255,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>{t('equipement.mainsTitre')}</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  {([1, 2] as const).map(main => {
+                    const nom = main === 1 ? character.arme1 : character.arme2
+                    const bloque = main === 2 && !!character.arme1 && is2H(character.arme1)
+                    const isOver = dragOverMain === main && !bloque
+                    return (
+                      <div key={main}
+                        onDragOver={e => { e.preventDefault(); if (!bloque) setDragOverMain(main) }}
+                        onDragLeave={() => setDragOverMain(null)}
+                        onDrop={e => {
+                          e.preventDefault()
+                          setDragOverMain(null)
+                          const dropped = e.dataTransfer.getData('nomArme')
+                          if (dropped && !bloque) equipeArmeSlot(dropped, main)
+                        }}
+                        style={{
+                          flex: 1, minHeight: 36,
+                          border: `1px dashed ${isOver ? 'rgba(100,160,255,0.9)' : 'rgba(100,160,255,0.3)'}`,
+                          borderRadius: 4, opacity: bloque ? 0.4 : 1,
+                          background: isOver ? 'rgba(100,160,255,0.12)' : 'rgba(100,160,255,0.04)',
+                          padding: '3px 8px', transition: 'border-color 0.15s, background 0.15s',
+                        }}>
+                        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5 }}>
+                          {main === 1 ? t('wizard.step5.mainDroite') : t('wizard.step5.mainGauche')}
+                        </div>
+                        {nom ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <span style={{ fontSize: 13, color: S.parchment }}>{nom}</span>
+                            <button onClick={() => equipeArmeSlot(null, main)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(220,80,80,0.7)', fontSize: 13, padding: 0, lineHeight: 1 }}>✕</button>
+                          </div>
+                        ) : <div style={{ fontSize: 12, opacity: 0.25, fontStyle: 'italic' }}>{t('wizard.step5.glisserIci')}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Emplacements de la fiche — indépendants des mains */}
+                <div style={{ fontSize: 11, color: 'rgba(160,90,230,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>{t('equipement.ficheTitre')}</div>
                 {([1, 2, 3] as const).map(slot => {
-                  const current = armeSlotValue(slot)
+                  const current = ficheSlotValue(slot)
                   const label   = t('equipement.emplacement', { n: slot })
-                  const color   = 'rgba(100,160,255,0.8)'
-                  const slotBloque = slot === 2 && !!character.arme1 && is2H(character.arme1)
+                  const color   = 'rgba(160,90,230,0.85)'
                   return (
-                    <div key={slot} style={{ marginBottom: 4, opacity: slotBloque ? 0.4 : 1 }}>
+                    <div key={slot} style={{ marginBottom: 4 }}>
                       <div style={{ fontSize: 11, color, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer', color: S.parchment }}>
-                          <input type="radio" name={`arme-slot-${slot}`} checked={!current} onChange={() => equipeArmeSlot(null, slot)} style={{ accentColor: color }} />
+                          <input type="radio" name={`arme-fiche-${slot}`} checked={!current} onChange={() => assignFicheSlot(null, slot)} style={{ accentColor: color }} />
                           {t('equipement.aucune')}
                         </label>
                         {character.armes.map((a, i) => {
                           const takenByOther = ([1, 2, 3] as const)
                             .filter(s => s !== slot)
-                            .some(s => stripExposants(armeSlotValue(s)) === stripExposants(a.nom))
+                            .some(s => stripExposants(ficheSlotValue(s)) === stripExposants(a.nom))
                           const isCurrent   = stripExposants(current) === stripExposants(a.nom)
-                          const disabled = takenByOther || slotBloque || (slot === 2 && is2H(a.nom))
                           return (
                             <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13,
-                              cursor: disabled ? 'not-allowed' : 'pointer',
-                              opacity: disabled && !takenByOther ? 0.4 : 1,
+                              cursor: takenByOther ? 'not-allowed' : 'pointer',
+                              opacity: takenByOther ? 0.4 : 1,
                               color: isCurrent ? color : S.parchment }}>
-                              <input type="radio" name={`arme-slot-${slot}`}
+                              <input type="radio" name={`arme-fiche-${slot}`}
                                 checked={isCurrent}
-                                disabled={disabled}
-                                onChange={() => equipeArmeSlot(a.nom, slot)}
+                                disabled={takenByOther}
+                                onChange={() => assignFicheSlot(a.nom, slot)}
                                 style={{ accentColor: color }} />
                               {a.nom} <span style={{ opacity: 0.5, fontSize: 12 }}>{a.dm}</span>
                             </label>

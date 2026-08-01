@@ -1679,20 +1679,6 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
     // ne lance que le dé (même bug que equipeArmeSlot dans EquipementModal.tsx).
     return a ? `${a.dm}${a.attaque ? ` Mod.${a.attaque}` : ''}` : ''
   }
-  // Emplacement 3 : 3e emplacement d'arme, indépendant des mains (mainD/mainG ci-dessus) — pas de
-  // mannequin dédié, juste un clic sur le badge de l'arme dans la liste (fonctionne aussi sur mobile,
-  // contrairement au glisser-déposer des emplacements 1/2). Compte comme une arme équipée partout
-  // ailleurs (malus sans formation, Mode de jeu) malgré cette indépendance vis-à-vis des mains.
-  const toggleArmeReserve = (nom: string) => {
-    let inv = character.inventaire
-    if (character.arme3) inv = unmarkEquipe(inv, character.arme3)
-    if (character.arme3 === nom) {
-      onChange({ arme3: '', dmArme3: '', inventaire: inv })
-    } else {
-      inv = markEquipe(inv, nom)
-      onChange({ arme3: nom, dmArme3: dmPourArme(nom), inventaire: inv })
-    }
-  }
   // ref : nom pour arme/armure (identité = nom, comme partout ailleurs dans l'app), id pour objetMagique
   // (un objet magique se réfère par id, pas par nom — voir Note dans gameData.ts).
   const handleDragStart = (e: React.DragEvent, cat: 'arme' | 'armure' | 'objetMagique', ref: string) => {
@@ -2049,22 +2035,24 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
                 <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.4, marginBottom: 4 }}>{t('wizard.step5.armesLabel')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                   {character.armes.map((a, i) => {
-                    const slot = a.nom === character.arme1 ? 1 : a.nom === character.arme2 ? 2 : a.nom === character.arme3 ? 3 : null
+                    const equipeMain = a.nom === character.arme1 || a.nom === character.arme2
+                    // Emplacement de fiche (ficheArme1/2/3) : purement informatif ici (assigné
+                    // automatiquement à l'ajout, ou via la modale Équipement — voir addArme/
+                    // assignFicheSlot dans EquipementModal.tsx), pas de bascule au clic dans le wizard.
+                    const fiche = a.nom === character.ficheArme1 ? 1 : a.nom === character.ficheArme2 ? 2 : a.nom === character.ficheArme3 ? 3 : null
                     return (
                     <span key={i}
                       draggable
                       onDragStart={e => handleDragStart(e, 'arme', a.nom)}
-                      onClick={() => toggleArmeReserve(a.nom)}
-                      onMouseEnter={e => showTip([equipementName(a.nom), `DM : ${a.dm}`, ...(a.attaque ? [`${t('equipement.colMod', 'Mod')} : ${t(`stats.${a.attaque}`, a.attaque)}`] : []), ...(a.portee ? [`${t('equipement.colPortee')} : ${a.portee}`] : []), ...(a.special ? [a.special] : []), t('wizard.step5.clicReserve')], e)}
+                      onMouseEnter={e => showTip([equipementName(a.nom), `DM : ${a.dm}`, ...(a.attaque ? [`${t('equipement.colMod', 'Mod')} : ${t(`stats.${a.attaque}`, a.attaque)}`] : []), ...(a.portee ? [`${t('equipement.colPortee')} : ${a.portee}`] : []), ...(a.special ? [a.special] : [])], e)}
                       onMouseMove={moveTip}
                       onMouseLeave={() => setEqTip(null)}
                       style={{
-                        padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'pointer',
-                        background: slot ? 'rgba(100,160,255,0.1)' : 'rgba(201,168,76,0.12)',
-                        border: `1px solid ${slot ? 'rgba(100,160,255,0.25)' : 'rgba(201,168,76,0.25)'}`,
+                        padding: '2px 8px', borderRadius: 3, fontSize: 12, cursor: 'grab',
+                        background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)',
                         color: 'var(--tdr-parchment)', userSelect: 'none',
-                        opacity: slot ? 0.4 : 1,
-                      }}>{slot && <span style={{ opacity: 0.7 }}>E{slot} · </span>}{equipementName(a.nom)}</span>
+                        opacity: equipeMain ? 0.4 : 1,
+                      }}>{fiche && <span style={{ opacity: 0.7, color: 'rgba(160,90,230,0.9)' }}>F{fiche} · </span>}{equipementName(a.nom)}</span>
                     )
                   })}
                 </div>
