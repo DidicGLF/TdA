@@ -612,7 +612,7 @@ function AppContent() {
           </div>
         </>
       )}
-      {showDescEditor && <DescriptionsEditor onClose={() => setShowDescEditor(false)} />}
+      {showDescEditor && <DescriptionsEditor character={character} onChange={onChange} onClose={() => setShowDescEditor(false)} />}
       {showTranslationEditor && !isAndroid && <TranslationEditor onClose={() => setShowTranslationEditor(false)} />}
 
       {showUnlockConfirm && (

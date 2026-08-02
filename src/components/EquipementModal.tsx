@@ -13,12 +13,18 @@ type CatArmure    = { categorie: string; entrees: EntreeArmure[]; notes?: string
 type GroupeArme   = { groupe: string; categories: CatArme[] }
 
 interface Props {
-  // Optionnels : quand absents (ex. ouverture depuis la modale "Données du jeu", hors contexte personnage),
-  // la modale s'ouvre en pur éditeur de catalogue — aucune section liée à l'équipement d'un personnage
-  // (armes/armures déjà possédées, emplacements équipés) n'est affichée.
+  // Optionnels : quand absents (mode catalogue seul, sans contexte personnage), aucune section liée à
+  // l'équipement d'un personnage (armes/armures déjà possédées, emplacements équipés, objets magiques
+  // possédés/équipés) n'est affichée.
   character?: Character
   onChange?: (patch: Partial<Character>) => void
   onClose: () => void
+  // Démarre en mode édition du catalogue (renommage/ajout/suppression) même avec un personnage fourni —
+  // voir DescriptionsEditor.tsx (bouton "Armes & armures" de Gestion → Données de jeu) : cet appelant a
+  // besoin à la fois du catalogue en édition (comportement historique de ce bouton) ET du personnage actif
+  // pour que le bouton "Objets magiques" ouvre la liste posséder/équiper, comme le fait le wizard — les
+  // deux n'étaient jusqu'ici possibles qu'ensemble via catalogueSeul (!character), d'où ce prop séparé.
+  editionCatalogueParDefaut?: boolean
 }
 
 const S = {
@@ -80,15 +86,16 @@ type DragSrc =
   | { type: 'groupe'; gi: number }
   | { type: 'cat'; gi: number; ci: number }
 
-export default function EquipementModal({ character, onChange, onClose }: Props) {
+export default function EquipementModal({ character, onChange, onClose, editionCatalogueParDefaut }: Props) {
   const { t } = useTranslation()
   const eqName = useEquipementName()
   const fmtPrix = (prix: string) => prix.replace(/\bpa\b/g, t('currency.pa'))
-  // Sans personnage (ouverture depuis "Données du jeu"), la modale n'a aucune utilité hors édition du
-  // catalogue : on démarre directement en mode édition et le bouton pour en sortir est masqué.
+  // Sans personnage, la modale n'a aucune utilité hors édition du catalogue : on démarre directement en
+  // mode édition et le bouton pour en sortir est masqué. editionCatalogueParDefaut couvre le même besoin
+  // MÊME quand un personnage est fourni (voir la note sur ce prop dans Props ci-dessus).
   const catalogueSeul = !character
   const [section,      setSection]      = useState<'armes' | 'armures' | 'objetsMagiques'>('armes')
-  const [editMode,     setEditMode]     = useState(catalogueSeul)
+  const [editMode,     setEditMode]     = useState(catalogueSeul || !!editionCatalogueParDefaut)
   const [exported,     setExported]     = useState(false)
   const [activeKey,    setActiveKey]    = useState('0-0')
   const [dragOver,     setDragOver]     = useState<string | null>(null)

@@ -7,7 +7,9 @@ import { normaliserTresorerie } from '../types/character'
 import DraggableField from './DraggableField'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
+import DraggableStaticImage from './DraggableStaticImage'
 import DraggableCursorRow from './DraggableCursorRow'
+import fondAvatar from '../assets/fond-avatar.webp'
 import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
 import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
@@ -16,11 +18,6 @@ import type { TooltipData } from './SheetTooltip'
 import { TRAITS_PSYCHOLOGIE, labelProfilPsychologie } from '../data/psychologieTraits'
 import { ModeImpressionContext } from '../hooks/modeImpression'
 import PastilleImpression from './PastilleImpression'
-
-
-// Fond blanc sous le portrait (mode image) : masqué temporairement à la demande de Didic (2026-07-30) —
-// repasser à false pour le réafficher.
-const MASQUER_FOND_PORTRAIT = true
 
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
   { nom: 'Armures légères',         top: 12.0, left: 54.5 },
@@ -254,23 +251,20 @@ export default function ChampsVerso({
       {/* === PORTRAIT (mode image, ou calibrage) === */}
       {((character.versoMode ?? 'description') === 'image' || calibrate) && visible('Portrait') && (
         <>
-          {/* Masqué temporairement à la demande de Didic (2026-07-30) — repasser MASQUER_FOND_PORTRAIT
-              à false ci-dessus pour le réactiver. */}
-          {!MASQUER_FOND_PORTRAIT && (character.versoMode ?? 'description') === 'image' && !calibrate && (() => {
-            // Fond blanc sous le portrait (mode image) — même position calibrée que le champ Portrait
-            // juste en dessous (fp('Portrait', ...)) : sans ça, recalibrer le portrait ne déplaçait pas
-            // ce fond, resté sur ses anciennes coordonnées par défaut (rapporté par Didic).
-            const { top, left, width, height } = fp('Portrait', 30.6, 26.5, 44, 37)
-            return (
-              <div style={{
-                position: 'absolute',
-                top: `${top}%`, left: `${left}%`,
-                width: `${width}%`, height: `${height}%`,
-                transform: 'translate(-50%, -50%)',
-                background: '#fff',
-              }} />
-            )
-          })()}
+          {/* Fond décoratif sous le portrait (mode image) — remplace l'ancien fond blanc uni (masqué à
+              la demande de Didic le 2026-07-30, retiré pour de bon le 2026-08-02) par une image dédiée
+              (cadre orné, voir Fond_avatar.png, 1126×1249px). Emplacement INDÉPENDANT du champ Portrait
+              (contrairement à l'ancien fond blanc, calé sur les mêmes coordonnées) : champ séparé,
+              calibrable à part. Largeur/hauteur par défaut = dimensions RÉELLES de l'image rapportées à
+              celles de la feuille verso (2480×3508px) — 1126/2480 et 1249/3508 — donc affichée à sa
+              taille native au premier placement (avant tout recalibrage), ni étirée ni réduite. Nouveau
+              champ → réserve de calibrage par défaut. */}
+          <DraggableStaticImage
+            {...fp('Fond avatar', 30.6, 26.5, 45.4, 35.6, true)}
+            src={fondAvatar}
+            calibrate={calibrate} label="Fond avatar"
+            containerRef={containerRef} onMoved={cb}
+          />
           <DraggableImageField
             {...(({ top, left, width, height, imprime, onToggleImpression }) => ({ top, left, width, height, imprime, onToggleImpression }))(fp('Portrait', 30.6, 26.5, 44, 37))}
             value={character.portrait}

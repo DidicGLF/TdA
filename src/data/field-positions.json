@@ -1686,5 +1686,13 @@
     "height": 2,
     "page": "recto",
     "reserved": false
+  },
+  "Fond avatar": {
+    "top": 27.8,
+    "left": 26.7,
+    "width": 45.4,
+    "height": 35.6,
+    "page": "verso",
+    "reserved": false
   }
 }

@@ -137,9 +137,11 @@ export default function GMDashboard({ onBack }: Props) {
         <div style={{ width: 90 }} />
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — Réseau à part, poussé à l'extrémité droite (marginLeft: auto) : ce n'est pas un onglet
+          "de contenu de jeu" comme les autres (bestiaire, rencontres...), plutôt un panneau de
+          connexion/paramètres, d'où la démarcation demandée par Didic (position + couleur bleue). */}
       <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, overflowX: 'auto' }}>
-        {(['bestiaire', 'adversite', 'bataille', 'objetsMagiques', 'notes', 'reseau'] as Tab[]).map(tb => (
+        {(['bestiaire', 'adversite', 'bataille', 'objetsMagiques', 'notes'] as Tab[]).map(tb => (
           <button key={tb} onClick={() => setTab(tb)} style={{
             padding: '6px 16px', borderRadius: '4px 4px 0 0',
             border: '1px solid rgba(201,168,76,0.4)',
@@ -152,6 +154,17 @@ export default function GMDashboard({ onBack }: Props) {
             {t(`gmMode.tabs.${tb}`)}
           </button>
         ))}
+        <button key="reseau" onClick={() => setTab('reseau')} style={{
+          marginLeft: 'auto', padding: '6px 16px', borderRadius: '4px 4px 0 0',
+          border: `1px solid ${tab === 'reseau' ? 'rgba(100,180,255,0.5)' : 'rgba(100,180,255,0.3)'}`,
+          borderBottom: tab === 'reseau' ? '2px solid rgba(100,180,255,0.9)' : '1px solid transparent',
+          background: tab === 'reseau' ? 'rgba(100,180,255,0.12)' : 'transparent',
+          color: tab === 'reseau' ? 'rgba(150,200,255,0.95)' : 'rgba(150,200,255,0.6)',
+          cursor: 'pointer', fontSize: 14, whiteSpace: 'nowrap',
+          fontFamily: "'Cinzel', serif", letterSpacing: '0.04em',
+        }}>
+          🌐 {t('gmMode.tabs.reseau')}
+        </button>
       </div>
 
       {/* Contenu */}

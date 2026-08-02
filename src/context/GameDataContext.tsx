@@ -289,13 +289,15 @@ function normaliserEvenementsBatailles<T extends { evenements: BatailleTemplate[
   return arr.map(item => ({ ...item, evenements: item.evenements.map(normaliserEvenement) }))
 }
 
-function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string, type: string): Dispatch<SetStateAction<T>> {
+// serialize : transforme l'état avant écriture disque, par défaut identité — voir setFieldPositions plus
+// bas, seul appelant à s'en servir (ne persiste qu'une projection de l'état, pas l'état complet).
+function makeAutoSaver<T>(setter: Dispatch<SetStateAction<T>>, filename: string, type: string, serialize: (t: T) => unknown = t => t): Dispatch<SetStateAction<T>> {
   return (updater) => {
     setter(prev => {
       const next = typeof updater === 'function'
         ? (updater as (p: T) => T)(prev)
         : updater
-      queueSave(filename, JSON.stringify({ _type: type, data: next }, null, 2))
+      queueSave(filename, JSON.stringify({ _type: type, data: serialize(next) }, null, 2))
       return next
     })
   }
@@ -397,8 +399,25 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           setArmuresPersoRaw(perso)
           queueSave('armures-perso.json', JSON.stringify({ _type: 'armures-perso', data: perso }, null, 2))
         }
+        // Ne fusionne QUE la préférence "imprimer" par champ depuis le disque, jamais top/left/width/
+        // height/reserved/page — ces derniers ne viennent que du calibrage embarqué (réservé au
+        // développeur, voir FIELD_POSITIONS_LIVRE et le bouton "Sauver calibrage" plus bas). Lire le
+        // disque à l'identique remplaçait TOUT le calibrage par celui, figé, du jour où un utilisateur
+        // avait coché/décoché "Imprimer" une seule fois — bloquant ensuite toute future mise à jour de
+        // calibrage jusqu'à suppression manuelle du fichier (bug rapporté par Didic). Fonctionne aussi
+        // bien sur un ancien fichier disque (positions + imprimer mêlés, ignore les positions) que sur
+        // le nouveau format écrit désormais par setFieldPositions ci-dessous (imprimer seul).
         const fieldPositionsStr = await loadDataFile('field-positions.json')
-        if (fieldPositionsStr) setFieldPositionsRaw(unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions)
+        if (fieldPositionsStr) {
+          const disque = unwrap(JSON.parse(fieldPositionsStr)) as FieldPositions
+          setFieldPositionsRaw(prev => {
+            const fusion: FieldPositions = { ...prev }
+            for (const [id, fp] of Object.entries(disque)) {
+              if (fp.imprimer !== undefined) fusion[id] = { ...fusion[id], imprimer: fp.imprimer }
+            }
+            return fusion
+          })
+        }
         const sheetImagesStr = await loadDataFile('sheet-images.json')
         if (sheetImagesStr) setSheetImagesRaw(unwrap(JSON.parse(sheetImagesStr)) as SheetImages)
         // Voies : voir la séparation livré/perso plus haut. Chaque fichier perso migre indépendamment
@@ -693,7 +712,18 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextPerso
     })
   }, [])
-  const setFieldPositions = useMemo(() => makeAutoSaver<FieldPositions>(setFieldPositionsRaw, 'field-positions.json', 'field-positions'), [])
+  // Ne persiste QUE la préférence "imprimer" par champ — jamais top/left/width/height/reserved/page,
+  // qui viennent uniquement du calibrage embarqué (réservé au développeur). Voir la note de fusion au
+  // chargement plus haut : écrire les positions sur le disque d'un utilisateur final gelait toutes les
+  // futures mises à jour de calibrage, un simple clic sur "Imprimer" suffisant à créer ce fichier.
+  const setFieldPositions = useMemo(() => makeAutoSaver<FieldPositions>(
+    setFieldPositionsRaw, 'field-positions.json', 'field-positions',
+    next => Object.fromEntries(
+      Object.entries(next)
+        .filter(([, fp]) => fp.imprimer !== undefined)
+        .map(([id, fp]) => [id, { imprimer: fp.imprimer }]),
+    ),
+  ), [])
   const setSheetImages = useMemo(() => makeAutoSaver<SheetImages>(setSheetImagesRaw, 'sheet-images.json', 'sheet-images'), [])
   // hiddenVoies a deux façons de diverger du livré (voir voiesPerso.ts) : des ajouts ET des retraits —
   // un setter à deux fichiers, mais qui reste un simple tableau du point de vue de l'appelant.

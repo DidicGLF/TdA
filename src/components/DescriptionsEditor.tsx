@@ -16,6 +16,7 @@ import { publierEquipementLivre } from '../utils/armesPerso'
 import { publierPeuplesLivre } from '../utils/peuplesPerso'
 import { saveDataFileToBundle } from '../utils/tauriStorage'
 import type { CompanionEntry } from '../types/gameData'
+import type { Character } from '../types/character'
 import EquipementModal from './EquipementModal'
 
 // descriptions.json peut être en format brut ou enveloppé { _type, data } — on unwrappe
@@ -153,7 +154,11 @@ type PendingItem =
 // sur des dizaines de champs. Même trick que CreatureDetail (bestiaire).
 const fieldsetStyle: CSSProperties = { display: 'contents', border: 'none', margin: 0, padding: 0 }
 
-export default function DescriptionsEditor({ onClose }: { onClose: () => void }) {
+// character/onChange : le personnage actuellement ouvert sur la fiche (toujours présent — ce panneau
+// n'est accessible que depuis le menu Gestion de la fiche, jamais hors contexte personnage). Transmis à
+// EquipementModal pour que son bouton "Objets magiques" ouvre la même liste posséder/équiper que celle
+// du wizard, plutôt que de rester masqué faute de personnage (mode "catalogue seul").
+export default function DescriptionsEditor({ onClose, character, onChange }: { onClose: () => void, character: Character, onChange: (patch: Partial<Character>) => void }) {
   const { t, i18n } = useTranslation()
   const [showLangNotice, setShowLangNotice] = useState(() => {
     const lang = i18n.language.split('-')[0]
@@ -1479,7 +1484,7 @@ export default function DescriptionsEditor({ onClose }: { onClose: () => void })
       </div>
     )}
     {showEquipement && (
-      <EquipementModal onClose={() => setShowEquipement(false)} />
+      <EquipementModal character={character} onChange={onChange} onClose={() => setShowEquipement(false)} editionCatalogueParDefaut />
     )}
     <div style={{
       position: 'fixed', inset: 0, zIndex: 300,
