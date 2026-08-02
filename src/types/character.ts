@@ -19,10 +19,22 @@ export type CompagnonOverride = {
   for?: string; dex?: string; con?: string; int?: string; sag?: string; cha?: string
   init?: string; def?: string; pv?: string
   atk1nom?: string; atk1bonus?: string; atk1dm?: string
-  // Fiche de compagnon dédiée : zones de texte libre du joueur et image du compagnon.
+  // Fiche de compagnon dédiée : zones de texte libre du joueur et image du compagnon. special reçoit
+  // par défaut le texte "Capacités spéciales" du catalogue (voir FicheCompagnon.tsx, c?.capacites) —
+  // même principe que atk1nom/atk1dm : catalogue par défaut, remplacé dès que le joueur tape dedans.
   special?: string
   notes?: string
   image?: string
+  // Cadrage de l'image du compagnon (pan/zoom/mode) — même principe que portraitScale/Tx/Ty/Fit/Locked
+  // sur Character, jusqu'ici absent ici : l'image de compagnon utilisait le cadrage "cover" par défaut
+  // sans jamais pouvoir être ajusté ni sauvegardé (les boutons de recadrage étaient affichés mais sans
+  // effet, faute de callback branché — l'image restait tronquée quoi qu'on fasse, y compris déplacer le
+  // champ, signalé par Didic).
+  imageScale?: number
+  imageTx?: number
+  imageTy?: number
+  imageFit?: 'cover' | 'contain'
+  imageLocked?: boolean
 }
 
 export type Caracteristique = 'FOR' | 'DEX' | 'CON' | 'INT' | 'SAG' | 'CHA'

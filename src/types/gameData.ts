@@ -291,7 +291,22 @@ export type Note = {
   // l'interface — versId = id de la note ciblée par un [[Titre]] présent dans le contenu de CETTE note.
   // Absent de la liste = relation jamais catégorisée (lien affiché neutre par défaut, à distinguer du
   // type 'neutre' explicitement choisi qui, lui, affiche son propre symbole).
-  relations?: { versId: string; type: RelationType }[]
+  // Deux textes indépendants affichables le long du lien dans NotesGraph — labelHaut TOUJOURS au-dessus
+  // du trait, labelBas TOUJOURS en dessous (position fixe, qui ne dépend pas de qui a écrit le [[lien]]
+  // wiki — contrairement à un ancien essai où la position dépendait du sens, source de confusion : le
+  // champ du haut dans le menu affichait son texte en dessous, et inversement). Sert quand les deux notes
+  // n'ont pas le même avis l'une de l'autre (ex. CETTE note "aime" versId, qui ne ressent que de la
+  // "neutralité" en retour) : un texte par sens, chacun avec sa propre flèche.
+  // *Inverse : chaque texte a sa propre flèche, réglable indépendamment de sa position (haut/bas) —
+  // absent/false = sens par défaut (labelHaut → vers versId, labelBas → vers cette note) ; true = sens
+  // opposé. Modifiable au clic sur la flèche à côté du champ, dans le menu du lien.
+  // type optionnel : un lien peut n'avoir que du texte (labelHaut/labelBas), sans symbole ● au milieu —
+  // absent = pas de symbole, à distinguer d'un choix explicite de 'neutre' (qui, lui, affiche ●).
+  relations?: { versId: string; type?: RelationType; labelHaut?: string; labelHautInverse?: boolean; labelBas?: string; labelBasInverse?: boolean }[]
+  // Position déplacée à la main dans NotesGraph (coordonnées de l'espace virtuel CANVAS) — persistée ici
+  // pour que repositionner un nœud (ex. pour démêler des liens qui se croisent) reste utile d'une
+  // session à l'autre. Absent = position calculée par la disposition à ressorts (voir meilleureDisposition).
+  graphPosition?: { x: number; y: number }
   creeLe: string     // ISO timestamp
   modifieLe: string  // ISO timestamp
 }

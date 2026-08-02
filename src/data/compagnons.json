@@ -147,7 +147,7 @@
     "init": 15,
     "def": 15,
     "pv": "[NIV] x 3",
-    "capacites": "",
+    "capacites": "Lien télépathique :\nPossède un lien télépathique avec le personnage. Le personnage peut percevoir  par ses sens avec un bonus de +5 aux tests de perception.",
     "attaque1": {
       "nom": "Attaque",
       "bonus": "[ATT magique]",

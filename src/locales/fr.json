@@ -152,7 +152,12 @@
       "amical": "Amical",
       "ennemi": "Ennemi",
       "neutre": "Neutre",
-      "aucune": "Aucune relation"
+      "aucunSymbole": "Aucun symbole",
+      "aucune": "Aucune relation",
+      "labelHautPlaceholder": "Texte au-dessus du lien (optionnel)…",
+      "labelBasPlaceholder": "Texte en dessous du lien (optionnel)…",
+      "lienSeparateur": "lien",
+      "labelValider": "Valider"
     },
     "rechercher": "Rechercher (titre, tag, texte, marque-page)…",
     "nouvelleNote": "Nouvelle note",

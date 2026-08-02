@@ -1435,11 +1435,25 @@ function AppContent() {
               </div>
             </div>
             <NotesGraph selectedId={notesSelectedId} onOpenNote={setNotesSelectedId} notes={notes}
-              onSetRelation={(sourceId, targetId, type) => setNotes(prev => prev.map(n => n.id !== sourceId ? n : {
+              onSetRelation={(sourceId, targetId, type, labels) => setNotes(prev => prev.map(n => n.id !== sourceId ? n : {
                 ...n,
-                relations: type
-                  ? [...(n.relations ?? []).filter(r => r.versId !== targetId), { versId: targetId, type }]
+                // labels absent = suppression complète (bouton "Aucune relation") ; labels présent =
+                // met à jour/crée l'entrée, type pouvant rester absent (lien texte seul, sans symbole).
+                relations: labels
+                  ? [...(n.relations ?? []).filter(r => r.versId !== targetId), {
+                      versId: targetId,
+                      ...(type ? { type } : {}),
+                      ...(labels.labelHaut ? { labelHaut: labels.labelHaut } : {}),
+                      ...(labels.labelHautInverse ? { labelHautInverse: true } : {}),
+                      ...(labels.labelBas ? { labelBas: labels.labelBas } : {}),
+                      ...(labels.labelBasInverse ? { labelBasInverse: true } : {}),
+                    }]
                   : (n.relations ?? []).filter(r => r.versId !== targetId),
+                modifieLe: new Date().toISOString(),
+              }))}
+              onSetPosition={(id, pos) => setNotes(prev => prev.map(n => n.id !== id ? n : {
+                ...n,
+                graphPosition: pos ?? undefined,
                 modifieLe: new Date().toISOString(),
               }))}
             />

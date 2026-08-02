@@ -747,6 +747,10 @@ export default function ChampsRecto({
                 label={label} top={rTop} left={rLeft} perRow={rPerRow} stepX={rStepX} stepY={rStepY}
                 count={pmAffiche} checkedCount={character.pmRestants ?? pmAffiche} temporaire={!imprimePm}
                 onValueChange={v => onChange({ pmRestants: v })}
+                // Les PM sont imprimés par paquets de 5 colonnes (5 cases en haut, 5 en bas, voir la
+                // note sur blocTaille dans DraggableCheckboxRow.tsx) — pas ligne haute de 25 puis ligne
+                // basse de 25, demandé par Didic pour que le remplissage suive l'ordre visuel imprimé.
+                blocTaille={5}
                 calibrate={calibrate} containerRef={containerRef}
                 onGridChange={(l, t, lf, pr, sx, sy) => cbRowMoved(l, t, lf, pr, sx, sy)}
                 onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY, perRow: rPerRow })}

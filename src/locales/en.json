@@ -152,7 +152,12 @@
       "amical": "Friendly",
       "ennemi": "Enemy",
       "neutre": "Neutral",
-      "aucune": "No relation"
+      "aucunSymbole": "No symbol",
+      "aucune": "No relation",
+      "labelHautPlaceholder": "Text above the link (optional)…",
+      "labelBasPlaceholder": "Text below the link (optional)…",
+      "lienSeparateur": "link",
+      "labelValider": "Apply"
     },
     "rechercher": "Search (title, tag, text, bookmark)…",
     "nouvelleNote": "New note",

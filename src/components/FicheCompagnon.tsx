@@ -57,20 +57,24 @@ export default function FicheCompagnon({
   // position (compagnonsOverrides) est migré une fois pour toutes au chargement (voir App.tsx).
   const ov: CompagnonOverride = character.compagnonsFiches?.[nomCompagnon] ?? {}
 
-  const setOv = (champ: keyof CompagnonOverride, valeur: string) => {
-    onChange({ compagnonsFiches: { ...(character.compagnonsFiches ?? {}), [nomCompagnon]: { ...ov, [champ]: valeur } } })
+  const setOvPatch = (patch: Partial<CompagnonOverride>) => {
+    onChange({ compagnonsFiches: { ...(character.compagnonsFiches ?? {}), [nomCompagnon]: { ...ov, ...patch } } })
   }
+  const setOv = (champ: keyof CompagnonOverride, valeur: string) => setOvPatch({ [champ]: valeur })
 
   const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
 
-  // Champ de texte libre (Spécial, Notes) : calibrable et réservable comme les autres.
-  const zoneTexte = (id: string, champ: 'special' | 'notes', top: number, left: number, width: number, height: number) => {
+  // Champ de texte libre (Spécial, Notes, Capacités) : calibrable et réservable comme les autres.
+  // valeurBase : valeur du catalogue affichée par défaut (Capacités spéciales, voir c?.capacites) —
+  // absente pour Spécial/Notes, qui n'ont aucune source catalogue, seulement la saisie du joueur.
+  const zoneTexte = (id: string, champ: 'special' | 'notes', top: number, left: number, width: number, height: number, valeurBase?: string) => {
     const fp = fieldPositions?.[id]
     const p = { top: fp?.top ?? top, left: fp?.left ?? left, width: fp?.width ?? width, height: fp?.height ?? height }
     return (
       <DraggableTextarea
         key={id} label={id} {...p}
-        value={ov[champ] ?? ''} onChange={v => setOv(champ, v)}
+        value={ov[champ] ?? valeurBase ?? ''} onChange={v => setOv(champ, v)}
+        autoShrink
         calibrate={calibrate} containerRef={containerRef} onMoved={onFieldMoved ?? (() => {})}
         reserved={fp ? fp.reserved === true : true}
         reservePortalTarget={reservePortalTarget}
@@ -106,7 +110,13 @@ export default function FicheCompagnon({
       {f({ label: 'Comp DM',      top: 44, left: 90, width: 8,  height: 4, value: ov.atk1dm ?? c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', onChange: v => setOv('atk1dm', v), align: 'center', readOnly: locked, reserveByDefault: true })}
 
       {/* Zones de texte libre */}
-      {zoneTexte('Comp spécial', 'special', 60, 72, 44, 18)}
+      {/* Comp spécial reçoit désormais le texte "Capacités spéciales" du catalogue (voir
+          DescriptionsEditor.tsx → Compagnons) comme valeur par défaut — jamais affiché nulle part sur
+          la fiche jusqu'ici, alors que la donnée était bien enregistrée (signalé par Didic : "le texte
+          n'est plus là" après édition, alors qu'il manquait juste ce lien pour l'afficher). Toujours
+          modifiable par le joueur (ov.special), qui prend alors le pas sur le catalogue. Comp notes
+          reste un champ 100% libre, sans lien catalogue. */}
+      {zoneTexte('Comp spécial', 'special', 60, 72, 44, 18, c?.capacites)}
       {zoneTexte('Comp notes',   'notes',   85, 72, 44, 12)}
 
       {/* Image du compagnon — DraggableImageField ne gère pas la réserve, on s'en charge ici. */}
@@ -130,6 +140,12 @@ export default function FicheCompagnon({
             {...p}
             value={ov.image ?? ''}
             onChange={v => setOv('image', v)}
+            scale={ov.imageScale} tx={ov.imageTx} ty={ov.imageTy}
+            fit={ov.imageFit ?? 'cover'}
+            locked={ov.imageLocked ?? false}
+            onPanZoomChange={(scale, tx, ty) => setOvPatch({ imageScale: scale, imageTx: tx, imageTy: ty })}
+            onFitChange={f => setOvPatch({ imageFit: f })}
+            onLockedChange={l => setOvPatch({ imageLocked: l })}
             calibrate={calibrate} label="Comp image"
             containerRef={containerRef} onMoved={onFieldMoved ?? (() => {})}
             imprime={fp?.imprimer ?? true}

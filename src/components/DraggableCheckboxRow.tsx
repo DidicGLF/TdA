@@ -34,6 +34,12 @@ interface Props {
   // associée (mode « préparer l'impression ») — même motif que DraggableField/DraggableTextarea.
   imprime?: boolean
   onToggleImpression?: () => void
+  // Si défini, l'ORDRE de remplissage suit des paquets verticaux de blocTaille colonnes (N cases sur la
+  // ligne du haut, puis les N mêmes colonnes sur la ligne du bas, puis le paquet suivant...) au lieu de
+  // remplir toute la ligne du haut avant de passer à celle du bas — pour matcher une grille imprimée en
+  // paquets (ex. PM : 5 cases hautes + 5 basses par paquet, voir ChampsRecto.tsx). Suppose exactement 2
+  // lignes (haut/bas) ; sans ce prop, comportement inchangé (remplissage ligne par ligne complète).
+  blocTaille?: number
 }
 
 // Champ "rangée de cases à cocher" — une seule calibration (position + grille perRow/stepX/stepY,
@@ -43,7 +49,7 @@ interface Props {
 export default function DraggableCheckboxRow({
   top, left, perRow: initPerRow, stepX: initStepX, stepY: initStepY, count, checkedCount, onValueChange,
   calibrate, label, containerRef, onGridChange, temporaire,
-  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression, blocTaille,
 }: Props) {
   const modeImpression = useContext(ModeImpressionContext)
   const [pos, setPos] = useState({ top, left })
@@ -124,8 +130,15 @@ export default function DraggableCheckboxRow({
   return (
     <>
       {boxes.map(i => {
-        const row = Math.floor(i / Math.max(1, perRow))
-        const col = i % Math.max(1, perRow)
+        // Remplissage par paquets (voir la note sur blocTaille) : paquet i/(2*blocTaille), les
+        // blocTaille premières cases du paquet sur la ligne du haut, les blocTaille suivantes sur celle
+        // du bas — sinon (blocTaille absent) ligne par ligne complète, comportement d'origine.
+        const row = blocTaille
+          ? Math.floor(i / blocTaille) % 2
+          : Math.floor(i / Math.max(1, perRow))
+        const col = blocTaille
+          ? Math.floor(i / (blocTaille * 2)) * blocTaille + (i % blocTaille)
+          : i % Math.max(1, perRow)
         const checked = i < checkedCount
         return (
           <div

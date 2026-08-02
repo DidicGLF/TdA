@@ -1262,14 +1262,14 @@
   "Comp attaque": {
     "top": 37.8,
     "left": 83.1,
-    "width": 8,
+    "width": 6.2,
     "height": 4,
     "page": "compagnons",
     "reserved": false
   },
   "Comp DM": {
-    "top": 37.6,
-    "left": 91.2,
+    "top": 37.8,
+    "left": 91.4,
     "width": 8,
     "height": 4,
     "page": "compagnons",
