@@ -1,16 +1,16 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
-import type { Character, Caracteristique, Arme, ArmureEquipee } from '../../types/character'
+import type { Character, Caracteristique } from '../../types/character'
 type CharacterPatch = Partial<Character>
-import type { DescMap, Grant, ObjetMagiqueEntry } from '../../types/gameData'
+import type { DescMap, Grant } from '../../types/gameData'
 import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula, computeAvantages } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 import { parseDesc } from '../../utils/parseDesc'
-import { useReseauClient } from '../../hooks/useReseauClient'
-import type { DegatsRecus } from '../../hooks/useReseauClient'
+import type { useReseauClient, DegatsRecus } from '../../hooks/useReseauClient'
 import { rechercherPartieReseau } from '../../utils/reseau'
 import { encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 
@@ -122,13 +122,20 @@ interface Props {
   character: Character
   descriptions: DescMap
   onChange: (patch: CharacterPatch) => void
-  // Réception réseau d'un objet magique (voir 'objet-magique-mj') : géré par l'appelant (App.tsx), PAS
-  // via `onChange` — `character` ici est la copie de session du Mode de jeu (jetée à la fermeture, voir
-  // App.tsx::closeGameMode), alors qu'un objet reçu doit rester acquis sur la vraie fiche.
-  onObjetMagiqueRecu?: (objet: ObjetMagiqueEntry) => void
-  // Même principe que ci-dessus, pour un objet classique (arme/armure du catalogue, voir
-  // 'objet-classique-mj').
-  onObjetClassiqueRecu?: (categorie: 'arme' | 'armure', objet: Arme | ArmureEquipee) => void
+  // Connexion réseau — possédée par App.tsx (voir sa note), PAS créée ici : fermer/rouvrir le Mode de jeu
+  // (ex. le joueur consulte les Notes puis revient) démonte/remonte GameModePanel, mais la connexion, elle,
+  // doit survivre pour ne pas déconnecter le joueur juste parce qu'il change d'onglet. Réception des
+  // dégâts/PV réseau : la vraie logique (RD, historique de jets) reste ici (dépend de l'état local du
+  // Mode de jeu), donc App.tsx la délègue via ces deux refs, en mettant en attente tout message reçu
+  // pendant que GameModePanel est démonté (voir gererDegatsRecusRef/gererPvActualisesRecuRef dans
+  // App.tsx) — rejoué dès que ce composant se remonte (voir le useEffect plus bas qui les renseigne).
+  reseau: ReturnType<typeof useReseauClient>
+  gererDegatsRecusRef: MutableRefObject<((d: DegatsRecus) => void) | null>
+  gererPvActualisesRecuRef: MutableRefObject<((pv: number) => void) | null>
+  // Rejoue tout dégât/PV reçu pendant que ce composant était démonté (voir la note sur reseau ci-dessus)
+  // — appelé juste après avoir renseigné les deux refs, une fois qu'elles pointent de nouveau vers la
+  // vraie logique de traitement (RD, historique).
+  drainerReseauEnAttente: () => void
   onClose: () => void
   screenWidth: number
 }
@@ -151,7 +158,7 @@ function boostKey(ab: { voieNom: string; rangIdx: number; grantIdx: number }): s
   return `ab-${ab.voieNom}-${ab.rangIdx}-${ab.grantIdx}`
 }
 
-export default function GameModePanel({ character, descriptions, onChange, onObjetMagiqueRecu, onObjetClassiqueRecu, onClose, screenWidth }: Props) {
+export default function GameModePanel({ character, descriptions, onChange, reseau, gererDegatsRecusRef, gererPvActualisesRecuRef, drainerReseauEnAttente, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
   const { armes, armures } = useGameData()
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
@@ -176,6 +183,9 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
   const [currentPM, setCurrentPM] = useState<number | null>(() => character.pmRestants ?? null)
   const [resultInHistory, setResultInHistory] = useState(false)
   const [healInput, setHealInput] = useState('')
+  // Cliquer "Soigner" sans montant saisi envoie le curseur ici plutôt que de ne rien faire (voir
+  // handleManualHeal) — la touche Entrée valide alors directement depuis ce même champ.
+  const healInputRef = useRef<HTMLInputElement>(null)
   const [dmInput, setDmInput] = useState('')
   const [dotAmountInput, setDotAmountInput] = useState('')
   const [dotDurationInput, setDotDurationInput] = useState('')
@@ -192,26 +202,13 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
   const [reseauManuelOuvert, setReseauManuelOuvert] = useState(false)
   const [reseauIp, setReseauIp] = useState('')
   const [reseauMessage, setReseauMessage] = useState('')
-  // La logique d'application des dégâts reçus (appliquerDegats/pushHistory, définie plus bas dans le
-  // composant) n'existe pas encore à ce point — cette ref est synchronisée juste après sa définition
-  // (voir plus bas) et lue uniquement depuis le callback réseau, jamais pendant le rendu.
-  const gererDegatsRecusRef = useRef<(d: DegatsRecus) => void>(() => {})
-  const onDegatsRecus = useCallback((d: DegatsRecus) => gererDegatsRecusRef.current(d), [])
-  // Même indirection par ref que gererDegatsRecusRef juste au-dessus (voir sa note) : le prop
-  // onObjetMagiqueRecu (fourni par App.tsx) change de référence à chaque rendu, alors que le callback
-  // passé à useReseauClient doit rester stable (useCallback à deps vides).
-  const gererObjetMagiqueRecuRef = useRef<(o: ObjetMagiqueEntry) => void>(() => {})
-  const onObjetMagiqueRecuReseau = useCallback((o: ObjetMagiqueEntry) => gererObjetMagiqueRecuRef.current(o), [])
-  const gererObjetClassiqueRecuRef = useRef<(categorie: 'arme' | 'armure', o: Arme | ArmureEquipee) => void>(() => {})
-  const onObjetClassiqueRecuReseau = useCallback(
-    (categorie: 'arme' | 'armure', o: Arme | ArmureEquipee) => gererObjetClassiqueRecuRef.current(categorie, o),
-    [],
-  )
-  // Même indirection : le MJ vient de modifier pvActuels à la main (voir 'pv-actualises' dans
-  // reseauProtocole.ts) — setCurrentPV/applyPVLoss/applyHeal (définis plus bas) n'existent pas encore ici.
-  const gererPvActualisesRecuRef = useRef<(pv: number) => void>(() => {})
-  const onPvActualisesRecuReseau = useCallback((pv: number) => gererPvActualisesRecuRef.current(pv), [])
-  const reseau = useReseauClient(onDegatsRecus, onObjetMagiqueRecuReseau, onObjetClassiqueRecuReseau, onPvActualisesRecuReseau)
+  // Dialogue PRIVÉ avec un autre PJ précis (voir envoyerMessagePJ dans useReseauClient.ts et
+  // 'message-pj' dans reseauProtocole.ts) — relayé par le MJ au seul destinataire choisi, distinct du
+  // champ ci-dessus qui s'adresse AU MJ. dialoguePJCible : idPJ choisi dans reseau.rosterPJ.
+  const [dialoguePJInput, setDialoguePJInput] = useState('')
+  const [dialoguePJCible, setDialoguePJCible] = useState('')
+  // reseau (connexion) et gererDegatsRecusRef/gererPvActualisesRecuRef (délégation de la réception, voir
+  // leur note dans Props ci-dessus) viennent maintenant d'App.tsx — plus de useReseauClient local ici.
   // Marque le message/l'image du MJ comme lu(e) dès que le panneau est ouvert — à l'ouverture, mais
   // aussi si un nouveau message arrive alors que le panneau est DÉJÀ ouvert (sinon messageNonLu repasse
   // à true sans que ce useEffect ne se redéclenche, puisque reseauPanelOuvert lui ne change pas : le
@@ -244,6 +241,27 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
     setReseauRecherche(false)
     if (ip) reseau.connecter(ip, character)
     else setReseauIntrouvable(true)
+  }
+
+  // Partagé par le bouton Envoyer et la touche Entrée dans le champ (voir onKeyDown ci-dessous).
+  const envoyerMessageChat = () => {
+    if (!reseauMessage.trim()) return
+    reseau.envoyerMessageJoueur(reseauMessage.trim())
+    setReseauMessage('')
+  }
+  // Même principe, pour le dialogue avec le(s) PJ choisi(s) dans dialoguePJCible (voir envoyerMessagePJ)
+  // — dialoguePJCible vide = à tous les autres joueurs connectés (comportement par défaut tant qu'aucun
+  // destinataire précis n'est choisi).
+  const envoyerDialoguePJChat = () => {
+    if (!dialoguePJInput.trim()) return
+    if (!dialoguePJCible) {
+      reseau.envoyerMessagePJ(undefined, t('gameMode.reseau.dialogueTousLabel'), dialoguePJInput.trim())
+    } else {
+      const cible = reseau.rosterPJ.find(j => j.idPJ === dialoguePJCible)
+      if (!cible) return
+      reseau.envoyerMessagePJ(cible.idPJ, cible.nom, dialoguePJInput.trim())
+    }
+    setDialoguePJInput('')
   }
 
 
@@ -793,6 +811,12 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
 
   const handleManualHeal = () => {
     const amount = parseInt(healInput, 10)
+    // Montant absent/invalide : plutôt que de ne rien faire silencieusement, envoie le curseur dans le
+    // champ pour saisir directement — Entrée y revalide ensuite ce même handler (voir onKeyDown ci-dessous).
+    if (!Number.isFinite(amount) || amount <= 0) {
+      healInputRef.current?.focus()
+      return
+    }
     applyHeal(amount, t('gameMode.healHistoryLabel'))
     setHealInput('')
   }
@@ -866,20 +890,6 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
       appliquerDegats(typeDegats, montant, t('gameMode.reseau.degatsRecusLabel'))
     }
   })
-
-  // Réception réseau d'un objet magique envoyé par le MJ (voir 'objet-magique-mj' dans
-  // reseauProtocole.ts) — délégué à onObjetMagiqueRecu (App.tsx), PAS géré ici via onChange : `character`
-  // dans ce composant est la copie de session du Mode de jeu, jetée à la fermeture (voir la note sur
-  // onObjetMagiqueRecu dans Props ci-dessus) — un objet reçu doit au contraire rester acquis sur la vraie
-  // fiche, donc écrire directement sur `character`/setObjetsMagiques côté App.tsx.
-  useEffect(() => {
-    gererObjetMagiqueRecuRef.current = objet => onObjetMagiqueRecu?.(objet)
-  })
-  // Même principe que ci-dessus, pour un objet classique (arme/armure du catalogue, voir
-  // 'objet-classique-mj').
-  useEffect(() => {
-    gererObjetClassiqueRecuRef.current = (categorie, objet) => onObjetClassiqueRecu?.(categorie, objet)
-  })
   // Réception réseau d'une nouvelle valeur de PV fixée par le MJ à la main (voir 'pv-actualises' dans
   // reseauProtocole.ts) — appliquée directement, PAS via applyPVLoss/applyHeal (qui émettraient ce même
   // message en retour vers le MJ, créant un aller-retour inutile).
@@ -890,7 +900,18 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
       if (pv > 0) setOgreResisting(false)
       pushHistory({ label: t('gameMode.reseau.pvActualisesHistoryLabel'), formula: t('gameMode.reseau.pvActualisesFormule', { pv }), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
     }
+    // Les deux refs (dégâts + PV) sont renseignées à ce stade (l'effet précédent tourne d'abord dans le
+    // même commit) — rejoue tout ce qui s'est accumulé pendant que ce composant était démonté.
+    drainerReseauEnAttente()
   })
+  // Ce composant peut se démonter (le joueur consulte les Notes) alors que la connexion, elle, survit
+  // (voir la note sur reseau dans Props) — remet les deux refs à null pour qu'App.tsx mette en attente
+  // tout dégât/PV reçu pendant l'absence plutôt que d'appeler une closure devenue obsolète ; rejoués dès
+  // que ce composant se remonte (les deux useEffect ci-dessus renseignent alors les refs à nouveau).
+  useEffect(() => () => {
+    gererDegatsRecusRef.current = null
+    gererPvActualisesRecuRef.current = null
+  }, [gererDegatsRecusRef, gererPvActualisesRecuRef])
 
   const handleTakeDamage = (type: string) => {
     appliquerDegats(type, parseInt(dmInput, 10))
@@ -1003,7 +1024,20 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
       )}
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${SECTION_BORDER}`, flexShrink: 0, gap: 8, position: 'relative' }}>
-        <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, flex: 1, fontFamily: "'Cinzel', serif" }}>{t('gameMode.title')}</span>
+        {/* Dernier événement réseau, affiché ici tant que le panneau réseau est fermé — permet de le lire
+            sans l'ouvrir (sur petit écran, le panneau ouvert empiète sur les jauges PV/PM juste en
+            dessous). Reste affiché jusqu'au suivant (reseau.journal[0], le plus récent en tête — voir
+            ajouterJournal dans useReseauClient) : aucune disparition automatique. Le panneau ouvert montre
+            déjà tout l'historique, donc le titre normal reprend sa place. */}
+        {!reseauPanelOuvert && reseau.journal.length > 0 ? (
+          <span title={reseau.journal[0].texte} style={{
+            fontSize: 12, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            color: reseau.journal[0].categorie ? COULEUR_JOURNAL[reseau.journal[0].categorie] : 'rgba(245,236,215,0.8)',
+          }}>{reseau.journal[0].texte}</span>
+        ) : (
+          <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, flex: 1, fontFamily: "'Cinzel', serif" }}>{t('gameMode.title')}</span>
+        )}
         {/* Pulsation du point rouge ci-dessous — message privé du MJ non lu (voir messageNonLu) */}
         {reseau.messageNonLu && (
           <style>{'@keyframes tda-reseau-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,90,90,0.55)}50%{box-shadow:0 0 0 5px rgba(255,90,90,0)}}'}</style>
@@ -1098,16 +1132,53 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
                   <input
                     value={reseauMessage}
                     onChange={e => setReseauMessage(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') envoyerMessageChat() }}
                     placeholder={t('gameMode.reseau.envoyerPlaceholder')}
                     style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
                   />
-                  <button onClick={() => { if (reseauMessage.trim()) { reseau.envoyer(encoderMessage({ type: 'message-joueur', texte: reseauMessage })); setReseauMessage('') } }} style={{
+                  <button onClick={envoyerMessageChat} style={{
                     padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
                     border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
                   }}>
                     {t('gameMode.reseau.envoyer')}
                   </button>
                 </div>
+                {/* Dialogue entre PJ (voir envoyerMessagePJ) — relayé par le MJ au destinataire choisi
+                    ci-dessous, ou à tous les autres joueurs tant qu'aucun n'est précisé (option "Tous les
+                    joueurs", sélectionnée par défaut) ; distinct du champ ci-dessus qui s'adresse au MJ.
+                    reseau.rosterPJ (voir useReseauClient.ts) liste les autres PJ actuellement connectés. */}
+                {reseau.rosterPJ.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)' }}>
+                    {t('gameMode.reseau.dialoguePJAucunAutreJoueur')}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <select
+                      value={dialoguePJCible}
+                      onChange={e => setDialoguePJCible(e.target.value)}
+                      style={{ padding: '5px 8px', borderRadius: 4, border: '1px solid rgba(190,170,230,0.3)', background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                    >
+                      <option value="">{t('gameMode.reseau.dialoguePJTousOption')}</option>
+                      {reseau.rosterPJ.map(j => <option key={j.idPJ} value={j.idPJ}>{j.nom}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        value={dialoguePJInput}
+                        onChange={e => setDialoguePJInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') envoyerDialoguePJChat() }}
+                        placeholder={t('gameMode.reseau.dialoguePJPlaceholder')}
+                        style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 4, border: '1px solid rgba(190,170,230,0.3)', background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                      />
+                      <button onClick={envoyerDialoguePJChat} style={{
+                        padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                        border: '1px solid rgba(190,170,230,0.3)', background: 'rgba(190,170,230,0.12)', color: 'rgba(210,190,255,0.95)',
+                      }}>
+                        {t('gameMode.reseau.dialoguePJEnvoyer')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <button onClick={reseau.deconnecter} style={{
                   padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, alignSelf: 'flex-start',
                   border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
@@ -1242,10 +1313,12 @@ export default function GameModePanel({ character, descriptions, onChange, onObj
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 4 }}>
               <input
+                ref={healInputRef}
                 type="number"
                 min={1}
                 value={healInput}
                 onChange={e => setHealInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleManualHeal() }}
                 placeholder={t('gameMode.healPlaceholder')}
                 disabled={isPvFull || pvActuels < 0 || isDead}
                 style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1 }}

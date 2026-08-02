@@ -49,6 +49,10 @@ export function useReseauClient(
   // simple garde-fou mémoire pour une longue session (ces images ne sont jamais persistées).
   const [imageAffichee, setImageAffichee] = useState<string | null>(null)
   const imagesRecuesRef = useRef<Record<number, string>>({})
+  // Autres PJ actuellement connectés (voir 'roster-pj' dans reseauProtocole.ts), diffusé par le MJ à
+  // chaque connexion/déconnexion/identification — sert à choisir un destinataire pour le dialogue entre
+  // PJ (voir GameModePanel.tsx). Notre propre idPJ est filtré à la réception (voir plus bas).
+  const [rosterPJ, setRosterPJ] = useState<{ idPJ: string; nom: string }[]>([])
   const socketRef = useRef<WebSocket | null>(null)
   const prochainId = useRef(0)
   const onDegatsRecusRef = useRef(onDegatsRecus)
@@ -99,7 +103,14 @@ export function useReseauClient(
           : t('gameMode.reseau.degatsRecusJournal', { montant: message.montant, type: message.typeDegats || t('gameMode.dmTypeGenerique') })
         ajouterJournal(texte, 'degatsRecus')
       } else if (message?.type === 'message-mj') {
-        ajouterJournal(t('gameMode.reseau.messagePriveJournal', { texte: message.texte }), 'messageMJ')
+        // diffusion 'tous' = message de groupe (voir MessageReseau dans reseauProtocole.ts) — tagué
+        // différemment du message privé pour qu'on sache d'un coup d'œil s'il n'y a que soi qui l'a reçu.
+        ajouterJournal(
+          message.diffusion === 'tous'
+            ? t('gameMode.reseau.messageATousJournal', { texte: message.texte })
+            : t('gameMode.reseau.messagePriveJournal', { texte: message.texte }),
+          'messageMJ',
+        )
         setMessageNonLu(true)
       } else if (message?.type === 'image-mj') {
         const id = ajouterJournal(t('gameMode.reseau.imageMJJournal'), 'imageMJ')
@@ -123,6 +134,16 @@ export function useReseauClient(
         onPvActualisesRecuRef.current?.(message.pvActuels)
         ajouterJournal(t('gameMode.reseau.pvActualisesMJJournal', { pv: message.pvActuels }), 'pvActualises')
         setMessageNonLu(true)
+      } else if (message?.type === 'message-pj-recu') {
+        // Dialogue entre PJ relayé par le MJ (voir 'message-pj'/'message-pj-recu' dans
+        // reseauProtocole.ts) — catégorie dialoguePJ, distincte de messageMJ (messages du MJ lui-même).
+        ajouterJournal(t('gameMode.reseau.dialoguePJJournal', { nom: message.expediteurNom, texte: message.texte }), 'dialoguePJ')
+        setMessageNonLu(true)
+      } else if (message?.type === 'roster-pj') {
+        // Liste des PJ connectés (voir reseauProtocole.ts) — filtre notre propre idPJ, on ne s'envoie pas
+        // de dialogue à soi-même. Pas de ligne de journal, purement une mise à jour de liste silencieuse.
+        const monId = characterRef.current ? idPJ(characterRef.current) : null
+        setRosterPJ(message.joueurs.filter(j => j.idPJ !== monId))
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,
         // ça n'apporte rien au joueur de le voir.
@@ -143,6 +164,25 @@ export function useReseauClient(
     socketRef.current?.send(contenu)
   }, [])
 
+  // Message libre envoyé au MJ (voir 'message-joueur' dans reseauProtocole.ts) — encode ET journalise
+  // localement en un seul geste, pour que le joueur retrouve sa propre trace dans son journal, comme
+  // pour les messages qu'il reçoit (signalé par Didic : jusqu'ici seuls les messages reçus y figuraient).
+  const envoyerMessageJoueur = useCallback((texte: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'message-joueur', texte }))
+    ajouterJournal(t('gameMode.reseau.messageEnvoyeJournal', { texte }), 'messageJoueur')
+  }, [ajouterJournal, t])
+
+  // Dialogue entre PJ (voir 'message-pj' dans reseauProtocole.ts et rosterPJ pour choisir un
+  // destinataire) — le MJ relaie au seul destinataire visé (sauf s'il a coupé le dialogue pour nous), ou
+  // à tous les autres joueurs si destinataireIdPJ est omis (comportement par défaut tant qu'aucun
+  // destinataire précis n'est choisi, voir GameModePanel.tsx). Jamais traité comme un message au MJ.
+  // destinataireNom : juste pour l'écho local (qui n'a pas besoin de repasser par le MJ pour savoir à qui
+  // on vient d'écrire) — "Tous" quand destinataireIdPJ est omis.
+  const envoyerMessagePJ = useCallback((destinataireIdPJ: string | undefined, destinataireNom: string, texte: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'message-pj', ...(destinataireIdPJ ? { destinataireIdPJ } : {}), texte }))
+    ajouterJournal(t('gameMode.reseau.dialoguePJEnvoyeJournal', { nom: destinataireNom, texte }), 'dialoguePJ')
+  }, [ajouterJournal, t])
+
   const marquerMessagesLus = useCallback(() => setMessageNonLu(false), [])
 
   // Rouvre une image déjà reçue depuis sa ligne de journal (voir imagesRecuesRef ci-dessus).
@@ -156,7 +196,7 @@ export function useReseauClient(
   useEffect(() => () => { socketRef.current?.close() }, [])
 
   return {
-    connecte, journal, connecter, deconnecter, envoyer, messageNonLu, marquerMessagesLus,
+    connecte, journal, connecter, deconnecter, envoyer, envoyerMessageJoueur, envoyerMessagePJ, rosterPJ, messageNonLu, marquerMessagesLus,
     imageAffichee, ouvrirImage, fermerImage,
   }
 }

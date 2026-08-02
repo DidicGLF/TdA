@@ -130,7 +130,7 @@ type Grant =
   | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
   | { type: 'ACTION'; label: string; de: number; dm: string; attType?: 'contact' | 'distance' | 'magique'; activable?: boolean; cout_pm?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
-type TraitEntry = { nom: string; desc: string }
+type TraitEntry = { nom: string; desc: string; descSuperieur?: string }
 type Culture = {
   label: string
   voiePeuple: string
@@ -3139,6 +3139,26 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
                   value={traits[selectedTrait].desc}
                   onChange={e => updateTrait(selectedTrait, { desc: e.target.value })}
                   rows={8}
+                  style={{
+                    width: '100%', background: S.bg, border: `1px solid ${S.border}`,
+                    borderRadius: 4, padding: '8px 10px',
+                    fontSize: 17, color: S.parchment,
+                    resize: 'vertical', outline: 'none',
+                    fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = 'rgba(201,168,76,0.6)')}
+                  onBlur={e => (e.target.style.borderColor = S.border)}
+                />
+                {/* descSuperieur : version améliorée du talent, affichée sur la fiche du personnage quand
+                    la case "Talent supérieur" (2 pts) est cochée — voir TraitEntry dans types/gameData.ts. */}
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tdr-gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>
+                  {t('descEditor.talentSuperieurLabel')}
+                </div>
+                <textarea
+                  value={traits[selectedTrait].descSuperieur ?? ''}
+                  onChange={e => updateTrait(selectedTrait, { descSuperieur: e.target.value })}
+                  rows={8}
+                  placeholder={t('descEditor.talentSuperieurPlaceholder')}
                   style={{
                     width: '100%', background: S.bg, border: `1px solid ${S.border}`,
                     borderRadius: 4, padding: '8px 10px',

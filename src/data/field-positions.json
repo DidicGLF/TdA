@@ -100,12 +100,12 @@
   },
   "Genre": {
     "top": 15.3,
-    "left": 53.5,
+    "left": 53.9,
     "width": 7.9
   },
   "Âge": {
     "top": 15.3,
-    "left": 65.8,
+    "left": 66.3,
     "width": 5.2
   },
   "Culture": {
@@ -844,8 +844,8 @@
   },
   "Talent magique": {
     "top": 84,
-    "left": 81.7,
-    "width": 29.6,
+    "left": 82.39999999999999,
+    "width": 25.8,
     "height": 2,
     "reserved": false,
     "page": "recto"
@@ -859,8 +859,8 @@
     "page": "recto"
   },
   "Inventaire": {
-    "top": 56,
-    "left": 26.8,
+    "top": 56.2,
+    "left": 26.7,
     "width": 43.3,
     "height": 14.7,
     "reserved": false,
@@ -1562,8 +1562,8 @@
     "reserved": false
   },
   "Gemmes": {
-    "top": 59.7,
-    "left": 73.9,
+    "top": 60.1,
+    "left": 73.8,
     "width": 42.9,
     "height": 5.7,
     "page": "verso",
@@ -1693,6 +1693,23 @@
     "width": 45.4,
     "height": 35.6,
     "page": "verso",
+    "reserved": false
+  },
+  "Talent supérieur": {
+    "top": 84.1,
+    "left": 53.9,
+    "width": 1,
+    "height": 0,
+    "page": "recto",
+    "reserved": false,
+    "perRow": 1
+  },
+  "Bonus Init": {
+    "top": 23.5,
+    "left": 86.2,
+    "width": 5,
+    "height": 2,
+    "page": "recto",
     "reserved": false
   }
 }

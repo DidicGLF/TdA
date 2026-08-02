@@ -89,6 +89,20 @@ export default function GMDashboard({ onBack }: Props) {
   }, [])
   // Même raison que reseauJournal ci-dessus : levé ici pour survivre à un changement d'onglet.
   const [clientsConnectes, setClientsConnectes] = useState<ClientConnecte[]>([])
+  // Journal SÉPARÉ pour le dialogue entre PJ (voir 'message-pj' dans reseauProtocole.ts) — distinct de
+  // reseauJournal pour ne pas polluer le journal de jeu du MJ avec des bavardages entre joueurs, tout en
+  // lui laissant un œil dessus (modération) dans un panneau à part, près des cartes de joueurs connectés
+  // (voir ReseauTab.tsx). Même levée ici (survit au changement d'onglet) et même limite 200 lignes.
+  const [dialoguePJ, setDialoguePJ] = useState<LigneJournal[]>([])
+  const prochainIdDialoguePJ = useRef(0)
+  const ajouterDialoguePJ = useCallback((texte: string, categorie?: CategorieJournal) => {
+    prochainIdDialoguePJ.current += 1
+    setDialoguePJ(prev => [{ id: prochainIdDialoguePJ.current, texte, categorie }, ...prev].slice(0, 200))
+  }, [])
+  // idPJ des joueurs dont le dialogue entre PJ est coupé par le MJ (voir le bouton 🔇 sur leur carte,
+  // ReseauTab.tsx) — leurs 'message-pj' ne sont alors plus relayés aux autres joueurs (mais restent
+  // journalisés ici pour trace). Levé ici pour la même raison que dialoguePJ/clientsConnectes.
+  const [dialoguesCoupes, setDialoguesCoupes] = useState<Set<string>>(new Set())
   // Note actuellement ouverte dans l'onglet Notes — levé ici (comme côté joueur dans App.tsx) pour que
   // le graphe de liaisons affiché à côté puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -234,7 +248,8 @@ export default function GMDashboard({ onBack }: Props) {
               onReprendreAutoConsomme={() => setBatailleARepredre(null)}
             />
           )}
-          {tab === 'reseau' && <ReseauTab journal={reseauJournal} ajouterJournal={ajouterReseauJournal} clientsConnectes={clientsConnectes} setClientsConnectes={setClientsConnectes} />}
+          {tab === 'reseau' && <ReseauTab journal={reseauJournal} ajouterJournal={ajouterReseauJournal} clientsConnectes={clientsConnectes} setClientsConnectes={setClientsConnectes}
+            dialoguePJ={dialoguePJ} ajouterDialoguePJ={ajouterDialoguePJ} dialoguesCoupes={dialoguesCoupes} setDialoguesCoupes={setDialoguesCoupes} />}
         </div>
       )}
     </div>

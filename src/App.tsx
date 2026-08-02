@@ -37,6 +37,8 @@ import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
 import { autoAssignCompagnons } from './utils/compagnons'
 import { exporterFichesCompagnonsPDF } from './utils/exportCompagnonsPdf'
+import { useReseauClient } from './hooks/useReseauClient'
+import type { DegatsRecus } from './hooks/useReseauClient'
 
 // Fiche à afficher pour chaque étape du wizard de création (voir wizard.stepNames dans les locales :
 // Identité, Peuple & Culture, Caractéristiques, Profil & Voies, Scores dérivés, Spécialisation &
@@ -239,6 +241,39 @@ function AppContent() {
     }
     setCharacter(appliquer)
     setGameCharacter(prev => prev ? appliquer(prev) : prev)
+  }
+  // Connexion réseau (voir useReseauClient et GameModePanel.tsx) — possédée ICI, pas dans GameModePanel,
+  // pour que fermer/rouvrir le Mode de jeu (ex. le joueur consulte les Notes puis revient, voir la barre
+  // d'onglets/sheetPage) ne coupe plus la connexion : GameModePanel se démonte/remonte librement, la
+  // connexion (ce hook) reste montée avec App. gererDegatsRecusRef/gererPvActualisesRecuRef : la vraie
+  // logique de réception (résolution de la RD, historique de jets) reste dans GameModePanel (dépend de
+  // son état local) — GameModePanel y écrit sa fonction de traitement tant qu'il est monté, et la remet à
+  // null en se démontant (voir son useEffect de nettoyage). Tant qu'elle est null, tout message reçu est
+  // mis en attente ici (reseauEnAttenteRef) plutôt que perdu, puis rejoué dès que GameModePanel se
+  // remonte et renseigne à nouveau la ref (voir ses deux useEffect concernés).
+  const gererDegatsRecusRef = useRef<((d: DegatsRecus) => void) | null>(null)
+  const gererPvActualisesRecuRef = useRef<((pv: number) => void) | null>(null)
+  const reseauEnAttenteRef = useRef<Array<{ kind: 'degats'; d: DegatsRecus } | { kind: 'pv'; pv: number }>>([])
+  const onDegatsRecus = (d: DegatsRecus) => {
+    if (gererDegatsRecusRef.current) gererDegatsRecusRef.current(d)
+    else reseauEnAttenteRef.current.push({ kind: 'degats', d })
+  }
+  const onPvActualisesRecu = (pv: number) => {
+    if (gererPvActualisesRecuRef.current) gererPvActualisesRecuRef.current(pv)
+    else reseauEnAttenteRef.current.push({ kind: 'pv', pv })
+  }
+  const reseau = useReseauClient(onDegatsRecus, recevoirObjetMagiqueReseau, recevoirObjetClassiqueReseau, onPvActualisesRecu)
+  // Rejoue la file d'attente dès que GameModePanel renseigne à nouveau l'une des deux refs (voir sa note
+  // ci-dessus) — appelé après CHAQUE écriture des refs (pas seulement au montage) : vidanger une file
+  // déjà vide ne fait rien, donc sans risque de rejouer deux fois le même message.
+  const drainerReseauEnAttente = () => {
+    if (reseauEnAttenteRef.current.length === 0) return
+    const items = reseauEnAttenteRef.current
+    reseauEnAttenteRef.current = []
+    for (const item of items) {
+      if (item.kind === 'degats') gererDegatsRecusRef.current?.(item.d)
+      else gererPvActualisesRecuRef.current?.(item.pv)
+    }
   }
   const isAndroid = /android/i.test(navigator.userAgent)
   const [showLevelUp, setShowLevelUp] = useState(false)
@@ -828,7 +863,9 @@ function AppContent() {
 
           <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
             {showGameMode ? (
-              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onObjetClassiqueRecu={recevoirObjetClassiqueReseau} onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
+              <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange}
+                reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
+                onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
             ) : (
               <>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center', flexShrink: 0 }}>
@@ -1480,7 +1517,9 @@ function AppContent() {
             />
           </>
         ) : showGameMode ? (
-          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange} onObjetMagiqueRecu={recevoirObjetMagiqueReseau} onObjetClassiqueRecu={recevoirObjetClassiqueReseau} onClose={closeGameMode} screenWidth={screenWidth} />
+          <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange}
+            reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
+            onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.15)', textAlign: 'center' }}>

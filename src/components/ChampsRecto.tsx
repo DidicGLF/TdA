@@ -437,6 +437,15 @@ export default function ChampsRecto({
               { label: t('recto.tlDefArmureEquipee'), value: armorDef },
               { label: t('recto.tlEnchantement'), value: enchantEnc > 0 ? `-${enchantEnc}` : '0', neg: enchantEnc > 0 },
             ], total: totalEncombrement > 0 ? `-${totalEncombrement}` : '0' } })}
+          {/* Nouveau champ (voir feedback_nouveaux_champs_en_reserve) : reprend initBonus, déjà calculé
+              pour "Initiative totale" ci-dessous (même somme, effects['INIT']) mais affiché à part —
+              certains bonus (ex. rang 1 de la voie de la divination) sont comptés dans le total sans
+              qu'on puisse voir d'où ils viennent sur la fiche papier (pas de survol possible), demandé
+              par Didic. */}
+          {f({ label: "Bonus Init", tooltipTitle: t('recto.bonusInit'), top: 25.0, left: 62.2, width: 5.0, height: 2.0,
+            value: fmt(initBonus), onChange: () => {}, readOnly: locked, align: "center",
+            reserveByDefault: true,
+            formula: { lines: groupContribs(initContribs), total: fmt(initBonus) } })}
           {f({ label: "Initiative totale", tooltipTitle: t('recto.initiativeTotale'), top: 22.2, left: 68.3, width: 5.0, height: 2.0,
             value: String(initiativeTotal),
             onChange: () => {}, readOnly: locked, align: "center",

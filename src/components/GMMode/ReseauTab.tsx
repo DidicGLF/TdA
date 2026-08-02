@@ -40,13 +40,22 @@ interface Props {
   // changement d'onglet, alors que les connexions WebSocket, elles, restent ouvertes.
   clientsConnectes: ClientConnecte[]
   setClientsConnectes: Dispatch<SetStateAction<ClientConnecte[]>>
+  // Dialogue entre PJ (voir 'message-pj' dans reseauProtocole.ts) — journal séparé, même raison de levée
+  // qu'au-dessus. dialoguesCoupes : idPJ des joueurs dont le dialogue est coupé (bouton 🔇 sur leur carte).
+  dialoguePJ: LigneJournal[]
+  ajouterDialoguePJ: (texte: string, categorie?: CategorieJournal) => void
+  dialoguesCoupes: Set<string>
+  setDialoguesCoupes: Dispatch<SetStateAction<Set<string>>>
 }
 
 // Écran de test de la plomberie réseau (voir src-tauri/src/reseau.rs et src/utils/reseau.ts) : démarrer/
 // arrêter le serveur, voir les connexions et les messages bruts reçus. Pas de protocole de jeu ici —
 // c'est la première étape du chantier réseau (branche feature/reseau-local), avant le code de partie,
 // la découverte réseau côté joueur et l'échange de jets/dégâts.
-export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, setClientsConnectes }: Props) {
+export default function ReseauTab({
+  journal, ajouterJournal, clientsConnectes, setClientsConnectes,
+  dialoguePJ, ajouterDialoguePJ, dialoguesCoupes, setDialoguesCoupes,
+}: Props) {
   const { t } = useTranslation()
   const { objetsMagiques, armes, armures } = useGameData()
   // Catalogue livré+perso déjà fusionné (voir useGameData) — mis à plat pour la liste d'envoi, comme
@@ -66,13 +75,25 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
   const [code, setCode] = useState<string | null>(null)
   const [clients, setClients] = useState(0)
   const [messageATous, setMessageATous] = useState('')
+  // Diffusé à tous (voir 'message-mj'/diffusion dans reseauProtocole.ts) — encodé comme un vrai message
+  // protocolaire (auparavant envoyé en texte brut non protocolaire, donc ni tagué ni journalisé
+  // correctement côté joueur ni ici, signalé par Didic), et journalisé ici même pour qu'on retrouve trace
+  // de ce qu'on a envoyé, comme pour un message privé (voir envoyerMessagePrive juste en dessous).
+  const envoyerMessageATous = () => {
+    const texte = messageATous.trim()
+    if (!texte) return
+    envoyerATousReseau(encoderMessage({ type: 'message-mj', texte, diffusion: 'tous' }))
+    ajouterJournal(t('gmMode.reseau.messageATousEnvoyeEvt', { texte }), 'messageMJ')
+    setMessageATous('')
+  }
   // Brouillon de message privé par connexion (voir 'message-mj' dans reseauProtocole.ts) — un client
   // connecté peut recevoir un message ciblé, invisible des autres, contrairement au champ ci-dessus.
   const [messagesPrives, setMessagesPrives] = useState<Record<number, string>>({})
-  const envoyerMessagePrive = (connexionId: number) => {
+  const envoyerMessagePrive = (connexionId: number, nomPJ: string) => {
     const texte = (messagesPrives[connexionId] ?? '').trim()
     if (!texte) return
     envoyerAClientReseau(connexionId, encoderMessage({ type: 'message-mj', texte }))
+    ajouterJournal(t('gmMode.reseau.messagePriveEnvoyeEvt', { nom: nomPJ, texte }), 'messageMJ')
     setMessagesPrives(prev => ({ ...prev, [connexionId]: '' }))
   }
 
@@ -178,14 +199,29 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
   // réseau, indépendante de celle de CombatTab.tsx qui a la sienne pour ses propres besoins — pas de
   // state à partager entre les deux, chacun reconstruit ce dont il a besoin à partir des mêmes événements).
   const identitesRef = useRef<Record<number, { nom: string; idPJ: string }>>({})
+  // dialoguesCoupes est un prop qui change au clic sur 🔇 — l'écoute réseau ci-dessous ne se réabonne
+  // jamais (effet à deps vides, voir sa note), donc le closure `gerer` doit lire l'état FRAIS via une
+  // ref plutôt que la valeur du prop, restée figée à celle du montage sinon.
+  const dialoguesCoupesRef = useRef(dialoguesCoupes)
+  useEffect(() => { dialoguesCoupesRef.current = dialoguesCoupes }, [dialoguesCoupes])
 
   useEffect(() => {
     let annule = false
+    // Diffusé à tous les joueurs à chaque changement de qui est connecté/identifié (voir 'roster-pj' dans
+    // reseauProtocole.ts) — chaque client s'en sert pour proposer un destinataire au dialogue entre PJ
+    // (voir rosterPJ dans useReseauClient.ts). Reconstruit depuis identitesRef, toujours à jour puisque
+    // muté en place (pas de state React à lire ici, voir la note sur dialoguesCoupesRef plus haut).
+    const diffuserRosterPJ = () => {
+      const joueurs = Object.values(identitesRef.current).map(({ nom, idPJ }) => ({ nom, idPJ }))
+      envoyerATousReseau(encoderMessage({ type: 'roster-pj', joueurs }))
+    }
     const gerer = (e: EvenementReseau) => {
       if (e.type === 'connexion') { setClients(c => c + 1); ajouterJournal(t('gmMode.reseau.connexionEvt', { id: e.id }), 'connexion') }
       else if (e.type === 'deconnexion') {
         setClients(c => Math.max(0, c - 1))
         setClientsConnectes(prev => prev.filter(c => c.connexionId !== e.id))
+        delete identitesRef.current[e.id]
+        diffuserRosterPJ()
         ajouterJournal(t('gmMode.reseau.deconnexionEvt', { id: e.id }), 'deconnexion')
       }
       else if (e.type === 'decouverte') { ajouterJournal(`🔍 ${e.source} → code ${e.codeRecu ?? '?'} (${e.correspond ? 'OK' : 'ne correspond pas'})`, 'decouverte') }
@@ -197,6 +233,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
             ...prev.filter(c => c.connexionId !== e.id),
             { connexionId: e.id, nom: message.character.nomPersonnage, nomJoueur: message.character.nomJoueur, peuple: message.character.peuple, niveau: message.character.niveau, idPJ: message.idPJ },
           ])
+          diffuserRosterPJ()
           ajouterJournal(t('gmMode.reseau.identificationEvt', { id: e.id, nom: message.nom, cle: message.idPJ.slice(0, 6) }), 'identification')
         } else if (message?.type === 'degats') {
           const identite = identitesRef.current[e.id]
@@ -212,6 +249,40 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
           // propre écoute réseau, voir sa note), cette ligne n'est qu'une trace visible dans ce journal.
           const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
           ajouterJournal(t('gmMode.reseau.pvActualisesEvt', { nom, pv: message.pvActuels }), 'pvActualises')
+        } else if (message?.type === 'message-pj') {
+          // Dialogue entre PJ (voir reseauProtocole.ts) — journal SÉPARÉ (jamais dans ajouterJournal, qui
+          // resterait celui du MJ). destinataireIdPJ présent = relayé au SEUL destinataire visé (dialogue
+          // privé) ; absent = relayé à TOUS les autres joueurs connectés (comportement par défaut tant
+          // qu'aucun destinataire précis n'est choisi côté joueur, voir GameModePanel.tsx) — sauf si
+          // l'expéditeur a été coupé (dialoguesCoupesRef, voir sa note plus haut) : toujours journalisé
+          // ici, même coupé/introuvable, pour que le MJ garde une trace de ce qui a été tenté (modération).
+          const expediteur = identitesRef.current[e.id]
+          const nom = expediteur?.nom ?? `#${e.id}`
+          const coupe = !!expediteur && dialoguesCoupesRef.current.has(expediteur.idPJ)
+          if (message.destinataireIdPJ) {
+            const cibleEntree = Object.entries(identitesRef.current).find(([, v]) => v.idPJ === message.destinataireIdPJ)
+            const cible = cibleEntree?.[1]?.nom ?? '?'
+            ajouterDialoguePJ(
+              t(coupe ? 'gmMode.reseau.dialogueBloqueEvt' : 'gmMode.reseau.dialogueEvt', { nom, cible, texte: message.texte }),
+              'dialoguePJ',
+            )
+            if (!coupe && cibleEntree) {
+              envoyerAClientReseau(Number(cibleEntree[0]), encoderMessage({ type: 'message-pj-recu', expediteurNom: nom, texte: message.texte }))
+            }
+          } else {
+            const cible = t('gmMode.reseau.dialogueTousLabel')
+            ajouterDialoguePJ(
+              t(coupe ? 'gmMode.reseau.dialogueBloqueEvt' : 'gmMode.reseau.dialogueEvt', { nom, cible, texte: message.texte }),
+              'dialoguePJ',
+            )
+            if (!coupe) {
+              const contenu = encoderMessage({ type: 'message-pj-recu', expediteurNom: nom, texte: message.texte })
+              for (const idStr of Object.keys(identitesRef.current)) {
+                const id = Number(idStr)
+                if (id !== e.id) envoyerAClientReseau(id, contenu)
+              }
+            }
+          }
         } else {
           // Pas un message de protocole reconnu (texte de test brut, voir "message de test") : affiché tel quel.
           ajouterJournal(t('gmMode.reseau.messageEvt', { id: e.id, contenu: e.contenu }))
@@ -310,6 +381,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                     <input
                       value={messageATous}
                       onChange={e => setMessageATous(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') envoyerMessageATous() }}
                       placeholder={t('gmMode.reseau.envoyerATousPlaceholder')}
                       style={{
                         flex: '1 1 auto', minWidth: 0, padding: '6px 10px', borderRadius: 4, border: `1px solid ${SECTION_BORDER}`,
@@ -317,7 +389,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                       }}
                     />
                     <button
-                      onClick={() => { if (messageATous.trim()) { envoyerATousReseau(messageATous); setMessageATous('') } }}
+                      onClick={envoyerMessageATous}
                       style={{
                         padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
                         border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD,
@@ -402,7 +474,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                         <input
                           value={messagesPrives[c.connexionId] ?? ''}
                           onChange={e => setMessagesPrives(prev => ({ ...prev, [c.connexionId]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') envoyerMessagePrive(c.connexionId) }}
+                          onKeyDown={e => { if (e.key === 'Enter') envoyerMessagePrive(c.connexionId, c.nom) }}
                           placeholder={t('gmMode.reseau.messagePrivePlaceholder')}
                           style={{
                             flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 4, fontSize: 15,
@@ -410,7 +482,7 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                           }}
                         />
                         <button
-                          onClick={() => envoyerMessagePrive(c.connexionId)}
+                          onClick={() => envoyerMessagePrive(c.connexionId, c.nom)}
                           title={t('gmMode.reseau.envoyerMessagePriveTitle')}
                           style={{
                             padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
@@ -451,15 +523,56 @@ export default function ReseauTab({ journal, ajouterJournal, clientsConnectes, s
                           </select>
                         )}
                       </div>
-                      <button
-                        onClick={() => deconnecterClientReseau(c.connexionId)}
-                        style={{
-                          alignSelf: 'flex-start', marginTop: 6, padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
-                          border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
-                        }}
-                      >
-                        {t('gmMode.reseau.deconnecterJoueur')}
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        <button
+                          onClick={() => deconnecterClientReseau(c.connexionId)}
+                          style={{
+                            padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                            border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
+                          }}
+                        >
+                          {t('gmMode.reseau.deconnecterJoueur')}
+                        </button>
+                        {/* Coupe le dialogue entre PJ pour CE joueur (voir 'message-pj' dans
+                            reseauProtocole.ts) — ses messages restent journalisés ici (modération) mais ne
+                            sont plus relayés aux autres joueurs tant que c'est actif. */}
+                        <button
+                          onClick={() => setDialoguesCoupes(prev => {
+                            const next = new Set(prev)
+                            if (next.has(c.idPJ)) next.delete(c.idPJ); else next.add(c.idPJ)
+                            return next
+                          })}
+                          title={dialoguesCoupes.has(c.idPJ) ? t('gmMode.reseau.reactiverDialogueTitle') : t('gmMode.reseau.couperDialogueTitle')}
+                          style={{
+                            padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 15,
+                            border: dialoguesCoupes.has(c.idPJ) ? '1px solid rgba(190,170,230,0.5)' : `1px solid ${SECTION_BORDER}`,
+                            background: dialoguesCoupes.has(c.idPJ) ? 'rgba(190,170,230,0.15)' : 'transparent',
+                            color: dialoguesCoupes.has(c.idPJ) ? 'rgba(210,190,255,0.95)' : 'rgba(245,236,215,0.5)',
+                          }}
+                        >
+                          {dialoguesCoupes.has(c.idPJ) ? '🔇' : '🔊'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Dialogue entre PJ (voir 'message-pj' dans reseauProtocole.ts) — journal SÉPARÉ du
+                  journal de jeu principal (ci-dessus), pour que le MJ puisse garder un œil sur ce que se
+                  disent les joueurs (modération) sans le noyer dans le reste des événements réseau. */}
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(190,170,230,0.9)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>
+                {t('gmMode.reseau.dialoguePJTitre')}
+              </div>
+              <div style={{
+                border: '1px solid rgba(190,170,230,0.25)', borderRadius: 6, padding: 10, maxHeight: 200,
+                overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4,
+                background: 'rgba(0,0,0,0.2)', fontFamily: 'monospace', fontSize: 14,
+              }}>
+                {dialoguePJ.length === 0
+                  ? <span style={{ opacity: 0.4 }}>{t('gmMode.reseau.dialoguePJVide')}</span>
+                  : dialoguePJ.map(l => (
+                    <div key={l.id} style={{ color: l.categorie ? COULEUR_JOURNAL[l.categorie] : 'rgba(245,236,215,0.85)' }}>
+                      {l.texte}
                     </div>
                   ))}
               </div>

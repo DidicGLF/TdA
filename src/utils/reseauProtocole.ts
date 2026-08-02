@@ -50,11 +50,13 @@ export type MessageReseau =
   // connexion WebSocket, elle, reste ouverte côté joueur (qui n'a donc aucune raison de renvoyer son
   // identification de lui-même). Diffusé à chaque (re)montage de l'écoute réseau côté MJ.
   | { type: 'qui-etes-vous' }
-  // MJ → UN joueur en particulier (voir envoyerAClientReseau, déjà existant au niveau transport) :
-  // message privé, invisible des autres joueurs connectés — contrairement au "message à tous" qui reste
-  // du texte brut non protocolaire. Affiché dans le journal du panneau réseau du joueur ET signale une
-  // notification tant que le panneau n'a pas été rouvert (voir messageNonLu dans useReseauClient).
-  | { type: 'message-mj'; texte: string }
+  // MJ → un joueur (privé, voir envoyerAClientReseau) ou tous (diffusion, voir envoyerATousReseau) — le
+  // choix du transport se fait côté MJ (ReseauTab.tsx), diffusion ci-dessous ne fait que permettre à
+  // chaque bout (joueur ET MJ lui-même, dans son propre journal) de savoir lequel c'était pour bien le
+  // taguer. Absent = privé (rétrocompatible avec l'ancien format, sans le champ). Affiché dans le journal
+  // du panneau réseau du joueur ET signale une notification tant que le panneau n'a pas été rouvert (voir
+  // messageNonLu dans useReseauClient).
+  | { type: 'message-mj'; texte: string; diffusion?: 'tous' }
   // Joueur → MJ : réponse au message privé (ou tout texte libre) — symétrique de 'message-mj'. Affiché
   // dans le journal du MJ avec le nom du PJ (résolu via identitesRef, voir ReseauTab.tsx), là où l'ancien
   // "message de test" brut n'affichait qu'un id de connexion.
@@ -92,6 +94,24 @@ export type MessageReseau =
   // valeur reçue est appliquée localement sans repasser par les fonctions qui émettent ce message, pour
   // ne jamais faire d'aller-retour.
   | { type: 'pv-actualises'; pvActuels: number }
+  // PJ → MJ, à relayer (voir GameModePanel.tsx, le joueur choisit son destinataire dans la liste donnée
+  // par 'roster-pj' ci-dessous) — jamais traité comme un message AU MJ (contrairement à 'message-joueur').
+  // destinataireIdPJ présent = dialogue PRIVÉ, relayé à cette seule connexion ; absent = à TOUS les
+  // autres joueurs connectés (chat de groupe, comportement par défaut tant qu'aucun destinataire précis
+  // n'est choisi — demandé par Didic). Le MJ ne fait que journaliser à part (voir dialoguePJ dans
+  // GMDashboard.tsx) et retransmettre en 'message-pj-recu' (voir ReseauTab.tsx), sauf si l'expéditeur a
+  // été coupé (voir dialoguesCoupes) — pour que les PJ puissent discuter sans polluer le journal de jeu
+  // du MJ, tout en lui laissant un œil dessus (modération).
+  | { type: 'message-pj'; destinataireIdPJ?: string; texte: string }
+  // MJ → PJ : relais transparent d'un 'message-pj' reçu d'un autre joueur — expediteurNom pour l'affichage
+  // (le destinataire ne connaît ni l'idPJ ni le connexionId de qui lui parle).
+  | { type: 'message-pj-recu'; expediteurNom: string; texte: string }
+  // MJ → tous les joueurs, diffusé à chaque connexion/déconnexion/identification : liste des PJ
+  // actuellement connectés (nom + idPJ), pour que chacun puisse choisir un destinataire dans son propre
+  // client (voir rosterPJ dans useReseauClient.ts). Contient TOUS les PJ, chacun compris — plus simple à
+  // calculer côté MJ (une seule diffusion identique à tous) que de retirer le destinataire lui-même à
+  // chaque envoi ; chaque client filtre son propre idPJ localement à la réception.
+  | { type: 'roster-pj'; joueurs: { idPJ: string; nom: string }[] }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -115,7 +135,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique' | 'pvActualises'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique' | 'pvActualises' | 'dialoguePJ'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -135,4 +155,7 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   // Vert-de-gris neutre, ni la couleur "dégâts" (rouge/orange) ni "soin" — la valeur peut monter ou
   // descendre selon le cas (soin, mort par édition manuelle...), pas de connotation univoque possible.
   pvActualises: 'rgba(150,190,160,0.9)',
+  // Lavande — dialogue entre PJ (voir 'message-pj'/dialoguePJ), délibérément distinct de messageJoueur
+  // (turquoise, adressé AU MJ) : un canal différent, une couleur différente.
+  dialoguePJ: 'rgba(190,170,230,0.9)',
 }

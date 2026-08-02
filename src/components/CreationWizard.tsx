@@ -690,21 +690,24 @@ function TraitOption({ entry, onSelect }: { entry: TraitEntry; onSelect: (nom: s
   )
 }
 
-function TraitMagiqueModal({ nom, desc, onChange, onClose }: {
-  nom: string; desc: string
-  onChange: (nom: string, desc: string) => void
+function TraitMagiqueModal({ nom, desc, descSuperieur, superieur, onChange, onClose }: {
+  nom: string; desc: string; descSuperieur: string; superieur: boolean
+  onChange: (nom: string, desc: string, descSuperieur: string, superieur: boolean) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [localNom, setLocalNom] = React.useState(nom)
   const [localDesc, setLocalDesc] = React.useState(desc)
+  const [localDescSuperieur, setLocalDescSuperieur] = React.useState(descSuperieur)
+  const [localSuperieur, setLocalSuperieur] = React.useState(superieur)
 
   React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { onChange(localNom, localDesc); onClose() } }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { onChange(localNom, localDesc, localDescSuperieur, localSuperieur); onClose() } }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [localNom, localDesc, onChange, onClose])
+  }, [localNom, localDesc, localDescSuperieur, localSuperieur, onChange, onClose])
 
-  const handleClose = () => { onChange(localNom, localDesc); onClose() }
+  const handleClose = () => { onChange(localNom, localDesc, localDescSuperieur, localSuperieur); onClose() }
 
   const fieldStyle: React.CSSProperties = {
     width: '100%', background: 'rgba(255,255,255,0.04)',
@@ -746,12 +749,28 @@ function TraitMagiqueModal({ nom, desc, onChange, onClose }: {
             aria-label="Fermer"
           >×</button>
         </div>
-        <div style={{ padding: '16px 20px 20px' }}>
+        <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <textarea
             value={localDesc}
             onChange={e => setLocalDesc(e.target.value)}
             rows={6}
             style={{ ...fieldStyle, resize: 'vertical' }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--tdr-gold)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={localSuperieur}
+              onChange={e => setLocalSuperieur(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            {t('wizard.step5.talentSuperieurCheckbox')}
+          </label>
+          <textarea
+            value={localDescSuperieur}
+            onChange={e => setLocalDescSuperieur(e.target.value)}
+            rows={6}
+            placeholder={t('wizard.step5.talentSuperieurPlaceholder')}
+            style={{ ...fieldStyle, resize: 'vertical', opacity: localSuperieur ? 1 : 0.6 }}
           />
         </div>
       </div>
@@ -2411,7 +2430,12 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             value={character.talentMagique.nom}
             onChange={nom => {
               const traitEntry = traits.find(t => t.nom === nom)
-              onChange({ talentMagique: { nom, desc: traitEntry?.desc ?? character.talentMagique.desc } })
+              onChange({ talentMagique: {
+                nom,
+                desc: traitEntry?.desc ?? character.talentMagique.desc,
+                descSuperieur: traitEntry?.descSuperieur ?? character.talentMagique.descSuperieur ?? '',
+                superieur: character.talentMagique.superieur ?? false,
+              } })
             }}
           />
           <button
@@ -2443,11 +2467,16 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
         </div>
       </div>
 
+      {/* descSuperieur : repli sur le catalogue (par nom) si ce personnage n'a pas encore sa propre copie
+          — cas d'un personnage créé avant l'ajout de ce champ (voir la même note dans ChampsVerso.tsx),
+          sinon la modale s'ouvrirait vide malgré une version supérieure existante dans le catalogue. */}
       {showTraitModal && (
         <TraitMagiqueModal
           nom={character.talentMagique.nom}
           desc={character.talentMagique.desc}
-          onChange={(nom, desc) => onChange({ talentMagique: { nom, desc } })}
+          descSuperieur={character.talentMagique.descSuperieur || traits.find(t => stripExposants(t.nom) === stripExposants(character.talentMagique.nom))?.descSuperieur || ''}
+          superieur={!!character.talentMagique.superieur}
+          onChange={(nom, desc, descSuperieur, superieur) => onChange({ talentMagique: { nom, desc, descSuperieur, superieur } })}
           onClose={() => setShowTraitModal(false)}
         />
       )}

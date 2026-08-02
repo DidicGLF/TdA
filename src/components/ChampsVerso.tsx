@@ -9,6 +9,7 @@ import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
 import DraggableStaticImage from './DraggableStaticImage'
 import DraggableCursorRow from './DraggableCursorRow'
+import DraggableCheckboxRow from './DraggableCheckboxRow'
 import fondAvatar from '../assets/fond-avatar.webp'
 import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
@@ -18,6 +19,12 @@ import type { TooltipData } from './SheetTooltip'
 import { TRAITS_PSYCHOLOGIE, labelProfilPsychologie } from '../data/psychologieTraits'
 import { ModeImpressionContext } from '../hooks/modeImpression'
 import PastilleImpression from './PastilleImpression'
+
+// Un nom de talent peut porter un exposant/astérisque de renvoi (ex. "Flamme*") sans que ce soit le même
+// nom dans le catalogue — même utilitaire que EquipementModal.tsx/ChampsRecto.tsx pour comparer par nom
+// sans en tenir compte, sinon le repli catalogue de descSuperieur (voir plus bas) ne matcherait jamais un
+// talent qui porte un tel exposant.
+const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
 
 const FORMATION_CHECKBOXES: { nom: string; top: number; left: number }[] = [
   { nom: 'Armures légères',         top: 12.0, left: 54.5 },
@@ -92,7 +99,7 @@ export default function ChampsVerso({
       onToggleImpression: () => cbReserve(label, ov?.reserved === true, { imprimer: !imprime } as never),
     }
   }
-  const { data: rawData } = useGameData()
+  const { data: rawData, traits } = useGameData()
   const data = useTranslatedDescriptions(rawData)
   const [cbPos, setCbPos] = useState<Record<string, { top: number; left: number }>>(
     Object.fromEntries(FORMATION_CHECKBOXES.map(f => [f.nom, fieldPositions?.[f.nom] ?? { top: f.top, left: f.left }]))
@@ -289,7 +296,13 @@ export default function ChampsVerso({
           onChange={v => onChange({ description: v })}
           calibrate={calibrate} label="Description"
           containerRef={containerRef} onMoved={cb}
-          lineHeightPct={1.315} paddingTopPct={0.16}
+          // 1.205, pas 1.315 : mesuré directement sur feuille-verso.webp (pointillés de la réglure
+          // imprimée, espacés d'environ 42.3px pour une image de 3508px de haut, soit ~1.205% — 1.315
+          // donnait un interligne trop grand, d'où un texte qui dérive de plus en plus sous la réglure
+          // au fil des lignes (signalé par Didic sur Inventaire, mais le même écart affecte toute zone
+          // partageant cette valeur — Description, Talent magique desc — puisque toutes trois suivent la
+          // même réglure de fond, mesurée ici une seule fois pour les trois).
+          lineHeightPct={1.205} paddingTopPct={0.16}
         />
       )}
 
@@ -300,7 +313,7 @@ export default function ChampsVerso({
         onChange={v => onChange({ inventaire: v })}
         calibrate={calibrate} label="Inventaire"
         containerRef={containerRef} onMoved={cb}
-        lineHeightPct={1.315} paddingTopPct={0.15}
+        lineHeightPct={1.205} paddingTopPct={0.15}
       />}
 
       {/* === FORMATIONS MARTIALES === */}
@@ -546,9 +559,21 @@ export default function ChampsVerso({
         containerRef={containerRef} onMoved={cb}
         active={activeStep === 5}
       />}
+      {/* Texte affiché pour le talent magique : la version supérieure (2 pts, voir la case ci-dessous)
+          si la case est cochée, sinon la description de base. Repli sur le catalogue (par nom) si
+          descSuperieur n'est pas encore enregistré sur CE personnage — cas d'un personnage créé avant
+          l'ajout de ce champ (ou dont le talent a reçu sa version supérieure après coup) : sans ce repli,
+          la case resterait cochable mais n'afficherait jamais rien tant qu'on n'a pas rouvert la modale
+          du talent pour la resélectionner (signalé par Didic). Sert à la fois à l'infobulle de survol et
+          au champ affiché sur la fiche (voir plus bas). */}
+      {(() => {
+        const descAffichee = character.talentMagique.superieur
+          ? (character.talentMagique.descSuperieur || traits.find(tr => stripExposants(tr.nom) === stripExposants(character.talentMagique.nom))?.descSuperieur || character.talentMagique.desc)
+          : character.talentMagique.desc
+        return <>
       {/* Zone de survol du talent magique : elle doit suivre la position calibrée du champ et n'exister
           que sur la fiche où il est réellement posé. */}
-      {!calibrate && character.talentMagique.desc && visible('Talent magique')
+      {!calibrate && descAffichee && visible('Talent magique')
         && pageDe('Talent magique') === page && !fieldPositions?.['Talent magique']?.reserved && (
         <div
           style={{
@@ -561,7 +586,7 @@ export default function ChampsVerso({
           }}
           onMouseEnter={e => {
             const rect = containerRef.current!.getBoundingClientRect()
-            setTooltip({ nom: character.talentMagique.nom, desc: character.talentMagique.desc, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
+            setTooltip({ nom: character.talentMagique.nom, desc: descAffichee, x: (e.clientX - rect.left) / rect.width * 100, y: (e.clientY - rect.top) / rect.height * 100 })
           }}
           onMouseMove={e => {
             const rect = containerRef.current!.getBoundingClientRect()
@@ -571,16 +596,67 @@ export default function ChampsVerso({
         />
       )}
 
-      {/* === TALENT MAGIQUE DESC === */}
+      {/* === TALENT MAGIQUE DESC === : affiche/édite descSuperieur si la case "Talent supérieur" est
+          cochée, sinon desc (voir descAffichee ci-dessus) — un seul champ visible à la fois sur la
+          fiche, comme le veut la nouvelle case à cocher. */}
       {visible("Talent magique desc") && <DraggableTextarea
         {...fp("Talent magique desc", 27.3, 73.2, 44.4, 5.4)}
-        value={character.talentMagique.desc}
-        onChange={v => onChange({ talentMagique: { ...character.talentMagique, desc: v } })}
+        value={descAffichee}
+        onChange={v => onChange({ talentMagique: {
+          ...character.talentMagique,
+          ...(character.talentMagique.superieur ? { descSuperieur: v } : { desc: v }),
+        } })}
         calibrate={calibrate} label="Talent magique desc"
         containerRef={containerRef} onMoved={cb}
-        lineHeightPct={1.315} paddingTopPct={0.15}
+        lineHeightPct={1.205} paddingTopPct={0.15}
         autoShrink
       />}
+        </>
+      })()}
+
+      {/* === TALENT SUPÉRIEUR (case à cocher, 2 pts) === : nouveau champ sur la fiche retouchée, réservé
+          par défaut tant qu'il n'a pas de position calibrée (voir feedback_nouveaux_champs_en_reserve) —
+          même mécanique que les cases Psychologie juste au-dessus (reserved === true OU pas d'entrée du
+          tout = réservé). count=1 : un simple DraggableCheckboxRow à une seule case, pour profiter de sa
+          mécanique de calibrage/réserve/impression déjà éprouvée plutôt que d'en écrire une nouvelle. */}
+      {(() => {
+        const label = 'Talent supérieur'
+        const cfp = fieldPositions?.[label]
+        const rTop = cfp?.top ?? 20, rLeft = cfp?.left ?? 95
+        const rStepX = cfp?.width ?? 1.0, rStepY = cfp?.height ?? 0
+        const cbRowMovedSup = onCheckboxRowMoved ?? (() => {})
+        if (cfp?.reserved === true || !cfp) {
+          if (!calibrate || !reservePortalTarget) return null
+          const venuDAilleurs = pageDe(label) !== page
+          return createPortal(
+            <div onClick={() => cbReserve(label, false, { top: rTop, left: rLeft, width: rStepX, height: rStepY, page })}
+              title={venuDAilleurs ? `Placer sur cette fiche (vient du ${pageDe(label)})` : 'Placer sur la feuille'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: 'rgba(160,90,230,0.18)', border: '1px solid rgba(160,90,230,0.6)',
+                color: 'rgba(225,205,255,0.95)', fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
+                padding: '4px 9px', borderRadius: 4, userSelect: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+              {label}
+              {venuDAilleurs && <span style={{ opacity: 0.6, fontSize: 10 }}>({pageDe(label) === 'recto' ? 'R' : 'V'})</span>}
+            </div>,
+            reservePortalTarget,
+          )
+        }
+        if (pageDe(label) !== page) return null
+        return (
+          <DraggableCheckboxRow
+            label={label} top={rTop} left={rLeft} perRow={1} stepX={rStepX} stepY={rStepY}
+            count={1} checkedCount={character.talentMagique.superieur ? 1 : 0}
+            onValueChange={v => onChange({ talentMagique: { ...character.talentMagique, superieur: v > 0 } })}
+            calibrate={calibrate} containerRef={containerRef}
+            onGridChange={(l, t, lf, pr, sx, sy) => cbRowMovedSup(l, t, lf, pr, sx, sy)}
+            onReserveToggle={r => cbReserve(label, r, { top: rTop, left: rLeft, width: rStepX, height: rStepY, page })}
+            imprime={cfp?.imprimer ?? true}
+            onToggleImpression={() => cbReserve(label, cfp?.reserved === true, { imprimer: !(cfp?.imprimer ?? true) } as never)}
+          />
+        )
+      })()}
 
       {/* === TRÉSORERIE (or/argent/cuivre/gemmes) === : "Trésorerie" garde sa clé de calibrage
           d'origine (réutilise la position déjà calée par Didic) mais affiche désormais l'or — d'où le
@@ -617,6 +693,10 @@ export default function ChampsVerso({
         value={character.gemmes} onChange={v => onChange({ gemmes: v })}
         calibrate={calibrate} label="Gemmes"
         containerRef={containerRef} onMoved={cb}
+        // Même réglure que Description/Inventaire/Talent magique desc (mesurée sur feuille-verso.webp,
+        // voir leur note) — n'avait jusqu'ici aucun alignement du tout (ni lineHeightPct ni
+        // paddingTopPct), demandé par Didic.
+        lineHeightPct={1.205} paddingTopPct={0.15}
       />}
 
       {/* === NOM DU PERSONNAGE (répété depuis le recto) === : ancien champ "Nom du joueur", absent de la

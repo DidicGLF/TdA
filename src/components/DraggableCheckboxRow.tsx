@@ -191,27 +191,35 @@ export default function DraggableCheckboxRow({
           }}
         >
           {label}
-          <span title="Cases par ligne" style={{ display: 'flex', alignItems: 'center', gap: 1, paddingLeft: 3, borderLeft: '1px solid rgba(255,255,255,0.35)' }}>
-            ×
-            <input type="number" min={1} value={perRow}
-              onMouseDown={e => e.stopPropagation()}
-              onChange={e => commitGrid(Math.max(1, parseInt(e.target.value) || 1), stepX, stepY)}
-              style={inputStyle} />
-          </span>
-          <span title="Espacement horizontal (%)" style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            ↔
-            <input type="number" step={0.1} value={stepX}
-              onMouseDown={e => e.stopPropagation()}
-              onChange={e => commitGrid(perRow, parseFloat(e.target.value) || 0.1, stepY)}
-              style={inputStyle} />
-          </span>
-          <span title="Espacement vertical (%)" style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            ↕
-            <input type="number" step={0.1} value={stepY}
-              onMouseDown={e => e.stopPropagation()}
-              onChange={e => commitGrid(perRow, stepX, parseFloat(e.target.value) || 0.1)}
-              style={inputStyle} />
-          </span>
+          {/* Cases par ligne/espacements : n'ont aucun effet avec une seule case (une seule ligne, une
+              seule colonne, quels que soient perRow/stepX/stepY) — masqués pour ne pas laisser croire
+              qu'il s'agit d'une rangée de plusieurs cases à configurer (retour de Didic sur "Talent
+              supérieur", un simple champ à une case). */}
+          {count > 1 && (
+            <>
+              <span title="Cases par ligne" style={{ display: 'flex', alignItems: 'center', gap: 1, paddingLeft: 3, borderLeft: '1px solid rgba(255,255,255,0.35)' }}>
+                ×
+                <input type="number" min={1} value={perRow}
+                  onMouseDown={e => e.stopPropagation()}
+                  onChange={e => commitGrid(Math.max(1, parseInt(e.target.value) || 1), stepX, stepY)}
+                  style={inputStyle} />
+              </span>
+              <span title="Espacement horizontal (%)" style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                ↔
+                <input type="number" step={0.1} value={stepX}
+                  onMouseDown={e => e.stopPropagation()}
+                  onChange={e => commitGrid(perRow, parseFloat(e.target.value) || 0.1, stepY)}
+                  style={inputStyle} />
+              </span>
+              <span title="Espacement vertical (%)" style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                ↕
+                <input type="number" step={0.1} value={stepY}
+                  onMouseDown={e => e.stopPropagation()}
+                  onChange={e => commitGrid(perRow, stepX, parseFloat(e.target.value) || 0.1)}
+                  style={inputStyle} />
+              </span>
+            </>
+          )}
           {onReserveToggle && (
             <span
               onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(true) }}

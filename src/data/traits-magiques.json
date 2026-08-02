@@ -1,22 +1,47 @@
 [
   {
     "nom": "Détection de la magie",
-    "desc": "Pour une action d'attaque, le mystique se concentre et détecte la présence de toute inscription, aura ou objet magique situé(e) dans la pièce où il se trouve (ou dans les 15 mètres autour de lui)."
+    "desc": "Pour une action d'attaque, le mystique se concentre et détecte la présence de toute inscription, aura ou objet magique situé(e) dans la pièce où il se trouve (ou dans les 15 mètres autour de lui).",
+    "descSuperieur": "En réussissant un test d’INT difficulté 20, le mystique peut détecter instinctivement la présence de toute inscription, aura ou objet magique situé(e) dans la pièce où il se trouve (ou dans les 15 mètres autour de lui) sans avoir besoin de le rechercher activement.\nDe plus, la réussite d’un test d’INT difficulté 25, lui peut identifier la nature exacte ainsi que la liste des effets de tout objet ou aura magique. En cas d’échec, il doit attendre 24h avant de renouveler son examen."
   },
   {
     "nom": "Flamme",
-    "desc": "Pour une action gratuite et tant qu'il le souhaite, le mystique fait apparaître dans la paume de sa main une petite flamme, à peine assez intense pour éclairer une zone dans un rayon de 5 mètres. Il peut l'utiliser pour mettre le feu à des matières inflammables ou porter une attaque de contact — pour une action d'attaque — à un adversaire en utilisant son score d'attaque magique et lui infligeant 1d6 DM."
+    "desc": "Pour une action gratuite et tant qu'il le souhaite, le mystique fait apparaître dans la paume de sa main une petite flamme, à peine assez intense pour éclairer une zone dans un rayon de 5 mètres. Il peut l'utiliser pour mettre le feu à des matières inflammables ou porter une attaque de contact pour une action d'attaque — à un adversaire en utilisant son score d'attaque magique et lui infligeant 1d6 DM.",
+    "descSuperieur": "Pour une action gratuite, le mystique fait apparaître une flamme impressionnante. Elle mesure jusqu’à 30 cm de haut et peut éclairer une zone de 10 mètres de diamètre. Il peut l’utiliser pour mettre le feu à des matières inflammables ou pour une action d’attaque magique, porter une attaque de contact infligeant 2d10 DM ou la projeter sur un ennemi jusqu’à une distance de 5 mètres en infligeant 1d10 DM de feu en cas de réussite. Le mystique peut révoquer sa flamme au prix d’une action de mouvement."
   },
   {
     "nom": "Inspiration",
-    "desc": "Au prix d'une action d'attaque, le mystique désigne un allié à moins de 10 mètres et lui octroie un bonus de +1 à tous ses tests pendant [2 + Mod. SAG] tours. Il peut lancer une inspiration à chaque tour mais ne peut maintenir plus de [1 + Mod. INT] inspirations à la fois (minimum 1)."
+    "desc": "Au prix d'une action d'attaque, le mystique désigne un allié à moins de 10 mètres et lui octroie un bonus de +1 à tous ses tests pendant [2 + Mod. SAG] tours. Il peut lancer une inspiration à chaque tour mais ne peut maintenir plus de [1 + Mod. INT] inspirations à la fois (minimum 1).",
+    "descSuperieur": "Au prix d’une action d’attaque, le mystique désigne un allié à moins de 10 mètres et lui octroie un bonus de + [Mod. d’INT] / 2 (arrondi au supérieur) aux DM et à tous ses tests pendant [2 + Mod. SAG] tours. Il peut lancer une inspiration à chaque tour mais ne peut maintenir plus de [1 + Mod. INT] inspirations à la fois (minimum 1)."
   },
   {
     "nom": "Lumières dansantes",
-    "desc": "Au prix d'une action de mouvement, le mystique fait apparaître trois petites sphères de lumière de la couleur de son choix lévitant autour de son corps. Elles éclairent une zone dans un rayon de 20 mètres et persistent aussi longtemps que le mystique le souhaite. Le moindre DM subi rompt la concentration et les fait disparaître."
+    "desc": "Au prix d'une action de mouvement, le mystique fait apparaître trois petites sphères de lumière de la couleur de son choix lévitant autour de son corps. Elles éclairent une zone dans un rayon de 20 mètres et persistent aussi longtemps que le mystique le souhaite. Le moindre DM subi rompt la concentration et les fait disparaître.",
+    "descSuperieur": "Au prix d’une action de mouvement, le mystique fait apparaître trois petites sphères de lumière de la couleur de son choix lévitant autour d’une cible différente. Les sphères éclairent une zone dans un rayon de 20 mètres et persistent aussi longtemps que le mystique le souhaite. Chacune reste attachée à la cible, même si cette dernière se déplace, et peut être éloignée d’une distance maximale de [Mod. d’INT] x 200 mètres du mystique (minimum 200) avant de disparaître.\nLe mystique connaît instinctivement l’emplacement de chacune de ses sphères dans la limite de la portée du talent. Il peut altérer l’intensité de l’éclairage de chaque sphère - les faisant passer d’un éclat presque éblouissant jusqu’à l’extinction de la lumière. Le moindre DM subi rompt la concentration et les fait disparaître."
   },
   {
     "nom": "Projectile de force",
-    "desc": "Pour une action d'attaque, le mystique choisit une cible visible à moins de 50 mètres et projette une onde de choc qui la touche automatiquement, lui infligeant 1d4 DM. Le projectile de force est presque invisible et n'émet aucun son lorsqu'il file dans l'air."
+    "desc": "Pour une action d'attaque, le mystique choisit une cible visible à moins de 50 mètres et projette une onde de choc qui la touche automatiquement, lui infligeant 1d4 DM. Le projectile de force est presque invisible et n'émet aucun son lorsqu'il file dans l'air.",
+    "descSuperieur": "Pour une action gratuite, le mystique choisit une cible visible à moins de 50 mètres et projette une onde de choc qui la touche automatiquement, lui infligeant 1d4 DM. Le projectile de force est presque invisible et n’émet aucun son lorsqu’il file dans l’air."
+  },
+  {
+    "nom": "Empathie",
+    "desc": "Au prix d’une action de mouvement, le mystique peut tenter de faire ressentir ses émotions à son interlocuteur et bénéficier d’un bonus de +2 aux tests de CHA liés aux interactions avec ce dernier (même les interactions non verbales ou en absence de langage commun). Il ne peut pas mentir sur ses sentiments (et ne peut donc tenter d’amadouer de la sorte une créature qui lui inspirerait le dégoût) et ne peut affecter ainsi qu’une seule créature par jour.",
+    "descSuperieur": "Au prix d’une action de mouvement, le mystique peut tenter de faire ressentir ses émotions à [Mod. d’INT] + 2 (minimum 2) créatures et bénéficier d’un bonus de +5 aux tests de CHA liés aux interactions avec ce dernier (même les interactions non verbales ou en absence de langage commun). Il ne peut pas mentir sur ses sentiments (et ne peut donc tenter d’amadouer de la sorte une créature qui lui inspirerait le dégoût) et ne peut affecter ainsi qu’une seule créature par jour."
+  },
+  {
+    "nom": "Paumes électriques",
+    "desc": "Au prix d’une action d’attaque, le mystique peut électrifier la paume de ses mains, produisant de petits arcs et décharges électriques pour une durée de [3 + Mod. SAG] tours. Dans ces conditions, ses attaques à mains nues infligent des DM létaux et bénéficient d’un bonus de +1d4 DM électriques. De plus, il bénéficie d’un bonus de +2 aux tests d’attaque de contact contre des adversaires équipés d’armures métalliques.",
+    "descSuperieur": "Au prix d’une action d’attaque, le mystique peut électrifier la paume de ses mains, produisant de petits arcs et décharges électriques pour une durée de [3 + Mod. SAG] tours. Dans ces conditions, ses attaques à mains nues et de ses armes infligent des DM létaux et bénéficient d’un bonus de +1d4 DM électriques. De plus, il bénéficie d’un bonus de +2 aux tests d’attaque de contact contre des adversaires équipés d’armures métalliques.\nLes adversaires touchés par les paumes électriques du mystique sont engourdis, et subissent un malus de -2 à tous leurs tests pendant un tour."
+  },
+  {
+    "nom": "Perception funèbre",
+    "desc": "Le mystique est capable de sentir en permanence la présence d’esprits de défunts, de fantômes ou de manifestations invisibles de créatures issues d’autres plans d’existence dans une zone de 50 mètres de diamètre autour de lui. Il n’est pas capable de les voir, de les situer ni de communiquer avec. Il bénéficie d’un bonus de +2 aux tests de SAG contre les embuscades liées à ces créatures.",
+    "descSuperieur": "Le mystique est capable de voir en permanence la présence d’esprits de défunts, de fantômes ou de manifestations invisibles de créatures issues d’autres plans d’existence dans une zone de 50 mètres de diamètre autour de lui. Il peut communiquer avec ces derniers - s’ils le souhaitent. Il bénéficie d’un bonus de +2 aux tests de SAG contre les embuscades et de +2 en DEF contre toutes les attaques et les sorts liés à ces créatures."
+  },
+  {
+    "nom": "Toucher apaisant",
+    "desc": "Le mystique a un don pour soulager les douleurs et les maux – que ce soit à l’aide de massage ou d’une simple apposition des mains. Lorsqu’un allié utilise un PR pour regagner des PV, il bénéficie d’un bonus de +1 au jet de DV si le mystique a pu passer une minute à le manipuler. Le bonus ne peut s’appliquer à la propre récupération du mystique.",
+    "descSuperieur": "Le mystique a un don pour soulager les douleurs et les maux – que ce soit à l’aide de massage ou d’une simple apposition des mains. Lorsqu’un allié utilise un PR pour regagner des PV, il bénéficie d’un bonus de +2 au jet de DV et + son [Mod. SAG] (minimum 1) PM si le mystique a pu passer une minute à le manipuler. Le bonus ne peut s’appliquer à la propre récupération du mystique."
   }
 ]

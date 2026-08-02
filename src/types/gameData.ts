@@ -41,7 +41,11 @@ export type Grant =
 
 export type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 export type DescMap = Record<string, RangEntry[]>
-export type TraitEntry = { nom: string; desc: string }
+// descSuperieur : uniquement pertinent pour les Talents magiques (pas les traits raciaux, qui
+// réutilisent le même type) — sur la nouvelle fiche, une case à cocher transforme le talent en "Talent
+// supérieur" pour 2 pts ; décrit la version améliorée, affichée à la place de desc quand la case est
+// cochée côté personnage (voir Character.talentMagique).
+export type TraitEntry = { nom: string; desc: string; descSuperieur?: string }
 // Entrée du catalogue des voies (voies.json) : uniquement les métadonnées de classement. Le contenu
 // des rangs (nom+desc de chaque rang) vit à part, dans DescMap, indexé par le même nom.
 export type VoieEntry = { nom: string; famille: string; categorie: string }

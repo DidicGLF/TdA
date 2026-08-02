@@ -81,6 +81,11 @@ export interface ActiveDotPersisted {
 export interface TraitMagique {
   nom: string
   desc: string
+  // Case "Talent supérieur" (2 pts) sur la nouvelle fiche — cochée, la fiche affiche descSuperieur
+  // ci-dessous à la place de desc. descSuperieur : texte de la version améliorée, prérempli depuis le
+  // catalogue (traits-magiques.json) à la sélection du talent, éditable comme desc.
+  superieur?: boolean
+  descSuperieur?: string
 }
 
 export interface Arme {
