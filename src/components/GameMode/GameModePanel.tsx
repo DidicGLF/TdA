@@ -187,6 +187,9 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   // handleManualHeal) — la touche Entrée valide alors directement depuis ce même champ.
   const healInputRef = useRef<HTMLInputElement>(null)
   const [dmInput, setDmInput] = useState('')
+  // Nombre de dés à lancer pour les jets rapides (section dés bruts, voir BARE_DICE) — ex. taper "6"
+  // puis cliquer d8 lance 6d8 d'un coup plutôt qu'un seul d8. Vide/invalide = 1 (comportement inchangé).
+  const [nbDesInput, setNbDesInput] = useState('')
   const [dotAmountInput, setDotAmountInput] = useState('')
   const [dotDurationInput, setDotDurationInput] = useState('')
   const [dotTypeInput, setDotTypeInput] = useState('')
@@ -459,6 +462,22 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     const rollDisplay = av ? `[${rolls.join(',')}]→${r}` : undefined
     pushResult({ label, formula, sides, roll: r, modifier, boost, boostLabel, total, stat, flash: false, rollDisplay })
   }, [activeBoosts, statsAvantage, pushResult])
+
+  // Jets rapides (section dés bruts, voir BARE_DICE) — plusieurs dés identiques d'un coup selon
+  // nbDesInput, sans passer par roll() qui porte toute la mécanique avantage/boost/stat propre aux jets
+  // de caractéristique, hors de propos ici (juste additionner N dés bruts).
+  const rollQuick = useCallback((sides: number) => {
+    const nb = Math.max(1, parseInt(nbDesInput, 10) || 1)
+    const rolls = Array.from({ length: nb }, () => Math.floor(Math.random() * sides) + 1)
+    const total = rolls.reduce((s, v) => s + v, 0)
+    pushResult({
+      label: `${nb}d${sides}`, formula: `${nb}d${sides}`, sides, roll: total, modifier: null, total,
+      flash: false, rollDisplay: nb > 1 ? `[${rolls.join(',')}]` : undefined,
+    })
+    // Revient à vide (donc 1 dé par défaut) une fois le jet fait, plutôt que de garder le dernier nombre
+    // saisi — évite de relancer 6d8 par mégarde en cliquant un autre bouton dé juste après.
+    setNbDesInput('')
+  }, [nbDesInput, pushResult])
 
   const rollDmFormula = (dm: string): { formula: string; total: number; display: string } => {
     const statValues: Record<string, number> = {
@@ -1156,10 +1175,12 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                     <select
                       value={dialoguePJCible}
                       onChange={e => setDialoguePJCible(e.target.value)}
-                      style={{ padding: '5px 8px', borderRadius: 4, border: '1px solid rgba(190,170,230,0.3)', background: 'rgba(0,0,0,0.25)', color: PARCHMENT, fontSize: 12 }}
+                      // Fond opaque, pas rgba : voir la note sur le <select> des dégâts sur la durée
+                      // plus bas — même correctif, même bug rapporté sur cette liste.
+                      style={{ padding: '5px 8px', borderRadius: 4, border: '1px solid rgba(190,170,230,0.3)', background: 'var(--tdr-dark)', color: PARCHMENT, fontSize: 12 }}
                     >
-                      <option value="">{t('gameMode.reseau.dialoguePJTousOption')}</option>
-                      {reseau.rosterPJ.map(j => <option key={j.idPJ} value={j.idPJ}>{j.nom}</option>)}
+                      <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gameMode.reseau.dialoguePJTousOption')}</option>
+                      {reseau.rosterPJ.map(j => <option key={j.idPJ} value={j.idPJ} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{j.nom}</option>)}
                     </select>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <input
@@ -1427,10 +1448,13 @@ export default function GameModePanel({ character, descriptions, onChange, resea
             <select
               value={dotTypeInput}
               onChange={e => setDotTypeInput(e.target.value)}
-              style={{ height: 34, flexShrink: 0, boxSizing: 'border-box', padding: '4px 6px', borderRadius: 4, fontSize: 13, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+              // Fond opaque, pas rgba : sur Windows, la liste déroulante d'un <select> est un popup natif
+              // hors de la page — un fond translucide y est composité sur blanc au lieu du thème sombre
+              // (même correctif déjà appliqué ailleurs, ex. CreatureDetail.tsx/AdversiteTab.tsx).
+              style={{ height: 34, flexShrink: 0, boxSizing: 'border-box', padding: '4px 6px', borderRadius: 4, fontSize: 13, background: 'var(--tdr-dark)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
             >
               {['', ...DAMAGE_TYPES].map(type => (
-                <option key={type || 'GENERIQUE'} value={type}>{type ? t(`gameMode.dmType${type}`) : t('gameMode.dmTypeGenerique')}</option>
+                <option key={type || 'GENERIQUE'} value={type} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{type ? t(`gameMode.dmType${type}`) : t('gameMode.dmTypeGenerique')}</option>
               ))}
             </select>
             {(() => {
@@ -1541,13 +1565,39 @@ export default function GameModePanel({ character, descriptions, onChange, resea
 
             {/* Colonne 1 : dés (ligne 1) + résultat (ligne 2) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-              {/* Ligne 1 : boutons dés */}
+              {/* Ligne 1 : boutons dés + compteur de dés à droite (voir rollQuick) — dans la même rangée
+                  plutôt qu'une ligne à part, pour ne pas creuser d'espace entre les dés et le résultat. */}
               <div style={{ flexShrink: 0, display: 'flex', gap: 4 }}>
                 {BARE_DICE.map(d => (
-                  <button key={d} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, aspectRatio: '1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => roll(d, `d${d}`, null)}>
+                  <button key={d} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, aspectRatio: '1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => rollQuick(d)}>
                     <DiceIcon sides={d} size={44} />
                   </button>
                 ))}
+                {/* Nombre de dés identiques à lancer d'un coup — vide/invalide = 1 (comportement inchangé
+                    de rollQuick). Champ toujours modifiable directement, +/- ne font qu'incrémenter sa
+                    valeur. */}
+                <div style={{ flexShrink: 0, width: 30, display: 'flex', flexDirection: 'column', gap: 2 }} title={t('gameMode.nbDesLabel')}>
+                  <button
+                    type="button"
+                    onClick={() => setNbDesInput(String(Math.max(1, (parseInt(nbDesInput, 10) || 1) + 1)))}
+                    style={{ flex: 1, minHeight: 0, padding: 0, borderRadius: 3, fontSize: 12, lineHeight: 1, cursor: 'pointer',
+                      border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD }}
+                  >+</button>
+                  <input
+                    type="number" min={1}
+                    value={nbDesInput}
+                    onChange={e => setNbDesInput(e.target.value)}
+                    placeholder="1"
+                    style={{ flex: 1, minHeight: 0, width: '100%', padding: 0, borderRadius: 3, fontSize: 13, textAlign: 'center',
+                      border: `1px solid ${SECTION_BORDER}`, background: 'rgba(0,0,0,0.3)', color: PARCHMENT, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNbDesInput(String(Math.max(1, (parseInt(nbDesInput, 10) || 1) - 1)))}
+                    style={{ flex: 1, minHeight: 0, padding: 0, borderRadius: 3, fontSize: 12, lineHeight: 1, cursor: 'pointer',
+                      border: `1px solid ${SECTION_BORDER}`, background: 'rgba(201,168,76,0.12)', color: GOLD }}
+                  >-</button>
+                </div>
               </div>
 
               {/* Ligne 2 : résultat */}

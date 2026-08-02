@@ -448,7 +448,14 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   }
 
   return (
-    <div style={{ position: 'relative', height: '100%' }}>
+    // overflow: hidden — sans lui, les deux tiroirs (Paramètres ici, Personnages dans CombatTab, tous
+    // deux position:absolute + translateX pour se cacher hors de leur conteneur quand fermés) restent
+    // dans le flux normal du document une fois translatés : un ascendant plus haut (GMDashboard) avec
+    // overflow-x défilable les compte alors dans sa largeur totale, créant une barre de défilement
+    // parasite en bas ET rendant le tiroir "fermé" atteignable (et donc ouvrable au survol) en défilant
+    // jusqu'à lui — rapporté par Didic sur le tiroir Paramètres (le tiroir Personnages, lui, se cache
+    // vers la gauche/X négatif, jamais atteignable par un défilement horizontal classique en LTR).
+    <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
       {backgroundLayer}
       {/* Zone de combat — décalée à gauche pour ne jamais passer sous la poignée du tiroir Paramètres
           (côté droit), même fermé. La colonne PJ de CombatTab a son propre tiroir à gauche, avec sa

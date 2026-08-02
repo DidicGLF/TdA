@@ -1114,6 +1114,7 @@
     "activate": "⚡ Activate",
     "chooseStatToBoost": "Choose the stat to boost:",
     "sufAtt": "ATK",
+    "nbDesLabel": "dice to roll",
     "sufDm": "DMG",
     "sufCoutPv": "HP cost",
     "sufCoutPm": "MP cost",

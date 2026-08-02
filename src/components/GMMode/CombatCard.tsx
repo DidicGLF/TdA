@@ -173,7 +173,11 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
             value={cibleId ?? null}
             onChange={id => onSetCible(id)}
             cibles={cibles}
-            monCamp={'creature'}
+            // CombatCard sert aussi bien une vraie créature ennemie qu'un compagnon (allié d'un PJ, voir
+            // pjProprietaireId dans CombatCreature/listerEntites) — était figé à 'creature' pour les deux,
+            // ce qui inversait les couleurs alliés/ennemis dans la liste de cibles d'un compagnon
+            // (rapporté par Didic : ses propres alliés apparaissaient en rouge, les ennemis en vert).
+            monCamp={combatant.pjProprietaireId ? 'pj' : 'creature'}
             labelAucune={t('gmMode.bataille.aucuneCible')}
             bordure={SECTION_BORDER}
           />
