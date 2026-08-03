@@ -319,7 +319,10 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     // mécaniquement ici.
     for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
       (rangData.grants ?? []).forEach((grant, gi) => {
-        if (grant.type !== 'BONUS_TEMP' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) return
+        // masqueSiAvancee manquait ici (présent sur la boucle des voies possédées en propre, plus haut) :
+        // une capacité élémentaliste EMPRUNTÉE (VOIE_RANG_CHOIX) dont l'avancée est accordée gardait sa
+        // version de base en plus de la version avancée, au lieu de la remplacer (signalé par Didic).
+        if (grant.type !== 'BONUS_TEMP' || (grant.avancee && !avanceeAccordee) || (grant.masqueSiAvancee && avanceeAccordee) || grant.minRang !== undefined) return
         const bonusValue = grant.formula ? (resolveFormula(grant.formula, character) ?? 0) : (grant.bonus ?? 0)
         out.push({ voieNom, rangIdx, grantIdx: gi, rangNom: rangData.nom, label: grant.label, bonus: bonusValue, formula: grant.formula, deDegats: grant.deDegats, deDegatsParArme: grant.deDegatsParArme, temporaire: grant.temporaire, cibles: grant.cibles, choix: grant.choix, cout_pv: grant.cout_pv, cout_pm: grant.cout_pm, coutCaracStat: grant.coutCaracStat, coutCaracValeur: grant.coutCaracValeur, usage: grant.usage, post_jet: grant.post_jet, precision: grant.precision, div2: grant.div2, immunite: grant.immunite })
       })
@@ -381,7 +384,8 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     }
     for (const { voieNom, rangIdx, rangData, avanceeAccordee } of rangsEmpruntes) {
       for (const grant of rangData.grants ?? []) {
-        if (grant.type !== 'ACTION' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+        // Voir la même note sur masqueSiAvancee dans la boucle BONUS_TEMP ci-dessus.
+        if (grant.type !== 'ACTION' || (grant.avancee && !avanceeAccordee) || (grant.masqueSiAvancee && avanceeAccordee) || grant.minRang !== undefined) continue
         out.push({ voieNom, rangIdx, rangNom: rangData.nom, label: grant.label, de: grant.de, dm: grant.dm, attType: grant.attType, activable: grant.activable, cout_pm: grant.cout_pm })
       }
     }

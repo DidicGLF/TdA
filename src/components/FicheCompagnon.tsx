@@ -5,7 +5,7 @@ import type { Character, CompagnonOverride } from '../types/character'
 import type { FieldPositions } from '../context/GameDataContext'
 import { useGameData } from '../context/GameDataContext'
 import { useCompagnonName } from '../hooks/useContentTranslation'
-import { resolveCompagnon } from '../utils/compagnons'
+import { resolveCompagnon, extraireNomCapacite } from '../utils/compagnons'
 import { useChampsFiche } from '../hooks/useChampsFiche'
 import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
@@ -53,6 +53,11 @@ export default function FicheCompagnon({
   const entry = catalogue.find(c => c.nom === nomCompagnon)
   const att = { contact: character.attaqueContact, distance: character.attaqueDistance, magique: character.attaqueMagique }
   const c = entry ? resolveCompagnon(entry, character.niveau, rang, att) : null
+  // Nom de la capacité spéciale extrait du texte catalogue (voir extraireNomCapacite) — pour l'afficher
+  // dans un champ séparé, positionnable ailleurs sur la fiche (demandé par Didic). Uniquement depuis le
+  // catalogue : une fois que le joueur tape sa propre saisie libre (ov.special, voir zoneTexte
+  // ci-dessous), il n'a plus besoin du marqueur [[...]], donc pas de ré-extraction sur son texte.
+  const { nom: nomCapacite, desc: descCapacite } = extraireNomCapacite(c?.capacites ?? '')
 
   // Saisies du joueur, indexées par nom (cf. Character.compagnonsFiches) — l'ancien format par
   // position (compagnonsOverrides) est migré une fois pour toutes au chargement (voir App.tsx).
@@ -142,14 +147,21 @@ export default function FicheCompagnon({
       {f({ label: 'Comp attaque', top: 44, left: 80, width: 8,  height: 4, value: ov.atk1bonus ?? c?.atk1Display ?? '', onChange: v => setOv('atk1bonus', v), align: 'center', readOnly: locked, reserveByDefault: true })}
       {f({ label: 'Comp DM',      top: 44, left: 90, width: 8,  height: 4, value: ov.atk1dm ?? c?.atk1dmDisplay ?? c?.attaque1?.dm ?? '', onChange: v => setOv('atk1dm', v), align: 'center', readOnly: locked, reserveByDefault: true })}
 
+      {/* Nom de la capacité spéciale — extrait du texte catalogue (voir extraireNomCapacite), pour être
+          placé séparément de sa description (demandé par Didic : certaines capacités ont un nom,
+          d'autres pas, jamais structuré côté catalogue jusqu'ici). Lecture seule comme "Comp nom" —
+          aucune saisie propre, la source reste le marqueur [[...]] dans Comp spécial/le catalogue. */}
+      {f({ label: 'Comp capacité nom', top: 58, left: 72, width: 44, height: 4, value: nomCapacite, onChange: () => {}, readOnly: true, reserveByDefault: true })}
+
       {/* Zones de texte libre */}
       {/* Comp spécial reçoit désormais le texte "Capacités spéciales" du catalogue (voir
           DescriptionsEditor.tsx → Compagnons) comme valeur par défaut — jamais affiché nulle part sur
           la fiche jusqu'ici, alors que la donnée était bien enregistrée (signalé par Didic : "le texte
           n'est plus là" après édition, alors qu'il manquait juste ce lien pour l'afficher). Toujours
-          modifiable par le joueur (ov.special), qui prend alors le pas sur le catalogue. Comp notes
-          reste un champ 100% libre, sans lien catalogue. */}
-      {zoneTexte('Comp spécial', 'special', 60, 72, 44, 18, c?.capacites)}
+          modifiable par le joueur (ov.special), qui prend alors le pas sur le catalogue — SANS
+          extraction de marqueur sur sa propre saisie (descCapacite ne nettoie que le texte catalogue,
+          voir plus haut). Comp notes reste un champ 100% libre, sans lien catalogue. */}
+      {zoneTexte('Comp spécial', 'special', 60, 72, 44, 18, descCapacite)}
       {zoneTexte('Comp notes',   'notes',   85, 72, 44, 12)}
 
       {/* Image du compagnon — DraggableImageField ne gère pas la réserve, on s'en charge ici. */}

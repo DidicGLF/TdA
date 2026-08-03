@@ -1713,10 +1713,18 @@
     "reserved": false
   },
   "Comp nom joueur": {
-    "top": 7.1,
+    "top": 7,
     "left": 50,
-    "width": 69.6,
-    "height": 9,
+    "width": 55,
+    "height": 8.3,
+    "page": "compagnons",
+    "reserved": false
+  },
+  "Comp capacité nom": {
+    "top": 73.8,
+    "left": 73.2,
+    "width": 43.4,
+    "height": 4,
     "page": "compagnons",
     "reserved": false
   }

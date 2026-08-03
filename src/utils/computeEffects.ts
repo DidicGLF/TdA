@@ -307,7 +307,11 @@ export function computeAvantages(character: Character, descriptions: DescMap): A
   }
   for (const { voieNom, rangIdx, rangData, avanceeAccordee } of getRangsEmpruntes(character, descriptions)) {
     for (const grant of rangData.grants ?? []) {
-      if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+      // masqueSiAvancee manquait ici (présent sur la boucle des voies possédées en propre, plus haut) :
+      // une capacité élémentaliste EMPRUNTÉE (VOIE_RANG_CHOIX) dont l'avancée est accordée gardait sa
+      // version de base en plus de la version avancée, au lieu de la remplacer (signalé par Didic,
+      // même bug que dans GameModePanel.tsx pour BONUS_TEMP/ACTION).
+      if (grant.type !== 'AVANTAGE' || (grant.avancee && !avanceeAccordee) || (grant.masqueSiAvancee && avanceeAccordee) || grant.minRang !== undefined) continue
       list.push({ voieNom, rangIdx, rangNom: rangData.nom, stat: grant.stat, lancer: grant.lancer ?? 2, garder: grant.garder ?? 1 })
     }
   }

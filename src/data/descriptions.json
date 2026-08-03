@@ -3739,7 +3739,8 @@
             "Voie de la puissance"
           ],
           "rangMax": 2,
-          "minRang": 4
+          "minRang": 4,
+          "avanceeGratuite": true
         }
       ]
     },

@@ -178,6 +178,20 @@ export function resolveCompagnon(
   }
 }
 
+// Capacités spéciales d'un compagnon (CompanionEntry.capacites) : simple texte libre, sans nom séparé
+// — certaines en ont un, d'autres non, jamais structuré. Convention d'auteur (DescriptionsEditor) :
+// un nom optionnel entre doubles crochets n'importe où dans le texte, ex. "[[Griffe empoisonnée]] Sur
+// un coup critique...", extrait ici pour alimenter un champ séparé sur la fiche (voir FicheCompagnon,
+// "Comp capacité nom") sans dupliquer la saisie ni casser les fiches déjà rédigées sans ce marqueur
+// (nom vide, desc = texte intégral inchangé). Ne s'applique qu'au texte du CATALOGUE : une fois que le
+// joueur tape sa propre saisie libre (CompagnonOverride.special), il n'a plus besoin de ce marqueur —
+// il peut placer le nom où il veut en tapant, voir FicheCompagnon.
+export function extraireNomCapacite(texte: string): { nom: string; desc: string } {
+  const m = texte.match(/\[\[([^\]]+)\]\]/)
+  if (!m) return { nom: '', desc: texte }
+  return { nom: m[1].trim(), desc: texte.replace(m[0], '').replace(/\n{3,}/g, '\n\n').trim() }
+}
+
 // Rang atteint dans la voie qui a octroyé ce compagnon — c'est lui qui détermine ses caractéristiques
 // évolutives (PV, initiative, dégâts). Extrait ici pour être partagé par le bloc du verso et les
 // fiches de compagnon dédiées, qui en avaient chacun besoin.
@@ -286,6 +300,8 @@ export function compagnonEnCreature(
       INT: ov.int ?? fmtMod(entry.int), SAG: ov.sag ?? fmtMod(entry.sag), CHA: ov.cha ?? fmtMod(entry.cha),
     },
     attaques: attaques.length > 0 ? attaques : undefined,
-    capacites: entry.capacites ? [{ nom: entry.nom, desc: entry.capacites }] : undefined,
+    // .desc nettoyé du marqueur [[Nom]] (voir extraireNomCapacite) — sinon affiché tel quel, crochets
+    // compris, sur la carte MJ (CombatCard.tsx, section Capacités).
+    capacites: entry.capacites ? [{ nom: entry.nom, desc: extraireNomCapacite(entry.capacites).desc }] : undefined,
   }
 }
