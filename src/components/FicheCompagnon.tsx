@@ -11,6 +11,7 @@ import DraggableTextarea from './DraggableTextarea'
 import DraggableImageField from './DraggableImageField'
 import SheetTooltip from './SheetTooltip'
 import type { TooltipData } from './SheetTooltip'
+import { BASE_FONT } from './SheetField'
 
 interface Props {
   character: Character
@@ -91,6 +92,38 @@ export default function FicheCompagnon({
         className="sheet-bg" style={{ width: '100%', display: 'block' }} draggable={false} />
 
       {/* Identité */}
+      {/* Nom donné par le joueur à SON compagnon (ov.nom) — remplace le titre "FICHE DE COMPAGNON" de
+          l'ancien fond, supprimé de feuille-compagnons.webp au profit de ce champ (nouvelle maquette
+          fournie par Didic). Distinct de "Comp nom" ci-dessous, qui reste le TYPE de compagnon (lecture
+          seule, catalogue) — ov.nom était déjà lu par compagnonEnCreature (combat.ts) pour afficher ce
+          nom personnalisé côté MJ/joueur, mais jusqu'ici sans aucun champ pour le saisir sur la fiche. */}
+      {f({ label: 'Comp nom joueur', top: 5, left: 30, width: 55, height: 5,
+        value: ov.nom ?? (c ? compagnonName(c.nom) : ''), onChange: v => setOv('nom', v),
+        readOnly: locked, reserveByDefault: true, align: 'center',
+        // Habillage fourni par Didic (maquette Photoshop) : Times New Roman gras #3a2008, 1re lettre
+        // légèrement plus grande que le reste (ratio 28/26,4 de la maquette). Taille absolue : PAS
+        // convertie depuis les pixels Photoshop (aucune conversion fiable n'existe entre la résolution
+        // du fichier source, 2480px, et les unités vw/zoom-scale de l'appli — calées sur la lisibilité à
+        // l'écran au zoom courant, pas sur le fichier source, voir SheetField/BASE_FONT) — calée à la
+        // place sur un multiple de BASE_FONT, la référence déjà utilisée par tous les autres champs de
+        // fiche, en net plus grand puisque ce champ remplace un gros titre ("FICHE DE COMPAGNON"),
+        // contrairement à un champ normal. Premier essai visuel à ajuster avec Didic une fois vu en jeu.
+        // Biseau interne + ombre portée Photoshop (lisse 10, angle 125°, élévation 30°, tons clairs
+        // blanc 50%/tons foncés noir 50%, ombre portée noire 70% distance 3px) : IMPOSSIBLE à reproduire
+        // à l'identique en CSS (Photoshop calcule un éclairage 3D par pixel sur le contour des lettres)
+        // — approximé ici par un empilement de text-shadow, décomposé dans la même direction (angle
+        // 125°, converti en vecteur d'écran (-0.574,-0.819) vers la lumière) : un reflet clair + une
+        // ombre sombre proches (biseau) et une 3e plus éloignée (ombre portée, distance 3px). Accepté
+        // explicitement par Didic comme approximation, pas un rendu identique.
+        specialStyle: {
+          fontFamily: "'Times New Roman', Times, serif",
+          fontWeight: 700,
+          color: '#3a2008',
+          textShadow: '-0.6px -0.8px 0.6px rgba(255,255,255,0.5), 0.6px 0.8px 0.6px rgba(0,0,0,0.5), 1.72px 2.46px 1px rgba(0,0,0,0.7)',
+          baseFontSizeVw: BASE_FONT * 2.5,
+          firstLetterFontSizeVw: BASE_FONT * 2.5 * (28 / 26.4),
+        },
+      })}
       {f({ label: 'Comp nom', top: 12, left: 30, width: 34, height: 4, value: c ? compagnonName(c.nom) : '', onChange: () => {}, readOnly: true, reserveByDefault: true })}
 
       {/* Caractéristiques */}

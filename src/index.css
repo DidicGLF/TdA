@@ -200,3 +200,11 @@ body {
   color: rgba(160, 90, 230, 0.55);
   opacity: 1;
 }
+
+/* Champ à habillage particulier (SheetField.specialStyle, ex. "Comp nom joueur") : ::first-letter ne
+   s'applique jamais à un <input> (seulement à du contenu de bloc), d'où le calque décoratif purement
+   visuel superposé à la vraie saisie (voir SheetField) qui porte cette classe. --fl-fs est posée en
+   style inline (recalculée avec le reste de la police, y compris le rétrécissement anti-débordement). */
+.tdr-field-special::first-letter {
+  font-size: var(--fl-fs, inherit);
+}

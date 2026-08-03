@@ -24,7 +24,7 @@ interface Props {
   // perdre le calibrage, ex. le champ "Trésorerie" qui affiche désormais l'or).
   label: string
   containerRef: RefObject<HTMLDivElement | null>
-  onMoved: (label: string, top: number, left: number, width?: number) => void
+  onMoved: (label: string, top: number, left: number, width?: number, height?: number) => void
   // Texte affiché (infobulle native, étiquette de réserve, étiquette de la poignée en calibrage) —
   // remplace `label` partout où il est fourni, sans toucher à l'identifiant de calibrage lui-même.
   title?: string
@@ -39,23 +39,45 @@ interface Props {
   reserved?: boolean
   onReserveToggle?: (reserved: boolean) => void
   reservePortalTarget?: HTMLElement | null
+  // Habillage particulier pour UN champ à part (ex. "Comp nom joueur" sur la fiche compagnon) — tous
+  // les autres champs de fiche restent sur le style commun (Crimson Text, taille auto, sans effet) tant
+  // qu'ils ne fournissent pas ce prop. Voir SheetField pour le détail du rendu (police/couleur/ombre
+  // fixes, 1re lettre agrandie via ::first-letter — nécessite un <div contentEditable>, pas un <input>,
+  // demandé par Didic pour que l'effet reste visible en tapant, pas seulement à l'impression/export).
+  specialStyle?: {
+    fontFamily: string
+    fontWeight: number | string
+    color: string
+    textShadow: string
+    baseFontSizeVw: number
+    firstLetterFontSizeVw: number
+  }
 }
 
 export default function DraggableField({
-  top, left, width: initWidth, height, value, onChange, type, align, active,
+  top, left, width: initWidth, height: initHeight, value, onChange, type, align, active,
   calibrate, label, containerRef, onMoved, title, readOnly, temporaire,
-  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression,
+  reserved, onReserveToggle, reservePortalTarget, imprime = true, onToggleImpression, specialStyle,
 }: Props) {
   const [pos, setPos] = useState({ top, left })
   const [width, setWidth] = useState(initWidth)
+  // Hauteur redimensionnable (voir handleResizeHeightMouseDown) — jusqu'ici fixée une fois pour toutes
+  // par le code (aucune poignée ne la touchait, contrairement à DraggableTextarea qui a toujours eu les
+  // deux) : un champ trop bas pour un texte agrandi (ex. "Comp nom joueur", voir FicheCompagnon.tsx)
+  // n'avait aucun moyen d'être élargi verticalement depuis le mode calibrage (signalé par Didic). Même
+  // valeur par défaut que SheetField (2.2) si aucune hauteur n'a jamais été calibrée.
+  const [height, setHeight] = useState(initHeight ?? 2.2)
   const dragging = useRef(false)
   const modeImpression = useContext(ModeImpressionContext)
-  // Lignes-repères affichées pendant un glisser accroché à un champ voisin (voir calculerAccroche) —
-  // null quand rien n'est accroché, ce qui fait aussi disparaître les lignes dès le relâchement.
-  const [guides, setGuides] = useState<{ v: number | null; h: number | null }>({ v: null, h: null })
+  // Lignes-repères affichées pendant un glisser accroché à un champ voisin OU au centre de la fiche
+  // elle-même (voir calculerAccroche) — null quand rien n'est accroché, ce qui fait aussi disparaître
+  // les lignes dès le relâchement. vCentre/hCentre : ligne bleue (centre de PAGE) plutôt qu'orange
+  // (alignement avec un voisin) — demandé par Didic pour repérer un champ centré sur la fiche.
+  const [guides, setGuides] = useState<{ v: number | null; h: number | null; vCentre: boolean; hCentre: boolean }>({ v: null, h: null, vCentre: false, hCentre: false })
 
   useEffect(() => { if (!dragging.current) setPos({ top, left }) }, [top, left])
   useEffect(() => { if (!dragging.current) setWidth(initWidth) }, [initWidth])
+  useEffect(() => { if (!dragging.current) setHeight(initHeight ?? 2.2) }, [initHeight])
 
   const handleDragMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -74,16 +96,16 @@ export default function DraggableField({
       // Accroche désactivée avec Shift (au cas où le calibreur veut positionner finement sans
       // s'accrocher malgré lui à un voisin proche) — pas Alt, souvent intercepté par le gestionnaire
       // de fenêtres Linux (Alt+glisser déplace la fenêtre chez GNOME/KDE), ce qui casserait le glisser.
-      const { left, top, guideV, guideH } = ev.shiftKey
-        ? { left: brutLeft, top: brutTop, guideV: null, guideH: null }
+      const { left, top, guideV, guideH, guideVCentrePage, guideHCentrePage } = ev.shiftKey
+        ? { left: brutLeft, top: brutTop, guideV: null, guideH: null, guideVCentrePage: false, guideHCentrePage: false }
         : calculerAccroche(containerRef.current!, handleEl, brutTop, brutLeft, width)
       setPos({ top, left })
-      setGuides({ v: guideV, h: guideH })
+      setGuides({ v: guideV, h: guideH, vCentre: guideVCentrePage, hCentre: guideHCentrePage })
     }
     const onUp = () => {
       dragging.current = false
-      setGuides({ v: null, h: null })
-      setPos(p => { onMoved(label, p.top, p.left, width); return p })
+      setGuides({ v: null, h: null, vCentre: false, hCentre: false })
+      setPos(p => { onMoved(label, p.top, p.left, width, height); return p })
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
     }
@@ -108,7 +130,35 @@ export default function DraggableField({
       const w = Math.max(1, +(startWidth + (ev.clientX - startX) / rect.width * 100).toFixed(1))
       setWidth(w)
       dragging.current = false
-      onMoved(label, pos.top, pos.left, w)
+      onMoved(label, pos.top, pos.left, w, height)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  // Symétrique de handleResizeMouseDown ci-dessus, sur l'axe vertical — même patron que
+  // DraggableTextarea.handleResizeHeightMouseDown (zones "Comp spécial"/"Comp notes"), qui avait déjà
+  // les deux poignées, contrairement à ce composant jusqu'ici limité à la largeur.
+  const handleResizeHeightMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragging.current = true
+    const startY = e.clientY
+    const startHeight = height
+
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const h = Math.max(1, +(startHeight + (ev.clientY - startY) / rect.height * 100).toFixed(1))
+      setHeight(h)
+    }
+    const onUp = (ev: MouseEvent) => {
+      const rect = containerRef.current!.getBoundingClientRect()
+      const h = Math.max(1, +(startHeight + (ev.clientY - startY) / rect.height * 100).toFixed(1))
+      setHeight(h)
+      dragging.current = false
+      onMoved(label, pos.top, pos.left, width, h)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
     }
@@ -147,6 +197,7 @@ export default function DraggableField({
         value={value} onChange={onChange} type={type} align={align} active={active}
         calibrate={calibrate} title={title} readOnly={readOnly} temporaire={temporaire}
         placeholder={calibrate && String(value ?? '') === '' ? majusculeInitiale(label) : undefined}
+        specialStyle={specialStyle}
       />
       {modeImpression && onToggleImpression && (
         <PastilleImpression imprime={imprime} onToggle={onToggleImpression} top={pos.top} left={pos.left} />
@@ -154,13 +205,14 @@ export default function DraggableField({
       {calibrate && guides.v !== null && (
         <div style={{
           position: 'absolute', top: 0, bottom: 0, left: `${guides.v}%`, width: 1,
-          background: 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
+          // Bleu = centré sur la fiche elle-même (50%), orange = aligné avec un champ voisin.
+          background: guides.vCentre ? 'rgba(60,150,255,0.95)' : 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
         }} />
       )}
       {calibrate && guides.h !== null && (
         <div style={{
           position: 'absolute', left: 0, right: 0, top: `${guides.h}%`, height: 1,
-          background: 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
+          background: guides.hCentre ? 'rgba(60,150,255,0.95)' : 'rgba(255,110,60,0.9)', zIndex: 39, pointerEvents: 'none',
         }} />
       )}
       {calibrate && (
@@ -203,8 +255,18 @@ export default function DraggableField({
               borderLeft: '1px solid rgba(255,255,255,0.35)',
               lineHeight: 1,
             }}
-            title="Redimensionner"
+            title="Largeur"
           >↔</span>
+          <span
+            onMouseDown={handleResizeHeightMouseDown}
+            style={{
+              cursor: 'ns-resize',
+              fontSize: 10,
+              paddingLeft: 2,
+              lineHeight: 1,
+            }}
+            title="Hauteur"
+          >↕</span>
           {onReserveToggle && (
             <span
               onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onReserveToggle(true) }}

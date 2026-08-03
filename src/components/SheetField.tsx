@@ -19,14 +19,32 @@ interface SheetFieldProps {
   temporaire?: boolean
   title?: string
   readOnly?: boolean
+  // Voir DraggableField — habillage réservé à un seul champ à part (ex. "Comp nom joueur").
+  specialStyle?: {
+    fontFamily: string
+    fontWeight: number | string
+    color: string
+    textShadow: string
+    baseFontSizeVw: number
+    firstLetterFontSizeVw: number
+  }
 }
 
-const BASE_FONT = 1.15  // vw
+// Exportée pour servir de référence à specialStyle.baseFontSizeVw (voir FicheCompagnon.tsx) : cette
+// taille "vw * zoom-scale" est calée sur la lisibilité à l'écran au zoom courant, PAS sur la résolution
+// du fichier source de la fiche (2480px) — aucune conversion fiable n'existe entre les deux, un champ à
+// habillage particulier doit donc se définir en multiple de cette référence, pas en pixels absolus.
+export const BASE_FONT = 1.15  // vw
 const MIN_FONT  = 0.45  // vw
+// Même ratio plancher (taille mini / taille de départ) que le système commun ci-dessus, réappliqué à
+// specialStyle.baseFontSizeVw/firstLetterFontSizeVw pour qu'un nom trop long rétrécisse au lieu de
+// déborder de sa boîte calibrée, comme n'importe quel autre champ de fiche.
+const MIN_RATIO = MIN_FONT / BASE_FONT
 
 export default function SheetField({
   top, left, width, height = 2.2,
   value, onChange, type = 'text', align = 'left', active = false, calibrate = false, title, readOnly = false, placeholder, temporaire,
+  specialStyle,
 }: SheetFieldProps) {
   // html2canvas ne reproduit pas fidèlement le rendu natif d'un <input> (texte constaté décalé/rogné
   // dans le PDF exporté — voir project_impression_pdf_bug) : dans le conteneur d'export, on affiche donc
@@ -35,6 +53,9 @@ export default function SheetField({
   const pdfExport = useContext(PdfExportContext)
   const ref = useRef<HTMLInputElement>(null)
   const refDiv = useRef<HTMLDivElement>(null)
+  // Calque décoratif du champ à habillage particulier (specialStyle) — voir plus bas : jamais focalisé
+  // (pointer-events: none), donc jamais de risque de perturber un curseur en le redessinant.
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   // calc(...vw * var(--zoom-scale, 1)) plutôt que Xvw seul : voir la note sur le conteneur zoomable
   // dans App.tsx. Boîte et police sont alors proportionnelles au même facteur (--zoom-scale ∝ zoom%),
@@ -42,6 +63,10 @@ export default function SheetField({
   // zoom sans avoir besoin d'être relancé quand zoom change SEUL — voir toutefois le ResizeObserver
   // plus bas pour le cas où la 1re mesure tombe avant que la mise en page soit stable.
   const ajusterPolice = () => {
+    // Champ à habillage particulier : sa police (input invisible + calque) est entièrement pilotée par
+    // ajusterPoliceSpeciale ci-dessous, jamais par cette logique générique (qui écraserait sinon la
+    // bonne taille avec BASE_FONT juste après, en pure perte).
+    if (specialStyle) return
     const el = pdfExport ? refDiv.current : ref.current
     if (!el) return
     el.style.fontSize = `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`
@@ -82,6 +107,51 @@ export default function SheetField({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfExport])
 
+  // Ajuste la police du calque décoratif de specialStyle (première tentative en contentEditable
+  // abandonnée : modifier le style d'un élément focalisé réinitialisait le curseur en cours de frappe
+  // sur WebKitGTK/Tauri-Linux — "les lettres s'affichent une par une mais le mot ne s'écrit pas",
+  // signalé par Didic). Le calque n'est JAMAIS focalisé (pointer-events: none plus bas), donc aucun
+  // risque à le redessiner à chaque frappe — la vraie saisie reste un <input> contrôlé classique,
+  // strictement identique à tous les autres champs de fiche, invisible mais bien réel par-dessous.
+  const ajusterPoliceSpeciale = () => {
+    if (!specialStyle) return
+    const el = overlayRef.current
+    if (!el || el.clientWidth === 0) return
+    let echelle = 1
+    const applique = () => {
+      el.style.fontSize = `calc(${specialStyle.baseFontSizeVw * echelle}vw * var(--zoom-scale, 1))`
+      el.style.setProperty('--fl-fs', `calc(${specialStyle.firstLetterFontSizeVw * echelle}vw * var(--zoom-scale, 1))`)
+    }
+    applique()
+    while (el.scrollWidth > el.clientWidth + 1 && echelle > MIN_RATIO) {
+      echelle = Math.max(MIN_RATIO, +(echelle - 0.05).toFixed(2))
+      applique()
+    }
+    el.style.lineHeight = `${el.clientHeight}px`
+    // Répercutée sur l'input réel (invisible) pour que son propre texte (donc la position native du
+    // curseur, calculée par le navigateur sur CE texte, jamais sur le calque) reste à une largeur
+    // proche de ce qu'affiche le calque — jamais identique au caractère près, la 1re lettre du calque
+    // restant plus grande que celle, uniforme, de l'input, mais suffisant pour rester cohérent à l'œil.
+    if (ref.current) ref.current.style.fontSize = el.style.fontSize
+  }
+
+  useLayoutEffect(() => {
+    ajusterPoliceSpeciale()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specialStyle, value, width, height])
+
+  // Même filet de sécurité que ajusterPolice/ResizeObserver plus haut (1re mesure trop précoce, image
+  // de fond pas encore mise en page) — répété ici car ce calque a sa propre logique de police.
+  useEffect(() => {
+    if (!specialStyle) return
+    const el = overlayRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => ajusterPoliceSpeciale())
+    ro.observe(el)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specialStyle])
+
   if (pdfExport) {
     return (
       <div
@@ -102,13 +172,89 @@ export default function SheetField({
           overflow: 'hidden',
           whiteSpace: 'nowrap',
           fontSize: `calc(${BASE_FONT}vw * var(--zoom-scale, 1))`,
-          fontFamily: "'Crimson Text', Georgia, serif",
-          color: '#1a1510',
+          fontFamily: specialStyle?.fontFamily ?? "'Crimson Text', Georgia, serif",
+          fontWeight: specialStyle?.fontWeight,
+          color: specialStyle?.color ?? '#1a1510',
+          textShadow: specialStyle?.textShadow,
           padding: '0 3px',
           boxSizing: 'border-box',
         }}
       >
         {value}
+      </div>
+    )
+  }
+
+  // Champ à habillage particulier : wrapper supplémentaire pour superposer l'input réel (invisible) et
+  // son calque décoratif à la même position — inutile pour tous les autres champs, qui gardent donc
+  // exactement leur structure d'origine (un seul <input> positionné) juste en dessous, pour ne rien
+  // changer d'autre sur le reste de l'appli.
+  if (specialStyle) {
+    return (
+      <div style={{ position: 'absolute', top: `${top}%`, left: `${left}%`, width: `${width}%`, height: `${height}%`, transform: 'translate(-50%, -50%)' }}>
+        <input
+          ref={ref}
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          readOnly={readOnly}
+          title={title}
+          className={temporaire ? "tdr-field tdr-temporaire" : "tdr-field"}
+          placeholder={placeholder}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            textAlign: align,
+            fontFamily: specialStyle.fontFamily,
+            fontWeight: specialStyle.fontWeight,
+            background: active ? 'rgba(201,168,76,0.18)' : 'transparent',
+            border: active
+              ? '1.5px solid rgba(201,168,76,0.7)'
+              : calibrate
+                ? '2px dashed rgba(160,90,230,0.95)'
+                : '1px solid transparent',
+            borderRadius: '2px',
+            // Le texte de CE champ (la vraie saisie) reste invisible, seul le calque décoratif
+            // ci-dessous (::first-letter, ombre, police) est montré — le curseur (caretColor) reste
+            // lui bien visible et suit fidèlement la position réelle de saisie.
+            color: 'transparent',
+            caretColor: specialStyle.color,
+            padding: '0 3px',
+            outline: 'none',
+            transition: 'background 0.2s, border 0.2s',
+          }}
+          onFocus={e => {
+            e.target.style.background = 'rgba(201,168,76,0.25)'
+            e.target.style.border = '1.5px solid rgba(201,168,76,0.9)'
+          }}
+          onBlur={e => {
+            e.target.style.background = active ? 'rgba(201,168,76,0.18)' : 'transparent'
+            e.target.style.border = active ? '1.5px solid rgba(201,168,76,0.7)' : calibrate ? '2px dashed rgba(160,90,230,0.95)' : '1px solid transparent'
+          }}
+        />
+        <div
+          ref={overlayRef}
+          aria-hidden
+          className="tdr-field-special"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            textAlign: align,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            fontFamily: specialStyle.fontFamily,
+            fontWeight: specialStyle.fontWeight,
+            color: specialStyle.color,
+            textShadow: specialStyle.textShadow,
+            padding: '0 3px',
+            boxSizing: 'border-box',
+            // Jamais interactif : les clics doivent traverser jusqu'à l'input réel juste en dessous,
+            // seul ce calque montre le rendu stylé (voir la note sur le useLayoutEffect plus haut).
+            pointerEvents: 'none',
+          }}
+        >
+          {value}
+        </div>
       </div>
     )
   }

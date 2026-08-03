@@ -9,6 +9,11 @@ export interface ResultatAccroche {
   top: number
   guideV: number | null
   guideH: number | null
+  // true quand la ligne-repère correspond au centre de LA FICHE elle-même (50%), pas à un alignement
+  // avec un champ voisin — sert à afficher cette ligne dans une couleur différente (bleu), demandé par
+  // Didic pour repérer facilement un champ centré horizontalement/verticalement sur la page.
+  guideVCentrePage: boolean
+  guideHCentrePage: boolean
 }
 
 const SEUIL = 0.4 // en % de la largeur/hauteur du conteneur
@@ -29,10 +34,30 @@ export function calculerAccroche(
   let snapLeft: number | null = null
   let guideV: number | null = null
   let meilleureDistV = SEUIL
+  let guideVCentrePage = false
 
   let snapTop: number | null = null
   let guideH: number | null = null
   let meilleureDistH = SEUIL
+  let guideHCentrePage = false
+
+  // Centre de la fiche elle-même (50%/50%) : testé en premier, sur le même barème que les voisins
+  // ci-dessous (le plus proche des deux l'emporte) — le champ se positionne par son propre centre
+  // (transform: translate(-50%,-50%)), donc left/top EST déjà ce centre, comparable tel quel.
+  const dCentreV = Math.abs(left - 50)
+  if (dCentreV < meilleureDistV) {
+    meilleureDistV = dCentreV
+    snapLeft = 50
+    guideV = 50
+    guideVCentrePage = true
+  }
+  const dCentreH = Math.abs(top - 50)
+  if (dCentreH < meilleureDistH) {
+    meilleureDistH = dCentreH
+    snapTop = 50
+    guideH = 50
+    guideHCentrePage = true
+  }
 
   for (const el of autres) {
     const oLeft = Number(el.dataset.calibLeft)
@@ -53,6 +78,7 @@ export function calculerAccroche(
         meilleureDistV = d
         snapLeft = left + (valAutre - valSoi)
         guideV = valAutre
+        guideVCentrePage = false
       }
     }
 
@@ -61,6 +87,7 @@ export function calculerAccroche(
       meilleureDistH = dTop
       snapTop = oTop
       guideH = oTop
+      guideHCentrePage = false
     }
   }
 
@@ -68,5 +95,6 @@ export function calculerAccroche(
     left: snapLeft ?? left,
     top: snapTop ?? top,
     guideV, guideH,
+    guideVCentrePage, guideHCentrePage,
   }
 }

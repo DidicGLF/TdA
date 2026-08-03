@@ -1711,5 +1711,13 @@
     "height": 2,
     "page": "recto",
     "reserved": false
+  },
+  "Comp nom joueur": {
+    "top": 7.1,
+    "left": 50,
+    "width": 69.6,
+    "height": 9,
+    "page": "compagnons",
+    "reserved": false
   }
 }
