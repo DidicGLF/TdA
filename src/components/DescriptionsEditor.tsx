@@ -129,6 +129,7 @@ type Grant =
   | { type: 'BONUS_TEMP'; label: string; bonus?: number; formula?: string; deDegats?: string; deDegatsParArme?: boolean; temporaire?: boolean; cibles: string[]; choix?: boolean; cout_pv?: string; cout_pm?: string; coutCaracStat?: string; coutCaracValeur?: number; usage?: string; post_jet?: boolean; precision?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean; div2?: boolean; immunite?: boolean }
   | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
   | { type: 'ACTION'; label: string; de: number; dm: string; attType?: 'contact' | 'distance' | 'magique'; activable?: boolean; cout_pm?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
+  | { type: 'ACTIONS_SUPP'; label: string; nombre?: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
 type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 type TraitEntry = { nom: string; desc: string; descSuperieur?: string }
 type Culture = {
@@ -412,13 +413,14 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
     setExported(false)
   }
 
-  const addGameplayGrant = (voie: string, rang: number, type: 'BONUS_TEMP' | 'AVANTAGE' | 'ACTION', avancee?: boolean) => {
+  const addGameplayGrant = (voie: string, rang: number, type: 'BONUS_TEMP' | 'AVANTAGE' | 'ACTION' | 'ACTIONS_SUPP', avancee?: boolean) => {
     setData(prev => {
       const voieData: RangEntry[] = prev[voie] ? [...prev[voie]] : emptyRangs()
       const entry: RangEntry = voieData[rang] ?? { nom: getNom(voie, rang), desc: '' }
       let newGrant: Grant
       if (type === 'BONUS_TEMP') newGrant = { type: 'BONUS_TEMP', label: '', bonus: 1, cibles: [], ...(avancee ? { avancee: true } : {}) }
       else if (type === 'AVANTAGE') newGrant = { type: 'AVANTAGE', stat: 'CON', lancer: 2, garder: 1, ...(avancee ? { avancee: true } : {}) }
+      else if (type === 'ACTIONS_SUPP') newGrant = { type: 'ACTIONS_SUPP', label: '', nombre: 1, ...(avancee ? { avancee: true } : {}) }
       else newGrant = { type: 'ACTION', label: '', de: 12, dm: '1d4', ...(avancee ? { avancee: true } : {}) }
       voieData[rang] = { ...entry, grants: [...(entry.grants ?? []), newGrant] }
       return { ...prev, [voie]: voieData }
@@ -482,6 +484,8 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
               ? { type: 'AVANTAGE', stat: 'CON', lancer: 2, garder: 1, ...av }
               : patch.type === 'ACTION'
               ? { type: 'ACTION', label: '', de: 12, dm: '1d4', ...av }
+              : patch.type === 'ACTIONS_SUPP'
+              ? { type: 'ACTIONS_SUPP', label: '', nombre: 1, ...av }
               : { type: 'EFFECT_CHOIX', stats: [], value: 1, ...av }
       } else {
         grants[gIdx] = { ...current, ...patch } as Grant
@@ -2200,12 +2204,12 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
                     const grantsNormaux = grants.map((g, idx) => ({ g, idx })).filter(({ g }) => !g.avancee)
                     const grantsAvances = grants.map((g, idx) => ({ g, idx })).filter(({ g }) => !!g.avancee)
 
-                    const isGameplayGrant = (g: Grant) => g.type === 'BONUS_TEMP' || g.type === 'AVANTAGE' || g.type === 'ACTION'
+                    const isGameplayGrant = (g: Grant) => g.type === 'BONUS_TEMP' || g.type === 'AVANTAGE' || g.type === 'ACTION' || g.type === 'ACTIONS_SUPP'
                     const renderGrant = (grant: Grant, gi: number) => {
                       const gameplay = isGameplayGrant(grant)
                       const grantBorder = gameplay ? 'rgba(160,120,255,0.4)' : 'rgba(201,168,76,0.18)'
                       const grantBg = gameplay ? 'rgba(140,100,255,0.07)' : 'rgba(201,168,76,0.03)'
-                      const grantSymbol = grant.type === 'BONUS_TEMP' ? '⚡' : grant.type === 'AVANTAGE' ? '🎲' : grant.type === 'ACTION' ? '⚔️' : null
+                      const grantSymbol = grant.type === 'BONUS_TEMP' ? '⚡' : grant.type === 'AVANTAGE' ? '🎲' : grant.type === 'ACTION' ? '⚔️' : grant.type === 'ACTIONS_SUPP' ? '⚔️➕' : null
                       return (
                       <div key={gi} style={{ marginBottom: 6, border: `1px solid ${grantBorder}`, borderRadius: 4, padding: '6px 8px', background: grantBg }}>
                         {gameplay && (
@@ -2226,6 +2230,7 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
                               <option value="BONUS_TEMP">⚡ Bonus</option>
                               <option value="AVANTAGE">🎲 Garder le meilleur jet</option>
                               <option value="ACTION">⚔️ Action</option>
+                              <option value="ACTIONS_SUPP">⚔️➕ Action(s) supplémentaire(s) par tour</option>
                             </>) : (<>
                               <option value="FORMATION">{t('descEditor.grantFormation')}</option>
                               <option value="VOIE_RANG">{t('descEditor.grantVoieRangFixe')}</option>
@@ -2709,6 +2714,25 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
                             </div>
                           )}
 
+                          {grant.type === 'ACTIONS_SUPP' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', width: '100%', marginTop: 2 }}>
+                              <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6, minWidth: 50 }}>Nom</span>
+                              <input
+                                value={grant.label}
+                                onChange={e => updateGrant(selected, i, gi, { label: e.target.value } as never)}
+                                placeholder="ex: 2 attaques par tour"
+                                style={{ flex: 1, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 6px', fontSize: 12, color: S.parchment, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 12, color: S.parchment, opacity: 0.6 }}>Nombre</span>
+                              <input
+                                type="number" min={1}
+                                value={grant.nombre ?? 1}
+                                onChange={e => updateGrant(selected, i, gi, { nombre: Math.max(1, parseInt(e.target.value) || 1) } as never)}
+                                style={{ width: 50, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 3, padding: '2px 4px', fontSize: 12, color: S.gold, outline: 'none', textAlign: 'center' }}
+                              />
+                            </div>
+                          )}
+
                           <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: S.parchment, cursor: 'pointer', userSelect: 'none' }}>
                             <input
                               type="checkbox"
@@ -2734,7 +2758,7 @@ export default function DescriptionsEditor({ onClose, character, onChange }: { o
                             />
                             {t('descEditor.avancee')}
                           </label>
-                          {(grant.type === 'BONUS_TEMP' || grant.type === 'AVANTAGE' || grant.type === 'ACTION') && !grant.avancee && (
+                          {(grant.type === 'BONUS_TEMP' || grant.type === 'AVANTAGE' || grant.type === 'ACTION' || grant.type === 'ACTIONS_SUPP') && !grant.avancee && (
                             <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(220,80,80,0.85)', cursor: 'pointer', userSelect: 'none' }}>
                               <input
                                 type="checkbox"

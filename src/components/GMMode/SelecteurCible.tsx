@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import type { CombatEntiteInfo } from '../../utils/combat'
 
 const PARCHMENT = '#f5ecd7'
@@ -22,6 +23,7 @@ interface Props {
 // rendu des <option> au système, qui ignore les couleurs — impossible d'y distinguer alliés et
 // adversaires. Ce menu reproduit l'apparence du select tout en gardant la main sur le style.
 export default function SelecteurCible({ value, onChange, cibles, monCamp, labelAucune, bordure }: Props) {
+  const { t } = useTranslation()
   const [ouvert, setOuvert] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const boutonRef = useRef<HTMLButtonElement>(null)
@@ -97,21 +99,30 @@ export default function SelecteurCible({ value, onChange, cibles, monCamp, label
               background: 'transparent', border: 'none', color: PARCHMENT, fontFamily: 'inherit', opacity: 0.7,
             }}
           >{labelAucune}</button>
-          {cibles.map(c => (
-            <button
-              key={c.id}
-              onClick={() => { onChange(c.id); setOuvert(false) }}
-              style={{
-                width: '100%', textAlign: 'left', padding: '6px 9px', fontSize: 13, cursor: 'pointer',
-                background: c.id === value ? 'rgba(200,170,255,0.12)' : 'transparent',
-                border: 'none', color: couleur(c), fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}{c.pvActuels <= 0 && ' 💀'}</span>
-              <span style={{ opacity: 0.6, fontSize: 11, flexShrink: 0 }}>{c.pvActuels} PV</span>
-            </button>
-          ))}
+          {cibles.map(c => {
+            // Une créature morte reste visible dans la liste (le 💀 informe de son sort), mais ne peut
+            // plus être choisie comme NOUVELLE cible (demande de Didic — on continuait à pouvoir
+            // l'attaquer). Voir aussi le blocage symétrique côté résolution d'attaque dans CombatTab.tsx
+            // (couvre le cas où une cible déjà choisie meurt entre-temps sous un autre coup).
+            const morte = c.pvActuels <= 0
+            return (
+              <button
+                key={c.id}
+                onClick={() => { if (morte) return; onChange(c.id); setOuvert(false) }}
+                disabled={morte}
+                title={morte ? t('gmMode.bataille.cibleMorteTitle') : undefined}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '6px 9px', fontSize: 13, cursor: morte ? 'not-allowed' : 'pointer',
+                  background: c.id === value ? 'rgba(200,170,255,0.12)' : 'transparent',
+                  border: 'none', color: couleur(c), fontFamily: 'inherit', opacity: morte ? 0.4 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}{morte && ' 💀'}</span>
+                <span style={{ opacity: 0.6, fontSize: 11, flexShrink: 0 }}>{c.pvActuels} PV</span>
+              </button>
+            )
+          })}
         </div>
         )
       })(), document.body)}

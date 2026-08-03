@@ -40,7 +40,10 @@ export type MessageReseau =
   | { type: 'identification'; nom: string; idPJ: string; character: Character }
   // Joueur → MJ : montant de dégâts que le joueur vient d'infliger à sa cible (saisi à la main côté
   // joueur, comme le fait aujourd'hui le MJ dans handleAttaquePJ — seule la transmission est automatisée).
-  | { type: 'degats'; montant: number; typeDegats: string }
+  // compagnonNom absent = dégâts du PJ lui-même ; présent = dégâts infligés par ce compagnon du PJ
+  // (voir handleAttaqueCompagnonPJ dans CombatTab.tsx), appliqués à la cible PROPRE du compagnon
+  // (compagnon.cibleId), pas à celle du PJ.
+  | { type: 'degats'; montant: number; typeDegats: string; compagnonNom?: string }
   // MJ → joueur : résultat de l'attaque d'une créature contre ce PJ (voir handleAttaque dans
   // CombatTab.tsx). montant à 0 avec toucheRate=true signifie une attaque ratée (aucun dégât).
   | { type: 'degats-recus'; montant: number; typeDegats: string; toucheRate: boolean }
@@ -112,6 +115,69 @@ export type MessageReseau =
   // calculer côté MJ (une seule diffusion identique à tous) que de retirer le destinataire lui-même à
   // chaque envoi ; chaque client filtre son propre idPJ localement à la réception.
   | { type: 'roster-pj'; joueurs: { idPJ: string; nom: string }[] }
+  // MJ → tous les clients (diffusé, voir envoyerATousReseau) : signale un nouveau tour de combat —
+  // déclenché par le bouton "Tour suivant" côté rencontre du MJ (CombatTab.tsx, tourSuivant). Reçu côté
+  // joueur, invoque exactement le même handleEndTurn que le bouton "Tour suivant" LOCAL de
+  // GameModePanel.tsx (tick des DoT/effets temporaires ET remise à zéro du budget d'action du tour) —
+  // pas un message séparé à traiter différemment, juste un déclenchement à distance de la même logique.
+  | { type: 'nouveau-tour' }
+  // MJ → un joueur (privé, voir envoyerAClientReseau) : liste des cibles disponibles pour CE PJ — id+nom
+  // + juste un booléen "morte" (dérivé de pvActuels<=0 côté MJ, jamais la valeur elle-même), JAMAIS
+  // def/rd/pvActuels (voir CombatEntiteInfo dans utils/combat.ts, ce sont précisément les champs qu'un
+  // joueur ne doit jamais voir — seules les CARACTÉRISTIQUES/PV restent masqués, pas le fait qu'une
+  // créature soit morte, demandé par Didic) — et noms des créatures qui le ciblent actuellement (même
+  // information que attaquantsDe() dans CombatTab.tsx, réduite aux noms). enCours : calculé par ID ICI
+  // (pas déduit côté joueur en recoupant par nom avec ordreInitiative ci-dessous) — deux ennemis
+  // homonymes (ex. plusieurs gobelins identiques) tombaient sinon tous sur la même entrée de l'ordre et
+  // affichaient le même statut de sablier, bug signalé par Didic ; id reste toujours unique, pas le nom.
+  // compagnons : PV actuels/max des SEULS compagnons DE CE PJ (jamais des ennemis) — sans ça, une
+  // créature qui blessait un compagnon restait invisible côté joueur (signalé par Didic), contrairement
+  // à ses propres PV déjà transmis via 'pv-actualises' — plus estSonTour, calculé par ID de la même
+  // façon (un PJ n'a que 2 compagnons au plus, mais la même règle s'applique par cohérence/sécurité).
+  // cible : nom de qui cet ennemi vise actuellement — PJ, compagnon (même d'un AUTRE PJ) ou une autre
+  // créature, peu importe, jamais de PV/stats sur cette cible (demandé par Didic). estMonTour : calculé
+  // ici (pas déductible côté joueur, qui ne connaît jamais son propre CombatPJ.id de session — seul
+  // idPJ(character), un hash d'identité, lui est transmis). ordreInitiative : le tableau complet (ordre
+  // d'initiative, voir OrdreInitiativeEntry dans utils/combat.ts) pour l'AFFICHAGE du tableau côté
+  // joueur uniquement (juste les noms + un statut enCours/aJoue) — jamais utilisé pour retrouver le
+  // statut d'une carte précise (voir enCours/estSonTour ci-dessus, calculés par id pour cet usage-là).
+  // round : numéro du round en cours. Renvoyé à chaque changement de session pertinent ET immédiatement
+  // à la (ré)identification d'un PJ (voir CombatTab.tsx), pour ne jamais laisser un client reconnecté
+  // avec un état périmé.
+  | {
+      type: 'etat-ciblage'
+      ciblesDisponibles: { id: string; nom: string; mort: boolean; enCours: boolean; cible: string | null }[]
+      ciblesSurMoi: string[]
+      compagnons: { nom: string; pvActuels: number; pvMax: number; estSonTour: boolean }[]
+      estMonTour: boolean
+      ordreInitiative: { nom: string; enCours: boolean; aJoue: boolean }[]
+      round: number
+    }
+  // Joueur → MJ : la cible que ce PJ vient de choisir dans son propre Mode de jeu (voir la nouvelle
+  // section Combat de GameModePanel.tsx). null = plus aucune cible choisie. Le MJ applique directement
+  // via l'updatePJ existant (CombatTab.tsx) — même chemin qu'un choix fait depuis SelecteurCible côté MJ,
+  // aucune divergence de source de vérité pour cibleId.
+  | { type: 'cible-choisie'; cibleId: string | null }
+  // Joueur → MJ : la cible que ce PJ vient de choisir pour l'UN de ses compagnons (voir la carte
+  // compagnon dans GameModePanel.tsx) — symétrique de 'cible-choisie' ci-dessus, mais compagnonNom
+  // identifie DE QUI il s'agit (un PJ peut avoir jusqu'à 2 compagnons actifs). Le MJ résout le compagnon
+  // via pjProprietaireId + le nom (voir CombatTab.tsx, même appariement que pour 'degats'.compagnonNom)
+  // et applique via l'updateCompagnon existant.
+  | { type: 'cible-choisie-compagnon'; compagnonNom: string; cibleId: string | null }
+  // Joueur → MJ : ce PJ (ou l'UN de ses compagnons, si compagnonNom présent) choisit de ne pas agir
+  // tout de suite sur son tour et de passer en fin d'ordre du round en cours ("attendre que tout le
+  // monde ait attaqué pour faire son action", demandé par Didic) — n'est envoyé que quand c'est
+  // effectivement le tour de l'entité concernée (voir estMonTour/estSonTour ci-dessus), donc son entrée
+  // est forcément à tourActuelIndex côté MJ (voir handleAttendreMonTour dans CombatTab.tsx).
+  | { type: 'attendre-mon-tour'; compagnonNom?: string }
+  // MJ → un joueur (privé) : portrait d'une créature ennemie de la rencontre (voir la vue Combat en
+  // cartes de GameModePanel.tsx). Contrairement au portrait du PJ et de ses compagnons (déjà présents
+  // localement dans son propre personnage, aucun transport nécessaire), l'image d'une créature n'existe
+  // que sur le disque du MJ (voir imageStore.ts) — il faut donc la transmettre explicitement, comme pour
+  // 'image-mj'. Envoyée UNE SEULE FOIS par créature et par connexion (voir imagesEnvoyeesRef dans
+  // CombatTab.tsx), jamais republiée à chaque changement de session comme 'etat-ciblage' — trop lourd à
+  // renvoyer en entier à chaque attaque/PV modifié.
+  | { type: 'image-cible'; id: string; dataUrl: string }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)

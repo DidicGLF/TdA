@@ -1,6 +1,6 @@
 import type { BestiaireEntry, RencontreSauvegardee, DescMap, StatBuff } from '../types/gameData'
 import type { Character } from '../types/character'
-import { computeCombatStatsPJ } from './computeEffects'
+import { computeCombatStatsPJ, computeInitiativeTotale } from './computeEffects'
 
 export type { StatBuff }
 
@@ -23,6 +23,27 @@ export type RollResult = {
   // comme creature.rdTypes : combat.ts n'applique jamais de RD par type, le MJ a déjà tout décidé en
   // choisissant le montant final. '' ou absent = générique.
   typeDegats?: string
+  // Nom de qui a porté ce coup — symétrique de cibleNom, renseigné à l'écriture (voir handleAttaque et
+  // consorts dans CombatTab.tsx) pour permettre à l'entrée d'historique côté CIBLE (type 'subi', voir
+  // HistoriqueEntree) de savoir qui l'a frappée, sans avoir à retrouver l'attaquant par ailleurs.
+  attaquantNom?: string
+}
+
+// Une ligne du journal de combat conservé sous une carte (voir historique ci-dessous) : soit cette
+// entité a agi ('attaque', resultat.cibleNom = qui elle a visé), soit elle a subi une attaque d'un
+// tiers ('subi', resultat.attaquantNom = qui l'a frappée) — les deux formes réutilisent RollResult tel
+// quel, seul le type change l'angle de lecture pour l'affichage (voir CombatCard.tsx/PJCard.tsx).
+export type HistoriqueEntree = {
+  id: string
+  horodatage: number
+  type: 'attaque' | 'subi'
+  resultat: RollResult
+}
+
+// Ajoute une entrée en tête (plus récente en premier). Pas de plafond : conservé "le temps du combat"
+// (demande explicite de Didic), une session de combat reste de toute façon courte en nombre d'échanges.
+export function ajouterHistorique(historique: HistoriqueEntree[], type: HistoriqueEntree['type'], resultat: RollResult): HistoriqueEntree[] {
+  return [{ id: crypto.randomUUID(), horodatage: Date.now(), type, resultat }, ...historique]
 }
 
 // Dégâts sur la durée (poison, brûlure, ...) posés par une attaque manuelle de PJ (voir
@@ -39,12 +60,15 @@ export type CombatCreature = {
   id: string
   creature: BestiaireEntry
   pvActuels: number
-  aJoueCeTour: boolean
   buffs: StatBuff[]
   expanded: boolean
   dernierResultat: RollResult | null
   cibleId: string | null
   dotsActifs: DotActif[]
+  // Journal des attaques faites ET subies par cette entité (voir HistoriqueEntree/ajouterHistorique),
+  // affiché sous sa carte MJ en historique déroulant — jamais réinitialisé pendant le combat (contraste
+  // avec dernierResultat, remis à null à chaque bouclage de round pour éteindre le flash "dernier jet").
+  historique: HistoriqueEntree[]
   // Renseigné uniquement pour un compagnon dérivé d'un PJ importé (voir compagnonEnCreature dans
   // utils/compagnons.ts) : id du PJ propriétaire — sert à afficher le lien sur la carte et à retirer
   // le compagnon quand son PJ quitte le combat (voir removePJ dans CombatTab).
@@ -64,6 +88,7 @@ export type CombatPJ = {
   dernierResultat: RollResult | null
   cibleId: string | null
   dotsActifs: DotActif[]
+  historique: HistoriqueEntree[]
 }
 
 // Infos normalisées d'une cible potentielle (créature, PJ ou compagnon), pour le sélecteur de ciblage
@@ -120,6 +145,56 @@ export type CombatSession = {
   // Part (0 à 1) de la largeur attribuée à la colonne Créatures dans CombatTab — ajustée en glissant
   // la barre de séparation, conservée avec la session pour survivre à un instantané sauvegardé/rechargé.
   splitRatio?: number
+  // Ordre de passage par initiative (voir construireOrdreInitiative) — remplace l'ancien modèle de
+  // déblocage simultané (aJoueCeTour) : seule l'entité à tourActuelIndex peut agir. round démarre à 1,
+  // incrémenté à chaque bouclage complet de l'ordre (voir tourSuivant dans CombatTab.tsx).
+  ordreInitiative?: OrdreInitiativeEntry[]
+  tourActuelIndex?: number
+  round?: number
+}
+
+// Une entrée par créature/PJ/compagnon engagé dans le combat — id partagé avec CombatCreature.id/
+// CombatPJ.id (le nom/camp se retrouve en cherchant dans combatants/pjs/compagnons, pas dupliqué ici).
+// tieBreak : résultat d'un jet de d20 de départage entre deux entrées à égalité d'initiative (voir
+// l'icône 🎲 du tableau d'ordre côté MJ), sert de clé de tri secondaire. passeSonTour : bascule manuelle
+// MJ (créature immobilisée) — sautée à la prochaine avancée puis remise à false automatiquement
+// (à usage unique, pas permanent).
+export type OrdreInitiativeEntry = { id: string; initiative: number; tieBreak?: number; passeSonTour?: boolean }
+
+// Construit l'ordre d'initiative à partir des trois listes de la session — réutilisé au démarrage d'un
+// combat (demarrerCombat) ET à l'arrivée d'un PJ en cours de route (activerPJ dans CombatTab.tsx), ainsi
+// que par le filet de sécurité qui régénère l'ordre d'une session existante qui n'en a pas encore (voir
+// CombatTab.tsx). L'initiative d'un PJ est recalculée en direct (computeInitiativeTotale), jamais lue
+// depuis le champ figé character.initiative — voir sa note dans computeEffects.ts.
+export function construireOrdreInitiative(
+  combatants: CombatCreature[], pjs: CombatPJ[], compagnons: CombatCreature[], descriptions: DescMap,
+): OrdreInitiativeEntry[] {
+  const entries: OrdreInitiativeEntry[] = [
+    ...combatants.map(c => ({ id: c.id, initiative: c.creature.init ?? -Infinity })),
+    ...pjs.map(p => ({ id: p.id, initiative: computeInitiativeTotale(p.character, descriptions) })),
+    ...compagnons.map(c => ({ id: c.id, initiative: c.creature.init ?? -Infinity })),
+  ]
+  entries.sort((a, b) => b.initiative - a.initiative)
+  return entries
+}
+
+// Insère UNE entrée (PJ ou compagnon rejoignant en cours de route, voir activerPJ dans CombatTab.tsx)
+// dans un ordre d'initiative déjà en cours. Son rang naturel (position triée décroissante) détermine si
+// elle joue dès ce round ou seulement au round suivant :
+// - rang <= tourActuelIndex (le round est déjà passé à ce niveau, quelqu'un de même initiative ou plus
+//   a déjà joué) : ajoutée en toute fin de tableau plutôt qu'à son rang naturel — ne jouera qu'au round
+//   suivant. Un ajout en fin de tableau ne décale jamais rien avant lui : tourActuelIndex reste valide
+//   tel quel, aucun ajustement nécessaire.
+// - rang > tourActuelIndex (son tour n'a pas encore été atteint ce round) : insérée à son rang naturel.
+//   Comme ce rang est strictement après l'index courant, l'entité actuellement pointée par
+//   tourActuelIndex ne bouge pas non plus : là encore, aucun ajustement de l'index n'est nécessaire.
+export function insererDansOrdreInitiative(
+  ordre: OrdreInitiativeEntry[], tourActuelIndex: number, entree: OrdreInitiativeEntry,
+): OrdreInitiativeEntry[] {
+  const rang = ordre.findIndex(e => e.initiative < entree.initiative)
+  const rangTrie = rang === -1 ? ordre.length : rang
+  if (rangTrie <= tourActuelIndex) return [...ordre, entree]
+  return [...ordre.slice(0, rangTrie), entree, ...ordre.slice(rangTrie)]
 }
 
 // Instantané persistable d'une session de combat en cours : mêmes données (créatures présentes,
@@ -133,15 +208,15 @@ export type CombatSessionSauvegardee = CombatSession & { id: string; creeLe: str
 export function normaliserCombatSession<T extends CombatSession>(session: T): T {
   return {
     ...session,
-    combatants: session.combatants.map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [] })),
-    pjs: session.pjs.map(p => ({ ...p, dotsActifs: p.dotsActifs ?? [] })),
-    compagnons: (session.compagnons ?? []).map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [] })),
+    combatants: session.combatants.map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [], historique: c.historique ?? [] })),
+    pjs: session.pjs.map(p => ({ ...p, dotsActifs: p.dotsActifs ?? [], historique: p.historique ?? [] })),
+    compagnons: (session.compagnons ?? []).map(c => ({ ...c, dotsActifs: c.dotsActifs ?? [], historique: c.historique ?? [] })),
   }
 }
 
 // Construit une session de combat éphémère à partir d'une rencontre enregistrée : copie de travail,
 // jamais persistée, jamais réécrite sur la rencontre ou le bestiaire d'origine.
-export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: BestiaireEntry[]): CombatSession {
+export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: BestiaireEntry[], descriptions: DescMap): CombatSession {
   const combatants: CombatCreature[] = []
   rencontre.adversaires.forEach((a, i) => {
     if (!a.creatureNom) return
@@ -157,18 +232,23 @@ export function demarrerCombat(rencontre: RencontreSauvegardee, bestiaire: Besti
       id: `${i}-${creature.nom}`,
       creature,
       pvActuels: creature.pv ?? 0,
-      aJoueCeTour: false,
       buffs: [],
       expanded: false,
       dernierResultat: null,
       cibleId: null,
       dotsActifs: [],
+      historique: [],
     })
   })
   // Classées par initiative décroissante par défaut — celles sans INIT renseignée passent en dernier
   // plutôt que de casser le tri (undefined traité comme -Infinity).
   combatants.sort((a, b) => (b.creature.init ?? -Infinity) - (a.creature.init ?? -Infinity))
-  return { nomRencontre: rencontre.nom, combatants, pjs: [], compagnons: [] }
+  return {
+    nomRencontre: rencontre.nom, combatants, pjs: [], compagnons: [],
+    ordreInitiative: construireOrdreInitiative(combatants, [], [], descriptions),
+    tourActuelIndex: 0,
+    round: 1,
+  }
 }
 
 // Importe un personnage joueur (depuis le JSON de sauvegarde de fiche) dans la session de combat.
@@ -186,6 +266,7 @@ export function importPJ(character: Character, descriptions: DescMap): CombatPJ 
     dernierResultat: null,
     cibleId: null,
     dotsActifs: [],
+    historique: [],
   }
 }
 

@@ -38,6 +38,10 @@ export type Grant =
   | { type: 'BONUS_TEMP'; label: string; bonus?: number; formula?: string; deDegats?: string; deDegatsParArme?: boolean; temporaire?: boolean; cibles: string[]; choix?: boolean; cout_pv?: string; cout_pm?: string; coutCaracStat?: string; coutCaracValeur?: number; usage?: string; post_jet?: boolean; precision?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean; div2?: boolean; immunite?: boolean }
   | { type: 'AVANTAGE'; stat: string; lancer: number; garder: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
   | { type: 'ACTION'; label: string; de: number; dm: string; attType?: 'contact' | 'distance' | 'magique'; activable?: boolean; cout_pm?: string; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
+  // Accorde nombre (défaut 1) action(s) offensive/active supplémentaire(s) par tour dans le Mode de jeu
+  // (ex. "2 attaques par tour") — détecté automatiquement, jamais une case à cocher manuelle sur le
+  // personnage. Voir computeActionsSupp (computeEffects.ts) et budgetActions (GameModePanel.tsx).
+  | { type: 'ACTIONS_SUPP'; label: string; nombre?: number; minRang?: number; avancee?: boolean; masqueSiAvancee?: boolean }
 
 export type RangEntry = { nom: string; desc: string; effects?: Effect[]; grants?: Grant[] }
 export type DescMap = Record<string, RangEntry[]>

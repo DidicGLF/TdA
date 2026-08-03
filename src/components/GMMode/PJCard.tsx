@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import StatCell from './StatCell'
 import NumberField from '../NumberField'
-import { computeCombatStatsPJ } from '../../utils/computeEffects'
+import { computeCombatStatsPJ, computeInitiativeTotale } from '../../utils/computeEffects'
 import type { CombatPJ, CombatEntiteInfo, RollResult } from '../../utils/combat'
 import ResultatCartouche from './ResultatCartouche'
+import HistoriqueEntreeBloc from './HistoriqueEntreeBloc'
 import { DAMAGE_TYPES, ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 
 const GOLD = '#c9a84c'
@@ -52,6 +53,9 @@ function SelecteurTypeDegats({ value, onChange }: { value: string; onChange: (ty
 
 interface Props {
   pj: CombatPJ
+  // Remplace l'ancien champ persisté CombatPJ.aJoueCeTour : dérivé de l'ordre d'initiative côté
+  // CombatTab.tsx (seule l'entité à tourActuelIndex peut agir) — voir estEnCours dans CombatTab.tsx.
+  estEnCours: boolean
   cibles: CombatEntiteInfo[]
   // Créatures qui visent CE PJ, avec leur dernier résultat contre lui (voir CombatTab.recomputeLinks) —
   // les PJ n'ont pas de moteur de jet propre (leurs jets sont gérés à la main par le MJ), donc
@@ -72,10 +76,13 @@ interface Props {
   onClearBuff: (stat: string) => void
 }
 
-export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV, onSetPM, onSetCible, onInfligerDegats, onAjouterDot, onRetirerDot, onSetBuff, onClearBuff }: Props) {
+export default function PJCard({ pj, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onSetPM, onSetCible, onInfligerDegats, onAjouterDot, onRetirerDot, onSetBuff, onClearBuff }: Props) {
   const { t } = useTranslation()
   const { data: descriptions } = useGameData()
-  const { character, expanded, buffs, pvActuels, pmActuels, cibleId, dernierResultat, dotsActifs } = pj
+  const { character, expanded, buffs, pvActuels, pmActuels, cibleId, dernierResultat, dotsActifs, historique } = pj
+  // Inversé par rapport à l'ancien aJoueCeTour (true = déjà joué) : ici true = ce n'est PAS son tour,
+  // qu'il ait déjà joué ce round ou pas encore été atteint — le détail vit dans le tableau d'ordre.
+  const aJoueCeTour = !estEnCours
   const [montantDegats, setMontantDegats] = useState(0)
   const [typeDegats, setTypeDegats] = useState('')
   const [dotAmount, setDotAmount] = useState(0)
@@ -87,7 +94,17 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
   // survol perceptiblement lent (constaté sur la colonne PJ, jamais sur celle des créatures qui n'a
   // pas cette recomputation).
   const stats = useMemo(() => computeCombatStatsPJ(character, descriptions), [character, descriptions])
+  // Initiative TOTALE (DEX + encombrement + bonus de voies/cristaux) — pas character.initiative, une
+  // valeur figée à la création du personnage (juste DEX.valeur) qui ne reflète jamais l'état actuel.
+  // C'est déjà cette valeur-ci qui pilote le tri de l'ordre d'initiative (voir construireOrdreInitiative
+  // dans utils/combat.ts) : l'afficher ici évite l'incohérence "12 affiché mais classé après un 10"
+  // signalée par Didic.
+  const initiativeTotale = useMemo(() => computeInitiativeTotale(character, descriptions), [character, descriptions])
   const isDown = pvActuels <= 0
+  // Cible actuelle déjà morte (tuée par un autre coup pendant qu'elle était visée) : désactive
+  // "Infliger" plutôt que de laisser saisir des dégâts contre un cadavre — voir la même note dans
+  // CombatCard.tsx/handleAttaquePJ (CombatTab.tsx) et le blocage de sélection dans SelecteurCible.tsx.
+  const cibleMorte = !!cibleId && (cibles.find(c => c.id === cibleId)?.pvActuels ?? 1) <= 0
 
   if (!expanded) {
     // Ciblage propre du PJ, avec le dernier montant infligé s'il concerne encore la cible assignée
@@ -109,9 +126,16 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           {character.portrait
             ? <img src={character.portrait} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: character.portraitFit ?? 'cover' }} />
             : <span style={{ fontSize: 28, opacity: 0.3 }}>🧑</span>}
-          {isDown && (
+          {isDown ? (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 40 }}>💀</span>
+            </div>
+          ) : aJoueCeTour && (
+            // Sablier : budget d'action du tour épuisé, signalé par le joueur (voir 'pj-a-joue-ce-tour'
+            // dans reseauProtocole.ts — même symbole que côté joueur/CombatCard) — le crâne reste
+            // prioritaire si le PJ est aussi inconscient (les deux ne se cumulent pas).
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 40 }}>⏳</span>
             </div>
           )}
         </div>
@@ -121,7 +145,7 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{ fontSize: 13, color: isDown ? RED : GOLD }}>❤️ {pvActuels} / {stats.pvTotal}</span>
-            <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {character.initiative}</span>
+            <span style={{ fontSize: 13, color: PARCHMENT, opacity: 0.7, flexShrink: 0 }}>⚡ {initiativeTotale}</span>
           </div>
           {cibleActuelle && (
             attaquantMutuel
@@ -152,7 +176,8 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
 
   return (
     <div data-combat-id={pj.id} style={{
-      width: 400, flexShrink: 0, border: `1px solid ${isDown ? 'rgba(150,150,150,0.5)' : SECTION_BORDER}`,
+      width: 400, flexShrink: 0,
+      border: `1px solid ${isDown ? 'rgba(150,150,150,0.5)' : aJoueCeTour ? 'rgba(255,80,80,0.4)' : SECTION_BORDER}`,
       borderRadius: 8, background: 'rgba(15,12,8,0.95)', position: 'relative', overflow: 'hidden',
       filter: isDown ? 'grayscale(1)' : undefined,
     }}>
@@ -218,11 +243,12 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           <SelecteurTypeDegats value={typeDegats} onChange={setTypeDegats} />
           <button
             onClick={() => { onInfligerDegats(montantDegats, typeDegats); setMontantDegats(0) }}
-            disabled={!cibleId || montantDegats <= 0}
+            disabled={!cibleId || montantDegats <= 0 || cibleMorte}
+            title={cibleMorte ? t('gmMode.bataille.cibleMorteTitle') : undefined}
             style={{
               padding: '6px 12px', borderRadius: 4, border: '1px solid rgba(160,120,255,0.4)',
               background: 'rgba(140,100,255,0.1)', color: PARCHMENT, cursor: 'pointer', fontSize: 13,
-              fontFamily: 'inherit', opacity: (!cibleId || montantDegats <= 0) ? 0.4 : 1,
+              fontFamily: 'inherit', opacity: (!cibleId || montantDegats <= 0 || cibleMorte) ? 0.4 : 1,
             }}
           >
             {t('gmMode.bataille.infliger')}
@@ -275,11 +301,38 @@ export default function PJCard({ pj, cibles, attaquants, onToggleExpand, onSetPV
           {CARACS.map(c => (
             <StatCell key={c} label={c} base={character.caracteristiques[c]?.mod} stat={c} buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           ))}
-          <StatCell label="Init." base={character.initiative} stat="INIT" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
+          <StatCell label="Init." base={initiativeTotale} stat="INIT" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="DEF" base={stats.def} stat="DEF" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
           <StatCell label="RD" base={stats.rd} stat="RD" buffs={buffs} onSetBuff={onSetBuff} onClearBuff={onClearBuff} />
         </div>
+
+        {/* Historique du combat — journal des actions faites (dégâts infligés par ce PJ, saisis à la
+            main) ET subies par lui (attaques de créatures/PJ le visant), voir HistoriqueEntree dans
+            combat.ts. N'existait pas du tout avant (un PJ n'avait qu'un dernier résultat non affiché en
+            vue dépliée) — même présentation et même comportement (3 entrées visibles, défilement au-delà)
+            que CombatCard.tsx. */}
+        {historique.length > 0 && (
+          <div>
+            <div style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>
+              {t('gmMode.bataille.historiqueLabel')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+              {historique.map(h => (
+                <HistoriqueEntreeBloc key={h.id} entree={h} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Overlay "budget d'action épuisé ce tour" — même traitement que CombatCard.tsx (sablier en haut
+          à droite), mais signalé par le joueur (voir 'pj-a-joue-ce-tour' dans reseauProtocole.ts) plutôt
+          que résolu localement : un PJ n'a pas de moteur de jet propre côté MJ. */}
+      {aJoueCeTour && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: 10 }}>
+          <span style={{ fontSize: 28 }}>⏳</span>
+        </div>
+      )}
     </div>
   )
 }

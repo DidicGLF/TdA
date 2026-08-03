@@ -35,6 +35,10 @@ export function useReseauClient(
   // reseauProtocole.ts) — appliqué directement à pvRestants, sans repasser par applyPVLoss/applyHeal
   // (qui émettent CE MÊME message vers le MJ), pour ne jamais faire d'aller-retour.
   onPvActualisesRecu?: (pv: number) => void,
+  // MJ → tous : le MJ vient de cliquer "Tour suivant" côté rencontre (voir 'nouveau-tour' dans
+  // reseauProtocole.ts) — déclenche le même handleEndTurn que le bouton "Tour suivant" local (voir
+  // GameModePanel.tsx).
+  onNouveauTourRecu?: () => void,
 ) {
   const { t } = useTranslation()
   const [connecte, setConnecte] = useState(false)
@@ -53,6 +57,27 @@ export function useReseauClient(
   // chaque connexion/déconnexion/identification — sert à choisir un destinataire pour le dialogue entre
   // PJ (voir GameModePanel.tsx). Notre propre idPJ est filtré à la réception (voir plus bas).
   const [rosterPJ, setRosterPJ] = useState<{ idPJ: string; nom: string }[]>([])
+  // État de ciblage propre à ce PJ (voir 'etat-ciblage' dans reseauProtocole.ts) — poussé par le MJ à
+  // chaque changement pertinent de la rencontre, jamais de def/rd/pvActuels (voir la note dans
+  // reseauProtocole.ts). Simple state, pas besoin du patron ref-indirection (comme rosterPJ) : rien ici
+  // ne dépend de l'état local de GameModePanel.
+  const [ciblesDisponibles, setCiblesDisponibles] = useState<{ id: string; nom: string; mort: boolean; enCours: boolean; cible: string | null }[]>([])
+  const [ciblesSurMoi, setCiblesSurMoi] = useState<string[]>([])
+  // PV actuels/max des compagnons DE CE PJ (voir 'etat-ciblage' dans reseauProtocole.ts) — même simple
+  // state que ciblesDisponibles/ciblesSurMoi ci-dessus. estSonTour : dérivé de l'ordre d'initiative
+  // côté MJ (voir ordreInitiative ci-dessous), pas recalculable ici (id de session inconnu du joueur).
+  const [compagnonsEtat, setCompagnonsEtat] = useState<{ nom: string; pvActuels: number; pvMax: number; estSonTour: boolean }[]>([])
+  // Ordre d'initiative (voir 'etat-ciblage' dans reseauProtocole.ts) : estMonTour calculé par le MJ (le
+  // joueur ne connaît jamais son propre CombatPJ.id de session), ordreInitiative pour l'affichage du
+  // même tableau que côté MJ (voir la vue Combat de GameModePanel.tsx), round pour le numéro affiché.
+  const [estMonTour, setEstMonTour] = useState(false)
+  const [ordreInitiative, setOrdreInitiative] = useState<{ nom: string; enCours: boolean; aJoue: boolean }[]>([])
+  const [round, setRound] = useState(1)
+  // Portraits des créatures de la rencontre (id → data URL), reçus au fil de l'eau (voir 'image-cible'
+  // dans reseauProtocole.ts, envoyé une seule fois par créature côté MJ) — jamais réinitialisé (une
+  // entrée obsolète pour une créature qui n'est plus dans la rencontre est sans conséquence, juste
+  // inutilisée par la vue Combat de GameModePanel.tsx).
+  const [imagesCibles, setImagesCibles] = useState<Record<string, string>>({})
   const socketRef = useRef<WebSocket | null>(null)
   const prochainId = useRef(0)
   const onDegatsRecusRef = useRef(onDegatsRecus)
@@ -63,6 +88,8 @@ export function useReseauClient(
   useEffect(() => { onObjetClassiqueRecuRef.current = onObjetClassiqueRecu })
   const onPvActualisesRecuRef = useRef(onPvActualisesRecu)
   useEffect(() => { onPvActualisesRecuRef.current = onPvActualisesRecu })
+  const onNouveauTourRecuRef = useRef(onNouveauTourRecu)
+  useEffect(() => { onNouveauTourRecuRef.current = onNouveauTourRecu })
   // Mémorisé pour pouvoir se réidentifier sur demande (voir 'qui-etes-vous' ci-dessous) sans redemander
   // le personnage à l'appelant — le MJ peut perdre sa correspondance connexion↔nom (changement d'onglet
   // qui démonte CombatTab, voir reseauProtocole.ts) alors que cette connexion, elle, reste ouverte.
@@ -144,6 +171,23 @@ export function useReseauClient(
         // de dialogue à soi-même. Pas de ligne de journal, purement une mise à jour de liste silencieuse.
         const monId = characterRef.current ? idPJ(characterRef.current) : null
         setRosterPJ(message.joueurs.filter(j => j.idPJ !== monId))
+      } else if (message?.type === 'etat-ciblage') {
+        // Poussé par le MJ à chaque changement pertinent (voir reseauProtocole.ts) — pas de ligne de
+        // journal, purement une mise à jour de liste silencieuse (même traitement que 'roster-pj').
+        setCiblesDisponibles(message.ciblesDisponibles)
+        setCiblesSurMoi(message.ciblesSurMoi)
+        setCompagnonsEtat(message.compagnons)
+        setEstMonTour(message.estMonTour)
+        setOrdreInitiative(message.ordreInitiative)
+        setRound(message.round)
+      } else if (message?.type === 'image-cible') {
+        // Portrait d'une créature de la rencontre (voir reseauProtocole.ts) — fusionné dans le cache,
+        // pas de ligne de journal (même traitement silencieux que 'etat-ciblage').
+        setImagesCibles(prev => ({ ...prev, [message.id]: message.dataUrl }))
+      } else if (message?.type === 'nouveau-tour') {
+        // Tour suivant déclenché par le MJ côté rencontre (voir reseauProtocole.ts) : pas de ligne de
+        // journal, le bouton local "Tour suivant" n'en affiche pas non plus.
+        onNouveauTourRecuRef.current?.()
       } else if (message?.type === 'qui-etes-vous') {
         // Pure mécanique interne de reconnexion (voir reseauProtocole.ts) : pas de ligne de journal,
         // ça n'apporte rien au joueur de le voir.
@@ -183,6 +227,26 @@ export function useReseauClient(
     ajouterJournal(t('gameMode.reseau.dialoguePJEnvoyeJournal', { nom: destinataireNom, texte }), 'dialoguePJ')
   }, [ajouterJournal, t])
 
+  // La cible que ce PJ vient de choisir dans son propre Mode de jeu (voir 'cible-choisie' dans
+  // reseauProtocole.ts et la section Combat de GameModePanel.tsx) — le MJ l'applique via l'updatePJ
+  // existant, même chemin qu'un choix fait depuis son propre SelecteurCible.
+  const envoyerCibleChoisie = useCallback((cibleId: string | null) => {
+    socketRef.current?.send(encoderMessage({ type: 'cible-choisie', cibleId }))
+  }, [])
+
+  // Symétrique, pour l'UN des compagnons du PJ (voir 'cible-choisie-compagnon' dans reseauProtocole.ts).
+  const envoyerCibleChoisieCompagnon = useCallback((compagnonNom: string, cibleId: string | null) => {
+    socketRef.current?.send(encoderMessage({ type: 'cible-choisie-compagnon', compagnonNom, cibleId }))
+  }, [])
+
+  // Ce PJ (ou l'UN de ses compagnons, si compagnonNom fourni) choisit de ne pas agir tout de suite sur
+  // son tour et de passer en fin d'ordre du round en cours (voir 'attendre-mon-tour' dans
+  // reseauProtocole.ts) — n'a de sens que quand c'est effectivement son tour (voir estMonTour/
+  // compagnonsEtat[].estSonTour), laissé à l'appelant de vérifier.
+  const envoyerAttendreMonTour = useCallback((compagnonNom?: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'attendre-mon-tour', ...(compagnonNom ? { compagnonNom } : {}) }))
+  }, [])
+
   const marquerMessagesLus = useCallback(() => setMessageNonLu(false), [])
 
   // Rouvre une image déjà reçue depuis sa ligne de journal (voir imagesRecuesRef ci-dessus).
@@ -197,6 +261,7 @@ export function useReseauClient(
 
   return {
     connecte, journal, connecter, deconnecter, envoyer, envoyerMessageJoueur, envoyerMessagePJ, rosterPJ, messageNonLu, marquerMessagesLus,
-    imageAffichee, ouvrirImage, fermerImage,
+    imageAffichee, ouvrirImage, fermerImage, ciblesDisponibles, ciblesSurMoi, envoyerCibleChoisie, envoyerCibleChoisieCompagnon, imagesCibles, compagnonsEtat,
+    estMonTour, ordreInitiative, round, envoyerAttendreMonTour,
   }
 }
