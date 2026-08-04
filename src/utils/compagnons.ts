@@ -88,23 +88,30 @@ export function applyChoixCompagnon(
   return [...autres, nom]
 }
 
-export function autoAssignCompagnons(
-  character: Character,
-  descriptions: DescMap,
-): [string | null, string | null] {
+// Ordre d'affichage/pagination des compagnons débloqués : celui choisi par le joueur
+// (character.compagnonsOrdre, glisser-déposer/▲▼ dans le wizard), un compagnon nouvellement débloqué
+// (absent de cette liste, ex. après une progression de voie) atterrissant à la fin dans l'ordre naturel
+// de getCompagnonsDisponibles. Un nom présent dans compagnonsOrdre mais plus débloqué (voie remplacée)
+// est ignoré ici — jamais nettoyé du champ lui-même, pour ne rien perdre si le compagnon revient plus tard.
+export function getCompagnonsOrdonnes(character: Character, descriptions: DescMap): string[] {
   const disponibles = getCompagnonsDisponibles(character, descriptions)
-  const actifs: [string | null, string | null] = [
-    character.compagnonsActifs?.[0] ?? null,
-    character.compagnonsActifs?.[1] ?? null,
-  ]
-  if (actifs[0] && !disponibles.includes(actifs[0])) actifs[0] = null
-  if (actifs[1] && !disponibles.includes(actifs[1])) actifs[1] = null
-  for (const nom of disponibles) {
-    if (actifs.includes(nom)) continue
-    if (actifs[0] === null) { actifs[0] = nom; continue }
-    if (actifs[1] === null) { actifs[1] = nom; break }
-  }
-  return actifs
+  const ordre = (character.compagnonsOrdre ?? []).filter(n => disponibles.includes(n))
+  const horsOrdre = disponibles.filter(n => !ordre.includes(n))
+  return [...ordre, ...horsOrdre]
+}
+
+// Un compagnon est actif par défaut — seul un choix explicite du joueur (bascule dans le wizard) le
+// passe "en arrière" (character.compagnonsInactifs). Seuls les actifs sont importés en rencontre
+// (CombatTab.tsx) ; tous restent visibles sur la fiche (CharacterSheetCompagnons.tsx).
+export function estCompagnonActif(character: Character, nom: string): boolean {
+  return !(character.compagnonsInactifs ?? []).includes(nom)
+}
+
+// Bascule l'état actif/en arrière d'un compagnon — renvoie la nouvelle liste compagnonsInactifs à
+// enregistrer via onChange, jamais appliquée directement (cohérent avec le reste du fichier, pur).
+export function toggleCompagnonActif(character: Character, nom: string): string[] {
+  const inactifs = character.compagnonsInactifs ?? []
+  return inactifs.includes(nom) ? inactifs.filter(n => n !== nom) : [...inactifs, nom]
 }
 
 type AttContext = { contact: number; distance: number; magique: number }

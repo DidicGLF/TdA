@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import type { Character, Caracteristique, VoiePersonnage } from '../types/character'
 import type { ObjetMagiqueEntry } from '../types/gameData'
@@ -20,7 +21,7 @@ import VoieCombobox from './VoieCombobox'
 import EquipementModal from './EquipementModal'
 import { calcPointsCapacite, coutRangPourVoie, prochainRang } from '../utils/levelUp'
 import type { VoieKey } from '../utils/levelUp'
-import { getCompagnonsDisponibles, autoAssignCompagnons, getCompagnonChoixGrants, applyChoixCompagnon } from '../utils/compagnons'
+import { getCompagnonsDisponibles, getCompagnonsOrdonnes, getCompagnonChoixGrants, applyChoixCompagnon, estCompagnonActif, toggleCompagnonActif } from '../utils/compagnons'
 import { getEffectChoixGrants, applyChoixEffect } from '../utils/effectsChoix'
 import { getVoieRangChoixGrants, getChoixOptions, applyVoieRangChoix, applyVoieRangChoixAvancee, estCapaciteDejaChoisie, estAvanceeAccordeePourCible, symboleElement, getBonusFormationsCount } from '../utils/voieRangChoix'
 import CarteVoieModal from './CarteVoieModal'
@@ -1611,47 +1612,105 @@ type EqTooltip = { lines: string[]; x: number; y: number }
 function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
   const { traits, data: descriptions, objetsMagiques } = useGameData()
   const [showTraitModal, setShowTraitModal] = React.useState(false)
-  const [dragOverSlot, setDragOverSlot] = React.useState<0 | 1 | null>(null)
-  const [mobileCompagnonPicker, setMobileCompagnonPicker] = React.useState<0 | 1 | null>(null)
 
-  const disponiblesNoms = getCompagnonsDisponibles(character, descriptions)
-  const actifs = character.compagnonsActifs ?? [null, null]
-  const reserve = disponiblesNoms.filter(n => !actifs.includes(n))
+  // Tous les compagnons débloqués (getCompagnonsDisponibles) sont potentiellement disponibles, aucune
+  // limite de nombre — mais le joueur choisit ici lesquels partent en rencontre (compagnonsInactifs,
+  // bascule au clic) et dans quel ordre ils apparaissent (compagnonsOrdre, glisser-déposer), qui pilote
+  // aussi la pagination des fiches de compagnon (CharacterSheetCompagnons.tsx).
+  const disponiblesNoms = getCompagnonsOrdonnes(character, descriptions)
   const choixGrants = getCompagnonChoixGrants(character, descriptions)
 
   const handleChoixCompagnon = (nom: string) => {
     const newChoix = applyChoixCompagnon(character, nom, choixGrants)
-    const newChar = { ...character, compagnonsChoix: newChoix }
-    const newActifs = autoAssignCompagnons(newChar, descriptions)
-    onChange({ compagnonsChoix: newChoix, compagnonsActifs: newActifs })
+    onChange({ compagnonsChoix: newChoix })
   }
-  const handleCompagnonDragStart = (e: React.DragEvent, nom: string) => {
-    e.dataTransfer.setData('compagnon', nom)
+  const handleToggleCompagnonActif = (nom: string) => {
+    onChange({ compagnonsInactifs: toggleCompagnonActif(character, nom) })
   }
-  const handleCompagnonDrop = (e: React.DragEvent, slotIdx: 0 | 1) => {
+
+  // Réorganisation au pointeur (mêmes principes que CombatTab.tsx) plutôt qu'en drag-and-drop HTML5
+  // natif (draggable/dragover/drop) : ce dernier n'est pas fiable dans la webview Linux (WebKitGTK), qui
+  // ne déclenche jamais preventDefault au survol — curseur "interdit" permanent, sans case fantôme ni
+  // erreur JS. Le suivi au pointeur fonctionne aussi bien à la souris qu'au doigt, sans code séparé pour
+  // mobile — dropIndexCompagnon est l'index d'insertion visé, rien n'est réordonné avant le relâchement.
+  const [dragCompagnon, setDragCompagnon] = React.useState<{ nom: string; width: number; height: number; startX: number; startY: number } | null>(null)
+  const [dropIndexCompagnon, setDropIndexCompagnon] = React.useState<number | null>(null)
+  const pointerDragCompagnonRef = React.useRef<{
+    nom: string; width: number; height: number; startX: number; startY: number
+    started: boolean; dropIndex: number | null
+  } | null>(null)
+  // Empêche le clic qui suit RELÂCHEMENT d'un vrai glisser de basculer actif/inactif (pointerup puis
+  // click se déclenchent tous les deux sur le même élément) — seul un clic sans déplacement significatif
+  // doit basculer l'état.
+  const justDraggedCompagnonRef = React.useRef(false)
+  const previewCompagnonRef = React.useRef<HTMLDivElement>(null)
+  const compagnonsListRef = React.useRef<HTMLDivElement>(null)
+
+  const handleCompagnonPointerDown = (nom: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
     e.preventDefault()
-    const nom = e.dataTransfer.getData('compagnon')
-    if (!nom || !disponiblesNoms.includes(nom)) { setDragOverSlot(null); return }
-    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
-    const otherSlot = slotIdx === 0 ? 1 : 0
-    if (newActifs[otherSlot] === nom) newActifs[otherSlot] = newActifs[slotIdx]
-    newActifs[slotIdx] = nom
-    onChange({ compagnonsActifs: newActifs })
-    setDragOverSlot(null)
+    const rect = e.currentTarget.getBoundingClientRect()
+    pointerDragCompagnonRef.current = { nom, width: rect.width, height: rect.height, startX: e.clientX, startY: e.clientY, started: false, dropIndex: null }
   }
-  const clearCompagnonSlot = (slotIdx: 0 | 1) => {
-    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
-    newActifs[slotIdx] = null
-    onChange({ compagnonsActifs: newActifs })
+  const commitDropCompagnon = React.useCallback((nom: string, dropIdx: number) => {
+    const list = disponiblesNoms.slice()
+    const fromIndex = list.indexOf(nom)
+    if (fromIndex === -1) return
+    list.splice(fromIndex, 1)
+    list.splice(fromIndex < dropIdx ? dropIdx - 1 : dropIdx, 0, nom)
+    onChange({ compagnonsOrdre: list })
+  }, [disponiblesNoms, onChange])
+  React.useEffect(() => {
+    const handleMove = (e: PointerEvent) => {
+      const drag = pointerDragCompagnonRef.current
+      if (!drag) return
+      if (!drag.started) {
+        if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return
+        drag.started = true
+        setDragCompagnon({ nom: drag.nom, width: drag.width, height: drag.height, startX: e.clientX, startY: e.clientY })
+      }
+      if (previewCompagnonRef.current) {
+        previewCompagnonRef.current.style.left = `${e.clientX + 12}px`
+        previewCompagnonRef.current.style.top = `${e.clientY + 12}px`
+      }
+      const conteneur = compagnonsListRef.current
+      if (!conteneur) return
+      const emplacements = Array.from(conteneur.querySelectorAll<HTMLElement>('[data-drag-compagnon-index]'))
+      let next = disponiblesNoms.length
+      let meilleureDistance = Infinity
+      for (const el of emplacements) {
+        const r = el.getBoundingClientRect()
+        const dy = e.clientY - (r.top + r.height / 2)
+        if (Math.abs(dy) < meilleureDistance) {
+          meilleureDistance = Math.abs(dy)
+          next = e.clientY < r.top + r.height / 2 ? Number(el.dataset.dragCompagnonIndex) : Number(el.dataset.dragCompagnonIndex) + 1
+        }
+      }
+      drag.dropIndex = next
+      setDropIndexCompagnon(prev => (prev === next ? prev : next))
+    }
+    const handleUp = () => {
+      const drag = pointerDragCompagnonRef.current
+      if (drag?.started) {
+        justDraggedCompagnonRef.current = true
+        if (drag.dropIndex !== null) commitDropCompagnon(drag.nom, drag.dropIndex)
+      }
+      pointerDragCompagnonRef.current = null
+      setDragCompagnon(null)
+      setDropIndexCompagnon(null)
+    }
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+  }, [disponiblesNoms, commitDropCompagnon])
+  const handleCompagnonClick = (nom: string) => {
+    if (justDraggedCompagnonRef.current) { justDraggedCompagnonRef.current = false; return }
+    handleToggleCompagnonActif(nom)
   }
-  const assignCompagnonToSlot = (slotIdx: 0 | 1, nom: string) => {
-    const newActifs: [string | null, string | null] = [actifs[0] ?? null, actifs[1] ?? null]
-    const otherSlot = slotIdx === 0 ? 1 : 0
-    if (newActifs[otherSlot] === nom) newActifs[otherSlot] = newActifs[slotIdx]
-    newActifs[slotIdx] = nom
-    onChange({ compagnonsActifs: newActifs })
-    setMobileCompagnonPicker(null)
-  }
+
   const { t } = useTranslation()
   const compagnonName = useCompagnonName()
   const equipementName = useEquipementName()
@@ -2133,57 +2192,6 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
           </div>
         )}
 
-        {/* Picker mobile slots équipement */}
-        {isMobile && mobileCompagnonPicker !== null && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
-            onClick={() => setMobileCompagnonPicker(null)}>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
-              background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
-              borderRadius: '12px 12px 0 0', paddingBottom: 'env(safe-area-inset-bottom)',
-              maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}
-              onClick={e => e.stopPropagation()}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(201,168,76,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 16, fontFamily: "'Cinzel', serif", color: 'var(--tdr-gold)', fontWeight: 600 }}>
-                  {t('wizard.step5.compagnonPicker', { n: mobileCompagnonPicker + 1 })}
-                </span>
-                <button onClick={() => setMobileCompagnonPicker(null)}
-                  style={{ background: 'none', border: 'none', color: 'var(--tdr-parchment)', opacity: 0.5, fontSize: 22, cursor: 'pointer' }}>✕</button>
-              </div>
-              <div style={{ overflowY: 'auto', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
-                  borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer' }}
-                  onClick={() => { clearCompagnonSlot(mobileCompagnonPicker); setMobileCompagnonPicker(null) }}>
-                  <input type="radio" readOnly checked={!actifs[mobileCompagnonPicker]}
-                    style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
-                  <span style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{t('wizard.step5.aucun')}</span>
-                </div>
-                {disponiblesNoms.map(nom => {
-                  const isCurrent = actifs[mobileCompagnonPicker] === nom
-                  const inOtherSlot = actifs[mobileCompagnonPicker === 0 ? 1 : 0] === nom
-                  return (
-                    <div key={nom} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
-                      borderBottom: '1px solid rgba(201,168,76,0.08)', cursor: 'pointer',
-                      opacity: inOtherSlot && !isCurrent ? 0.5 : 1 }}
-                      onClick={() => assignCompagnonToSlot(mobileCompagnonPicker, nom)}>
-                      <input type="radio" readOnly checked={isCurrent}
-                        style={{ width: 20, height: 20, accentColor: 'var(--tdr-gold)', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontSize: 16, color: 'var(--tdr-parchment)' }}>{compagnonName(nom)}</div>
-                        {inOtherSlot && !isCurrent && (
-                          <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>
-                            {t('wizard.step5.seraDeplace', { slot: mobileCompagnonPicker === 0 ? 2 : 1 })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         {isMobile && mobileSlotPicker && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
             onClick={() => setMobileSlotPicker(null)}>
@@ -2350,73 +2358,69 @@ function Step5({ character, onChange }: Pick<Props, 'character' | 'onChange'>) {
             </div>
           ))}
 
-          {/* 2 slots actifs */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            {([0, 1] as const).map(slotIdx => {
-              const nom = actifs[slotIdx] ?? null
-              const isOver = dragOverSlot === slotIdx
-              return (
-                <div key={slotIdx}
-                  onDragOver={e => { e.preventDefault(); setDragOverSlot(slotIdx) }}
-                  onDragLeave={() => setDragOverSlot(null)}
-                  onDrop={e => handleCompagnonDrop(e, slotIdx)}
-                  onClick={() => isMobile && disponiblesNoms.length > 0 && setMobileCompagnonPicker(slotIdx)}
-                  style={{
-                    flex: 1, minHeight: 40, borderRadius: 5,
-                    border: `1px dashed ${isOver ? 'var(--tdr-gold)' : 'rgba(201,168,76,0.3)'}`,
-                    background: isOver ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.02)',
-                    display: 'flex', alignItems: 'center', padding: '6px 10px', gap: 6,
-                    transition: 'border-color 0.15s, background 0.15s',
-                    cursor: isMobile ? 'pointer' : 'default',
-                  }}
-                >
-                  {nom ? (
-                    <>
-                      <span
-                        draggable={!isMobile}
-                        onDragStart={e => handleCompagnonDragStart(e, nom)}
-                        style={{
-                          flex: 1, fontSize: 13, color: 'var(--tdr-parchment)', cursor: isMobile ? 'pointer' : 'grab',
-                          padding: '2px 6px', borderRadius: 3, background: 'rgba(201,168,76,0.1)',
-                          border: '1px solid rgba(201,168,76,0.3)',
-                        }}
-                      >
-                        {compagnonName(nom)}
-                      </span>
-                      <button
-                        onClick={e => { e.stopPropagation(); clearCompagnonSlot(slotIdx) }}
-                        style={{ background: 'none', border: 'none', color: 'rgba(220,100,100,0.7)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}
-                      >✕</button>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 12, color: 'rgba(245,236,215,0.25)', fontStyle: 'italic' }}>
-                      {isMobile ? t('wizard.step5.toucherPourChoisir') : t('wizard.step5.glisserCompagnon')}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          {/* Réserve */}
-          {reserve.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {reserve.map(nom => (
-                <span
-                  key={nom}
-                  draggable
-                  onDragStart={e => handleCompagnonDragStart(e, nom)}
-                  style={{
-                    fontSize: 13, color: 'rgba(245,236,215,0.7)', cursor: 'grab',
-                    padding: '3px 10px', borderRadius: 12,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(201,168,76,0.25)',
-                    userSelect: 'none',
-                  }}
-                >
-                  {compagnonName(nom)}
-                </span>
-              ))}
+          {/* Un clic bascule actif/laissé en arrière (compagnonsInactifs) ; glisser au pointeur (souris
+              ET tactile, voir handleCompagnonPointerDown plus haut) réordonne — l'ordre pilote aussi la
+              pagination des fiches de compagnon (CharacterSheetCompagnons.tsx). */}
+          {disponiblesNoms.length > 0 && (
+            <div ref={compagnonsListRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {disponiblesNoms.map((nom, idx) => {
+                const actif = estCompagnonActif(character, nom)
+                return (
+                  <div key={nom} style={{ display: 'contents' }}>
+                    {dropIndexCompagnon === idx && (
+                      <div style={{
+                        height: dragCompagnon?.height ?? 32, borderRadius: 6,
+                        border: '2px dashed var(--tdr-gold)', background: 'rgba(201,168,76,0.08)',
+                      }} />
+                    )}
+                    <div
+                      data-drag-compagnon-index={idx}
+                      onPointerDown={handleCompagnonPointerDown(nom)}
+                      onClick={() => handleCompagnonClick(nom)}
+                      title={actif ? t('wizard.step5.compagnonCliquerLaisser') : t('wizard.step5.compagnonCliquerEmmener')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 6,
+                        cursor: 'grab', touchAction: 'none',
+                        border: `1px solid ${actif ? 'rgba(201,168,76,0.3)' : 'rgba(245,236,215,0.15)'}`,
+                        background: actif ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.02)',
+                        opacity: dragCompagnon?.nom === nom ? 0.35 : actif ? 1 : 0.5,
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                    >
+                      <span style={{ opacity: 0.3, fontSize: 12, flexShrink: 0 }}>⠿</span>
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--tdr-parchment)' }}>{compagnonName(nom)}</span>
+                      {!actif && (
+                        <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.5)', fontStyle: 'italic', flexShrink: 0 }}>
+                          {t('wizard.step5.compagnonLaisseArriere')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {dropIndexCompagnon === disponiblesNoms.length && (
+                <div style={{
+                  height: dragCompagnon?.height ?? 32, borderRadius: 6,
+                  border: '2px dashed var(--tdr-gold)', background: 'rgba(201,168,76,0.08)',
+                }} />
+              )}
             </div>
+          )}
+          {/* Aperçu qui suit le pointeur pendant le glisser — portail (document.body) : en position
+              fixe imbriquée dans le flux normal, un ancêtre avec overflow la couperait. */}
+          {dragCompagnon && createPortal(
+            <div ref={previewCompagnonRef} style={{
+              position: 'fixed', left: dragCompagnon.startX + 12, top: dragCompagnon.startY + 12,
+              zIndex: 3000, pointerEvents: 'none',
+              width: dragCompagnon.width, height: dragCompagnon.height, borderRadius: 6,
+              border: '2px solid var(--tdr-gold)', background: 'rgba(15,12,8,0.9)',
+              display: 'flex', alignItems: 'center', padding: '0 10px',
+              color: 'var(--tdr-parchment)', fontSize: 13, fontWeight: 600,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.6)',
+            }}>
+              {compagnonName(dragCompagnon.nom)}
+            </div>,
+            document.body
           )}
         </div>
       )}

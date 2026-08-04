@@ -210,8 +210,17 @@ export interface Character {
   objetsMagiquesPossedes?: string[]
   objetsMagiquesEquipes?: string[]
 
-  // Compagnons
-  compagnonsActifs?: [string | null, string | null]
+  // Compagnons — tous les compagnons débloqués (getCompagnonsDisponibles) sont potentiellement
+  // disponibles, aucune LIMITE de nombre (retiré : la règle du jeu n'impose aucun plafond, contrairement
+  // à une première hypothèse codée ici — voir compagnonsActifs, disparu). Le joueur garde en revanche la
+  // main pour en laisser certains "en arrière" (compagnonsInactifs) et pour ordonner la liste
+  // (compagnonsOrdre), qui pilote aussi la pagination des fiches (CharacterSheetCompagnons.tsx).
+  compagnonsOrdre?: string[]     // ordre choisi par glisser-déposer/▲▼ dans le wizard ; un nom absent de
+                                  // cette liste (nouvellement débloqué) est ajouté à la fin, dans l'ordre
+                                  // naturel de getCompagnonsDisponibles — voir getCompagnonsOrdonnes.
+  compagnonsInactifs?: string[]  // noms explicitement "laissés en arrière" — absent de cette liste =
+                                  // actif par défaut. Seuls les compagnons actifs sont importés en
+                                  // rencontre (CombatTab.tsx) ; tous restent visibles sur la fiche.
   compagnonsChoix?: string[]   // un nom choisi par grant COMPAGNON_CHOIX actif
   effectsChoix?: Record<string, string>  // grantKey → stat choisie par grant EFFECT_CHOIX
   // grantKey → {voie, rang} choisi par un grant VOIE_RANG_CHOIX (ex : voie culturelle de la Forge

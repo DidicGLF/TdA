@@ -8,7 +8,7 @@ import { importPJ, resoudreAttaque, appliquerDegatsCible, listerEntites, tickerD
 import type { CombatSession, CombatCreature, RollResult, DotActif } from '../../utils/combat'
 import type { Character } from '../../types/character'
 import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
-import { compagnonEnCreature } from '../../utils/compagnons'
+import { compagnonEnCreature, getCompagnonsOrdonnes, estCompagnonActif } from '../../utils/compagnons'
 import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 import { ecouterReseau, envoyerAClientReseau, envoyerATousReseau } from '../../utils/reseau'
 import { encoderMessage, decoderMessage, idPJ } from '../../utils/reseauProtocole'
@@ -523,12 +523,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     })
   }
 
-  // Compagnons actifs du PJ importé (voir compagnonEnCreature) : mêmes contrôles qu'une créature
-  // (PV, cible, attaques cliquables), mais alliés du PJ — rendus dans sa colonne, jamais celle des
-  // créatures. pjProprietaireId les relie à leur PJ (affichage + retrait en cascade, voir removePJ).
+  // Compagnons ACTIFS (pas "laissés en arrière", voir estCompagnonActif) du PJ importé, dans l'ordre
+  // choisi par le joueur (voir compagnonEnCreature) — mêmes contrôles qu'une créature (PV, cible,
+  // attaques cliquables), mais alliés du PJ — rendus dans sa colonne, jamais celle des créatures.
+  // pjProprietaireId les relie à leur PJ (affichage + retrait en cascade, voir removePJ).
   const compagnonsDe = (pj: CombatSession['pjs'][number]): CombatCreature[] => {
-    const brut: (string | null)[] = pj.character.compagnonsActifs ?? []
-    const noms = brut.filter((n): n is string => !!n)
+    const noms = getCompagnonsOrdonnes(pj.character, descriptions).filter(nom => estCompagnonActif(pj.character, nom))
     return noms.flatMap(nom => {
       const creature = compagnonEnCreature(nom, compagnonsCatalogue, pj.character, descriptions)
       if (!creature) return []

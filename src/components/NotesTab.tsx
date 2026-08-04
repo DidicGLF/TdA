@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { saveDataFile } from '../utils/tauriStorage'
 import noteParchmentBg from '../assets/note-parchment.webp'
@@ -501,6 +502,8 @@ interface NoteEditorProps {
   onSave: (patch: Partial<Note>) => void
   onBack: () => void
   onDelete: () => void
+  // Imprime la note ENTIÈRE (toutes ses pages, pas juste celle affichée ici — voir NotesTab.imprimerNotes).
+  onPrint: () => void
   onLien: (titre: string) => void
   onEnsureNote: (titre: string) => void
   // Pagination — la note complète est déjà découpée en pages par le composant parent (séparateur
@@ -565,7 +568,7 @@ const groupeIconBtnStyle: React.CSSProperties = {
 // curseur (useLayoutEffect) pour ne jamais le laisser sauter au mauvais endroit.
 function NoteEditor({
   note, notes, campagnes, noteImages, setNoteImages, mobile, bestiaire, rencontres, onOpenCreature, onEditRencontre,
-  onSave, onBack, onDelete, onLien, onEnsureNote, pageActive, pageCount, onPrevPage, onNextPage, onDeletePage, onOverflow, autoFocus,
+  onSave, onBack, onDelete, onPrint, onLien, onEnsureNote, pageActive, pageCount, onPrevPage, onNextPage, onDeletePage, onOverflow, autoFocus,
   curseurInitial, onGoToPage, onAjouterMarque, onSupprimerMarque,
 }: NoteEditorProps) {
   const { t } = useTranslation()
@@ -1161,6 +1164,16 @@ function NoteEditor({
         >
           ↓
         </button>
+        <button
+          onClick={onPrint}
+          title={t('notes.imprimer')}
+          style={{
+            background: 'transparent', border: `1px solid ${SECTION_BORDER}`, borderRadius: 4,
+            color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 14, padding: '4px 8px', flexShrink: 0,
+          }}
+        >
+          🖨
+        </button>
         <button onClick={onDelete} style={{
           background: 'transparent', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 4,
           color: 'rgba(255,110,110,0.8)', cursor: 'pointer', fontSize: 14, padding: '4px 8px', flexShrink: 0,
@@ -1631,6 +1644,28 @@ export default function NotesTab({
   // onOpenCreature n'existe que côté MJ (voir Props) : sert à distinguer les notes joueur (Notes/) des
   // notes MJ (Maitre de jeu/) — même composant, deux bibliothèques et deux dossiers d'export distincts.
   const dossierExport = onOpenCreature ? 'Maitre de jeu' : 'Notes'
+  // Impression (voir imprimerNotes/printPortal plus bas) : notes actuellement visées, rendues dans un
+  // conteneur caché monté juste le temps de l'impression puis démonté (contrairement au conteneur de la
+  // fiche personnage, toujours monté — ici pas besoin, l'impression se déclenche explicitement).
+  const [notesAImprimer, setNotesAImprimer] = useState<Note[] | null>(null)
+  const imprimerNotes = (cible: Note[]) => { if (cible.length > 0) setNotesAImprimer(cible) }
+  useEffect(() => {
+    if (!notesAImprimer) return
+    // Classe posée sur <body> le temps de l'impression : distingue ce job de celui de la fiche
+    // personnage (voir src/index.css) — son propre conteneur .print-only reste monté en permanence
+    // ailleurs dans l'app, donc sans ça les deux s'imprimeraient en même temps.
+    document.body.classList.add('printing-notes')
+    const finir = () => { document.body.classList.remove('printing-notes'); setNotesAImprimer(null) }
+    window.addEventListener('afterprint', finir)
+    // Deux frames : laisse le temps au conteneur (image de parchemin comprise) d'être peint avant de
+    // déclencher l'impression, même motif que l'export PDF des compagnons (voir exportCompagnonsPdf.ts).
+    let id2 = 0
+    const id1 = requestAnimationFrame(() => { id2 = requestAnimationFrame(() => window.print()) })
+    return () => {
+      cancelAnimationFrame(id1); cancelAnimationFrame(id2)
+      window.removeEventListener('afterprint', finir)
+    }
+  }, [notesAImprimer])
   const [search, setSearch] = useState('')
   const [nouvelleCampagneOuverte, setNouvelleCampagneOuverte] = useState(false)
   const [nouvelleCampagneNom, setNouvelleCampagneNom] = useState('')
@@ -2080,6 +2115,18 @@ export default function NotesTab({
           ↓
         </button>
         <button
+          onClick={() => imprimerNotes(notesSection)}
+          title={t('notes.imprimerGroupe')}
+          style={{
+            ...groupeIconBtnStyle, fontSize: 15,
+            color: notesSection.length ? 'rgba(245,236,215,0.5)' : 'rgba(245,236,215,0.2)',
+            cursor: notesSection.length ? 'pointer' : 'default',
+          }}
+          disabled={notesSection.length === 0}
+        >
+          🖨
+        </button>
+        <button
           onClick={() => creerNote(campagneId)}
           title={t('notes.nouvelleNote')}
           style={{ ...groupeIconBtnStyle, color: GOLD, fontSize: 20, marginLeft: 6 }}
@@ -2248,6 +2295,7 @@ export default function NotesTab({
       }}
       onBack={() => onSelectId(null)}
       onDelete={() => supprimerNote(selected.id)}
+      onPrint={() => imprimerNotes([selected])}
       onLien={suivreLien}
       onEnsureNote={assurerNote}
       pageActive={pageActive}
@@ -2268,10 +2316,64 @@ export default function NotesTab({
     </div>
   )
 
+  // Rendu dans un portail (document.body) pendant un job d'impression (voir imprimerNotes) — une
+  // « page » par page de note (séparateur '\f', voir plus haut), à l'aspect du parchemin de l'éditeur
+  // (même image de fond, même zone de texte positionnée en %) pour rester visuellement cohérent avec
+  // l'écran. Le rendu du texte réutilise renderLiveContent (fonction pure) pour ne pas dupliquer le
+  // parsing gras/italique/liens/images.
+  //
+  // Le titre est une bande à part AU-DESSUS de l'image de parchemin (pas dans la zone de texte elle-
+  // même) : la pagination (trouverPointDeCoupure) mesure le débordement contre la hauteur exacte de
+  // cette zone telle qu'affichée à l'écran, sans titre. En ajouter un DANS cette même zone au moment de
+  // l'impression aurait réduit la place disponible après-coup et risqué de tronquer la toute fin d'une
+  // page déjà remplie pile jusqu'au bord. En réservant la bande de titre à côté (l'image garde son
+  // aspectRatio propre, juste plus petite pour lui laisser la place), la zone de texte imprimée reste
+  // proportionnellement identique à celle mesurée à l'écran — seulement mise à l'échelle, jamais rognée.
+  const printPortal = notesAImprimer && createPortal(
+    <div className="print-only-notes">
+      {notesAImprimer.flatMap(n => {
+        const pagesNote = n.contenu.split('\f')
+        return pagesNote.map((page, pi) => (
+          <div key={`${n.id}:${pi}`} className="print-page-notes" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              flexShrink: 0, height: '12mm', display: 'flex', alignItems: 'flex-end', paddingBottom: '2mm',
+              fontFamily: "'Cinzel', serif", fontWeight: 700, fontSize: 15, color: ENCRE,
+            }}>
+              {n.titre || t('notes.sansTitre')}
+              {pagesNote.length > 1 && (
+                <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.6, marginLeft: 8 }}>
+                  {t('notes.pageLabel', { page: pi + 1, total: pagesNote.length })}
+                </span>
+              )}
+            </div>
+            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+              <div style={{
+                position: 'relative', height: '100%', maxWidth: '100%', aspectRatio: '2480 / 3508', margin: '0 auto',
+                backgroundImage: `url(${noteParchmentBg})`, backgroundSize: 'cover',
+                backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+              }}>
+                <div style={{ position: 'absolute', top: '2.54%', right: '10.17%', bottom: '6.10%', left: '5%' }}>
+                  <div style={{
+                    width: '100%', height: '100%', overflow: 'hidden', color: ENCRE, fontSize: 16,
+                    fontFamily: 'inherit', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  }}>
+                    {renderLiveContent(page, null, () => {}, noteImages, () => {}, () => {}, true)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      })}
+    </div>,
+    document.body
+  )
+
   if (mobile) {
     return (
       <div style={{ height: '100%', padding: 8, boxSizing: 'border-box' }}>
         {selected ? detailPanel : listPanel}
+        {printPortal}
       </div>
     )
   }
@@ -2322,6 +2424,7 @@ export default function NotesTab({
       {listPanel}
       {detailPanel}
       {dialogueSuppressionGroupe}
+      {printPortal}
     </div>
   )
 }

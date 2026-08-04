@@ -102,6 +102,42 @@ body {
   margin: 0;
 }
 
+@page tdr-notes {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/* Impression des notes (NotesTab) : conteneur distinct de .print-only (fiche personnage), monté
+   seulement le temps d'un job d'impression (voir NotesTab.tsx, notesAImprimer) plutôt qu'en
+   permanence — mais le conteneur de la fiche personnage, lui, reste monté en permanence ailleurs dans
+   l'app quel que soit l'onglet affiché ; sans distinction, imprimer les notes imprimerait aussi la
+   fiche en même temps. La classe .printing-notes posée sur <body> le temps de l'impression sert
+   d'aiguillage entre les deux. */
+.print-only-notes {
+  display: none;
+}
+
+@media print {
+  body.printing-notes .print-only {
+    display: none !important;
+  }
+
+  body.printing-notes .print-only-notes {
+    display: block !important;
+  }
+
+  .print-page-notes {
+    display: block;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    position: relative;
+    page: tdr-notes;
+    break-after: page;
+    page-break-after: always;
+  }
+}
+
 @media print {
   html, body, #root {
     background: white !important;

@@ -35,7 +35,6 @@ import { saveDataFileToBundle } from './utils/tauriStorage'
 import { MASQUAGE_MOT_DE_PASSE } from './utils/motDePasse'
 import type { SheetPage } from './context/GameDataContext'
 import { FIELD_POSITIONS_LIVRE } from './context/GameDataContext'
-import { autoAssignCompagnons } from './utils/compagnons'
 import { exporterFichesCompagnonsPDF } from './utils/exportCompagnonsPdf'
 import { useReseauClient } from './hooks/useReseauClient'
 import type { DegatsRecus } from './hooks/useReseauClient'
@@ -65,15 +64,6 @@ function AppContent() {
     ...defaultCharacter(),
     inventaire: t('wizard.step7.inventaireDefault'),
   }))
-
-  // Synchronise compagnonsActifs dès qu'un rang de voie change, quelle que soit l'origine
-  useEffect(() => {
-    const newActifs = autoAssignCompagnons(character, descriptions)
-    const cur = character.compagnonsActifs ?? [null, null]
-    if (newActifs[0] !== (cur[0] ?? null) || newActifs[1] !== (cur[1] ?? null)) {
-      setCharacter(prev => ({ ...prev, compagnonsActifs: newActifs }))
-    }
-  }, [character.voiePeuple, character.voieCulturelle, character.voie1, character.voie2, character.voie3, character.voiePrestige, character.voieSangMele])
 
   // F11 bascule la fenêtre Tauri en plein écran (no-op hors contexte Tauri, ex. navigateur en npm run dev)
   useEffect(() => {
@@ -470,12 +460,18 @@ function AppContent() {
     const tm = c.talentMagique
     // Migration : compagnonsOverrides (legacy, par position) est remplacé par compagnonsFiches (par
     // nom) — voir FicheCompagnon.tsx. Recopié une seule fois si absent du nouveau format, puis le
-    // champ legacy est omis (undefined) du personnage normalisé : plus jamais réécrit.
-    const legacyOverrides = (c as Character & { compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null] }).compagnonsOverrides
+    // champ legacy est omis (undefined) du personnage normalisé : plus jamais réécrit. compagnonsActifs
+    // (autre champ legacy, retiré depuis — voir types/character.ts) ne sert plus qu'à retrouver quel nom
+    // occupait quel slot au moment de cette migration ponctuelle.
+    const cLegacy = c as Character & {
+      compagnonsOverrides?: [CompagnonOverride | null, CompagnonOverride | null]
+      compagnonsActifs?: [string | null, string | null]
+    }
+    const legacyOverrides = cLegacy.compagnonsOverrides
     const compagnonsFichesMigre = { ...(c.compagnonsFiches ?? {}) }
     if (legacyOverrides) {
       for (const slot of [0, 1] as const) {
-        const nom = c.compagnonsActifs?.[slot]
+        const nom = cLegacy.compagnonsActifs?.[slot]
         if (nom && !compagnonsFichesMigre[nom] && legacyOverrides[slot]) {
           compagnonsFichesMigre[nom] = legacyOverrides[slot]!
         }

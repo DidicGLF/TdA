@@ -4,7 +4,7 @@ import type { Character } from '../types/character'
 import type { FieldPositions } from '../context/GameDataContext'
 import { useGameData } from '../context/GameDataContext'
 import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
-import { getCompagnonsDisponibles, getRangCompagnon } from '../utils/compagnons'
+import { getCompagnonsOrdonnes, getRangCompagnon } from '../utils/compagnons'
 import FicheCompagnon from './FicheCompagnon'
 
 const PAR_PAGE = 2
@@ -33,9 +33,12 @@ export default function CharacterSheetCompagnons({
   const descriptions = useTranslatedDescriptions(rawData)
   const [page, setPage] = useState(0)
 
-  // Les fiches n'existent que pour les compagnons réellement débloqués par les voies du personnage.
+  // Les fiches n'existent que pour les compagnons réellement débloqués par les voies du personnage,
+  // dans l'ordre choisi par le joueur (wizard) — voir getCompagnonsOrdonnes. Tous y figurent, actifs ou
+  // laissés en arrière : cette page catalogue tout ce qui a été débloqué, indépendamment de qui part en
+  // rencontre (voir CombatTab.tsx/estCompagnonActif).
   const compagnons = useMemo(
-    () => getCompagnonsDisponibles(character, descriptions),
+    () => getCompagnonsOrdonnes(character, descriptions),
     [character, descriptions],
   )
 
