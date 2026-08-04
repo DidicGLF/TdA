@@ -2046,8 +2046,12 @@ export default function GameModePanel({ character, descriptions, onChange, resea
             sans redimensionnement/glisser-déposer/liens SVG (pas adapté à la largeur réduite de ce
             panneau) : ciblage par simple sélection sur SA PROPRE carte (comme SelecteurCible côté MJ),
             liens affichés en badge. Remplace les deux sections mobiles ci-dessus sur desktop (une seule
-            interface plutôt que deux qui font la même chose). */}
-        {!isMobile && (compagnonsActifsResolus.length > 0 || reseau.connecte) && (
+            interface plutôt que deux qui font la même chose).
+            Masquée hors connexion (pas seulement les sous-parties MJ comme avant) : sans MJ, il n'y a de
+            toute façon aucun ennemi à cibler, donc rien d'utile à faire depuis cette carte — les PV/infos
+            du compagnon restent consultables via l'onglet "Compagnons" de la fiche, accessible sans
+            fermer le Mode de jeu (panneau séparé). */}
+        {!isMobile && reseau.connecte && (
           <div style={SECTION_DIVIDER}>
             <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.combatSection')}</div>
             {/* Ordre d'initiative — miroir en lecture du tableau du MJ (voir OrdreInitiativeTable dans
