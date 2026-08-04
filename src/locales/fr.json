@@ -1396,6 +1396,65 @@
       "exporteVers": "Exporté vers {{filename}}",
       "supprimer": "Supprimer cet objet"
     },
+    "compagnie": {
+      "identite": "Identité",
+      "nomLabel": "Nom de la compagnie",
+      "nomPlaceholder": "Ex. La Compagnie des Vents",
+      "siegeLabel": "Siège / juridiction",
+      "siegePlaceholder": "Ex. Cadanla",
+      "tailleLabel": "Taille",
+      "taille": {
+        "petite": "Petite",
+        "moyenne": "Moyenne",
+        "grande": "Grande",
+        "organisation": "Organisation",
+        "armee": "Armée"
+      },
+      "histoireLabel": "Histoire",
+      "histoirePlaceholder": "Genèse de la compagnie, quelques lignes…",
+      "renommeeTitre": "Renommée & niveau",
+      "renommeeUnite": "points de renommée",
+      "niveauLabel": "Niveau actuel",
+      "niveauAbrege": "Niv. {{n}}",
+      "ajouterRenommeePlaceholder": "Points (+/-)",
+      "ajouterRenommee": "Ajouter",
+      "renommeeAide": "Une mission type rapporte en moyenne 100 à 150 points. Une perte de renommée reste possible (échecs répétés, perte de membres essentiels) mais n'est pas automatisée ici — ajuste directement le total.",
+      "codeTitre": "Code de la compagnie",
+      "code": {
+        "altruiste": "Altruiste",
+        "anarchique": "Anarchique",
+        "autoritaire": "Autoritaire",
+        "solidaire": "Solidaire"
+      },
+      "codeAide": "Le code peut changer à chaque montée de niveau : la voie garde son rang, mais les capacités déjà acquises sont perdues au profit de celles du nouveau code.",
+      "voieTitre": "Voie de compagnie",
+      "voieAideCode": "Choisis d'abord un code pour afficher sa voie de compagnie.",
+      "rangLabel": "Rang {{n}}",
+      "choisirCapacite": "Choisir une capacité…",
+      "domaine": {
+        "arsenal": "Arsenal — équipement",
+        "influence": "Influence — réseau, prestige",
+        "tactique": "Tactique — cohésion d'équipe"
+      },
+      "capacitesActivesTitre": "Capacités actives",
+      "membresTitre": "Membres & fonctions",
+      "fonction": {
+        "commandant": "Commandant",
+        "second": "Second",
+        "emissaire": "Émissaire",
+        "intendant": "Intendant",
+        "maitreArmes": "Maître d'armes"
+      },
+      "vacant": "À pourvoir",
+      "arsenalTitre": "Arsenal",
+      "arsenalAucunCode": "Choisis un code pour savoir à quel rang l'Arsenal se débloque.",
+      "arsenalVerrouilleRang": "Se débloque au rang {{n}}.",
+      "arsenalVerrouille": "Pas encore débloqué.",
+      "exporter": "Exporter la compagnie",
+      "exporteVers": "Enregistrée dans Documents/TdA/{{filename}}",
+      "importer": "Importer une compagnie",
+      "importReussi": "Compagnie importée."
+    },
     "adversite": {
       "intro": "Génère une rencontre à partir des tables du Livre du Meneur : répartit le budget de la rencontre entre plusieurs adversaires du bestiaire.",
       "parametres": "Paramètres de la rencontre",
@@ -1494,6 +1553,7 @@
       "adversite": "Générateur de rencontre",
       "bataille": "Gestion de bataille",
       "objetsMagiques": "Objets magiques",
+      "compagnie": "Compagnie",
       "reseau": "Réseau",
       "notes": "Notes"
     },
@@ -1729,7 +1789,8 @@
     "bataille": "une bataille",
     "gabaritBataille": "un gabarit de bataille",
     "note": "une note",
-    "notesGroupe": "un groupe de notes"
+    "notesGroupe": "un groupe de notes",
+    "compagnie": "une compagnie"
   },
   "importTypage": {
     "pasLeBonType": "Ce fichier n'est pas {{attendu}} ({{trouve}})."

@@ -10,7 +10,7 @@ import DraggableImageField from './DraggableImageField'
 import DraggableStaticImage from './DraggableStaticImage'
 import DraggableCursorRow from './DraggableCursorRow'
 import DraggableCheckboxRow from './DraggableCheckboxRow'
-import fondAvatar from '../assets/fond-avatar.webp'
+import fondAvatar from '../assets/fond-avatar.jpg'
 import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
 import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
@@ -260,12 +260,19 @@ export default function ChampsVerso({
         <>
           {/* Fond décoratif sous le portrait (mode image) — remplace l'ancien fond blanc uni (masqué à
               la demande de Didic le 2026-07-30, retiré pour de bon le 2026-08-02) par une image dédiée
-              (cadre orné, voir Fond_avatar.png, 1126×1249px). Emplacement INDÉPENDANT du champ Portrait
-              (contrairement à l'ancien fond blanc, calé sur les mêmes coordonnées) : champ séparé,
-              calibrable à part. Largeur/hauteur par défaut = dimensions RÉELLES de l'image rapportées à
-              celles de la feuille verso (2480×3508px) — 1126/2480 et 1249/3508 — donc affichée à sa
-              taille native au premier placement (avant tout recalibrage), ni étirée ni réduite. Nouveau
-              champ → réserve de calibrage par défaut. */}
+              (cadre orné, 1126×1249px). Emplacement INDÉPENDANT du champ Portrait (contrairement à
+              l'ancien fond blanc, calé sur les mêmes coordonnées) : champ séparé, calibrable à part.
+              Largeur/hauteur par défaut = dimensions RÉELLES de l'image rapportées à celles de la feuille
+              verso (2480×3508px) — 1126/2480 et 1249/3508 — donc affichée à sa taille native au premier
+              placement (avant tout recalibrage), ni étirée ni réduite. Nouveau champ → réserve de
+              calibrage par défaut.
+              Passée de .webp à .jpg le 2026-08-04 : la version webp (canal alpha présent, VP8X) s'affichait
+              cassée chez des utilisateurs Windows et Android, transparence WebP mal gérée par ces deux
+              webviews. L'image (un rectangle plein, cadre dessiné dessus, jamais de vraie découpe
+              transparente) n'a jamais eu besoin d'alpha — le JPEG (aucune transparence possible dans le
+              format) élimine la classe de bug plutôt que de la contourner. Même dimensions exactes
+              (1126×1249), donc calibrage inchangé. Ancienne version gardée en backup
+              (fond-avatarOLD.webp, même convention que feuille-rectoOLD*.webp/feuille-versoOLD*.png). */}
           <DraggableStaticImage
             {...fp('Fond avatar', 30.6, 26.5, 45.4, 35.6, true)}
             src={fondAvatar}

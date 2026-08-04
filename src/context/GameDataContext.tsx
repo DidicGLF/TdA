@@ -37,6 +37,8 @@ import {
 } from '../utils/voiesPerso'
 import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
 import { fusionnerObjetsMagiques, extraireSurchargesObjetsMagiques } from '../utils/objetsMagiquesPerso'
+import { COMPAGNIE_PAR_DEFAUT } from '../utils/compagnie'
+import type { Compagnie } from '../utils/compagnie'
 import { fusionnerArmes, migrerArmesPerso, extraireSurchargesArmes, fusionnerArmures, migrerArmuresPerso, extraireSurchargesArmures } from '../utils/armesPerso'
 import type { ArmesPerso, ArmuresPerso } from '../utils/armesPerso'
 import { fusionnerPeuples, migrerPeuplesPerso, extraireSurchargesPeuples } from '../utils/peuplesPerso'
@@ -131,6 +133,9 @@ interface GameDataContextValue {
   setRencontres: Dispatch<SetStateAction<RencontreSauvegardee[]>>
   combatsSauvegardes: CombatSessionSauvegardee[]
   setCombatsSauvegardes: Dispatch<SetStateAction<CombatSessionSauvegardee[]>>
+  // Compagnie de mercenaires (une seule par table, partagée par tous les PJ) — voir utils/compagnie.ts.
+  compagnie: Compagnie
+  setCompagnie: Dispatch<SetStateAction<Compagnie>>
   capacitesBibliotheque: CapaciteBibliotheque[]
   setCapacitesBibliotheque: Dispatch<SetStateAction<CapaciteBibliotheque[]>>
   objetsMagiques: ObjetMagiqueEntry[]
@@ -333,6 +338,9 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   )
   const [capacitesBibliothequePerso, setCapacitesBibliothequePersoRaw] = useState<CapaciteBibliotheque[]>([])
   const [objetsMagiquesPerso, setObjetsMagiquesPersoRaw] = useState<ObjetMagiqueEntry[]>([])
+  // Compagnie de mercenaires (une seule par table, partagée par tous les PJ) — objet unique, pas un
+  // catalogue livré+perso (aucune compagnie n'est fournie avec l'appli), voir utils/compagnie.ts.
+  const [compagnie, setCompagnieRaw] = useState<Compagnie>(COMPAGNIE_PAR_DEFAUT())
   const [notes, setNotesRaw] = useState<Note[]>(() =>
     unwrap(JSON.parse(JSON.stringify(NOTES_RAW))) as Note[]
   )
@@ -588,6 +596,11 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (objetsMagiquesPersoStr !== null) {
           setObjetsMagiquesPersoRaw(unwrap(JSON.parse(objetsMagiquesPersoStr)) as ObjetMagiqueEntry[])
         }
+        // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste l'objet par défaut au premier lancement.
+        const compagnieStr = await loadDataFile('Maitre de jeu/compagnie.json')
+        if (compagnieStr !== null) {
+          setCompagnieRaw(unwrap(JSON.parse(compagnieStr)) as Compagnie)
+        }
         const notesStr = await loadDataFileDossier('Notes/notes.json', 'notes.json')
         if (notesStr) setNotesRaw(unwrap(JSON.parse(notesStr)) as Note[])
         const campagnesStr = await loadDataFileDossier('Notes/campagnes.json', 'campagnes.json')
@@ -776,6 +789,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'Maitre de jeu/hidden-bestiaire.json', 'hidden-bestiaire'), [])
   const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'Maitre de jeu/rencontres-sauvegardees.json', 'rencontres'), [])
   const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'Maitre de jeu/combats-sauvegardes.json', 'combats'), [])
+  const setCompagnie = useMemo(() => makeAutoSaver<Compagnie>(setCompagnieRaw, 'Maitre de jeu/compagnie.json', 'compagnie'), [])
   // Générique comme setTraits/setTraitsRaciaux/setCompagnons ci-dessus : reçoit la vue fusionnée (même
   // signature qu'avant la scission), en déduit la surcharge perso par différence avec le livré.
   const setCapacitesBibliotheque = useCallback<Dispatch<SetStateAction<CapaciteBibliotheque[]>>>((updater) => {
@@ -870,6 +884,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       hiddenBestiaire, setHiddenBestiaire,
       rencontres, setRencontres,
       combatsSauvegardes, setCombatsSauvegardes,
+      compagnie, setCompagnie,
       capacitesBibliotheque, setCapacitesBibliotheque,
       objetsMagiques, setObjetsMagiques,
       notes, setNotes,

@@ -1396,6 +1396,65 @@
       "exporteVers": "Exported to {{filename}}",
       "supprimer": "Delete this item"
     },
+    "compagnie": {
+      "identite": "Identity",
+      "nomLabel": "Company name",
+      "nomPlaceholder": "E.g. The Wind Company",
+      "siegeLabel": "Seat / jurisdiction",
+      "siegePlaceholder": "E.g. Cadanla",
+      "tailleLabel": "Size",
+      "taille": {
+        "petite": "Small",
+        "moyenne": "Medium",
+        "grande": "Large",
+        "organisation": "Organisation",
+        "armee": "Army"
+      },
+      "histoireLabel": "History",
+      "histoirePlaceholder": "The company's origin, a few lines…",
+      "renommeeTitre": "Renown & level",
+      "renommeeUnite": "renown points",
+      "niveauLabel": "Current level",
+      "niveauAbrege": "Lvl. {{n}}",
+      "ajouterRenommeePlaceholder": "Points (+/-)",
+      "ajouterRenommee": "Add",
+      "renommeeAide": "A typical mission grants 100 to 150 points on average. Losing renown is still possible (repeated failures, loss of key members) but isn't automated here — adjust the total directly.",
+      "codeTitre": "Company code",
+      "code": {
+        "altruiste": "Altruistic",
+        "anarchique": "Anarchic",
+        "autoritaire": "Authoritarian",
+        "solidaire": "Solidary"
+      },
+      "codeAide": "The code can change on every level up: the path keeps its rank, but already-acquired capacities are lost in favor of the new code's.",
+      "voieTitre": "Company path",
+      "voieAideCode": "Choose a code first to display its company path.",
+      "rangLabel": "Rank {{n}}",
+      "choisirCapacite": "Choose a capacity…",
+      "domaine": {
+        "arsenal": "Arsenal — equipment",
+        "influence": "Influence — network, prestige",
+        "tactique": "Tactics — team cohesion"
+      },
+      "capacitesActivesTitre": "Active capacities",
+      "membresTitre": "Members & roles",
+      "fonction": {
+        "commandant": "Commander",
+        "second": "Second",
+        "emissaire": "Envoy",
+        "intendant": "Steward",
+        "maitreArmes": "Weapons master"
+      },
+      "vacant": "Vacant",
+      "arsenalTitre": "Arsenal",
+      "arsenalAucunCode": "Choose a code to know at which rank the Arsenal unlocks.",
+      "arsenalVerrouilleRang": "Unlocks at rank {{n}}.",
+      "arsenalVerrouille": "Not unlocked yet.",
+      "exporter": "Export the company",
+      "exporteVers": "Saved to Documents/TdA/{{filename}}",
+      "importer": "Import a company",
+      "importReussi": "Company imported."
+    },
     "adversite": {
       "intro": "Generates an encounter from the GM Book's tables: splits the encounter budget across several bestiary adversaries.",
       "parametres": "Encounter parameters",
@@ -1494,6 +1553,7 @@
       "adversite": "Encounter generator",
       "bataille": "Battle management",
       "objetsMagiques": "Magic items",
+      "compagnie": "Company",
       "reseau": "Network",
       "notes": "Notes"
     },
@@ -1729,7 +1789,8 @@
     "bataille": "a battle",
     "gabaritBataille": "a battle template",
     "note": "a note",
-    "notesGroupe": "a note group"
+    "notesGroupe": "a note group",
+    "compagnie": "a company"
   },
   "importTypage": {
     "pasLeBonType": "This file is not {{attendu}} ({{trouve}})."
