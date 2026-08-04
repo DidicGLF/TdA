@@ -243,7 +243,10 @@ function AppContent() {
   // remonte et renseigne à nouveau la ref (voir ses deux useEffect concernés).
   const gererDegatsRecusRef = useRef<((d: DegatsRecus) => void) | null>(null)
   const gererPvActualisesRecuRef = useRef<((pv: number) => void) | null>(null)
-  const reseauEnAttenteRef = useRef<Array<{ kind: 'degats'; d: DegatsRecus } | { kind: 'pv'; pv: number }>>([])
+  // Idem pour le message 'nouveau-tour' (bouton "Tour suivant" du MJ, voir CombatTab.tsx) — la vraie
+  // logique (handleEndTurn) reste dans GameModePanel, même patron ref+file d'attente que ci-dessus.
+  const gererNouveauTourRecuRef = useRef<(() => void) | null>(null)
+  const reseauEnAttenteRef = useRef<Array<{ kind: 'degats'; d: DegatsRecus } | { kind: 'pv'; pv: number } | { kind: 'nouveau-tour' }>>([])
   const onDegatsRecus = (d: DegatsRecus) => {
     if (gererDegatsRecusRef.current) gererDegatsRecusRef.current(d)
     else reseauEnAttenteRef.current.push({ kind: 'degats', d })
@@ -252,8 +255,12 @@ function AppContent() {
     if (gererPvActualisesRecuRef.current) gererPvActualisesRecuRef.current(pv)
     else reseauEnAttenteRef.current.push({ kind: 'pv', pv })
   }
-  const reseau = useReseauClient(onDegatsRecus, recevoirObjetMagiqueReseau, recevoirObjetClassiqueReseau, onPvActualisesRecu)
-  // Rejoue la file d'attente dès que GameModePanel renseigne à nouveau l'une des deux refs (voir sa note
+  const onNouveauTourRecu = () => {
+    if (gererNouveauTourRecuRef.current) gererNouveauTourRecuRef.current()
+    else reseauEnAttenteRef.current.push({ kind: 'nouveau-tour' })
+  }
+  const reseau = useReseauClient(onDegatsRecus, recevoirObjetMagiqueReseau, recevoirObjetClassiqueReseau, onPvActualisesRecu, onNouveauTourRecu)
+  // Rejoue la file d'attente dès que GameModePanel renseigne à nouveau l'une des refs (voir sa note
   // ci-dessus) — appelé après CHAQUE écriture des refs (pas seulement au montage) : vidanger une file
   // déjà vide ne fait rien, donc sans risque de rejouer deux fois le même message.
   const drainerReseauEnAttente = () => {
@@ -262,7 +269,8 @@ function AppContent() {
     reseauEnAttenteRef.current = []
     for (const item of items) {
       if (item.kind === 'degats') gererDegatsRecusRef.current?.(item.d)
-      else gererPvActualisesRecuRef.current?.(item.pv)
+      else if (item.kind === 'pv') gererPvActualisesRecuRef.current?.(item.pv)
+      else gererNouveauTourRecuRef.current?.()
     }
   }
   const isAndroid = /android/i.test(navigator.userAgent)
@@ -860,7 +868,7 @@ function AppContent() {
           <div style={{ display: mobileTab === 'fiche' ? 'none' : 'flex', flexDirection: 'column', height: '100%', background: 'rgba(20,16,10,0.98)' }}>
             {showGameMode ? (
               <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange}
-                reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
+                reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} gererNouveauTourRecuRef={gererNouveauTourRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
                 onClose={() => { closeGameMode(); setMobileTab('creation') }} screenWidth={screenWidth} />
             ) : (
               <>
@@ -1514,7 +1522,7 @@ function AppContent() {
           </>
         ) : showGameMode ? (
           <GameModePanel character={gameCharacter ?? character} descriptions={descriptions} onChange={gameOnChange}
-            reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
+            reseau={reseau} gererDegatsRecusRef={gererDegatsRecusRef} gererPvActualisesRecuRef={gererPvActualisesRecuRef} gererNouveauTourRecuRef={gererNouveauTourRecuRef} drainerReseauEnAttente={drainerReseauEnAttente}
             onClose={closeGameMode} screenWidth={screenWidth} />
         ) : (
           <>

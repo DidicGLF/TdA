@@ -318,6 +318,42 @@ export function computeAvantages(character: Character, descriptions: DescMap): A
   return list
 }
 
+// Grants de type ACTIONS_SUPP ("N action(s) offensive/active supplémentaire(s) par tour", ex. "2
+// attaques par tour") actuellement actifs — même patron que computeAvantages ci-dessus : détecté
+// automatiquement depuis les rangs débloqués, jamais une case à cocher manuelle. Utilisé par le Mode de
+// jeu pour calculer le budget d'action du tour (voir budgetActions dans GameModePanel.tsx) et pour
+// afficher la capacité comme un grant "Automatique" au même titre qu'un AVANTAGE.
+export type AvailableActionSupp = { voieNom: string; rangIdx: number; rangNom: string; label: string; nombre: number }
+
+export function computeActionsSupp(character: Character, descriptions: DescMap): AvailableActionSupp[] {
+  const list: AvailableActionSupp[] = []
+  for (const key of VOIE_KEYS) {
+    const voie = character[key]
+    if (!voie.nom) continue
+    const rangsDesc = descriptions[voie.nom]
+    if (!rangsDesc) continue
+    voie.rangs.forEach((unlocked, idx) => {
+      if (!unlocked) return
+      const rang = rangsDesc[idx]
+      if (!rang?.grants) return
+      for (const grant of rang.grants) {
+        if (grant.type !== 'ACTIONS_SUPP') continue
+        if (grant.avancee && !(voie.rangsAvances?.[idx])) continue
+        if (grant.masqueSiAvancee && voie.rangsAvances?.[idx]) continue
+        if ((grant.minRang ?? 1) > voie.rangs.filter(Boolean).length) continue
+        list.push({ voieNom: voie.nom, rangIdx: idx, rangNom: rang.nom, label: grant.label, nombre: grant.nombre ?? 1 })
+      }
+    })
+  }
+  for (const { voieNom, rangIdx, rangData, avanceeAccordee } of getRangsEmpruntes(character, descriptions)) {
+    for (const grant of rangData.grants ?? []) {
+      if (grant.type !== 'ACTIONS_SUPP' || (grant.avancee && !avanceeAccordee) || grant.minRang !== undefined) continue
+      list.push({ voieNom, rangIdx, rangNom: rangData.nom, label: grant.label, nombre: grant.nombre ?? 1 })
+    }
+  }
+  return list
+}
+
 // Stats de combat "de base" d'un PJ (PV/PM max, DEF, RD générique) à partir des effets permanents
 // (voies + cristaux) uniquement — pas des bonus temporaires de session (activeBoosts/effectCounters),
 // qui n'existent pas sur un personnage fraîchement importé et n'ont pas de sens hors d'une session de
@@ -355,6 +391,21 @@ export function computeCombatStatsPJ(character: Character, descriptions: DescMap
   const rd = sumStat(effectsAll['RD'] ?? [])
 
   return { pvTotal, pmTotal, def, rd }
+}
+
+// Initiative de combat d'un PJ, recalculée en direct — contrairement à character.initiative (figée à la
+// création du personnage dans CreationWizard.tsx, juste DEX.valeur, jamais mise à jour depuis), pas
+// fiable pour trier un ordre d'initiative. Même formule que "Initiative totale" sur la fiche recto
+// (ChampsRecto.tsx : DEX.valeur - encombrement + bonus de voies/cristaux), à l'exception du malus
+// "équipement sans formation martiale" qui dépend des catalogues armes/armures (hors de portée ici,
+// comme le malusEquip déjà omis du def de computeCombatStatsPJ ci-dessus — même précédent, même
+// simplification assumée pour l'écran de combat MJ).
+export function computeInitiativeTotale(character: Character, descriptions: DescMap): number {
+  const effectsAll = computeEffectsWithCristaux(character, descriptions)
+  const isBouclier = (nom: string) => nom.toLowerCase().includes('bouclier')
+  const armorDef = character.armuresEquipees.filter(a => !isBouclier(a.nom) && a.equipe).reduce((s, a) => s + a.def, 0)
+  const totalEncombrement = Math.max(0, armorDef - (character.enchantementEncombrement ?? 0))
+  return character.caracteristiques.DEX.valeur - totalEncombrement + sumStat(effectsAll['INIT'] ?? [])
 }
 
 // Contributions des bonus temporaires (Effets en jeu) actuellement actifs sur la copie de session du Mode de

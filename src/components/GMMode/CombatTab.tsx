@@ -4,20 +4,110 @@ import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
 import CombatCard from './CombatCard'
 import PJCard from './PJCard'
-import { importPJ, resoudreAttaque, appliquerDegatsCible, listerEntites, tickerDots } from '../../utils/combat'
+import { importPJ, resoudreAttaque, appliquerDegatsCible, listerEntites, tickerDots, construireOrdreInitiative, insererDansOrdreInitiative, ajouterHistorique } from '../../utils/combat'
 import type { CombatSession, CombatCreature, RollResult, DotActif } from '../../utils/combat'
 import type { Character } from '../../types/character'
+import type { DescMap } from '../../types/gameData'
 import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 import { compagnonEnCreature, getCompagnonsOrdonnes, estCompagnonActif } from '../../utils/compagnons'
+import { computeInitiativeTotale } from '../../utils/computeEffects'
 import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 import { ecouterReseau, envoyerAClientReseau, envoyerATousReseau } from '../../utils/reseau'
 import { encoderMessage, decoderMessage, idPJ } from '../../utils/reseauProtocole'
+import { chargerImage, compresserImage, estCleImage } from '../../utils/imageStore'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
 const LINK_COLOR = 'rgba(200,170,255,0.85)'          // liens partant d'une créature
 const LINK_COLOR_PJ = 'rgba(110,220,200,0.85)'       // liens partant d'un PJ — teinte distincte
+
+// Même convention que EquipementModal.tsx/ChampsVerso.tsx/etc. (dupliqué localement par fichier dans ce
+// projet, pas de helper partagé) — retrouver un compagnon par nom malgré un éventuel marqueur de
+// footnote (¹²³...) dans son nom affiché (voir 'degats'.compagnonNom dans reseauProtocole.ts).
+const stripExposants = (s: string) => s.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim()
+
+// État de ciblage envoyé à UN PJ précis (voir 'etat-ciblage' dans reseauProtocole.ts) : jamais def/rd/
+// pvActuels (voir CombatEntiteInfo — ce sont précisément les champs qu'un joueur ne doit jamais voir,
+// contrairement au MJ dans SelecteurCible.tsx), juste de quoi choisir une cible et savoir qui le vise.
+// Fonction pure (pas de dépendance au rendu) pour pouvoir être appelée aussi bien depuis l'effet
+// [session, descriptions] (voir plus bas) que depuis la branche 'identification' de l'écoute réseau
+// (fermeture figée à l'abonnement, d'où sessionRef/descriptionsRef côté appelant).
+function etatCiblagePourPJ(pj: CombatSession['pjs'][number], session: CombatSession, descriptions: DescMap) {
+  const toutesEntites = listerEntites(session, descriptions)
+  // Juste pour retrouver un NOM à partir d'un id (voir cible/ordreInitiative ci-dessous) — jamais pour
+  // exposer autre chose : nomParId ne contient que ce que toutesEntites contient déjà, {id, nom}.
+  const nomParId = new Map(toutesEntites.map(e => [e.id, e.nom]))
+  const ordre = session.ordreInitiative ?? []
+  const tourActuelIndex = session.tourActuelIndex ?? 0
+
+  const ciblesDisponibles = toutesEntites
+    .filter(c => c.camp === 'creature')
+    .map(({ id, nom, pvActuels }) => {
+      const combatant = session.combatants.find(c => c.id === id)
+      return {
+        id, nom, mort: pvActuels <= 0,
+        // Calculé par ID ici (pas par nom côté PJ comme précédemment) : deux ennemis homonymes (ex. 3
+        // gobelins identiques) tombaient sinon tous sur la même entrée de l'ordre d'initiative et
+        // affichaient le même statut (bug signalé par Didic) — id toujours unique, contrairement au nom.
+        enCours: ordre.findIndex(e => e.id === id) === tourActuelIndex,
+        // Qui cet ennemi vise actuellement — un PJ, un compagnon (même d'un AUTRE PJ) ou une autre
+        // créature, peu importe : juste le nom (demandé par Didic), jamais de PV/stats sur cette cible.
+        cible: combatant?.cibleId ? (nomParId.get(combatant.cibleId) ?? null) : null,
+      }
+    })
+  const ciblesSurMoi = [
+    ...session.combatants.filter(c => c.cibleId === pj.id).map(c => c.creature.nom),
+    ...session.pjs.filter(p => p.cibleId === pj.id).map(p => p.character.nomPersonnage),
+    ...session.compagnons.filter(c => c.cibleId === pj.id).map(c => c.creature.nom),
+  ]
+  // PV de SES PROPRES compagnons (jamais des ennemis, voir la note dans reseauProtocole.ts) — le joueur
+  // ne les voyait jusqu'ici jamais changer quand une créature les touchait (signalé par Didic), là où le
+  // PV de sa propre fiche, lui, était déjà transmis (voir 'pv-actualises'). estSonTour : dérivé de
+  // l'ordre d'initiative, comme estMonTour ci-dessous pour le PJ lui-même.
+  const compagnons = session.compagnons
+    .filter(c => c.pjProprietaireId === pj.id)
+    .map(c => ({
+      nom: c.creature.nom, pvActuels: c.pvActuels, pvMax: Number(c.creature.pv) || 0,
+      estSonTour: ordre.findIndex(e => e.id === c.id) === tourActuelIndex,
+    }))
+  // estMonTour : calculé ici (pas par le joueur lui-même) car il ne connaît jamais son propre
+  // CombatPJ.id interne (rien dans le protocole ne le lui transmet — seul idPJ(character), un hash
+  // d'identité, jamais l'id éphémère de session). ordreInitiative : le tableau complet, pour l'affichage
+  // du même ordre côté joueur (voir la vue Combat de GameModePanel.tsx) — enCours/aJoue dérivés de la
+  // position par rapport à tourActuelIndex, remplace l'ancien champ aJoueCeTour synchronisé par PJ.
+  const estMonTour = ordre.findIndex(e => e.id === pj.id) === tourActuelIndex
+  const ordreInitiative = ordre.map((e, i) => ({
+    nom: nomParId.get(e.id) ?? '?',
+    enCours: i === tourActuelIndex,
+    aJoue: i < tourActuelIndex,
+  }))
+  return { ciblesDisponibles, ciblesSurMoi, compagnons, estMonTour, ordreInitiative, round: session.round ?? 1 }
+}
+
+// Résout puis transmet le portrait d'UNE créature à UN client précis, une seule fois (voir dejaEnvoyees,
+// alimenté par imagesEnvoyeesRef côté appelant) — la valeur stockée sur la créature peut être une "clé"
+// (nouveau format, à résoudre via chargerImage) ou une data URL directe (ancien format, déjà utilisable
+// telle quelle, voir estCleImage), même branchement que le hook useImage côté affichage local.
+async function envoyerImageCibleSiNecessaire(connexionId: number, id: string, imageValeur: string | undefined, dejaEnvoyees: Set<string>) {
+  if (!imageValeur || dejaEnvoyees.has(id)) return
+  dejaEnvoyees.add(id)
+  const brute = estCleImage(imageValeur) ? await chargerImage(imageValeur) : imageValeur
+  if (!brute) return
+  const compressee = await compresserImage(brute)
+  envoyerAClientReseau(connexionId, encoderMessage({ type: 'image-cible', id, dataUrl: compressee }))
+}
+
+// Boucle sur toutes les créatures de la rencontre pour UN client — le portrait du PJ et de ses
+// compagnons n'a pas besoin de ce chemin (déjà présent localement sur sa propre fiche, voir
+// GameModePanel.tsx).
+function envoyerImagesCiblesPourPJ(connexionId: number, session: CombatSession, envoyees: Record<number, Set<string>>) {
+  if (!envoyees[connexionId]) envoyees[connexionId] = new Set()
+  const dejaEnvoyees = envoyees[connexionId]
+  for (const c of session.combatants) {
+    envoyerImageCibleSiNecessaire(connexionId, c.id, c.creature.image, dejaEnvoyees)
+  }
+}
 
 interface Props {
   session: CombatSession | null
@@ -26,9 +116,11 @@ interface Props {
   onSauvegarder: () => void
 }
 
-// Les trois colonnes réordonnables indépendamment (voir le suivi au pointeur plus bas) — un compagnon
-// ne se mélange jamais aux PJ dans l'ordre, même s'il partage leur colonne visuelle.
-type ListeDrag = 'creature' | 'pj' | 'compagnon'
+// Les colonnes réordonnables indépendamment (voir le suivi au pointeur plus bas) — un compagnon ne se
+// mélange jamais aux PJ dans l'ordre, même s'il partage leur colonne visuelle. 'initiative' : le
+// tableau d'ordre d'initiative, même mécanisme de glisser-déposer que les trois autres (demandé par
+// Didic plutôt que des flèches ▲/▼).
+type ListeDrag = 'creature' | 'pj' | 'compagnon' | 'initiative'
 
 type Link = {
   id: string; x1: number; y1: number; x2: number; y2: number
@@ -53,6 +145,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const areaRef = useRef<HTMLDivElement>(null)
   const creaturesColRef = useRef<HTMLDivElement>(null)
   const pjsColRef = useRef<HTMLDivElement>(null)
+  const initiativeColRef = useRef<HTMLDivElement>(null)
   const [links, setLinks] = useState<Link[]>([])
   // Part (0 à 1) de la largeur totale attribuée à la colonne Créatures — le reste va aux PJ. Ajustable
   // en glissant la barre de séparation (voir resizeRef ci-dessous) ; conservée dans la session (donc
@@ -68,19 +161,43 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // seuls handleAttaque et l'écoute réseau (abonnée une seule fois, voir plus bas) ont besoin de sa
   // valeur la plus récente.
   const clientsPJRef = useRef<Record<number, string>>({})
+  // Créatures dont le portrait a déjà été transmis à CHAQUE connexion (voir envoyerImagesCiblesSiNecessaire
+  // et 'image-cible' dans reseauProtocole.ts) — évite de renvoyer les mêmes octets à chaque changement de
+  // session (etat-ciblage, lui, se met à jour à chaque attaque/PV modifié, mais une image ne change
+  // presque jamais en cours de combat). Un doublon après reconnexion (nouveau connexionId) est sans
+  // conséquence, juste un envoi superflu.
+  const imagesEnvoyeesRef = useRef<Record<number, Set<string>>>({})
   // handleAttaquePJ est redéfini à chaque rendu (ferme sur le session de CE rendu) : l'écoute réseau,
   // abonnée une seule fois au montage, doit passer par cette ref (mise à jour juste après sa définition
   // plus bas) pour toujours appeler la version la plus récente — sinon les dégâts reçus par réseau
   // s'appliqueraient toujours sur l'état de session du tout premier rendu.
   const handleAttaquePJRef = useRef<(pj: CombatSession['pjs'][number], montant: number, type: string) => void>(() => {})
+  // Même besoin, pour les dégâts infligés par un COMPAGNON du PJ (voir 'degats'.compagnonNom dans
+  // reseauProtocole.ts et handleAttaqueCompagnonPJ plus bas) — chemin parallèle à handleAttaquePJRef,
+  // pas une extension de celui-ci : la cible résolue est celle du compagnon (compagnon.cibleId), pas
+  // celle du PJ.
+  const handleAttaqueCompagnonPJRef = useRef<(compagnon: CombatCreature, montant: number, type: string) => void>(() => {})
   // Même besoin, pour appliquer une valeur de PV reçue par réseau (voir 'pv-actualises') sur la session
   // la plus récente — updatePJ est redéfini à chaque rendu comme handleAttaquePJ ci-dessus.
   const updatePJRef = useRef<(id: string, patch: Partial<CombatSession['pjs'][number]>) => void>(() => {})
+  // Même besoin, pour appliquer une cible choisie par le joueur pour l'UN de ses compagnons (voir
+  // 'cible-choisie-compagnon' dans reseauProtocole.ts) — updateCompagnon est lui aussi redéfini à chaque
+  // rendu.
+  const updateCompagnonRef = useRef<(id: string, patch: Partial<CombatCreature>) => void>(() => {})
+  // Même besoin, pour repousser en fin d'ordre l'entrée d'un PJ (ou de l'un de ses compagnons) qui
+  // choisit d'"attendre" son tour (voir 'attendre-mon-tour' dans reseauProtocole.ts) —
+  // handleAttendreMonTour est lui aussi redéfini à chaque rendu, ferme sur session/onSessionChange.
+  const attendreMonTourRef = useRef<(pjId: string, compagnonNom?: string) => void>(() => {})
   // Même besoin que handleAttaquePJRef ci-dessus : l'écoute réseau doit retrouver le PJ par nom dans la
   // session la PLUS RÉCENTE, pas celle du rendu où elle s'est abonnée. Synchronisée dans un effet (pas
   // pendant le rendu) : écrire une ref pendant le rendu est interdit par les règles des Hooks.
   const sessionRef = useRef(session)
   useEffect(() => { sessionRef.current = session })
+  // Même besoin que sessionRef ci-dessus : la poussée d'état de ciblage déclenchée depuis la branche
+  // 'identification' de l'écoute réseau (abonnée une seule fois) doit lire les descriptions les plus
+  // récentes, pas celles du tout premier rendu (voir etatCiblagePourPJ plus bas).
+  const descriptionsRef = useRef(descriptions)
+  useEffect(() => { descriptionsRef.current = descriptions })
   // PJ connectés au réseau mais pas encore engagés dans la rencontre (voir activerPJ plus bas) —
   // alimentée directement par l'écoute réseau : un setter issu de useState est stable par nature en
   // React (contrairement à une fonction redéfinie à chaque rendu), pas besoin d'une ref d'indirection ici.
@@ -167,13 +284,25 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       const [item] = list.splice(fromIndex, 1)
       list.splice(fromIndex < dropIndex ? dropIndex - 1 : dropIndex, 0, item)
       onSessionChange({ ...session, pjs: list })
-    } else {
+    } else if (liste === 'compagnon') {
       const list = [...session.compagnons]
       const fromIndex = list.findIndex(c => c.id === id)
       if (fromIndex === -1) return
       const [item] = list.splice(fromIndex, 1)
       list.splice(fromIndex < dropIndex ? dropIndex - 1 : dropIndex, 0, item)
       onSessionChange({ ...session, compagnons: list })
+    } else {
+      // 'initiative' : contrairement aux trois listes ci-dessus, il faut aussi faire suivre
+      // tourActuelIndex sur la MÊME entité logique (celle qu'il désignait avant le glisser), sans quoi
+      // le curseur de tour se retrouverait à pointer une entité différente après réordonnancement.
+      const list = session.ordreInitiative ? [...session.ordreInitiative] : []
+      const fromIndex = list.findIndex(e => e.id === id)
+      if (fromIndex === -1) return
+      const entiteActuelle = list[session.tourActuelIndex ?? 0]
+      const [item] = list.splice(fromIndex, 1)
+      list.splice(fromIndex < dropIndex ? dropIndex - 1 : dropIndex, 0, item)
+      const tourActuelIndex = entiteActuelle ? Math.max(0, list.findIndex(e => e.id === entiteActuelle.id)) : 0
+      onSessionChange({ ...session, ordreInitiative: list, tourActuelIndex })
     }
   }, [session, onSessionChange])
 
@@ -183,10 +312,14 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // remonter l'événement jusqu'au fond de la carte déclencherait un glisser fantôme d'un pixel.
   useEffect(() => {
     // Compagnon et PJ partagent le même conteneur visuel (colonne PJ), pas les créatures.
-    const conteneurDe = (liste: ListeDrag) => liste === 'creature' ? creaturesColRef.current : pjsColRef.current
+    const conteneurDe = (liste: ListeDrag) =>
+      liste === 'creature' ? creaturesColRef.current
+      : liste === 'initiative' ? initiativeColRef.current
+      : pjsColRef.current
     const totalDe = (liste: ListeDrag) =>
       liste === 'creature' ? (session?.combatants.length ?? 0)
       : liste === 'pj' ? (session?.pjs.length ?? 0)
+      : liste === 'initiative' ? (session?.ordreInitiative?.length ?? 0)
       : (session?.compagnons.length ?? 0)
 
     const handleMove = (e: PointerEvent) => {
@@ -235,6 +368,12 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   const nomCarteGlissee = dragState && (
     dragState.liste === 'creature' ? session?.combatants.find(c => c.id === dragState.id)?.creature.nom
     : dragState.liste === 'pj' ? session?.pjs.find(p => p.id === dragState.id)?.character.nomPersonnage
+    : dragState.liste === 'initiative'
+      // Une entrée d'ordre d'initiative peut être une créature, un PJ OU un compagnon — pas de liste
+      // unique à interroger comme les trois autres cas (voir cibles plus bas, pas encore déclaré ici).
+      ? session?.combatants.find(c => c.id === dragState.id)?.creature.nom
+        ?? session?.pjs.find(p => p.id === dragState.id)?.character.nomPersonnage
+        ?? session?.compagnons.find(c => c.id === dragState.id)?.creature.nom
     : session?.compagnons.find(c => c.id === dragState.id)?.creature.nom
   )
   // Rendu dans un portail (document.body) : en position fixe imbriquée dans la mise en page normale,
@@ -412,17 +551,44 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
         clientsPJRef.current = { ...clientsPJRef.current, [e.id]: message.idPJ }
         // Déjà engagé dans la rencontre (ex. réponse à qui-etes-vous après un changement d'onglet) :
         // rien à faire, on ne le remet pas en attente par-dessus.
-        const dejaEngage = sessionRef.current?.pjs.some(p => idPJ(p.character) === message.idPJ)
-        if (!dejaEngage) {
+        const pjDejaEngage = sessionRef.current?.pjs.find(p => idPJ(p.character) === message.idPJ)
+        if (!pjDejaEngage) {
           setPjsEnAttente(prev => [
             ...prev.filter(p => idPJ(p.character) !== message.idPJ),
             { connexionId: e.id, character: message.character },
           ])
+        } else if (sessionRef.current) {
+          // Reconnexion/rafraîchissement d'un PJ déjà dans la rencontre : lui repousser son état de
+          // ciblage tout de suite plutôt que d'attendre un changement de session qui pourrait ne jamais
+          // arriver (voir la note sur l'effet [session, descriptions] plus haut — clientsPJRef vient
+          // d'être mise à jour par mutation de ref, ce qui ne le redéclenche pas).
+          envoyerAClientReseau(e.id, encoderMessage({ type: 'etat-ciblage', ...etatCiblagePourPJ(pjDejaEngage, sessionRef.current, descriptionsRef.current) }))
+          envoyerImagesCiblesPourPJ(e.id, sessionRef.current, imagesEnvoyeesRef.current)
         }
+      } else if (message.type === 'cible-choisie') {
+        const monIdPJ = clientsPJRef.current[e.id]
+        const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
+        if (pj) updatePJRef.current(pj.id, { cibleId: message.cibleId })
+      } else if (message.type === 'cible-choisie-compagnon') {
+        const monIdPJ = clientsPJRef.current[e.id]
+        const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
+        if (!pj) return
+        const compagnon = sessionRef.current?.compagnons.find(c => c.pjProprietaireId === pj.id && stripExposants(c.creature.nom) === stripExposants(message.compagnonNom))
+        if (compagnon) updateCompagnonRef.current(compagnon.id, { cibleId: message.cibleId })
+      } else if (message.type === 'attendre-mon-tour') {
+        const monIdPJ = clientsPJRef.current[e.id]
+        const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
+        if (pj) attendreMonTourRef.current(pj.id, message.compagnonNom)
       } else if (message.type === 'degats') {
         const monIdPJ = clientsPJRef.current[e.id]
         const pj = monIdPJ ? sessionRef.current?.pjs.find(p => idPJ(p.character) === monIdPJ) : undefined
-        if (pj) handleAttaquePJRef.current(pj, message.montant, message.typeDegats)
+        if (!pj) return
+        if (message.compagnonNom) {
+          const compagnon = sessionRef.current?.compagnons.find(c => c.pjProprietaireId === pj.id && stripExposants(c.creature.nom) === stripExposants(message.compagnonNom!))
+          if (compagnon) handleAttaqueCompagnonPJRef.current(compagnon, message.montant, message.typeDegats)
+        } else {
+          handleAttaquePJRef.current(pj, message.montant, message.typeDegats)
+        }
       } else if (message.type === 'pv-actualises') {
         // Le joueur vient de se soigner ou de perdre des PV de son côté (voir applyPVLoss/applyHeal
         // dans GameModePanel.tsx) — jusqu'ici jamais transmis au MJ (contrairement aux dégâts infligés
@@ -470,6 +636,35 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     return [...deCreatures, ...dePjs, ...deCompagnons]
   }, [session, cibles])
 
+  // Diffuse à chaque PJ connecté l'état de ciblage qui le concerne (voir etatCiblagePourPJ) — à chaque
+  // changement de session ou de descriptions (nouvelle cible choisie côté MJ, créature ajoutée/retirée,
+  // PV changés...). Le cas de la RECONNEXION (client qui revient sans changement de session) est couvert
+  // séparément dans la branche 'identification' de l'écoute réseau plus bas — clientsPJRef est mise à
+  // jour par mutation de ref, ce qui ne redéclenche pas cet effet.
+  useEffect(() => {
+    if (!session) return
+    for (const pj of session.pjs) {
+      const connexionId = Object.entries(clientsPJRef.current).find(([, idpj]) => idpj === idPJ(pj.character))?.[0]
+      if (connexionId === undefined) continue
+      envoyerAClientReseau(Number(connexionId), encoderMessage({ type: 'etat-ciblage', ...etatCiblagePourPJ(pj, session, descriptions) }))
+      envoyerImagesCiblesPourPJ(Number(connexionId), session, imagesEnvoyeesRef.current)
+    }
+  }, [session, descriptions])
+
+  // Filet de sécurité : une session reprise depuis une sauvegarde antérieure à ce chantier (ou tout
+  // autre chemin qui n'aurait pas encore renseigné ordreInitiative) régénère son ordre au premier rendu
+  // plutôt que de laisser le tableau/le gating d'action silencieusement vides.
+  useEffect(() => {
+    if (!session || session.ordreInitiative) return
+    onSessionChange({
+      ...session,
+      ordreInitiative: construireOrdreInitiative(session.combatants, session.pjs, session.compagnons, descriptions),
+      tourActuelIndex: 0,
+      round: session.round ?? 1,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, descriptions])
+
   if (!session) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, fontSize: 14, textAlign: 'center', padding: 20 }}>
@@ -478,12 +673,38 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     )
   }
 
+  // Remplace l'ancien champ aJoueCeTour (persisté par entité) : dérivé de sa position dans l'ordre
+  // d'initiative — seule l'entité à tourActuelIndex peut agir (voir CombatCard.tsx/PJCard.tsx, qui
+  // reçoivent le résultat sous le nom estEnCours).
+  const estEnCours = (id: string) => {
+    const ordre = session.ordreInitiative
+    if (!ordre) return false
+    return ordre.findIndex(e => e.id === id) === (session.tourActuelIndex ?? 0)
+  }
+
   const updateCombatant = (id: string, patch: Partial<CombatSession['combatants'][number]>) => {
     onSessionChange({ ...session, combatants: session.combatants.map(c => c.id === id ? { ...c, ...patch } : c) })
   }
 
   const updateCompagnon = (id: string, patch: Partial<CombatCreature>) => {
     onSessionChange({ ...session, compagnons: session.compagnons.map(c => c.id === id ? { ...c, ...patch } : c) })
+  }
+
+  // Un PJ (ou l'un de ses compagnons) choisit de ne pas agir tout de suite sur son tour et de repasser
+  // en fin d'ordre du round en cours (voir 'attendre-mon-tour' dans reseauProtocole.ts) — l'entrée
+  // concernée était forcément à tourActuelIndex (c'est SON tour, sinon le joueur n'aurait pas pu
+  // déclencher ce message, voir peutAgir/estMonTour dans GameModePanel.tsx), donc la repousser en fin de
+  // tableau ne décale jamais rien avant elle : tourActuelIndex n'a besoin d'aucun ajustement.
+  const handleAttendreMonTour = (pjId: string, compagnonNom?: string) => {
+    const ordre = session.ordreInitiative
+    if (!ordre) return
+    const entiteId = compagnonNom
+      ? session.compagnons.find(c => c.pjProprietaireId === pjId && stripExposants(c.creature.nom) === stripExposants(compagnonNom))?.id
+      : pjId
+    if (!entiteId) return
+    const entree = ordre.find(e => e.id === entiteId)
+    if (!entree) return
+    onSessionChange({ ...session, ordreInitiative: [...ordre.filter(e => e.id !== entiteId), entree] })
   }
 
   // Si le patch touche pvActuels (édition manuelle du champ PV dans PJCard, ou réception réseau
@@ -514,13 +735,48 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
     })
   }
 
+  // Avance l'ordre d'initiative d'UNE entité (plus un round entier comme l'ancien modèle à déblocage
+  // simultané) — seul déclencheur de l'avancée, le MJ (décidé avec Didic). Saute automatiquement toute
+  // entrée "passe son tour" (bascule à usage unique, remise à false une fois sautée). Les DoT/dernier
+  // résultat affiché ne sont recalculés/effacés QUE quand l'ordre boucle sur le début (un round
+  // complet) — pas à chaque clic, pour préserver le rythme "une fois par round" déjà en place avant ce
+  // chantier (ce bouton était auparavant cliqué une fois par round ; il l'est désormais une fois par
+  // entité, il faut donc déplacer ce qui doit rester round-based).
   const tourSuivant = () => {
+    let ordreMaj = session.ordreInitiative ?? construireOrdreInitiative(session.combatants, session.pjs, session.compagnons, descriptions)
+    if (ordreMaj.length === 0) return
+    // PV réévalués à chaque avancée (pas un drapeau figé comme passeSonTour) : une entité inconsciente
+    // (0 PV) est sautée automatiquement, mais redevient éligible dès qu'elle est soignée, sans
+    // intervention du MJ (demandé par Didic — contrairement à passeSonTour, ce n'est jamais "consommé").
+    const pvParId = new Map(listerEntites(session, descriptions).map(e => [e.id, e.pvActuels]))
+    let index = session.tourActuelIndex ?? 0
+    let round = session.round ?? 1
+    let boucle = false
+    for (let i = 0; i < ordreMaj.length; i++) {
+      index = (index + 1) % ordreMaj.length
+      if (index === 0) { boucle = true; round += 1 }
+      const entree = ordreMaj[index]
+      const inconscient = (pvParId.get(entree?.id ?? '') ?? 0) <= 0
+      if (!entree?.passeSonTour && !inconscient) break
+      if (entree?.passeSonTour) {
+        ordreMaj = ordreMaj.map((e, idx) => idx === index ? { ...e, passeSonTour: false } : e)
+      }
+    }
     onSessionChange({
       ...session,
-      combatants: session.combatants.map(c => tickerDots({ ...c, aJoueCeTour: false, dernierResultat: null })),
-      pjs: session.pjs.map(p => tickerDots({ ...p, dernierResultat: null })),
-      compagnons: session.compagnons.map(c => tickerDots({ ...c, aJoueCeTour: false, dernierResultat: null })),
+      ordreInitiative: ordreMaj,
+      tourActuelIndex: index,
+      round,
+      combatants: boucle ? session.combatants.map(c => tickerDots({ ...c, dernierResultat: null })) : session.combatants,
+      // Remise à zéro immédiate côté MJ (pas besoin d'attendre l'aller-retour réseau qui arrivera de
+      // toute façon confirmer la même chose une fois le joueur averti par 'nouveau-tour' ci-dessous).
+      pjs: boucle ? session.pjs.map(p => tickerDots({ ...p, dernierResultat: null })) : session.pjs,
+      compagnons: boucle ? session.compagnons.map(c => tickerDots({ ...c, dernierResultat: null })) : session.compagnons,
     })
+    // Débloque le budget d'action des PJ connectés (voir handleEndTurn dans GameModePanel.tsx) — sans
+    // ça, seules les cartes suivies côté MJ étaient mises à jour, jamais les PJ eux-mêmes (qui jouent
+    // depuis leur propre Mode de jeu, déconnecté de cet écran).
+    envoyerATousReseau(encoderMessage({ type: 'nouveau-tour' }))
   }
 
   // Compagnons ACTIFS (pas "laissés en arrière", voir estCompagnonActif) du PJ importé, dans l'ordre
@@ -534,8 +790,8 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       if (!creature) return []
       return [{
         id: `compagnon-${pj.id}-${nom}`,
-        creature, pvActuels: creature.pv ?? 0, aJoueCeTour: false, buffs: [],
-        expanded: false, dernierResultat: null, cibleId: null, dotsActifs: [],
+        creature, pvActuels: creature.pv ?? 0, buffs: [],
+        expanded: false, dernierResultat: null, cibleId: null, dotsActifs: [], historique: [],
         pjProprietaireId: pj.id,
       }]
     })
@@ -584,9 +840,20 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // pas de risque : un PJ n'est jamais présent que dans une seule des deux.
   const activerPJ = (character: Character) => {
     const nouveau = importPJ(character, descriptions)
-    const pjs = [...session.pjs, nouveau].sort((a, b) => b.character.initiative - a.character.initiative)
-    const compagnons = [...session.compagnons, ...compagnonsDe(nouveau)]
-    onSessionChange({ ...session, pjs, compagnons })
+    const pjs = [...session.pjs, nouveau]
+    const nouveauxCompagnons = compagnonsDe(nouveau)
+    const compagnons = [...session.compagnons, ...nouveauxCompagnons]
+    // Insertion dans l'ordre d'initiative (voir insererDansOrdreInitiative dans utils/combat.ts) : le PJ
+    // et chacun de ses compagnons jouent dès ce round si leur rang n'est pas encore atteint, sinon
+    // seulement au round suivant — jamais de tri par la valeur figée character.initiative (voir
+    // computeInitiativeTotale).
+    let ordreInitiative = session.ordreInitiative ?? construireOrdreInitiative(session.combatants, session.pjs, session.compagnons, descriptions)
+    const tourActuelIndex = session.tourActuelIndex ?? 0
+    ordreInitiative = insererDansOrdreInitiative(ordreInitiative, tourActuelIndex, { id: nouveau.id, initiative: computeInitiativeTotale(character, descriptions) })
+    for (const c of nouveauxCompagnons) {
+      ordreInitiative = insererDansOrdreInitiative(ordreInitiative, tourActuelIndex, { id: c.id, initiative: c.creature.init ?? -Infinity })
+    }
+    onSessionChange({ ...session, pjs, compagnons, ordreInitiative, tourActuelIndex })
     setPjsEnAttente(prev => prev.filter(p => idPJ(p.character) !== idPJ(character)))
     setPjsImportesEnAttente(prev => prev.filter(c => idPJ(c) !== idPJ(character)))
   }
@@ -621,19 +888,32 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // être n'importe laquelle des trois listes (créature, PJ ou compagnon).
   const handleAttaque = (combatant: CombatCreature, attaque: NonNullable<CombatCreature['creature']['attaques']>[number]) => {
     const cibleInfo = combatant.cibleId ? cibles.find(c => c.id === combatant.cibleId) ?? null : null
+    // Cible déjà morte (tuée par un autre coup pendant que ce combattant la visait encore) : on refuse
+    // l'attaque plutôt que de la résoudre contre un cadavre — voir aussi le blocage de sélection dans
+    // SelecteurCible.tsx, qui empêche déjà d'en CHOISIR une nouvelle une fois morte.
+    if (cibleInfo && cibleInfo.pvActuels <= 0) return
     const result = resoudreAttaque(attaque.nom, attaque.bonus, attaque.dm, cibleInfo)
+    result.attaquantNom = combatant.creature.nom
     const cibleId = combatant.cibleId
     const degats = result.degatsAppliques
 
+    // Historique côté cible poussé dès qu'une cible était assignée (touché OU raté — un raté reste un
+    // événement qui la concerne), indépendamment de l'application de PV (conditionnée, elle, à un
+    // dégât réellement chiffré) — voir HistoriqueEntree/ajouterHistorique dans combat.ts.
     const appliquer = (c: CombatCreature): CombatCreature => {
-      if (c.id === combatant.id) return { ...c, dernierResultat: result, aJoueCeTour: true }
-      if (cibleId && degats !== undefined && c.id === cibleId) return { ...c, pvActuels: Math.max(0, c.pvActuels - degats) }
+      if (c.id === combatant.id) return { ...c, dernierResultat: result, historique: ajouterHistorique(c.historique, 'attaque', result) }
+      if (cibleId && c.id === cibleId) {
+        const pvActuels = degats !== undefined ? Math.max(0, c.pvActuels - degats) : c.pvActuels
+        return { ...c, pvActuels, historique: ajouterHistorique(c.historique, 'subi', result) }
+      }
       return c
     }
     const nextCombatants = session.combatants.map(appliquer)
     const nextCompagnons = session.compagnons.map(appliquer)
-    const nextPjs = (cibleId && degats !== undefined)
-      ? session.pjs.map(p => p.id === cibleId ? { ...p, pvActuels: Math.max(0, p.pvActuels - degats) } : p)
+    const nextPjs = cibleId
+      ? session.pjs.map(p => p.id === cibleId
+        ? { ...p, pvActuels: degats !== undefined ? Math.max(0, p.pvActuels - degats) : p.pvActuels, historique: ajouterHistorique(p.historique, 'subi', result) }
+        : p)
       : session.pjs
 
     onSessionChange({ ...session, combatants: nextCombatants, compagnons: nextCompagnons, pjs: nextPjs })
@@ -660,20 +940,49 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // RD — les créatures n'ont pas de résistance par type dans ce modèle, contrairement aux PJ.
   const handleAttaquePJ = (pj: CombatSession['pjs'][number], montant: number, type: string) => {
     const cibleInfo = pj.cibleId ? cibles.find(c => c.id === pj.cibleId) ?? null : null
-    if (!cibleInfo || montant <= 0) return
+    // Voir la même note dans handleAttaque ci-dessus : cible déjà morte entre-temps, on refuse.
+    if (!cibleInfo || montant <= 0 || cibleInfo.pvActuels <= 0) return
     const { degatsAppliques, rdAppliquee } = appliquerDegatsCible(montant, cibleInfo)
     const result: RollResult = {
-      attaqueNom: t('gmMode.bataille.attaqueManuelle'), cibleNom: cibleInfo.nom,
+      attaqueNom: t('gmMode.bataille.attaqueManuelle'), cibleNom: cibleInfo.nom, attaquantNom: pj.character.nomPersonnage,
       degatsTotal: montant, degatsAppliques, rdAppliquee, typeDegats: type || undefined,
     }
     const cibleId = pj.cibleId
 
-    const nextCombatants = session.combatants.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques) } : c)
-    const nextCompagnons = session.compagnons.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques) } : c)
+    const nextCombatants = session.combatants.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques), historique: ajouterHistorique(c.historique, 'subi', result) } : c)
+    const nextCompagnons = session.compagnons.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques), historique: ajouterHistorique(c.historique, 'subi', result) } : c)
     const nextPjs = session.pjs.map(p => {
-      if (p.id === pj.id) return { ...p, dernierResultat: result }
-      if (p.id === cibleId) return { ...p, pvActuels: Math.max(0, p.pvActuels - degatsAppliques) }
+      if (p.id === pj.id) return { ...p, dernierResultat: result, historique: ajouterHistorique(p.historique, 'attaque', result) }
+      if (p.id === cibleId) return { ...p, pvActuels: Math.max(0, p.pvActuels - degatsAppliques), historique: ajouterHistorique(p.historique, 'subi', result) }
       return p
+    })
+
+    onSessionChange({ ...session, combatants: nextCombatants, compagnons: nextCompagnons, pjs: nextPjs })
+  }
+
+  // Symétrique de handleAttaquePJ ci-dessus, mais pour un compagnon du PJ (voir 'degats'.compagnonNom
+  // dans reseauProtocole.ts et la section Compagnons de GameModePanel.tsx) : la cible résolue est celle
+  // du COMPAGNON (compagnon.cibleId, choisie par le MJ via son propre SelecteurCible sur sa carte), pas
+  // celle du PJ — un compagnon peut viser une créature différente de son propriétaire. Le résultat
+  // (dernierResultat) est écrit sur l'entrée compagnon dans session.compagnons, pas sur le PJ, sinon le
+  // journal MJ ne refléterait jamais une attaque de compagnon déclenchée à distance.
+  const handleAttaqueCompagnonPJ = (compagnon: CombatCreature, montant: number, type: string) => {
+    const cibleInfo = compagnon.cibleId ? cibles.find(c => c.id === compagnon.cibleId) ?? null : null
+    // Voir la même note dans handleAttaque ci-dessus : cible déjà morte entre-temps, on refuse.
+    if (!cibleInfo || montant <= 0 || cibleInfo.pvActuels <= 0) return
+    const { degatsAppliques, rdAppliquee } = appliquerDegatsCible(montant, cibleInfo)
+    const result: RollResult = {
+      attaqueNom: t('gmMode.bataille.attaqueManuelle'), cibleNom: cibleInfo.nom, attaquantNom: compagnon.creature.nom,
+      degatsTotal: montant, degatsAppliques, rdAppliquee, typeDegats: type || undefined,
+    }
+    const cibleId = compagnon.cibleId
+
+    const nextCombatants = session.combatants.map(c => c.id === cibleId ? { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques), historique: ajouterHistorique(c.historique, 'subi', result) } : c)
+    const nextPjs = session.pjs.map(p => p.id === cibleId ? { ...p, pvActuels: Math.max(0, p.pvActuels - degatsAppliques), historique: ajouterHistorique(p.historique, 'subi', result) } : p)
+    const nextCompagnons = session.compagnons.map(c => {
+      if (c.id === compagnon.id) return { ...c, dernierResultat: result, historique: ajouterHistorique(c.historique, 'attaque', result) }
+      if (c.id === cibleId) return { ...c, pvActuels: Math.max(0, c.pvActuels - degatsAppliques), historique: ajouterHistorique(c.historique, 'subi', result) }
+      return c
     })
 
     onSessionChange({ ...session, combatants: nextCombatants, compagnons: nextCompagnons, pjs: nextPjs })
@@ -687,7 +996,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // eslint-disable-next-line react-hooks/refs
   handleAttaquePJRef.current = handleAttaquePJ
   // eslint-disable-next-line react-hooks/refs
+  handleAttaqueCompagnonPJRef.current = handleAttaqueCompagnonPJ
+  // eslint-disable-next-line react-hooks/refs
   updatePJRef.current = updatePJ
+  // eslint-disable-next-line react-hooks/refs
+  updateCompagnonRef.current = updateCompagnon
+  // eslint-disable-next-line react-hooks/refs
+  attendreMonTourRef.current = handleAttendreMonTour
 
   // Pose un effet de dégâts sur la durée sur la cible actuelle du PJ (poison, brûlure, ...) — encaissé
   // automatiquement à chaque « Tour suivant » (voir tickerDots), sans appliquer de dégâts immédiats :
@@ -711,6 +1026,28 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
       compagnons: session.compagnons.map(c => c.id === entiteId ? { ...c, dotsActifs: c.dotsActifs.filter(d => d.id !== dotId) } : c),
       pjs: session.pjs.map(p => p.id === entiteId ? { ...p, dotsActifs: p.dotsActifs.filter(d => d.id !== dotId) } : p),
     })
+  }
+
+  // Bascule "passe son tour" (créature immobilisée, voir passeSonTour dans utils/combat.ts) — à usage
+  // unique, remise à false par tourSuivant une fois sautée.
+  const toggleSkipTour = (id: string) => {
+    if (!session.ordreInitiative) return
+    onSessionChange({ ...session, ordreInitiative: session.ordreInitiative.map(e => e.id === id ? { ...e, passeSonTour: !e.passeSonTour } : e) })
+  }
+
+  // Jet de d20 de départage pour TOUTES les entrées à égalité avec initiativeEgale (voir tieBreak dans
+  // utils/combat.ts) — un nouveau jet écrase l'ancien à chaque clic, permet de relancer si besoin. Retri
+  // complet (stable pour tout le reste) puis retrouve la nouvelle position de l'entité actuellement
+  // pointée, pour ne jamais perdre le curseur de tour en cours de route.
+  const departagerInitiative = (initiativeEgale: number) => {
+    const ordre = session.ordreInitiative
+    if (!ordre) return
+    const entiteActuelle = ordre[session.tourActuelIndex ?? 0]
+    const nouvelOrdre = ordre
+      .map(e => e.initiative === initiativeEgale ? { ...e, tieBreak: Math.floor(Math.random() * 20) + 1 } : e)
+      .sort((a, b) => b.initiative - a.initiative || (b.tieBreak ?? 0) - (a.tieBreak ?? 0))
+    const tourActuelIndex = entiteActuelle ? Math.max(0, nouvelOrdre.findIndex(e => e.id === entiteActuelle.id)) : 0
+    onSessionChange({ ...session, ordreInitiative: nouvelOrdre, tourActuelIndex })
   }
 
   return (
@@ -755,6 +1092,65 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
           </div>
         </div>
 
+        {/* Ordre d'initiative (voir OrdreInitiativeEntry dans utils/combat.ts) — une carte par entité,
+            nom résolu via cibles (même liste que SelecteurCible). Réordonnancement par glisser-déposer,
+            même mécanisme de suivi au pointeur que les colonnes PJ/créatures ci-dessous (voir
+            handleCardPointerDown/commitDrop/dragState plus haut — demandé par Didic plutôt que des
+            flèches ▲/▼, trop petit/peu naturel). Départage au dé (🎲, groupes à égalité), "passe son
+            tour" (case, bascule à usage unique) — la seule AVANCÉE du tour reste le bouton "Tour
+            suivant" ci-dessus, qui avance maintenant d'UNE entité. */}
+        {session.ordreInitiative && session.ordreInitiative.length > 0 && (
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              {t('gmMode.bataille.ordreInitiativeLabel')} — {t('gmMode.bataille.roundLabel', { round: session.round ?? 1 })}
+            </div>
+            <div ref={initiativeColRef} style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 10, padding: '4px 2px 8px' }}>
+              {session.ordreInitiative.map((entree, i) => {
+                const nomEntite = cibles.find(x => x.id === entree.id)?.nom ?? '?'
+                const enCours = i === (session.tourActuelIndex ?? 0)
+                const enEgalite = session.ordreInitiative!.filter(x => x.initiative === entree.initiative).length > 1
+                return (
+                  <div key={entree.id} style={{ display: 'contents' }}>
+                    {dragState?.liste === 'initiative' && dropIndex === i && caseFantome}
+                    <div
+                      data-drag-index={i}
+                      data-drag-liste="initiative"
+                      onPointerDown={handleCardPointerDown('initiative', entree.id)}
+                      style={{
+                        opacity: dragState?.id === entree.id ? 0.35 : 1, cursor: 'grab', touchAction: 'none', flexShrink: 0,
+                        width: 150, padding: '10px 12px', borderRadius: 8,
+                        background: enCours ? 'rgba(201,168,76,0.2)' : 'rgba(245,236,215,0.05)',
+                        border: `1px solid ${enCours ? GOLD : 'rgba(245,236,215,0.15)'}`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 15, fontWeight: enCours ? 700 : 600, color: enCours ? GOLD : PARCHMENT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomEntite}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(123,170,232,0.95)', flexShrink: 0 }}>{t('gmMode.bataille.initAbrege')} {entree.initiative}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        {/* stopPropagation nécessaire ici (contrairement au bouton 🎲 ci-dessous, déjà
+                            ignoré par handleCardPointerDown via closest('button,...')) : un clic sur le
+                            <label> lui-même (pas exactement sur la case) ne matche pas ce sélecteur,
+                            puisque closest() ne remonte que vers les ANCÊTRES, jamais les descendants —
+                            sans quoi cliquer à côté de la case démarrerait un glisser accidentel. */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, cursor: 'pointer', opacity: 0.75 }} title={t('gmMode.bataille.passeSonTourTitle')} onPointerDown={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={!!entree.passeSonTour} onChange={() => toggleSkipTour(entree.id)} style={{ cursor: 'pointer' }} />
+                          {t('gmMode.bataille.passeSonTourTitle')}
+                        </label>
+                        {enEgalite && (
+                          <button onClick={() => departagerInitiative(entree.initiative)} title={t('gmMode.bataille.departagerTitle')}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 0, lineHeight: 1 }}>🎲</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {dragState?.liste === 'initiative' && dropIndex === session.ordreInitiative.length && caseFantome}
+            </div>
+          </div>
+        )}
+
         <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', gap: 16, position: 'relative' }}>
           {/* Personnages joueurs — à gauche (voir aussi le tiroir latéral PJ, déplacé côté gauche pour
               rester à côté de sa colonne). */}
@@ -777,6 +1173,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                 >
                   <PJCard
                     pj={p}
+                    estEnCours={estEnCours(p.id)}
                     cibles={cibles.filter(x => x.id !== p.id)}
                     attaquants={attaquantsDe(p.id)}
                     onToggleExpand={() => updatePJ(p.id, { expanded: !p.expanded })}
@@ -811,6 +1208,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                 >
                   <CombatCard
                     combatant={c}
+                    estEnCours={estEnCours(c.id)}
                     cibles={cibles.filter(x => x.id !== c.id)}
                     attaquants={attaquantsDe(c.id)}
                     sousTitre={t('gmMode.bataille.compagnonDe', { nom: session.pjs.find(p => p.id === c.pjProprietaireId)?.character.nomPersonnage ?? '?' })}
@@ -865,6 +1263,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                 >
                   <CombatCard
                     combatant={c}
+                    estEnCours={estEnCours(c.id)}
                     cibles={cibles.filter(x => x.id !== c.id)}
                     attaquants={attaquantsDe(c.id)}
                     onToggleExpand={() => updateCombatant(c.id, { expanded: !c.expanded })}

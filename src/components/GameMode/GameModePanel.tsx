@@ -5,11 +5,13 @@ import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
 type CharacterPatch = Partial<Character>
 import type { DescMap, Grant } from '../../types/gameData'
-import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula, computeAvantages } from '../../utils/computeEffects'
+import { computeEffectsWithCristaux, sumStat, computeAttaquesTotaux, resolveFormula, computeAvantages, computeActionsSupp } from '../../utils/computeEffects'
 import { getMod } from '../../types/character'
 import { useGameData } from '../../context/GameDataContext'
 import { getRangsEmpruntes } from '../../utils/voieRangChoix'
 import { parseDesc } from '../../utils/parseDesc'
+import { compagnonEnCreature, getCompagnonsOrdonnes, estCompagnonActif } from '../../utils/compagnons'
+import { useImage } from '../../hooks/useImage'
 import type { useReseauClient, DegatsRecus } from '../../hooks/useReseauClient'
 import { rechercherPartieReseau } from '../../utils/reseau'
 import { encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
@@ -126,15 +128,19 @@ interface Props {
   // (ex. le joueur consulte les Notes puis revient) démonte/remonte GameModePanel, mais la connexion, elle,
   // doit survivre pour ne pas déconnecter le joueur juste parce qu'il change d'onglet. Réception des
   // dégâts/PV réseau : la vraie logique (RD, historique de jets) reste ici (dépend de l'état local du
-  // Mode de jeu), donc App.tsx la délègue via ces deux refs, en mettant en attente tout message reçu
-  // pendant que GameModePanel est démonté (voir gererDegatsRecusRef/gererPvActualisesRecuRef dans
-  // App.tsx) — rejoué dès que ce composant se remonte (voir le useEffect plus bas qui les renseigne).
+  // Mode de jeu), donc App.tsx la délègue via ces refs, en mettant en attente tout message reçu
+  // pendant que GameModePanel est démonté (voir gererDegatsRecusRef/gererPvActualisesRecuRef/
+  // gererNouveauTourRecuRef dans App.tsx) — rejoué dès que ce composant se remonte (voir le useEffect
+  // plus bas qui les renseigne).
   reseau: ReturnType<typeof useReseauClient>
   gererDegatsRecusRef: MutableRefObject<((d: DegatsRecus) => void) | null>
   gererPvActualisesRecuRef: MutableRefObject<((pv: number) => void) | null>
-  // Rejoue tout dégât/PV reçu pendant que ce composant était démonté (voir la note sur reseau ci-dessus)
-  // — appelé juste après avoir renseigné les deux refs, une fois qu'elles pointent de nouveau vers la
-  // vraie logique de traitement (RD, historique).
+  // Déclenché par le message réseau 'nouveau-tour' (bouton "Tour suivant" du MJ, voir CombatTab.tsx) —
+  // invoque exactement handleEndTurn, comme le bouton "Tour suivant" local ci-dessous.
+  gererNouveauTourRecuRef: MutableRefObject<(() => void) | null>
+  // Rejoue tout dégât/PV/nouveau-tour reçu pendant que ce composant était démonté (voir la note sur
+  // reseau ci-dessus) — appelé juste après avoir renseigné les refs, une fois qu'elles pointent de
+  // nouveau vers la vraie logique de traitement (RD, historique, fin de tour).
   drainerReseauEnAttente: () => void
   onClose: () => void
   screenWidth: number
@@ -158,9 +164,19 @@ function boostKey(ab: { voieNom: string; rangIdx: number; grantIdx: number }): s
   return `ab-${ab.voieNom}-${ab.rangIdx}-${ab.grantIdx}`
 }
 
-export default function GameModePanel({ character, descriptions, onChange, reseau, gererDegatsRecusRef, gererPvActualisesRecuRef, drainerReseauEnAttente, onClose, screenWidth }: Props) {
+// Portrait d'une carte compagnon (vue Combat bureau, voir renderCompagnonCardVisuelle) — un vrai
+// composant (pas un appel de useImage dans une boucle) : le nombre de compagnons actifs n'est plus
+// plafonné à 2, donc plus moyen d'appeler useImage un nombre fixe de fois dans GameModePanel lui-même.
+function CompagnonPortrait({ image, fit }: { image?: string; fit?: 'cover' | 'contain' }) {
+  const src = useImage(image)
+  return src
+    ? <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: fit ?? 'cover' }} />
+    : <span style={{ fontSize: 28, opacity: 0.3 }}>🐾</span>
+}
+
+export default function GameModePanel({ character, descriptions, onChange, reseau, gererDegatsRecusRef, gererPvActualisesRecuRef, gererNouveauTourRecuRef, drainerReseauEnAttente, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
-  const { armes, armures } = useGameData()
+  const { armes, armures, compagnons: compagnonsCatalogue } = useGameData()
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const isMobile = screenWidth < 1200
   const [result, setResult] = useState<RollResult | null>(null)
@@ -170,10 +186,16 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   const [effectCounters, setEffectCounters] = useState<Record<string, number>>(() => character.effectCounters ?? {})
   const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>(() => (character.activeBoosts as ActiveBoost[] | undefined) ?? [])
   const [activeDots, setActiveDots] = useState<ActiveDot[]>(() => character.activeDots ?? [])
+  // Limite d'action par tour (voir budgetActions plus bas) : nombre d'actions offensives/actives déjà
+  // utilisées ce tour côté PJ, et par compagnon (verrou indépendant, voir section Compagnons). Les deux
+  // sont remis à zéro dans handleEndTurn, déclenché par le bouton local ET par le message réseau
+  // 'nouveau-tour' envoyé par le MJ (voir gererNouveauTourRecuRef plus bas).
+  const [actionsUtiliseesCeTour, setActionsUtiliseesCeTour] = useState<number>(() => character.actionsUtiliseesCeTour ?? 0)
+  const [compagnonsDejaAgiCeTour, setCompagnonsDejaAgiCeTour] = useState<Record<string, boolean>>(() => character.compagnonsDejaAgiCeTour ?? {})
   useEffect(() => {
-    onChange({ activeBoosts, effectCounters, activeDots })
+    onChange({ activeBoosts, effectCounters, activeDots, actionsUtiliseesCeTour, compagnonsDejaAgiCeTour })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBoosts, effectCounters, activeDots])
+  }, [activeBoosts, effectCounters, activeDots, actionsUtiliseesCeTour, compagnonsDejaAgiCeTour])
   // Voie culturelle des Ogres, rang 4 "Intuable" : le PJ peut choisir de résister à l'inconscience à 0 PV
   // et continuer à se battre, PV négatifs jusqu'à -CON, au-delà duquel il meurt.
   const [ogreResisting, setOgreResisting] = useState(false)
@@ -210,6 +232,21 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   // champ ci-dessus qui s'adresse AU MJ. dialoguePJCible : idPJ choisi dans reseau.rosterPJ.
   const [dialoguePJInput, setDialoguePJInput] = useState('')
   const [dialoguePJCible, setDialoguePJCible] = useState('')
+  // Cible choisie par le joueur lui-même (voir la section Combat plus bas et envoyerCibleChoisie dans
+  // useReseauClient.ts) — état purement local à l'UI de ce select, la valeur "vraie" (session.pjs[].cibleId
+  // côté MJ) n'est jamais rejouée vers le joueur (voir 'etat-ciblage' dans reseauProtocole.ts, qui ne
+  // transporte que les cibles disponibles et qui cible le PJ, pas sa propre sélection actuelle).
+  const [cibleChoisieId, setCibleChoisieId] = useState('')
+  // Cible choisie par le joueur pour CHACUN de ses compagnons (nom → id), indépendante de la sienne —
+  // le ciblage compagnon était jusqu'ici resté manuel côté MJ (limite acceptée du premier lot), corrigé
+  // suite au retour de Didic. Même état purement local que cibleChoisieId (voir sa note juste au-dessus).
+  const [compagnonsCibleChoisie, setCompagnonsCibleChoisie] = useState<Record<string, string>>({})
+  // Total des dégâts infligés PAR LE PJ (pas ses compagnons, dont la cible n'est pas suivie côté joueur —
+  // ciblage compagnon resté manuel côté MJ) à chaque ennemi, purement local (aucun message réseau dédié :
+  // le joueur connaît déjà ce total puisque c'est lui qui vient de lancer les dés) — affiché sur la carte
+  // ennemi de la vue Combat desktop (voir plus bas), conformément à la demande initiale de Didic
+  // ("les dégâts que le PJ fait sur la créature").
+  const [degatsInfligesParCible, setDegatsInfligesParCible] = useState<Record<string, number>>({})
   // reseau (connexion) et gererDegatsRecusRef/gererPvActualisesRecuRef (délégation de la réception, voir
   // leur note dans Props ci-dessus) viennent maintenant d'App.tsx — plus de useReseauClient local ici.
   // Marque le message/l'image du MJ comme lu(e) dès que le panneau est ouvert — à l'ouverture, mais
@@ -225,8 +262,11 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   // handleWeaponDegats/handleRollBonusDice ci-dessous) — pas de type de dégâts fiable à déduire côté
   // joueur pour ces jets (DAMAGE_TYPES sert aux résistances de dégâts reçus, pas aux dégâts infligés),
   // donc envoyé générique ; le MJ l'affiche comme tel dans son journal.
-  const envoyerDegatsReseau = (montant: number) => {
-    if (reseau.connecte && montant > 0) reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: '' }))
+  const envoyerDegatsReseau = (montant: number, compagnonNom?: string) => {
+    if (reseau.connecte && montant > 0) reseau.envoyer(encoderMessage({ type: 'degats', montant, typeDegats: '', ...(compagnonNom ? { compagnonNom } : {}) }))
+    if (!compagnonNom && montant > 0 && cibleChoisieId) {
+      setDegatsInfligesParCible(prev => ({ ...prev, [cibleChoisieId]: (prev[cibleChoisieId] ?? 0) + montant }))
+    }
   }
 
   // Transmission automatique au MJ de toute nouvelle valeur de PV (soin ou perte hors attaque de
@@ -351,6 +391,11 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     for (const a of list) map.set(a.stat, { lancer: a.lancer, garder: a.garder })
     return { statsAvantage: map, availableAvantages: list }
   }, [character, descriptions])
+
+  // Grants ACTIONS_SUPP ("2 attaques par tour" etc.) — détectés automatiquement depuis les voies, jamais
+  // une case à cocher manuelle (voir computeActionsSupp/budgetActions). Affichés comme un grant
+  // "Automatique" au même titre qu'un AVANTAGE (voir la section Effets actifs plus bas).
+  const availableActionsSupp = useMemo(() => computeActionsSupp(character, descriptions), [character, descriptions])
 
   const availableActions = useMemo<AvailableAction[]>(() => {
     const out: AvailableAction[] = []
@@ -537,6 +582,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   }
 
   const handleActionDegats = (action: AvailableAction) => {
+    if (!peutAgir) return
     const base = rollDmFormula(action.dm)
     let total = base.total
     const displayParts = [base.display]
@@ -554,13 +600,15 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     }
     pushResult({ label: `💥 ${action.label} — ${t('gameMode.sufDm')}`, formula: formulaParts.join(' + '), sides: 6, roll: total, modifier: null, total, rollDisplay: displayParts.join(' '), flash: false, contributingEffects })
     envoyerDegatsReseau(total)
+    consommerAction()
   }
 
   const handleRollBonusDice = (ab: AvailableBonus) => {
-    if (!ab.deDegats) return
+    if (!ab.deDegats || !peutAgir) return
     const { formula, total, display } = rollDmFormula(ab.deDegats)
     pushResult({ label: `💥 ${ab.label} — ${t('gameMode.sufDm')}`, formula, sides: 6, roll: total, modifier: null, total, rollDisplay: display, flash: false })
     envoyerDegatsReseau(total)
+    consommerAction()
   }
 
   const stripExposants = (nom: string) => nom.replace(/[¹²³⁴⁵⁶⁷*]\s*/g, '').trim().toLowerCase()
@@ -584,6 +632,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   }
 
   const handleWeaponDegats = (nomArme: string, label: string, dmFallback: string) => {
+    if (!peutAgir) return
     const entry = findArmeEntry(nomArme)
     const baseFormula = entry ? `${entry.dm} Mod.${entry.mod}` : dmFallback
     const base = rollDmFormula(baseFormula)
@@ -613,6 +662,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     }
     pushResult({ label: `💥 ${label} — ${t('gameMode.sufDm')}`, formula: formulaParts.join(' + '), sides: 6, roll: total, modifier: null, total, rollDisplay: displayParts.join(' '), flash: false, contributingEffects })
     envoyerDegatsReseau(total)
+    consommerAction()
   }
 
   const activateDuration = (ab: AvailableBonus, key: string) => {
@@ -625,6 +675,9 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   }
 
   const handleActivateClick = (ab: AvailableBonus, idx: number) => {
+    // Seules les capacités actives à coût en PM consomment le budget d'action du tour — un simple
+    // basculement de bonus permanent/gratuit (pas de cout_pm) n'est pas une "action" au sens du tour.
+    if (ab.cout_pm && !peutAgir) return
     const key = boostKey(ab)
     if (ab.cout_pv) {
       const cost = rollDiceStr(ab.cout_pv)
@@ -648,6 +701,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
         pushResult(entry)
       }
       payPMCost(cost, ab.label)
+      consommerAction()
     }
     activateDuration(ab, key)
     if (ab.coutCaracStat && ab.coutCaracValeur) {
@@ -687,6 +741,195 @@ export default function GameModePanel({ character, descriptions, onChange, resea
 
   const attaques = useMemo(() => computeAttaquesTotaux(character, descriptions, armes, armures), [character, descriptions, armes, armures])
   const effectsAll = useMemo(() => computeEffectsWithCristaux(character, descriptions), [character, descriptions])
+
+  // Budget d'action par tour : 1 action de base + tout grant ACTIONS_SUPP accordé par une voie (ex.
+  // capacité "2 attaques par tour", voir availableActionsSupp ci-dessus) — détecté automatiquement,
+  // jamais une donnée figée en dur ici. Ne couvre que les actions offensives/actives (attaque, soin,
+  // dépense de PM pour un bonus, Récupération) — les jets rapides et les jets de caractéristique simples
+  // restent illimités.
+  const budgetActions = 1 + availableActionsSupp.reduce((s, a) => s + a.nombre, 0)
+  // Hors connexion (solo/déconnecté), seul le budget compte, comme avant l'ordre d'initiative — pas de
+  // tableau d'ordre sans MJ pour l'arbitrer. Connecté, il faut EN PLUS que ce soit effectivement le tour
+  // de ce PJ (reseau.estMonTour, calculé par le MJ — voir 'etat-ciblage' dans reseauProtocole.ts, le
+  // joueur ne connaît jamais sa propre position dans l'ordre). actionsUtiliseesCeTour est remis à zéro
+  // une fois par round par handleEndTurn (voir plus bas, déclenché par 'nouveau-tour') : comme chaque
+  // entité ne joue qu'une fois par cycle complet de l'ordre et ne peut consommer son budget que pendant
+  // SON tour (justement grâce à ce estMonTour), une remise à zéro par round suffit — inutile de la
+  // resynchroniser une seconde fois au démarrage précis de chaque tour.
+  const peutAgir = (!reseau.connecte || reseau.estMonTour) && actionsUtiliseesCeTour < budgetActions
+  const consommerAction = () => setActionsUtiliseesCeTour(prev => prev + 1)
+
+  // Compagnons ACTIFS du PJ (pas "laissés en arrière", voir estCompagnonActif — aucune limite de
+  // nombre), résolus en stats numériques prêtes à être lancées (même fonction que côté MJ dans
+  // CombatTab.tsx/compagnonsDe) — jusqu'ici invisibles du joueur, qui ne pouvait pas les faire agir
+  // lui-même (le MJ devait jouer à sa place, signalé comme frustrant).
+  const compagnonsActifsResolus = useMemo(() => {
+    const noms = getCompagnonsOrdonnes(character, descriptions).filter(nom => estCompagnonActif(character, nom))
+    return noms.flatMap(nom => {
+      const creature = compagnonEnCreature(nom, compagnonsCatalogue, character, descriptions)
+      return creature ? [{ nom, creature }] : []
+    })
+  }, [character, compagnonsCatalogue, descriptions])
+
+  // Portrait du PJ pour la vue Combat en cartes (bureau, voir plus bas) : déjà en local
+  // (character.portrait), aucun réseau nécessaire. Les portraits des compagnons, eux, sont résolus
+  // individuellement par <CompagnonPortrait> (un par carte) — leur nombre n'est plus limité à 2 comme
+  // avant, donc plus question d'appeler useImage un nombre fixe de fois ici (romprait les règles des
+  // Hooks si on essayait de le faire dans une boucle).
+  const pjImageSrc = useImage(character.portrait)
+
+  // Verrou de tour du compagnon INDÉPENDANT de celui du PJ (voir compagnonsDejaAgiCeTour) : le compagnon
+  // n'a pas de voies, donc pas de budget à calculer, juste une action par tour comme n'importe quelle
+  // créature suivie côté MJ (voir estEnCours dans CombatCard.tsx). Le déclenchement de l'attaque, le jet
+  // de dégâts ET la cible (voir compagnonsCibleChoisie/renderCompagnonCard) viennent tous du joueur.
+  // Même logique que peutAgir pour le PJ lui-même : hors connexion, seul compagnonsDejaAgiCeTour compte
+  // (pas de tableau d'ordre sans MJ) ; connecté, il faut EN PLUS que ce soit le tour de CE compagnon
+  // précisément (reseau.compagnonsEtat[].estSonTour, calculé côté MJ).
+  const compagnonPeutAgir = (nom: string) => {
+    const estSonTour = reseau.compagnonsEtat.find(c => c.nom === nom)?.estSonTour ?? false
+    return (!reseau.connecte || estSonTour) && !compagnonsDejaAgiCeTour[nom]
+  }
+
+  const handleCompagnonDegats = (nomCompagnon: string, attaque: { nom: string; dm?: string }) => {
+    if (!attaque.dm || !compagnonPeutAgir(nomCompagnon)) return
+    const { formula, total, display } = rollDmFormula(attaque.dm)
+    pushResult({ label: `💥 ${nomCompagnon} — ${attaque.nom} — ${t('gameMode.sufDm')}`, formula, sides: 6, roll: total, modifier: null, total, rollDisplay: display, flash: false })
+    envoyerDegatsReseau(total, nomCompagnon)
+    setCompagnonsDejaAgiCeTour(prev => ({ ...prev, [nomCompagnon]: true }))
+  }
+
+  // Carte compagnon partagée entre la section mobile (compacte) et la colonne alliés du bureau (voir plus
+  // bas) — évite de dupliquer la logique de ciblage/attaque à deux endroits. Le select de cible n'est
+  // affiché que connecté (comme celui du PJ) : le ciblage compagnon suit exactement le même chemin réseau
+  // ('cible-choisie-compagnon', voir useReseauClient.ts/CombatTab.tsx) que celui du PJ lui-même.
+  const renderCompagnonCard = (nom: string, creature: (typeof compagnonsActifsResolus)[number]['creature']) => {
+    const dejaAgi = !compagnonPeutAgir(nom)
+    const cibleCompagnon = compagnonsCibleChoisie[nom] ?? ''
+    // PV du compagnon, transmis par le MJ (voir 'etat-ciblage'.compagnons dans reseauProtocole.ts) —
+    // sans ça, une créature qui blessait le compagnon restait invisible côté joueur (signalé par Didic).
+    const etatPv = reseau.compagnonsEtat.find(c => c.nom === nom)
+    return (
+      <div key={nom} style={{ padding: '8px 10px', borderRadius: 5, background: 'rgba(140,100,255,0.08)', border: '1px solid rgba(160,120,255,0.35)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(200,170,255,0.95)' }}>🐾 {nom}</span>
+          {etatPv && (
+            <span style={{ fontSize: 13, fontWeight: 700, color: etatPv.pvActuels <= 0 ? '#ff5555' : 'rgba(200,170,255,0.9)', flexShrink: 0 }}>
+              ❤️ {etatPv.pvActuels} / {etatPv.pvMax}
+            </span>
+          )}
+        </div>
+        {reseau.connecte && (
+          <select
+            value={cibleCompagnon}
+            onChange={e => {
+              setCompagnonsCibleChoisie(prev => ({ ...prev, [nom]: e.target.value }))
+              reseau.envoyerCibleChoisieCompagnon(nom, e.target.value || null)
+            }}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '4px 6px', borderRadius: 4, fontSize: 12, background: 'var(--tdr-dark)', border: '1px solid rgba(160,120,255,0.35)', color: PARCHMENT, outline: 'none', marginBottom: 6 }}
+          >
+            <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gameMode.aucuneCibleChoisie')}</option>
+            {reseau.ciblesDisponibles.map(c => (
+              <option key={c.id} value={c.id} disabled={c.mort} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{c.nom}{c.mort ? ' 💀' : ''}</option>
+            ))}
+          </select>
+        )}
+        {reseau.connecte && etatPv?.estSonTour && (
+          <button onClick={() => reseau.envoyerAttendreMonTour(nom)}
+            style={{ width: '100%', marginBottom: 6, padding: '4px 6px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.4)', background: 'rgba(140,100,255,0.1)', color: 'rgba(200,170,255,0.9)' }}>
+            ⏳ {t('gameMode.attendreButton')}
+          </button>
+        )}
+        {creature.attaques && creature.attaques.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {creature.attaques.map((a, i) => (
+              <button key={i} disabled={dejaAgi || isUnconscious} onClick={() => handleCompagnonDegats(nom, a)}
+                title={dejaAgi ? t('gameMode.actionsEpuiseesTitle') : undefined}
+                style={{ fontSize: 13, padding: '5px 8px', borderRadius: 4, cursor: (dejaAgi || isUnconscious) ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)', color: 'rgba(200,170,255,0.9)', opacity: (dejaAgi || isUnconscious) ? 0.35 : 1, textAlign: 'left' }}>
+                {a.nom}{a.bonus ? ` — ${t('gmMode.bataille.attaqueLabel')} ${a.bonus}` : ''}{a.dm ? ` — ${t('gmMode.bataille.dmLabel')} ${a.dm}` : ''}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.4)' }}>{t('gameMode.compagnonSansAttaque')}</div>
+        )}
+      </div>
+    )
+  }
+
+  // Carte illustrée (bureau uniquement, voir la section Combat plus bas) — même esprit visuel que
+  // CombatCard repliée côté MJ (image en 2/3, nom dessous), mais jamais dépliable (demandé par Didic :
+  // "plus visuel" sans reprendre le mécanisme d'expansion du MJ). Le portrait est résolu par
+  // <CompagnonPortrait>, un composant à part entière (voir plus haut) — aucune limite de nombre.
+  const renderCompagnonCardVisuelle = (nom: string, creature: (typeof compagnonsActifsResolus)[number]['creature']) => {
+    const dejaAgi = !compagnonPeutAgir(nom)
+    const cibleCompagnon = compagnonsCibleChoisie[nom] ?? ''
+    // PV du compagnon, transmis par le MJ (voir 'etat-ciblage'.compagnons dans reseauProtocole.ts) —
+    // sans ça, une créature qui blessait le compagnon restait invisible côté joueur (signalé par Didic).
+    const etatPv = reseau.compagnonsEtat.find(c => c.nom === nom)
+    const estMort = !!etatPv && etatPv.pvActuels <= 0
+    return (
+      <div key={nom} style={{ width: 138, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: 'rgba(15,12,8,0.95)', border: '1px solid rgba(160,120,255,0.35)' }}>
+        <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          <CompagnonPortrait image={creature.image} fit={creature.imageFit} />
+          {estMort ? (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 32 }}>💀</span>
+            </div>
+          ) : dejaAgi && (
+            // Sablier : a déjà agi ce tour (même signal que le grisé de CombatCard côté MJ) — le crâne
+            // reste prioritaire si le compagnon est aussi mort (les deux ne se cumulent pas).
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 32 }}>⏳</span>
+            </div>
+          )}
+        </div>
+        <div style={{ padding: '6px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(200,170,255,0.95)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nom}</span>
+            {etatPv && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: estMort ? '#ff5555' : 'rgba(200,170,255,0.9)', flexShrink: 0 }}>
+                ❤️ {etatPv.pvActuels}/{etatPv.pvMax}
+              </span>
+            )}
+          </div>
+          {reseau.connecte && (
+            <select
+              value={cibleCompagnon}
+              onChange={e => {
+                setCompagnonsCibleChoisie(prev => ({ ...prev, [nom]: e.target.value }))
+                reseau.envoyerCibleChoisieCompagnon(nom, e.target.value || null)
+              }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', borderRadius: 4, fontSize: 11, background: 'var(--tdr-dark)', border: '1px solid rgba(160,120,255,0.35)', color: PARCHMENT, outline: 'none', marginBottom: 4 }}
+            >
+              <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gameMode.aucuneCibleChoisie')}</option>
+              {reseau.ciblesDisponibles.map(c => (
+                <option key={c.id} value={c.id} disabled={c.mort} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{c.nom}{c.mort ? ' 💀' : ''}</option>
+              ))}
+            </select>
+          )}
+          {reseau.connecte && etatPv?.estSonTour && (
+            <button onClick={() => reseau.envoyerAttendreMonTour(nom)}
+              style={{ width: '100%', marginBottom: 4, padding: '3px 4px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.4)', background: 'rgba(140,100,255,0.1)', color: 'rgba(200,170,255,0.9)' }}>
+              ⏳ {t('gameMode.attendreButton')}
+            </button>
+          )}
+          {creature.attaques && creature.attaques.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {creature.attaques.map((a, i) => (
+                <button key={i} disabled={dejaAgi || isUnconscious} onClick={() => handleCompagnonDegats(nom, a)}
+                  title={`${a.nom}${a.bonus ? ` — ${t('gmMode.bataille.attaqueLabel')} ${a.bonus}` : ''}${a.dm ? ` — ${t('gmMode.bataille.dmLabel')} ${a.dm}` : ''}${dejaAgi ? ` — ${t('gameMode.actionsEpuiseesTitle')}` : ''}`}
+                  style={{ fontSize: 11, padding: '3px 5px', borderRadius: 4, cursor: (dejaAgi || isUnconscious) ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.5)', background: 'rgba(140,100,255,0.15)', color: 'rgba(200,170,255,0.9)', opacity: (dejaAgi || isUnconscious) ? 0.35 : 1, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {a.nom}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)' }}>{t('gameMode.compagnonSansAttaque')}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const panelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: BG }
 
@@ -833,6 +1076,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   }
 
   const handleManualHeal = () => {
+    if (!peutAgir) return
     const amount = parseInt(healInput, 10)
     // Montant absent/invalide : plutôt que de ne rien faire silencieusement, envoie le curseur dans le
     // champ pour saisir directement — Entrée y revalide ensuite ce même handler (voir onKeyDown ci-dessous).
@@ -842,6 +1086,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     }
     applyHeal(amount, t('gameMode.healHistoryLabel'))
     setHealInput('')
+    consommerAction()
   }
 
   // 1 PR dépensé = [1 dé de vie + Mod.CON + Niveau] PV récupérés (indisponible si inconscient)
@@ -852,7 +1097,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   const prRemaining = prUtilisesActuels.slice(0, prMax).filter(Boolean).length
 
   const handleRecuperation = () => {
-    if (isUnconscious || prRemaining <= 0) return
+    if (!peutAgir || isUnconscious || prRemaining <= 0) return
     const idx = prUtilisesActuels.findIndex((available, i) => i < prMax && available)
     if (idx === -1) return
     const next = [...prUtilisesActuels]
@@ -863,6 +1108,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     const total = Math.max(0, dieRoll + conMod + character.niveau)
     const modStr = conMod >= 0 ? `+${conMod}` : `${conMod}`
     applyHeal(total, t('gameMode.recuperationHistoryLabel'), `1d${deVieFaces}${modStr}+${character.niveau}`, `[${dieRoll}]`, 'PR')
+    consommerAction()
   }
 
   // Applique des DM reçus du type choisi : immunité totale en priorité, sinon division par 2 si applicable,
@@ -895,46 +1141,6 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     pushHistory({ label: resolvedLabel, formula: formatDamageFormula(amount, calc), sides: 6, roll: calc.net, modifier: null, total: calc.net, costType: 'PV', flash: false })
     if (!calc.immune) applyPVLoss(clampPvLoss(pvActuels - calc.net))
   }
-
-  // Réception réseau d'une attaque du MJ (voir handleAttaque dans CombatTab.tsx et reseauProtocole.ts),
-  // invoquée directement depuis le callback onmessage du socket (voir useReseauClient) — pas de state+
-  // effet intermédiaire, qui ne ferait qu'appeler ces mêmes setState en réaction à un changement d'état.
-  // toucheRate=true veut dire une attaque ratée : rien à appliquer, juste une ligne d'historique.
-  // montant est le dégât BRUT (voir resoudreAttaque dans combat.ts — la RD n'est plus résolue côté MJ
-  // pour une cible PJ, justement pour n'être appliquée qu'une fois, ici) : on repasse par
-  // appliquerDegats/computeIncomingDamage, exactement comme la saisie manuelle (handleTakeDamage), pour
-  // que réseau et hors-ligne appliquent la RD au même endroit et de la même façon.
-  useEffect(() => {
-    gererDegatsRecusRef.current = ({ montant, typeDegats, toucheRate }) => {
-      if (toucheRate) {
-        pushHistory({ label: t('gameMode.reseau.attaqueRateeLabel'), formula: t('gameMode.reseau.attaqueRateeFormule'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
-        return
-      }
-      appliquerDegats(typeDegats, montant, t('gameMode.reseau.degatsRecusLabel'))
-    }
-  })
-  // Réception réseau d'une nouvelle valeur de PV fixée par le MJ à la main (voir 'pv-actualises' dans
-  // reseauProtocole.ts) — appliquée directement, PAS via applyPVLoss/applyHeal (qui émettraient ce même
-  // message en retour vers le MJ, créant un aller-retour inutile).
-  useEffect(() => {
-    gererPvActualisesRecuRef.current = pv => {
-      setCurrentPV(pv)
-      onChange({ pvRestants: pv })
-      if (pv > 0) setOgreResisting(false)
-      pushHistory({ label: t('gameMode.reseau.pvActualisesHistoryLabel'), formula: t('gameMode.reseau.pvActualisesFormule', { pv }), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
-    }
-    // Les deux refs (dégâts + PV) sont renseignées à ce stade (l'effet précédent tourne d'abord dans le
-    // même commit) — rejoue tout ce qui s'est accumulé pendant que ce composant était démonté.
-    drainerReseauEnAttente()
-  })
-  // Ce composant peut se démonter (le joueur consulte les Notes) alors que la connexion, elle, survit
-  // (voir la note sur reseau dans Props) — remet les deux refs à null pour qu'App.tsx mette en attente
-  // tout dégât/PV reçu pendant l'absence plutôt que d'appeler une closure devenue obsolète ; rejoués dès
-  // que ce composant se remonte (les deux useEffect ci-dessus renseignent alors les refs à nouveau).
-  useEffect(() => () => {
-    gererDegatsRecusRef.current = null
-    gererPvActualisesRecuRef.current = null
-  }, [gererDegatsRecusRef, gererPvActualisesRecuRef])
 
   const handleTakeDamage = (type: string) => {
     appliquerDegats(type, parseInt(dmInput, 10))
@@ -989,7 +1195,57 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     setActiveDots(prev => prev
       .map(d => ({ ...d, remainingTurns: d.remainingTurns - 1 }))
       .filter(d => d.remainingTurns > 0))
+    setActionsUtiliseesCeTour(0)
+    setCompagnonsDejaAgiCeTour({})
   }
+
+  // Réception réseau d'une attaque du MJ (voir handleAttaque dans CombatTab.tsx et reseauProtocole.ts),
+  // invoquée directement depuis le callback onmessage du socket (voir useReseauClient) — pas de state+
+  // effet intermédiaire, qui ne ferait qu'appeler ces mêmes setState en réaction à un changement d'état.
+  // toucheRate=true veut dire une attaque ratée : rien à appliquer, juste une ligne d'historique.
+  // montant est le dégât BRUT (voir resoudreAttaque dans combat.ts — la RD n'est plus résolue côté MJ
+  // pour une cible PJ, justement pour n'être appliquée qu'une fois, ici) : on repasse par
+  // appliquerDegats/computeIncomingDamage, exactement comme la saisie manuelle (handleTakeDamage), pour
+  // que réseau et hors-ligne appliquent la RD au même endroit et de la même façon.
+  useEffect(() => {
+    gererDegatsRecusRef.current = ({ montant, typeDegats, toucheRate }) => {
+      if (toucheRate) {
+        pushHistory({ label: t('gameMode.reseau.attaqueRateeLabel'), formula: t('gameMode.reseau.attaqueRateeFormule'), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+        return
+      }
+      appliquerDegats(typeDegats, montant, t('gameMode.reseau.degatsRecusLabel'))
+    }
+  })
+  // Réception réseau du message 'nouveau-tour' (bouton "Tour suivant" du MJ, voir CombatTab.tsx) —
+  // déclenche exactement la même logique que le bouton "Tour suivant" local (tick DoT/effets temporaires
+  // ET remise à zéro du budget d'action, voir handleEndTurn juste au-dessus).
+  useEffect(() => {
+    gererNouveauTourRecuRef.current = handleEndTurn
+  })
+  // Réception réseau d'une nouvelle valeur de PV fixée par le MJ à la main (voir 'pv-actualises' dans
+  // reseauProtocole.ts) — appliquée directement, PAS via applyPVLoss/applyHeal (qui émettraient ce même
+  // message en retour vers le MJ, créant un aller-retour inutile).
+  useEffect(() => {
+    gererPvActualisesRecuRef.current = pv => {
+      setCurrentPV(pv)
+      onChange({ pvRestants: pv })
+      if (pv > 0) setOgreResisting(false)
+      pushHistory({ label: t('gameMode.reseau.pvActualisesHistoryLabel'), formula: t('gameMode.reseau.pvActualisesFormule', { pv }), sides: 6, roll: 0, modifier: null, total: 0, costType: 'PV', flash: false })
+    }
+    // Les trois refs (dégâts + nouveau-tour + PV) sont renseignées à ce stade (les effets précédents
+    // tournent d'abord dans le même commit) — rejoue tout ce qui s'est accumulé pendant que ce composant
+    // était démonté.
+    drainerReseauEnAttente()
+  })
+  // Ce composant peut se démonter (le joueur consulte les Notes) alors que la connexion, elle, survit
+  // (voir la note sur reseau dans Props) — remet les refs à null pour qu'App.tsx mette en attente tout
+  // dégât/PV/nouveau-tour reçu pendant l'absence plutôt que d'appeler une closure devenue obsolète ;
+  // rejoués dès que ce composant se remonte (les useEffect ci-dessus renseignent alors les refs à nouveau).
+  useEffect(() => () => {
+    gererDegatsRecusRef.current = null
+    gererNouveauTourRecuRef.current = null
+    gererPvActualisesRecuRef.current = null
+  }, [gererDegatsRecusRef, gererNouveauTourRecuRef, gererPvActualisesRecuRef])
 
   const payPMCost = (cost: number, label: string) => {
     const pmSpent = Math.min(cost, pmActuels)
@@ -1295,10 +1551,17 @@ export default function GameModePanel({ character, descriptions, onChange, resea
             ))}
           </div>
         )}
-        <button onClick={handleEndTurn} style={{
+        {/* En réseau, c'est le MJ qui fait avancer le tour pour tout le monde (message 'nouveau-tour',
+            voir handleEndTurn plus haut) — le bouton local reste affiché pour comprendre pourquoi il ne
+            réagit plus, mais désactivé pour éviter qu'un joueur se débloque tout seul en avance sur les
+            autres/le MJ. Hors connexion (jeu solo/déconnecté), il reste l'unique déclencheur. */}
+        <button onClick={handleEndTurn} disabled={reseau.connecte}
+          title={reseau.connecte ? t('gameMode.endTurnDisabledReseau') : undefined}
+          style={{
           alignSelf: 'center', padding: '6px 12px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
-          borderRadius: 4, cursor: 'pointer', border: `1px solid ${GOLD}`,
-          background: GOLD, color: BG,
+          borderRadius: 4, cursor: reseau.connecte ? 'not-allowed' : 'pointer', border: `1px solid ${GOLD}`,
+          background: reseau.connecte ? 'rgba(201,168,76,0.25)' : GOLD, color: reseau.connecte ? 'rgba(26,20,16,0.6)' : BG,
+          opacity: reseau.connecte ? 0.6 : 1,
         }}>
           {t('gameMode.endTurn')}
         </button>
@@ -1348,14 +1611,16 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                 disabled={isPvFull || pvActuels < 0 || isDead}
                 style={{ width: 100, flexShrink: 0, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none', opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1 }}
               />
-              <button onClick={handleManualHeal} disabled={isPvFull || pvActuels < 0 || isDead} style={{ ...btnStyle(), flexShrink: 0, opacity: (isPvFull || pvActuels < 0 || isDead) ? 0.35 : 1, cursor: (isPvFull || pvActuels < 0 || isDead) ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
+              <button onClick={handleManualHeal} disabled={isPvFull || pvActuels < 0 || isDead || !peutAgir}
+                title={!peutAgir ? t('gameMode.actionsEpuiseesTitle') : undefined}
+                style={{ ...btnStyle(), flexShrink: 0, opacity: (isPvFull || pvActuels < 0 || isDead || !peutAgir) ? 0.35 : 1, cursor: (isPvFull || pvActuels < 0 || isDead || !peutAgir) ? 'not-allowed' : 'pointer' }}>❤️ {t('gameMode.healButton')}</button>
             </div>
             <div style={{ width: 1, alignSelf: 'stretch', background: SECTION_BORDER }} />
             <button
               onClick={handleRecuperation}
-              disabled={isUnconscious || prRemaining <= 0 || isPvFull}
-              title={prRemaining > 0 ? t('gameMode.recuperationLabel', { count: prRemaining }) : t('gameMode.recuperationNone')}
-              style={{ ...btnStyle(), flexShrink: 0, opacity: (isUnconscious || prRemaining <= 0 || isPvFull) ? 0.35 : 1, cursor: (isUnconscious || prRemaining <= 0 || isPvFull) ? 'not-allowed' : 'pointer' }}
+              disabled={isUnconscious || prRemaining <= 0 || isPvFull || !peutAgir}
+              title={!peutAgir ? t('gameMode.actionsEpuiseesTitle') : prRemaining > 0 ? t('gameMode.recuperationLabel', { count: prRemaining }) : t('gameMode.recuperationNone')}
+              style={{ ...btnStyle(), flexShrink: 0, opacity: (isUnconscious || prRemaining <= 0 || isPvFull || !peutAgir) ? 0.35 : 1, cursor: (isUnconscious || prRemaining <= 0 || isPvFull || !peutAgir) ? 'not-allowed' : 'pointer' }}
             >
               🩹 {t('gameMode.recuperationButton')} ({prRemaining})
             </button>
@@ -1524,7 +1789,9 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                 ].map(({ label, nomArme, fallback }) => {
                   const nbBonus = activeDeDegats.filter(ab => !ab.deDegatsParArme || getDeDegatsWeapon(ab) === nomArme).length
                   return (
-                    <button key={label} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, padding: '6px 4px', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => handleWeaponDegats(nomArme, label, fallback)}>
+                    <button key={label} disabled={isUnconscious || !peutAgir}
+                      title={!peutAgir ? t('gameMode.actionsEpuiseesTitle') : undefined}
+                      style={{ ...btnStyle(), flex: 1, padding: '6px 4px', opacity: (isUnconscious || !peutAgir) ? 0.35 : 1, cursor: (isUnconscious || !peutAgir) ? 'not-allowed' : 'pointer' }} onClick={() => handleWeaponDegats(nomArme, label, fallback)}>
                       💥 {label}{nbBonus > 0 ? ` (+${nbBonus})` : ''}
                     </button>
                   )
@@ -1709,10 +1976,246 @@ export default function GameModePanel({ character, descriptions, onChange, resea
           </div>
         </div>
 
+        {/* ── Section : Compagnons + Combat (mobile) ── */}
+        {/* Sur mobile, panneau étroit : on garde les listes compactes (compagnons puis ciblage) plutôt que
+            la vue à deux colonnes ci-dessous, qui a besoin de largeur pour rester lisible côte à côte. */}
+        {isMobile && (
+          <>
+            {compagnonsActifsResolus.length > 0 && (
+              <div style={SECTION_DIVIDER}>
+                <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.compagnonsSection')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {compagnonsActifsResolus.map(({ nom, creature }) => renderCompagnonCard(nom, creature))}
+                </div>
+              </div>
+            )}
+
+            {reseau.connecte && (
+              <div style={SECTION_DIVIDER}>
+                <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.combatSection')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', marginBottom: 4 }}>{t('gameMode.cibleChoisieLabel')}</div>
+                    <select
+                      value={cibleChoisieId}
+                      onChange={e => { setCibleChoisieId(e.target.value); reseau.envoyerCibleChoisie(e.target.value || null) }}
+                      // Fond opaque, pas rgba : même correctif Windows que les autres <select> de ce fichier.
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 4, fontSize: 14, background: 'var(--tdr-dark)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+                    >
+                      <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gameMode.aucuneCibleChoisie')}</option>
+                      {reseau.ciblesDisponibles.map(c => (
+                        <option key={c.id} value={c.id} disabled={c.mort} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{c.nom}{c.mort ? ' 💀' : ''}</option>
+                      ))}
+                    </select>
+                    {reseau.estMonTour && (
+                      <button onClick={() => reseau.envoyerAttendreMonTour()}
+                        style={{ width: '100%', marginTop: 6, padding: '5px 8px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 600, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)', color: GOLD }}>
+                        ⏳ {t('gameMode.attendreButton')}
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.5)', marginBottom: 4 }}>{t('gameMode.ciblesSurMoiLabel')}</div>
+                    {reseau.ciblesSurMoi.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)' }}>{t('gameMode.aucuneCibleSurMoi')}</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {reseau.ciblesSurMoi.map((nom, i) => (
+                          <span key={i} style={{ fontSize: 12, background: 'rgba(220,80,80,0.12)', border: '1px solid rgba(220,50,50,0.3)', borderRadius: 12, padding: '2px 8px', color: 'rgba(255,150,150,0.9)' }}>{nom}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* Ordre d'initiative (voir 'etat-ciblage'.ordreInitiative dans reseauProtocole.ts) —
+                      version texte compacte, miroir du tableau du MJ ; la vue en cartes du bureau
+                      (ci-dessous) en a une version plus visuelle. */}
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(245,236,215,0.7)', marginBottom: 4 }}>{t('gameMode.ordreInitiativeLabel')} — {t('gameMode.roundLabel', { round: reseau.round })}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {reseau.ordreInitiative.map((e, i) => (
+                        <span key={i} style={{
+                          fontSize: 12, borderRadius: 12, padding: '2px 8px',
+                          background: e.enCours ? 'rgba(201,168,76,0.2)' : 'rgba(245,236,215,0.06)',
+                          border: `1px solid ${e.enCours ? GOLD : 'rgba(245,236,215,0.15)'}`,
+                          color: e.enCours ? GOLD : e.aJoue ? 'rgba(245,236,215,0.35)' : 'rgba(245,236,215,0.7)',
+                        }}>{e.nom}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Section : Combat (bureau, cartes illustrées façon écran de rencontre du MJ) ── */}
+        {/* Même esprit visuel que CombatCard repliée côté MJ (portrait en 2/3, nom dessous), mais jamais
+            dépliable (demandé par Didic — plus visuel, sans reprendre le mécanisme d'expansion du MJ) et
+            sans redimensionnement/glisser-déposer/liens SVG (pas adapté à la largeur réduite de ce
+            panneau) : ciblage par simple sélection sur SA PROPRE carte (comme SelecteurCible côté MJ),
+            liens affichés en badge. Remplace les deux sections mobiles ci-dessus sur desktop (une seule
+            interface plutôt que deux qui font la même chose).
+            Masquée hors connexion (pas seulement les sous-parties MJ comme avant) : sans MJ, il n'y a de
+            toute façon aucun ennemi à cibler, donc rien d'utile à faire depuis cette carte — les PV/infos
+            du compagnon restent consultables via l'onglet "Compagnons" de la fiche, accessible sans
+            fermer le Mode de jeu (panneau séparé). */}
+        {!isMobile && reseau.connecte && (
+          <div style={SECTION_DIVIDER}>
+            <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.combatSection')}</div>
+            {/* Ordre d'initiative — miroir en lecture du tableau du MJ (voir OrdreInitiativeTable dans
+                CombatTab.tsx), affiché seulement connecté (pas de tableau sans MJ pour l'arbitrer). */}
+            {reseau.connecte && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(245,236,215,0.7)', marginBottom: 4 }}>{t('gameMode.ordreInitiativeLabel')} — {t('gameMode.roundLabel', { round: reseau.round })}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {reseau.ordreInitiative.map((e, i) => (
+                    <span key={i} style={{
+                      fontSize: 12, borderRadius: 12, padding: '2px 8px',
+                      background: e.enCours ? 'rgba(201,168,76,0.2)' : 'rgba(245,236,215,0.06)',
+                      border: `1px solid ${e.enCours ? GOLD : 'rgba(245,236,215,0.15)'}`,
+                      color: e.enCours ? GOLD : e.aJoue ? 'rgba(245,236,215,0.35)' : 'rgba(245,236,215,0.7)',
+                    }}>{e.nom}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              {/* Colonne alliés : le PJ (avec sa propre sélection de cible) puis ses compagnons — portraits
+                  déjà locaux (character.portrait / creature.image), aucun réseau nécessaire ici. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'rgba(110,220,200,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{t('gameMode.alliesColumn')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignContent: 'flex-start' }}>
+                  <div style={{ width: 138, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: 'rgba(15,12,8,0.95)', border: '1px solid rgba(110,220,200,0.35)' }}>
+                    <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                      {pjImageSrc
+                        ? <img src={pjImageSrc} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: character.portraitFit ?? 'cover' }} />
+                        : <span style={{ fontSize: 28, opacity: 0.3 }}>🧍</span>}
+                      {/* Sablier : ce n'est pas (encore, ou plus) le tour de ce PJ — soit son budget
+                          d'action est épuisé pour ce tour (voir peutAgir/budgetActions), soit ce n'est
+                          simplement pas encore son tour dans l'ordre d'initiative (reseau.estMonTour). */}
+                      {!peutAgir && (
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 32 }}>⏳</span>
+                        </div>
+                      )}
+                      {reseau.connecte && reseau.ciblesSurMoi.length > 0 && (
+                        <div title={`${t('gameMode.ciblesSurMoiLabel')} : ${reseau.ciblesSurMoi.join(', ')}`} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(180,30,30,0.85)', borderRadius: 10, padding: '1px 6px', fontSize: 11, color: '#fff' }}>
+                          🎯 {reseau.ciblesSurMoi.length}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '6px 8px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: PARCHMENT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{character.nomPersonnage}</div>
+                      {reseau.connecte ? (
+                        <select
+                          value={cibleChoisieId}
+                          onChange={e => { setCibleChoisieId(e.target.value); reseau.envoyerCibleChoisie(e.target.value || null) }}
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', borderRadius: 4, fontSize: 11, background: 'var(--tdr-dark)', border: '1px solid rgba(201,168,76,0.35)', color: PARCHMENT, outline: 'none' }}
+                        >
+                          <option value="" style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{t('gameMode.aucuneCibleChoisie')}</option>
+                          {reseau.ciblesDisponibles.map(c => (
+                            <option key={c.id} value={c.id} disabled={c.mort} style={{ background: 'var(--tdr-dark)', color: PARCHMENT }}>{c.nom}{c.mort ? ' 💀' : ''}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div style={{ fontSize: 10, color: 'rgba(245,236,215,0.35)', fontStyle: 'italic' }}>{t('gameMode.enemiesRequireConnexion')}</div>
+                      )}
+                      {/* "Attendre" : ne joue pas tout de suite, repasse en fin d'ordre du round en
+                          cours ("attendre que tout le monde ait attaqué", demandé par Didic) — visible
+                          uniquement quand c'est effectivement le tour de ce PJ. */}
+                      {reseau.connecte && reseau.estMonTour && (
+                        <button onClick={() => reseau.envoyerAttendreMonTour()}
+                          style={{ width: '100%', marginTop: 4, padding: '3px 4px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)', color: GOLD }}>
+                          ⏳ {t('gameMode.attendreButton')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {compagnonsActifsResolus.map(({ nom, creature }) => renderCompagnonCardVisuelle(nom, creature))}
+                </div>
+              </div>
+
+              {/* Colonne ennemis : jamais de PV/DEF/RD/caractéristiques (voir CombatEntiteInfo côté MJ) —
+                  juste le portrait (voir reseau.imagesCibles, transmis explicitement par le MJ), le nom,
+                  si mort (c.mort), si cet ennemi cible le PJ (recoupé par nom avec ciblesSurMoi), et les
+                  dégâts déjà infligés PAR le PJ (voir degatsInfligesParCible). Clic sur la carte = choisir
+                  cette cible, même geste que le select de la carte PJ (juste une seconde façon d'y
+                  accéder). */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,150,150,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{t('gameMode.enemiesColumn')}</div>
+                {!reseau.connecte ? (
+                  <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontStyle: 'italic' }}>{t('gameMode.enemiesRequireConnexion')}</div>
+                ) : reseau.ciblesDisponibles.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'rgba(245,236,215,0.35)', fontStyle: 'italic' }}>{t('gameMode.aucunEnnemi')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignContent: 'flex-start' }}>
+                    {reseau.ciblesDisponibles.map(c => {
+                      const estCible = cibleChoisieId === c.id
+                      const meVise = reseau.ciblesSurMoi.includes(c.nom)
+                      const degats = degatsInfligesParCible[c.id]
+                      const imageSrc = reseau.imagesCibles[c.id]
+                      return (
+                        <div key={c.id}
+                          // Une créature morte reste visible (le 💀 informe de son sort, voir la note
+                          // ci-dessous) mais ne peut plus être choisie comme cible — même règle que côté
+                          // MJ (SelecteurCible.tsx/handleAttaque dans CombatTab.tsx).
+                          onClick={() => { if (c.mort) return; setCibleChoisieId(c.id); reseau.envoyerCibleChoisie(c.id) }}
+                          style={{ width: 138, flexShrink: 0, cursor: c.mort ? 'not-allowed' : 'pointer', borderRadius: 8, overflow: 'hidden', background: 'rgba(15,12,8,0.95)', border: `1px solid ${estCible ? GOLD : 'rgba(220,80,80,0.3)'}`, opacity: c.mort ? 0.6 : 1 }}
+                        >
+                          <div style={{ width: '100%', aspectRatio: '2 / 3', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                            {imageSrc
+                              ? <img src={imageSrc} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <span style={{ fontSize: 28, opacity: 0.3 }}>👹</span>}
+                            {/* c.mort : juste un booléen dérivé de pvActuels<=0 côté MJ (voir
+                                etatCiblagePourPJ dans CombatTab.tsx), jamais la valeur elle-même — seuls
+                                les PV/caractéristiques restent masqués, pas le fait qu'une créature soit
+                                morte (demandé par Didic). */}
+                            {c.mort ? (
+                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 32 }}>💀</span>
+                              </div>
+                            ) : !c.enCours && (
+                              // Sablier : ce n'est pas le tour de cette créature — c.enCours est calculé
+                              // par ID côté MJ (voir 'etat-ciblage' dans reseauProtocole.ts), PAS par nom
+                              // via le tableau ordreInitiative comme précédemment : plusieurs ennemis
+                              // homonymes tombaient sinon tous sur la même entrée et affichaient le même
+                              // statut (bug signalé par Didic). Le crâne reste prioritaire si mort aussi.
+                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 32 }}>⏳</span>
+                              </div>
+                            )}
+                            {meVise && (
+                              <div title={t('gameMode.meViseTitle')} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(180,30,30,0.85)', borderRadius: 10, padding: '1px 5px', fontSize: 12 }}>🎯</div>
+                            )}
+                          </div>
+                          <div style={{ padding: '6px 8px' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: estCible ? GOLD : 'rgba(255,150,150,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nom}</div>
+                            {degats ? (
+                              <div style={{ fontSize: 11, color: 'rgba(255,180,120,0.85)', marginTop: 2 }}>💥 {t('gameMode.degatsInfligesLabel', { degats })}</div>
+                            ) : null}
+                            {/* Qui cet ennemi vise actuellement — un PJ, un compagnon (même d'un AUTRE
+                                PJ) ou une autre créature, peu importe : juste le nom (voir c.cible dans
+                                etatCiblagePourPJ, CombatTab.tsx), jamais de PV/stats sur cette cible. */}
+                            {c.cible && (
+                              <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.5)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                🎯 {t('gameMode.ennemiCibleLabel', { cible: c.cible })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Section 2 : Effets actifs ── */}
         <div style={SECTION_DIVIDER}>
           <div style={{ fontSize: 13, color: `rgba(201,168,76,0.85)`, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('gameMode.activeEffects')}</div>
-          {availableBonuses.length === 0 && availableAvantages.length === 0 && availableActions.length === 0 ? (
+          {availableBonuses.length === 0 && availableAvantages.length === 0 && availableActions.length === 0 && availableActionsSupp.length === 0 ? (
             <div style={{ padding: '12px 0', textAlign: 'center' }}>
               <div style={{ fontSize: 20, marginBottom: 6 }}>✦</div>
               <div style={{ fontSize: 14, color: `rgba(245,236,215,0.3)`, lineHeight: 1.5 }}>{t('gameMode.noEffectsTitle')}<br />{t('gameMode.noEffectsDesc')}</div>
@@ -1747,11 +2250,28 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                           ? t('gameMode.attackButtonTyped', { de: action.de, type: t(`gameMode.type${action.attType === 'contact' ? 'Contact' : action.attType === 'distance' ? 'Distance' : 'Magique'}`) })
                           : t('gameMode.attackButtonPlain', { de: action.de })}
                       </button>
-                      <button disabled={isUnconscious} onClick={() => handleActionDegats(action)} style={{ flex: 1, fontSize: 14, padding: '6px 10px', borderRadius: 4, cursor: isUnconscious ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.35)', background: 'rgba(140,100,255,0.08)', color: 'rgba(200,170,255,0.7)', opacity: isUnconscious ? 0.35 : 1 }}>
+                      <button disabled={isUnconscious || !peutAgir} onClick={() => handleActionDegats(action)}
+                        title={!peutAgir ? t('gameMode.actionsEpuiseesTitle') : undefined}
+                        style={{ flex: 1, fontSize: 14, padding: '6px 10px', borderRadius: 4, cursor: (isUnconscious || !peutAgir) ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(160,120,255,0.35)', background: 'rgba(140,100,255,0.08)', color: 'rgba(200,170,255,0.7)', opacity: (isUnconscious || !peutAgir) ? 0.35 : 1 }}>
                         {t('gameMode.damageButton', { dm: action.dm })}
                       </button>
                     </div>
                   )}
+                </div>
+              ))}
+              {availableActionsSupp.map((asup, i) => (
+                <div key={`asup-${i}`} style={{ padding: '8px 10px', borderRadius: 5, background: 'rgba(140,100,255,0.08)', border: '1px dashed rgba(160,120,255,0.35)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(200,170,255,0.95)' }}>{asup.rangNom}</span>
+                    <span style={{ fontSize: 12, color: `rgba(245,236,215,0.3)` }}>{t('gameMode.rangVoie', { rang: asup.rangIdx + 1, voie: asup.voieNom })}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(200,170,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>⚔️</span> {asup.label}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                    <span style={{ fontSize: 14, color: PARCHMENT }}>{t('gameMode.actionsSuppDesc', { count: asup.nombre })}</span>
+                    <span style={{ fontSize: 12, background: 'rgba(140,100,255,0.15)', border: '1px solid rgba(160,120,255,0.4)', borderRadius: 3, padding: '1px 7px', color: 'rgba(200,170,255,0.8)', fontWeight: 600 }}>{t('gameMode.automatic')}</span>
+                  </div>
                 </div>
               ))}
               {availableAvantages.map((av, i) => (
@@ -1802,7 +2322,9 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                       </div>
                       {weaponPicker}
                       {showStandaloneRoll && (
-                        <button disabled={isUnconscious} onClick={() => handleRollBonusDice(ab)} style={{ width: '100%', fontSize: 14, padding: '6px 10px', borderRadius: 4, cursor: isUnconscious ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(255,150,80,0.5)', background: 'rgba(255,150,80,0.12)', color: 'rgba(255,180,120,0.95)', marginTop: needsWeaponChoice ? 6 : 0, opacity: isUnconscious ? 0.35 : 1 }}>
+                        <button disabled={isUnconscious || !peutAgir} onClick={() => handleRollBonusDice(ab)}
+                          title={!peutAgir ? t('gameMode.actionsEpuiseesTitle') : undefined}
+                          style={{ width: '100%', fontSize: 14, padding: '6px 10px', borderRadius: 4, cursor: (isUnconscious || !peutAgir) ? 'not-allowed' : 'pointer', fontWeight: 600, border: '1px solid rgba(255,150,80,0.5)', background: 'rgba(255,150,80,0.12)', color: 'rgba(255,180,120,0.95)', marginTop: needsWeaponChoice ? 6 : 0, opacity: (isUnconscious || !peutAgir) ? 0.35 : 1 }}>
                           {t('gameMode.rollBonus', { dice: ab.deDegats })}
                         </button>
                       )}
@@ -1838,14 +2360,15 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                     {!isPending ? (
                       <button
                         onClick={() => !alreadyUsed && !isUnconscious && handleActivateClick(ab, i)}
-                        disabled={alreadyUsed || isUnconscious}
+                        disabled={alreadyUsed || isUnconscious || (!!ab.cout_pm && !peutAgir)}
+                        title={ab.cout_pm && !peutAgir ? t('gameMode.actionsEpuiseesTitle') : undefined}
                         style={{
                           width: '100%', fontSize: 14, padding: '6px 10px', borderRadius: 4, fontWeight: 600, marginBottom: 6,
-                          cursor: (alreadyUsed || isUnconscious) ? 'not-allowed' : 'pointer',
+                          cursor: (alreadyUsed || isUnconscious || (ab.cout_pm && !peutAgir)) ? 'not-allowed' : 'pointer',
                           border: `1px solid ${alreadyUsed ? 'rgba(160,120,255,0.2)' : 'rgba(160,120,255,0.5)'}`,
                           background: alreadyUsed ? 'rgba(140,100,255,0.05)' : 'rgba(140,100,255,0.15)',
                           color: alreadyUsed ? 'rgba(200,170,255,0.35)' : 'rgba(200,170,255,0.9)',
-                          opacity: isUnconscious ? 0.35 : 1,
+                          opacity: (isUnconscious || (ab.cout_pm && !peutAgir)) ? 0.35 : 1,
                         }}>
                         {alreadyUsed ? t('gameMode.activeTurns', { count: remainingTurns }) : t('gameMode.activate')}
                       </button>

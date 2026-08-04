@@ -61,7 +61,7 @@ interface Props {
 
 export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   const { t } = useTranslation()
-  const { bestiaire, rencontres, setRencontres, combatsSauvegardes, setCombatsSauvegardes } = useGameData()
+  const { bestiaire, rencontres, setRencontres, combatsSauvegardes, setCombatsSauvegardes, data: descriptions } = useGameData()
 
   const [nombrePJs, setNombrePJs] = useState(4)
   const [niveauMoyen, setNiveauMoyen] = useState(4)
@@ -85,7 +85,7 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   if (demarrerAuto !== dernierDemarrerAuto) {
     setDernierDemarrerAuto(demarrerAuto)
     if (demarrerAuto) {
-      setCombatSession(demarrerCombat(demarrerAuto, bestiaire))
+      setCombatSession(demarrerCombat(demarrerAuto, bestiaire, descriptions))
       setCombatSnapshotId(null)
     }
   }
@@ -185,7 +185,14 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
   }
 
   const reprendreCombat = (c: CombatSessionSauvegardee) => {
-    const session: CombatSession = { nomRencontre: c.nomRencontre, combatants: c.combatants, pjs: c.pjs, compagnons: c.compagnons }
+    const session: CombatSession = {
+      nomRencontre: c.nomRencontre, combatants: c.combatants, pjs: c.pjs, compagnons: c.compagnons,
+      splitRatio: c.splitRatio,
+      // Ordre d'initiative : porté ici explicitement (comme tout le reste de cette reconstruction) —
+      // absent d'une session sauvegardée avant ce chantier, le filet de sécurité dans CombatTab.tsx le
+      // régénère au premier rendu.
+      ordreInitiative: c.ordreInitiative, tourActuelIndex: c.tourActuelIndex, round: c.round,
+    }
     setCombatSession(JSON.parse(JSON.stringify(session)) as CombatSession)
     setCombatSnapshotId(c.id)
   }
@@ -405,7 +412,7 @@ export default function AdversiteTab({ demarrerAuto, onCombatTermine }: Props) {
                   </div>
                 </div>
                 <button
-                  onClick={() => { setCombatSession(demarrerCombat(r, bestiaire)); setCombatSnapshotId(null) }}
+                  onClick={() => { setCombatSession(demarrerCombat(r, bestiaire, descriptions)); setCombatSnapshotId(null) }}
                   style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 14 }}
                 >
                   ▶ {t('gmMode.adversite.jouer')}

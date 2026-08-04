@@ -2,23 +2,25 @@ import { useState } from 'react'
 import SelecteurCible from './SelecteurCible'
 import { useImage } from '../../hooks/useImage'
 import { useTranslation } from 'react-i18next'
-import { DiceIcon } from '../GameMode/DiceIcon'
 import StatCell from './StatCell'
 import NumberField from '../NumberField'
 import type { CombatCreature, CombatEntiteInfo, RollResult } from '../../utils/combat'
 import ResultatCartouche from './ResultatCartouche'
+import HistoriqueEntreeBloc from './HistoriqueEntreeBloc'
 import { ICONES_TYPES_DEGATS } from '../../utils/damageTypes'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
 const RED = 'rgba(255,150,150,0.95)'
-const PURPLE = 'rgba(200,170,255,0.9)'
 
 const CARACS = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'] as const
 
 interface Props {
   combatant: CombatCreature
+  // Remplace l'ancien champ persisté CombatCreature.aJoueCeTour : dérivé de l'ordre d'initiative côté
+  // CombatTab.tsx (seule l'entité à tourActuelIndex peut agir) — voir estEnCours dans CombatTab.tsx.
+  estEnCours: boolean
   cibles: CombatEntiteInfo[]
   // Entités (créatures ET PJ, voir CombatTab.attaquantsDe) qui visent CETTE créature, avec leur dernier
   // résultat contre elle — un PJ peut désormais lui infliger des dégâts (voir PJCard/handleAttaquePJ).
@@ -36,9 +38,12 @@ interface Props {
   sousTitre?: string
 }
 
-export default function CombatCard({ combatant, cibles, attaquants, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff, onRetirerDot, sousTitre }: Props) {
+export default function CombatCard({ combatant, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff, onRetirerDot, sousTitre }: Props) {
   const { t } = useTranslation()
-  const { creature, expanded, aJoueCeTour, dernierResultat, buffs, pvActuels, cibleId, dotsActifs } = combatant
+  const { creature, expanded, dernierResultat, buffs, pvActuels, cibleId, dotsActifs, historique } = combatant
+  // Inversé par rapport à l'ancien aJoueCeTour (true = déjà joué) : ici true = ce n'est PAS son tour,
+  // qu'il ait déjà joué ce round ou pas encore été atteint — le détail vit dans le tableau d'ordre.
+  const aJoueCeTour = !estEnCours
   const imageSrc = useImage(creature.image)
   const [flash, setFlash] = useState(false)
   const isDown = pvActuels <= 0
@@ -70,9 +75,16 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
           {imageSrc
             ? <img src={imageSrc} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: creature.imageFit ?? 'cover' }} />
             : <span style={{ fontSize: 28, opacity: 0.3 }}>🐾</span>}
-          {isDown && (
+          {isDown ? (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 40 }}>💀</span>
+            </div>
+          ) : aJoueCeTour && (
+            // Sablier : a déjà agi ce tour (même signal que le grisé plus bas en vue dépliée, et même
+            // symbole que côté joueur, voir GameModePanel.tsx) — le crâne reste prioritaire si la
+            // créature est aussi morte (les deux ne se cumulent pas).
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 40 }}>⏳</span>
             </div>
           )}
           {/* Bandeau posé sur l'image (pas une bande ajoutée en plus) : la carte garde sa hauteur
@@ -127,6 +139,11 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
       </div>
     )
   }
+
+  // Cible actuelle déjà morte (tuée par un autre coup pendant qu'elle était visée) : désactive le
+  // bouton d'attaque plutôt que de laisser résoudre un coup contre un cadavre (voir le blocage miroir
+  // dans handleAttaque, CombatTab.tsx, et la sélection déjà bloquée dans SelecteurCible.tsx).
+  const cibleMorte = !!cibleId && (cibles.find(c => c.id === cibleId)?.pvActuels ?? 1) <= 0
 
   return (
     <div data-combat-id={combatant.id} style={{
@@ -223,7 +240,9 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase' }}>{t('gmMode.creatureDetail.attaques')}</span>
             {creature.attaques.map((a, i) => (
-              <button key={i} onClick={() => handleAttaque(a)} style={attaqueBtnStyle}>
+              <button key={i} onClick={() => handleAttaque(a)} disabled={aJoueCeTour || cibleMorte}
+                title={aJoueCeTour ? t('gmMode.bataille.aJoueCeTourTitle') : cibleMorte ? t('gmMode.bataille.cibleMorteTitle') : undefined}
+                style={{ ...attaqueBtnStyle, opacity: (aJoueCeTour || cibleMorte) ? 0.4 : 1, cursor: (aJoueCeTour || cibleMorte) ? 'not-allowed' : 'pointer' }}>
                 <span style={{ flex: 1, textAlign: 'left' }}>{a.nom}</span>
                 {a.bonus && <span style={{ opacity: 0.7 }}>{t('gmMode.bataille.attaqueLabel')} {a.bonus}</span>}
                 {a.dm && <span style={{ opacity: 0.7 }}>{t('gmMode.bataille.dmLabel')} {a.dm}</span>}
@@ -244,56 +263,32 @@ export default function CombatCard({ combatant, cibles, attaquants, onToggleExpa
           </div>
         )}
 
-        {/* Dernier résultat — même présentation (icône de dé + détail + total) que la modale Mode de jeu joueur */}
-        {dernierResultat && (
-          <div style={{ border: `1px solid ${GOLD}`, borderRadius: 6, padding: 12, background: 'rgba(201,168,76,0.08)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: GOLD }}>
-              {dernierResultat.attaqueNom}
-              {dernierResultat.cibleNom && (
-                <span style={{ fontWeight: 400, opacity: 0.7 }}> → {dernierResultat.cibleNom}</span>
-              )}
+        {/* Historique du combat — journal des actions faites ET subies par cette carte (voir
+            HistoriqueEntree/ajouterHistorique dans combat.ts), conservé pour toute la durée du combat
+            (demande de Didic), pas juste le dernier jet comme auparavant. 3 entrées tiennent dans la
+            hauteur fixée ci-dessous (maxHeight approximatif, la hauteur réelle d'une entrée varie selon
+            qu'elle a un jet d'attaque/dégâts ou non) — au-delà, défilement vertical. */}
+        {historique.length > 0 && (
+          <div>
+            <div style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>
+              {t('gmMode.bataille.historiqueLabel')}
             </div>
-            {dernierResultat.jetSides !== undefined && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span style={{ fontSize: 13, opacity: 0.55, width: 84, flexShrink: 0 }}>{t('gmMode.bataille.jetAttaque')}</span>
-                <DiceIcon sides={dernierResultat.jetSides} size={26} color={flash ? '#fff' : PARCHMENT} />
-                <span style={{ fontSize: 18, color: flash ? '#fff' : PARCHMENT, transition: 'color 0.2s' }}>{dernierResultat.jetRoll}</span>
-                {dernierResultat.jetModifier !== undefined && (
-                  <span style={{ fontSize: 16, opacity: 0.6 }}>{dernierResultat.jetModifier >= 0 ? '+' : ''}{dernierResultat.jetModifier}</span>
-                )}
-                <span style={{ opacity: 0.4, fontSize: 16 }}>=</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: flash ? '#fff' : GOLD, transition: 'color 0.2s' }}>{dernierResultat.jetTotal}</span>
-              </div>
-            )}
-            {dernierResultat.toucheRate ? (
-              <div style={{ fontSize: 13, color: 'rgba(245,236,215,0.5)', fontStyle: 'italic' }}>
-                {t('gmMode.bataille.attaqueRatee')}
-              </div>
-            ) : (
-              <>
-                {dernierResultat.degatsSides !== undefined && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span style={{ fontSize: 13, opacity: 0.55, width: 84, flexShrink: 0 }}>{t('gmMode.bataille.degats')}</span>
-                    <DiceIcon sides={dernierResultat.degatsSides} size={26} color={flash ? '#fff' : PARCHMENT} />
-                    <span style={{ fontSize: 16, color: flash ? '#fff' : PARCHMENT, transition: 'color 0.2s' }}>{dernierResultat.degatsRollDisplay}</span>
-                    <span style={{ opacity: 0.4, fontSize: 16 }}>=</span>
-                    <span style={{ fontSize: 22, fontWeight: 700, color: flash ? '#fff' : GOLD, transition: 'color 0.2s' }}>{dernierResultat.degatsTotal}</span>
-                  </div>
-                )}
-                {dernierResultat.degatsAppliques !== undefined && (
-                  <div style={{ fontSize: 13, color: PURPLE }}>
-                    {t('gmMode.bataille.degatsAppliques', { nom: dernierResultat.cibleNom, degats: dernierResultat.degatsAppliques })}
-                  </div>
-                )}
-              </>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+              {historique.map((h, i) => (
+                <HistoriqueEntreeBloc key={h.id} entree={h} flash={i === 0 && flash} />
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Overlay "a joué ce tour" — jusqu'au bouton Tour suivant */}
+      {/* Overlay "a joué ce tour" — jusqu'au bouton Tour suivant. Sablier ajouté en haut à droite (même
+          symbole que la vue repliée ci-dessus et que côté joueur, voir GameModePanel.tsx) — jusqu'ici un
+          simple assombrissement sans icône. */}
       {aJoueCeTour && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: 10 }}>
+          <span style={{ fontSize: 28 }}>⏳</span>
+        </div>
       )}
     </div>
   )

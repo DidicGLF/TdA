@@ -134,6 +134,9 @@ export interface Character {
   activeBoosts?: ActiveBoostPersisted[]
   effectCounters?: Record<string, number>
   activeDots?: ActiveDotPersisted[]
+  // Verrouillage d'action par tour (Mode de jeu)
+  actionsUtiliseesCeTour?: number
+  compagnonsDejaAgiCeTour?: Record<string, boolean>
   pr: number
   prUtilises: boolean[]
   pm: number
