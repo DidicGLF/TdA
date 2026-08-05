@@ -11,12 +11,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# compression désactivée (hors defaults) : Tauri compresse en Brotli les assets embarqués qui s'y
-# prêtent (frontendDist) pour réduire la taille du binaire ; certains assets embarqués compressés
-# (dont fond-avatar.jpg) s'affichaient cassés sur Windows une fois l'appli installée, alors que les
-# mêmes assets stockés bruts (compression jugée non rentable par Tauri) s'affichaient normalement —
-# tous les autres defaults (wry/common-controls-v6/dynamic-acl/x11/dbus) sont conservés explicitement.
-tauri = { version = "2", default-features = false, features = ["wry", "common-controls-v6", "dynamic-acl", "x11", "dbus"] }
+tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "macros", "time"] }

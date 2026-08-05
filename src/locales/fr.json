@@ -1602,7 +1602,7 @@
       "aucuneSession": "Lance une rencontre depuis l'onglet Générateur de rencontre pour commencer un combat",
       "nbAdversaires_one": "{{count}} adversaire",
       "nbAdversaires_other": "{{count}} adversaires",
-      "tourSuivant": "Tour suivant",
+      "tourSuivant": "Personnage suivant",
       "aJoueCeTourTitle": "Ce n'est pas son tour",
       "ordreInitiativeLabel": "Ordre d'initiative",
       "roundLabel": "Tour {{round}}",

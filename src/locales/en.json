@@ -1602,7 +1602,7 @@
       "aucuneSession": "Start an encounter from the Encounter generator tab to begin a fight",
       "nbAdversaires_one": "{{count}} adversary",
       "nbAdversaires_other": "{{count}} adversaries",
-      "tourSuivant": "Next turn",
+      "tourSuivant": "Next character",
       "aJoueCeTourTitle": "Not their turn",
       "ordreInitiativeLabel": "Initiative order",
       "roundLabel": "Round {{round}}",

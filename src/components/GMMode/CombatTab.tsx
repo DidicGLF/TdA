@@ -191,6 +191,23 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // choisit d'"attendre" son tour (voir 'attendre-mon-tour' dans reseauProtocole.ts) —
   // handleAttendreMonTour est lui aussi redéfini à chaque rendu, ferme sur session/onSessionChange.
   const attendreMonTourRef = useRef<(pjId: string, compagnonNom?: string) => void>(() => {})
+  // Raccourci clavier "Personnage suivant" (touche ² — Backquote, même touche physique quel que soit
+  // le clavier) : tourSuivant n'existe qu'après le retour anticipé "if (!session)" plus bas, d'où la
+  // même ref-relais qu'au-dessus (voir la note sur handleAttaquePJRef). Écoute posée une seule fois ici
+  // (avant le retour anticipé) pour rester active même sans session en cours (elle ne fera alors rien,
+  // tourSuivant lui-même retournant tôt si ordreMaj est vide).
+  const tourSuivantRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    const gerer = (e: KeyboardEvent) => {
+      if (e.code !== 'Backquote') return
+      const cible = e.target as HTMLElement | null
+      if (cible && (cible.tagName === 'INPUT' || cible.tagName === 'TEXTAREA' || cible.isContentEditable)) return
+      e.preventDefault()
+      tourSuivantRef.current()
+    }
+    window.addEventListener('keydown', gerer)
+    return () => window.removeEventListener('keydown', gerer)
+  }, [])
   // Même besoin que handleAttaquePJRef ci-dessus : l'écoute réseau doit retrouver le PJ par nom dans la
   // session la PLUS RÉCENTE, pas celle du rendu où elle s'est abonnée. Synchronisée dans un effet (pas
   // pendant le rendu) : écrire une ref pendant le rendu est interdit par les règles des Hooks.
@@ -1015,6 +1032,8 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   updateCompagnonRef.current = updateCompagnon
   // eslint-disable-next-line react-hooks/refs
   attendreMonTourRef.current = handleAttendreMonTour
+  // eslint-disable-next-line react-hooks/refs
+  tourSuivantRef.current = tourSuivant
 
   // Pose un effet de dégâts sur la durée sur la cible actuelle du PJ (poison, brûlure, ...) — encaissé
   // automatiquement à chaque « Tour suivant » (voir tickerDots), sans appliquer de dégâts immédiats :
@@ -1083,7 +1102,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {saveMsg && <span style={{ fontSize: 12, color: GOLD }}>{saveMsg}</span>}
-            <button onClick={tourSuivant} style={{
+            <button onClick={tourSuivant} title="²" style={{
               padding: '6px 14px', borderRadius: 4, border: '1px solid rgba(201,168,76,0.5)',
               background: 'rgba(201,168,76,0.12)', color: GOLD, cursor: 'pointer', fontSize: 13,
             }}>

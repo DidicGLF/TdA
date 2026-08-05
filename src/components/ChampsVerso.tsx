@@ -10,7 +10,14 @@ import DraggableImageField from './DraggableImageField'
 import DraggableStaticImage from './DraggableStaticImage'
 import DraggableCursorRow from './DraggableCursorRow'
 import DraggableCheckboxRow from './DraggableCheckboxRow'
-import fondAvatar from '../assets/fond-avatar.jpg'
+// ?inline force l'intégration en data URI (base64) au lieu d'une URL résolue au runtime via
+// document.currentScript (fallback Vite pour le format IIFE, faute d'import.meta.url) : ce champ
+// n'étant monté qu'après navigation manuelle de l'utilisateur (personnage ouvert + mode Image),
+// currentScript est déjà à null à ce moment-là (contrairement aux autres images, montées dès
+// l'ouverture d'un onglet), et le repli sur document.baseURI se résolvait mal sous Windows/WebView2
+// — l'image s'affichait cassée malgré une fois committée correctement dans le binaire (webp puis
+// jpg, vérifiés), d'où l'inlining qui élimine complètement cette résolution d'URL à l'exécution.
+import fondAvatar from '../assets/fond-avatar.jpg?inline'
 import { useGameData } from '../context/GameDataContext'
 import type { FieldPositions, SheetPage } from '../context/GameDataContext'
 import { useTranslatedDescriptions } from '../hooks/useContentTranslation'
