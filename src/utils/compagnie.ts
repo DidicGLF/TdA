@@ -4,6 +4,8 @@
 // data/psychologieTraits.ts/data/cristaux.json : pas de couche de traduction perso/livré pour ce texte,
 // aucune fusion livré/perso n'a de sens ici (pas de "compagnie livrée avec l'appli").
 
+import type { MissionCompagnie } from './missions'
+
 export type CodeCompagnie = 'altruiste' | 'anarchique' | 'autoritaire' | 'solidaire'
 export type CodeAvecVoieFixe = Exclude<CodeCompagnie, 'anarchique'>
 export type DomaineCapacite = 'arsenal' | 'influence' | 'tactique'
@@ -16,7 +18,11 @@ export interface CapaciteCompagnie {
 }
 
 export interface MembreCompagnie {
-  fonction: FonctionMembre
+  // Absente pour un membre général (ajouté depuis la fiche d'un personnage importée en .json, voir
+  // CompagnieTab) — présente seulement pour les 5 emplacements de fonction (saisie libre, voir
+  // FONCTIONS_MEMBRE). Les deux vivent dans le même tableau : un personnage dont le nom figure ici,
+  // fonction ou non, est traité comme membre de la compagnie (voir showCompagnieTab dans App.tsx).
+  fonction?: FonctionMembre
   nom: string
 }
 
@@ -31,6 +37,9 @@ export interface Compagnie {
   // rang (voir capacitesDisponiblesAnarchique). Absent des autres codes, dont la voie est fixe.
   choixAnarchique: Partial<Record<number, CapaciteCompagnie>>
   membres: MembreCompagnie[]
+  // Missions créées par le MJ (voir utils/missions.ts/MissionsTab.tsx) — voyagent avec le reste de la
+  // compagnie via l'export/import JSON déjà existant (CompagnieTab.tsx), sans code supplémentaire.
+  missions: MissionCompagnie[]
   modifieLe: string
 }
 
@@ -43,6 +52,7 @@ export const COMPAGNIE_PAR_DEFAUT = (): Compagnie => ({
   code: null,
   choixAnarchique: {},
   membres: [],
+  missions: [],
   modifieLe: new Date().toISOString(),
 })
 

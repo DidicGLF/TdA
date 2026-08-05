@@ -37,6 +37,9 @@ import {
 } from '../utils/voiesPerso'
 import { fusionnerCatalogue, extraireSurchargesCatalogue, fusionnerNomsMasques, migrerNomsMasquesPerso } from '../utils/cataloguePerso'
 import { fusionnerObjetsMagiques, extraireSurchargesObjetsMagiques } from '../utils/objetsMagiquesPerso'
+import { fusionnerCartesCritiques, extraireSurchargesCartesCritiques } from '../utils/cartesCritiquesPerso'
+import type { CarteCritiquePerso } from '../utils/cartesCritiquesPerso'
+import { CARTES_ECHECS, CARTES_REUSSITES } from '../data/cartesCritiques'
 import { COMPAGNIE_PAR_DEFAUT } from '../utils/compagnie'
 import type { Compagnie } from '../utils/compagnie'
 import { fusionnerArmes, migrerArmesPerso, extraireSurchargesArmes, fusionnerArmures, migrerArmuresPerso, extraireSurchargesArmures } from '../utils/armesPerso'
@@ -140,6 +143,12 @@ interface GameDataContextValue {
   setCapacitesBibliotheque: Dispatch<SetStateAction<CapaciteBibliotheque[]>>
   objetsMagiques: ObjetMagiqueEntry[]
   setObjetsMagiques: Dispatch<SetStateAction<ObjetMagiqueEntry[]>>
+  // Cartes de réussites/échecs critiques : livré (voir data/cartesCritiques.ts) + surcharges du MJ
+  // (texte corrigé et/ou carte désactivée) — voir utils/cartesCritiquesPerso.ts.
+  cartesCritiquesEchecs: CarteCritiquePerso[]
+  setCartesCritiquesEchecs: Dispatch<SetStateAction<CarteCritiquePerso[]>>
+  cartesCritiquesReussites: CarteCritiquePerso[]
+  setCartesCritiquesReussites: Dispatch<SetStateAction<CarteCritiquePerso[]>>
   notes: Note[]
   setNotes: Dispatch<SetStateAction<Note[]>>
   campagnes: Campaign[]
@@ -280,11 +289,17 @@ export const PEUPLES_LIVRE = unwrap(JSON.parse(JSON.stringify(PEUPLES_RAW))) as 
 export const HIDDEN_PEUPLES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_PEUPLES_RAW))) as string[]
 export const HIDDEN_CULTURES_LIVRE = unwrap(JSON.parse(JSON.stringify(HIDDEN_CULTURES_RAW))) as string[]
 
+// Boucle (pas un seul niveau) : répare de façon transparente un fichier accidentellement enveloppé
+// plus d'une fois — par exemple un fichier interne (déjà en { _type, data }) réimporté par erreur via
+// un bouton d'import utilisateur (voir desenvelopper dans importTypage.ts), qui se retrouve ensuite
+// réenveloppé une fois de plus à la sauvegarde suivante. Garde-fou anti-boucle infinie à 5 niveaux —
+// largement au-delà de tout cas réel.
 function unwrap(parsed: unknown): unknown {
-  if (parsed && typeof parsed === 'object' && '_type' in parsed && 'data' in (parsed as Record<string, unknown>)) {
-    return (parsed as Record<string, unknown>).data
+  let current = parsed
+  for (let i = 0; i < 5 && current && typeof current === 'object' && '_type' in current && 'data' in (current as Record<string, unknown>); i++) {
+    current = (current as Record<string, unknown>).data
   }
-  return parsed
+  return current
 }
 
 // Passe chaque événement d'une liste de sessions/gabarits de bataille par normaliserEvenement (voir
@@ -338,6 +353,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   )
   const [capacitesBibliothequePerso, setCapacitesBibliothequePersoRaw] = useState<CapaciteBibliotheque[]>([])
   const [objetsMagiquesPerso, setObjetsMagiquesPersoRaw] = useState<ObjetMagiqueEntry[]>([])
+  const [cartesCritiquesEchecsPerso, setCartesCritiquesEchecsPersoRaw] = useState<CarteCritiquePerso[]>([])
+  const [cartesCritiquesReussitesPerso, setCartesCritiquesReussitesPersoRaw] = useState<CarteCritiquePerso[]>([])
   // Compagnie de mercenaires (une seule par table, partagée par tous les PJ) — objet unique, pas un
   // catalogue livré+perso (aucune compagnie n'est fournie avec l'appli), voir utils/compagnie.ts.
   const [compagnie, setCompagnieRaw] = useState<Compagnie>(COMPAGNIE_PAR_DEFAUT())
@@ -597,9 +614,22 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
           setObjetsMagiquesPersoRaw(unwrap(JSON.parse(objetsMagiquesPersoStr)) as ObjetMagiqueEntry[])
         }
         // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste l'objet par défaut au premier lancement.
+        // Fusionné sur COMPAGNIE_PAR_DEFAUT (pas casté tel quel) : un fichier disque plus ancien qu'un
+        // champ ajouté depuis (ex. `membres` avant qu'il existe, ou un import d'un export d'une version
+        // antérieure) ferait planter tout accès direct à ce champ ailleurs dans l'appli (ex.
+        // compagnie.membres.some dans App.tsx) sans ce filet.
         const compagnieStr = await loadDataFile('Maitre de jeu/compagnie.json')
         if (compagnieStr !== null) {
-          setCompagnieRaw(unwrap(JSON.parse(compagnieStr)) as Compagnie)
+          setCompagnieRaw({ ...COMPAGNIE_PAR_DEFAUT(), ...(unwrap(JSON.parse(compagnieStr)) as Partial<Compagnie>) })
+        }
+        // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste [] par défaut au premier lancement.
+        const cartesEchecsPersoStr = await loadDataFile('Maitre de jeu/cartes-critiques-echecs-perso.json')
+        if (cartesEchecsPersoStr !== null) {
+          setCartesCritiquesEchecsPersoRaw(unwrap(JSON.parse(cartesEchecsPersoStr)) as CarteCritiquePerso[])
+        }
+        const cartesReussitesPersoStr = await loadDataFile('Maitre de jeu/cartes-critiques-reussites-perso.json')
+        if (cartesReussitesPersoStr !== null) {
+          setCartesCritiquesReussitesPersoRaw(unwrap(JSON.parse(cartesReussitesPersoStr)) as CarteCritiquePerso[])
         }
         const notesStr = await loadDataFileDossier('Notes/notes.json', 'notes.json')
         if (notesStr) setNotesRaw(unwrap(JSON.parse(notesStr)) as Note[])
@@ -813,6 +843,28 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       return nextPerso
     })
   }, [])
+  // Même principe, un setter par catégorie (échecs/réussites sont deux catalogues indépendants, chacun
+  // avec son propre fichier perso — voir cartesCritiquesPerso.ts).
+  const setCartesCritiquesEchecs = useCallback<Dispatch<SetStateAction<CarteCritiquePerso[]>>>((updater) => {
+    setCartesCritiquesEchecsPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: CarteCritiquePerso[]) => CarteCritiquePerso[])(fusionnerCartesCritiques(CARTES_ECHECS, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCartesCritiques(next, CARTES_ECHECS)
+      queueSave('Maitre de jeu/cartes-critiques-echecs-perso.json', JSON.stringify({ _type: 'cartes-critiques-echecs-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
+  const setCartesCritiquesReussites = useCallback<Dispatch<SetStateAction<CarteCritiquePerso[]>>>((updater) => {
+    setCartesCritiquesReussitesPersoRaw(prevPerso => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: CarteCritiquePerso[]) => CarteCritiquePerso[])(fusionnerCartesCritiques(CARTES_REUSSITES, prevPerso))
+        : updater
+      const nextPerso = extraireSurchargesCartesCritiques(next, CARTES_REUSSITES)
+      queueSave('Maitre de jeu/cartes-critiques-reussites-perso.json', JSON.stringify({ _type: 'cartes-critiques-reussites-perso', data: nextPerso }, null, 2))
+      return nextPerso
+    })
+  }, [])
   const setNotes = useMemo(() => makeAutoSaver<Note[]>(setNotesRaw, 'Notes/notes.json', 'notes'), [])
   const setCampagnes = useMemo(() => makeAutoSaver<Campaign[]>(setCampagnesRaw, 'Notes/campagnes.json', 'campagnes'), [])
   const setNoteImages = useMemo(() => makeAutoSaver<NoteImage[]>(setNoteImagesRaw, 'Notes/note-images.json', 'note-images'), [])
@@ -838,6 +890,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const compagnons = useMemo(() => fusionnerCatalogue(COMPAGNONS_LIVRE, compagnonsPerso), [compagnonsPerso])
   const capacitesBibliotheque = useMemo(() => fusionnerCatalogue(CAPACITES_BIBLIOTHEQUE_LIVRE, capacitesBibliothequePerso), [capacitesBibliothequePerso])
   const objetsMagiques = useMemo(() => fusionnerObjetsMagiques(OBJETS_MAGIQUES_LIVRE, objetsMagiquesPerso), [objetsMagiquesPerso])
+  const cartesCritiquesEchecs = useMemo(() => fusionnerCartesCritiques(CARTES_ECHECS, cartesCritiquesEchecsPerso), [cartesCritiquesEchecsPerso])
+  const cartesCritiquesReussites = useMemo(() => fusionnerCartesCritiques(CARTES_REUSSITES, cartesCritiquesReussitesPerso), [cartesCritiquesReussitesPerso])
   const hiddenCompagnons = useMemo(
     () => fusionnerNomsMasques(HIDDEN_COMPAGNONS_LIVRE, hiddenCompagnonsDelta.ajouts, hiddenCompagnonsDelta.retraits),
     [hiddenCompagnonsDelta],
@@ -887,6 +941,8 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       compagnie, setCompagnie,
       capacitesBibliotheque, setCapacitesBibliotheque,
       objetsMagiques, setObjetsMagiques,
+      cartesCritiquesEchecs, setCartesCritiquesEchecs,
+      cartesCritiquesReussites, setCartesCritiquesReussites,
       notes, setNotes,
       campagnes, setCampagnes,
       noteImages, setNoteImages,

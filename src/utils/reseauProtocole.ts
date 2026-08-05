@@ -1,5 +1,6 @@
 import type { Character, Arme, ArmureEquipee } from '../types/character'
 import type { ObjetMagiqueEntry } from '../types/gameData'
+import type { MissionCompagnie } from './missions'
 import { empreinte } from './empreinte'
 
 // Petit hash déterministe (djb2) d'une chaîne — empreinte() renvoie une sérialisation JSON canonique
@@ -178,6 +179,24 @@ export type MessageReseau =
   // CombatTab.tsx), jamais republiée à chaque changement de session comme 'etat-ciblage' — trop lourd à
   // renvoyer en entier à chaque attaque/PV modifié.
   | { type: 'image-cible'; id: string; dataUrl: string }
+  // Joueur → MJ : ce PJ se porte volontaire pour la mission désignée (voir utils/missions.ts). Le nom
+  // de l'expéditeur n'a pas besoin de voyager dans le message : le MJ le résout via identitesRef, comme
+  // pour 'message-pj' (voir ReseauTab.tsx). Traité seulement si la mission accepte encore des volontaires
+  // (voir peutSePorterVolontaire) — sinon ignoré silencieusement côté MJ.
+  | { type: 'mission-volontaire'; missionId: string }
+  // MJ → tous les joueurs (diffusé, voir envoyerATousReseau) : la liste À JOUR des missions de la
+  // compagnie, envoyée après CHAQUE mutation de compagnie.missions (création, volontariat accepté,
+  // lancement, résolution) — c'est la seule donnée de compagnie synchronisée en direct ; le reste
+  // (identité, renommée, membres) ne circule que via l'export/import JSON manuel déjà existant.
+  | { type: 'compagnie-missions-maj'; missions: MissionCompagnie[] }
+  // Joueur → MJ, à relayer aux AUTRES volontaires de cette mission uniquement (pas au roster entier
+  // comme 'message-pj' sans destinataire) — le dialogue de mission, voir GameModePanel.tsx. Le MJ
+  // retrouve les volontaires actuellement connectés en croisant compagnie.missions[...].volontaires
+  // (des noms) avec identitesRef (voir ReseauTab.tsx), puis relaie en 'message-mission-recu'.
+  | { type: 'message-mission'; missionId: string; texte: string }
+  // MJ → un participant de la mission : relais transparent d'un 'message-mission' reçu d'un autre
+  // volontaire — même principe que 'message-pj-recu'.
+  | { type: 'message-mission-recu'; missionId: string; expediteurNom: string; texte: string }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)
@@ -201,7 +220,7 @@ export function decoderMessage(contenu: string): MessageReseau | null {
 // Catégories des lignes de journal réseau (ReseauTab.tsx côté MJ, panneau 🌐 de GameModePanel.tsx côté
 // joueur) — palette partagée pour que les deux consoles utilisent les mêmes couleurs par type
 // d'événement plutôt que de la redéfinir en double.
-export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique' | 'pvActualises' | 'dialoguePJ'
+export type CategorieJournal = 'identification' | 'degats' | 'degatsRecus' | 'connexion' | 'deconnexion' | 'decouverte' | 'messageMJ' | 'messageJoueur' | 'imageMJ' | 'objetMagique' | 'objetClassique' | 'pvActualises' | 'dialoguePJ' | 'dialogueMission'
 
 export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   identification: 'rgba(120,180,255,0.9)', // bleu — arrivée d'un PJ
@@ -224,4 +243,8 @@ export const COULEUR_JOURNAL: Record<CategorieJournal, string> = {
   // Lavande — dialogue entre PJ (voir 'message-pj'/dialoguePJ), délibérément distinct de messageJoueur
   // (turquoise, adressé AU MJ) : un canal différent, une couleur différente.
   dialoguePJ: 'rgba(190,170,230,0.9)',
+  // Vert doré — dialogue de mission (voir 'message-mission'/'mission-volontaire'), distinct du dialogue
+  // PJ général (lavande) pour repérer d'un coup d'œil qu'il s'agit d'un sous-groupe (les volontaires
+  // d'une mission précise), pas de tous les PJ connectés.
+  dialogueMission: 'rgba(150,200,120,0.9)',
 }

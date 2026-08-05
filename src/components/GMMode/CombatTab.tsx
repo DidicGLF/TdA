@@ -15,6 +15,9 @@ import { desenvelopper, messageMauvaisType } from '../../utils/importTypage'
 import { ecouterReseau, envoyerAClientReseau, envoyerATousReseau } from '../../utils/reseau'
 import { encoderMessage, decoderMessage, idPJ } from '../../utils/reseauProtocole'
 import { chargerImage, compresserImage, estCleImage } from '../../utils/imageStore'
+import type { CarteCritique, CategorieCarteCritique } from '../../data/cartesCritiques'
+import { piocherCarteActive } from '../../utils/cartesCritiquesPerso'
+import CarteCritiqueModal from '../CarteCritiqueModal'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -138,7 +141,7 @@ type Link = {
 
 export default function CombatTab({ session, onSessionChange, onEndSession, onSauvegarder }: Props) {
   const { t } = useTranslation()
-  const { data: descriptions, compagnons: compagnonsCatalogue } = useGameData()
+  const { data: descriptions, compagnons: compagnonsCatalogue, cartesCritiquesEchecs, cartesCritiquesReussites } = useGameData()
   const [pjPanelOpen, setPjPanelOpen] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -216,6 +219,15 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   // liste survolée, affiché comme case fantôme entre deux cartes (ou en bout de liste) ; rien n'est
   // réordonné tant que le pointeur n'est pas relâché, la carte glissée reste visible à sa place
   // d'origine, juste atténuée, pendant le survol.
+  // Carte de réussite/échec critique tirée sur un 1/20 naturel (voir HistoriqueEntreeBloc.tsx →
+  // CombatCard.tsx/PJCard.tsx → ici) — un seul état partagé par toute la rencontre, pas un par carte :
+  // aucune attaque de créature n'est typée contact/distance/magique (CreatureAttaque n'a pas ce champ),
+  // la modale montre donc systématiquement les trois blocs, au MJ de lire celui qui convient.
+  const [carteAffichee, setCarteAffichee] = useState<{ categorie: CategorieCarteCritique; carte: CarteCritique } | null>(null)
+  const tirerCarte = useCallback((categorie: CategorieCarteCritique) => {
+    const carte = piocherCarteActive(categorie === 'echec' ? cartesCritiquesEchecs : cartesCritiquesReussites)
+    setCarteAffichee({ categorie, carte })
+  }, [cartesCritiquesEchecs, cartesCritiquesReussites])
   const [dragState, setDragState] = useState<{ liste: ListeDrag; id: string; width: number; height: number; startX: number; startY: number } | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   // Suivi du glisser en cours dans une ref (pas un state) : lu de façon synchrone par le pointerup, qui
@@ -1053,6 +1065,13 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
   return (
     <div style={{ position: 'relative', height: '100%' }}>
       {apercuGlisse}
+      {carteAffichee && (
+        <CarteCritiqueModal
+          carte={carteAffichee.carte}
+          categorie={carteAffichee.categorie}
+          onClose={() => setCarteAffichee(null)}
+        />
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', paddingLeft: 38 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
@@ -1188,6 +1207,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                     }}
                     onClearBuff={stat => updatePJ(p.id, { buffs: p.buffs.filter(b => b.stat !== stat) })}
                     onRetirerDot={dotId => handleRetirerDot(p.id, dotId)}
+                    onTirerCarte={tirerCarte}
                   />
                 </div>
               </div>
@@ -1222,6 +1242,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                     }}
                     onClearBuff={stat => updateCompagnon(c.id, { buffs: c.buffs.filter(b => b.stat !== stat) })}
                     onRetirerDot={dotId => handleRetirerDot(c.id, dotId)}
+                    onTirerCarte={tirerCarte}
                   />
                 </div>
               </div>
@@ -1276,6 +1297,7 @@ export default function CombatTab({ session, onSessionChange, onEndSession, onSa
                     }}
                     onClearBuff={stat => updateCombatant(c.id, { buffs: c.buffs.filter(b => b.stat !== stat) })}
                     onRetirerDot={dotId => handleRetirerDot(c.id, dotId)}
+                    onTirerCarte={tirerCarte}
                   />
                 </div>
               </div>

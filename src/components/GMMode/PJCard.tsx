@@ -74,9 +74,13 @@ interface Props {
   onRetirerDot: (dotId: string) => void
   onSetBuff: (stat: string, valeur: number) => void
   onClearBuff: (stat: string) => void
+  // Tirage d'une carte de réussite/échec critique sur un 1/20 naturel (voir HistoriqueEntreeBloc.tsx) —
+  // remonté jusqu'à CombatTab.tsx, qui possède la modale affichée (partagée entre toutes les cartes de
+  // la rencontre plutôt que dupliquée ici).
+  onTirerCarte?: (categorie: 'echec' | 'reussite') => void
 }
 
-export default function PJCard({ pj, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onSetPM, onSetCible, onInfligerDegats, onAjouterDot, onRetirerDot, onSetBuff, onClearBuff }: Props) {
+export default function PJCard({ pj, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onSetPM, onSetCible, onInfligerDegats, onAjouterDot, onRetirerDot, onSetBuff, onClearBuff, onTirerCarte }: Props) {
   const { t } = useTranslation()
   const { data: descriptions } = useGameData()
   const { character, expanded, buffs, pvActuels, pmActuels, cibleId, dernierResultat, dotsActifs, historique } = pj
@@ -318,7 +322,7 @@ export default function PJCard({ pj, estEnCours, cibles, attaquants, onToggleExp
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
               {historique.map(h => (
-                <HistoriqueEntreeBloc key={h.id} entree={h} />
+                <HistoriqueEntreeBloc key={h.id} entree={h} onTirerCarte={onTirerCarte} />
               ))}
             </div>
           </div>

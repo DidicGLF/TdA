@@ -5,6 +5,7 @@ import { encoderMessage, decoderMessage, idPJ } from '../utils/reseauProtocole'
 import type { CategorieJournal } from '../utils/reseauProtocole'
 import type { Character, Arme, ArmureEquipee } from '../types/character'
 import type { ObjetMagiqueEntry } from '../types/gameData'
+import type { MissionCompagnie } from '../utils/missions'
 
 // Client réseau côté joueur (Mode de jeu) — se connecte au serveur MJ (voir src-tauri/src/reseau.rs et
 // src/components/GMMode/CombatTab.tsx). Un client WebSocket ne nécessite aucun code Rust/Tauri : la CSP
@@ -78,6 +79,14 @@ export function useReseauClient(
   // entrée obsolète pour une créature qui n'est plus dans la rencontre est sans conséquence, juste
   // inutilisée par la vue Combat de GameModePanel.tsx).
   const [imagesCibles, setImagesCibles] = useState<Record<string, string>>({})
+  // Missions de la compagnie, synchronisées en direct par le MJ (voir 'compagnie-missions-maj' dans
+  // reseauProtocole.ts) — null tant qu'aucune mise à jour n'a encore été reçue, pour que l'appelant
+  // (CharacterCompagnieTab.tsx) sache qu'il faut alors se rabattre sur la donnée locale/importée
+  // (compagnie.missions) plutôt que de croire à une compagnie sans aucune mission.
+  const [compagnieMissions, setCompagnieMissions] = useState<MissionCompagnie[] | null>(null)
+  // Dialogue scoped aux volontaires d'une mission (voir 'message-mission-recu') — toutes les missions
+  // confondues, filtré par missionId côté appelant (GameModePanel.tsx), même principe que journal.
+  const [missionChat, setMissionChat] = useState<{ missionId: string; expediteurNom: string; texte: string }[]>([])
   const socketRef = useRef<WebSocket | null>(null)
   const prochainId = useRef(0)
   const onDegatsRecusRef = useRef(onDegatsRecus)
@@ -184,6 +193,14 @@ export function useReseauClient(
         // Portrait d'une créature de la rencontre (voir reseauProtocole.ts) — fusionné dans le cache,
         // pas de ligne de journal (même traitement silencieux que 'etat-ciblage').
         setImagesCibles(prev => ({ ...prev, [message.id]: message.dataUrl }))
+      } else if (message?.type === 'compagnie-missions-maj') {
+        // Diffusé par le MJ après chaque mutation des missions (voir reseauProtocole.ts) — mise à jour de
+        // liste silencieuse, pas de ligne de journal (même traitement que 'roster-pj'/'etat-ciblage').
+        setCompagnieMissions(message.missions)
+      } else if (message?.type === 'message-mission-recu') {
+        // Dialogue de mission relayé par le MJ (voir 'message-mission'/'message-mission-recu' dans
+        // reseauProtocole.ts) — accumulé pour toutes les missions, filtré par missionId côté appelant.
+        setMissionChat(prev => [...prev, { missionId: message.missionId, expediteurNom: message.expediteurNom, texte: message.texte }].slice(-200))
       } else if (message?.type === 'nouveau-tour') {
         // Tour suivant déclenché par le MJ côté rencontre (voir reseauProtocole.ts) : pas de ligne de
         // journal, le bouton local "Tour suivant" n'en affiche pas non plus.
@@ -227,6 +244,23 @@ export function useReseauClient(
     ajouterJournal(t('gameMode.reseau.dialoguePJEnvoyeJournal', { nom: destinataireNom, texte }), 'dialoguePJ')
   }, [ajouterJournal, t])
 
+  // Se porter volontaire pour une mission de compagnie (voir 'mission-volontaire' dans
+  // reseauProtocole.ts) — le MJ résout notre nom via identitesRef, pas besoin de le transmettre ici (même
+  // principe que 'message-pj'/'message-joueur').
+  const envoyerVolontaireMission = useCallback((missionId: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'mission-volontaire', missionId }))
+  }, [])
+
+  // Dialogue scoped aux volontaires d'une mission (voir 'message-mission' dans reseauProtocole.ts) — le
+  // MJ relaie aux AUTRES volontaires actuellement connectés de cette mission, jamais à tout le roster ;
+  // il ne nous le renvoie donc jamais à nous-même — écho local immédiat dans missionChat pour que
+  // l'expéditeur voie tout de suite son propre message dans le fil, comme dans n'importe quel chat.
+  const envoyerMessageMission = useCallback((missionId: string, texte: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'message-mission', missionId, texte }))
+    const monNom = characterRef.current?.nomPersonnage ?? t('gameMode.reseau.moi')
+    setMissionChat(prev => [...prev, { missionId, expediteurNom: monNom, texte }].slice(-200))
+  }, [t])
+
   // La cible que ce PJ vient de choisir dans son propre Mode de jeu (voir 'cible-choisie' dans
   // reseauProtocole.ts et la section Combat de GameModePanel.tsx) — le MJ l'applique via l'updatePJ
   // existant, même chemin qu'un choix fait depuis son propre SelecteurCible.
@@ -263,5 +297,6 @@ export function useReseauClient(
     connecte, journal, connecter, deconnecter, envoyer, envoyerMessageJoueur, envoyerMessagePJ, rosterPJ, messageNonLu, marquerMessagesLus,
     imageAffichee, ouvrirImage, fermerImage, ciblesDisponibles, ciblesSurMoi, envoyerCibleChoisie, envoyerCibleChoisieCompagnon, imagesCibles, compagnonsEtat,
     estMonTour, ordreInitiative, round, envoyerAttendreMonTour,
+    compagnieMissions, missionChat, envoyerVolontaireMission, envoyerMessageMission,
   }
 }

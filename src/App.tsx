@@ -14,6 +14,7 @@ import CharacterSheetGolem from './components/CharacterSheetGolem'
 import CharacterSheetRunes from './components/CharacterSheetRunes'
 import CharacterSheetRunesFull from './components/CharacterSheetRunesFull'
 import CharacterSheetCristaux from './components/CharacterSheetCristaux'
+import CharacterCompagnieTab from './components/CharacterCompagnieTab'
 import CreationWizard, { STEP_COUNT } from './components/CreationWizard'
 import ModeSelector from './components/ModeSelector'
 import GMDashboard from './components/GMMode/GMDashboard'
@@ -29,6 +30,9 @@ import { findTrait } from './data/peuples'
 import { GameDataProvider, useGameData } from './context/GameDataContext'
 import type { ObjetMagiqueEntry } from './types/gameData'
 import { patchPossessionObjetMagique } from './utils/objetsMagiquesPerso'
+import { desenvelopper, messageMauvaisType } from './utils/importTypage'
+import type { Compagnie } from './utils/compagnie'
+import { COMPAGNIE_PAR_DEFAUT } from './utils/compagnie'
 import { getCompagnonsDisponibles } from './utils/compagnons'
 import { ModeImpressionContext, PdfExportContext } from './hooks/useChampsFiche'
 import { saveDataFileToBundle } from './utils/tauriStorage'
@@ -59,6 +63,7 @@ function AppContent() {
   const {
     data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages,
     notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages, setObjetsMagiques,
+    compagnie, setCompagnie,
   } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
@@ -81,7 +86,7 @@ function AppContent() {
   const [appMode, setAppMode] = useState<'joueur' | 'mj' | null>(null)
   const [step, setStep] = useState(0)
   const [maxStep, setMaxStep] = useState(0)
-  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes'>('recto')
+  const [sheetPage, setSheetPage] = useState<'recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'compagnie' | 'notes'>('recto')
   // Note actuellement ouverte dans l'onglet Notes — levé ici (plutôt que gardé local à NotesTab) pour
   // que le graphe de liaisons (NotesGraph, affiché à côté) puisse ouvrir une note d'un clic sur son nœud.
   const [notesSelectedId, setNotesSelectedId] = useState<string | null>(null)
@@ -93,12 +98,20 @@ function AppContent() {
   const showCristauxTab = hasCristauxVoie(character)
   // L'onglet compagnons n'apparaît que si une voie du personnage en a effectivement octroyé un.
   const showCompagnonsTab = getCompagnonsDisponibles(character, descriptions).length > 0
+  // L'onglet Compagnie (mercenaires, voir CompagnieTab côté MJ) n'apparaît que si le nom du personnage
+  // figure dans compagnie.membres — membre général ajouté par import de fiche, ou emplacement de
+  // fonction (les deux vivent dans le même tableau, voir MembreCompagnie dans utils/compagnie.ts), donc
+  // traités ici de façon identique sans code séparé pour les fonctions.
+  const showCompagnieTab = character.nomPersonnage.trim() !== '' && compagnie.membres.some(
+    m => m.nom.trim().toLowerCase() === character.nomPersonnage.trim().toLowerCase()
+  )
   useEffect(() => {
     if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
     if (!showRunesTab && sheetPage === 'runes') setSheetPage('recto')
     if (!showCristauxTab && sheetPage === 'cristaux') setSheetPage('recto')
     if (!showCompagnonsTab && sheetPage === 'compagnons') setSheetPage('recto')
-  }, [showGolemTab, showRunesTab, showCristauxTab, showCompagnonsTab])
+    if (!showCompagnieTab && sheetPage === 'compagnie') setSheetPage('recto')
+  }, [showGolemTab, showRunesTab, showCristauxTab, showCompagnonsTab, showCompagnieTab])
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('tdr-zoom')
     return saved ? parseInt(saved) : 60
@@ -283,6 +296,29 @@ function AppContent() {
   const mobileGestionRef = useRef<HTMLDivElement>(null)
   const rectoInputRef = useRef<HTMLInputElement>(null)
   const versoInputRef = useRef<HTMLInputElement>(null)
+  // Import de compagnie côté joueur (menu Gestion, voir plus bas) — volontairement PAS dans l'onglet
+  // Compagnie lui-même (CharacterCompagnieTab) : cet onglet ne s'affiche que si le nom du personnage
+  // figure déjà dans compagnie.membres, ce qui serait impossible à atteindre avant le tout premier
+  // import (le fichier .json exporté par le MJ, voir CompagnieTab.tsx, est ce qui le fait apparaître).
+  const compagnieFileInputRef = useRef<HTMLInputElement>(null)
+  const [compagnieImportMsg, setCompagnieImportMsg] = useState<{ type: 'ok' | 'erreur'; texte: string } | null>(null)
+  const importerCompagnieFichier = async (file: File) => {
+    try {
+      const brut = JSON.parse(await file.text())
+      const { type, contenu } = desenvelopper(brut)
+      if (type && type !== 'compagnie') {
+        setCompagnieImportMsg({ type: 'erreur', texte: messageMauvaisType(t, 'compagnie', type) })
+      } else {
+        // Fusionné sur COMPAGNIE_PAR_DEFAUT (pas casté tel quel) : un export d'une version antérieure à
+        // un champ ajouté depuis (ex. `membres`) planterait sinon dès le calcul de showCompagnieTab.
+        setCompagnie({ ...COMPAGNIE_PAR_DEFAUT(), ...(contenu as Partial<Compagnie>) })
+        setCompagnieImportMsg({ type: 'ok', texte: t('gmMode.compagnie.importReussi') })
+      }
+    } catch {
+      setCompagnieImportMsg({ type: 'erreur', texte: t('saveLoad.fichierInvalide') })
+    }
+    setTimeout(() => setCompagnieImportMsg(null), 4000)
+  }
   const [library, setLibrary] = useState<SavedEntry[]>([])
   const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
@@ -586,6 +622,8 @@ function AppContent() {
         onChange={e => { const f = e.target.files?.[0]; if (f) importSheetImage('recto', f); e.target.value = '' }} />
       <input ref={versoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) importSheetImage('verso', f); e.target.value = '' }} />
+      <input ref={compagnieFileInputRef} type="file" accept=".json" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) importerCompagnieFichier(f); e.target.value = '' }} />
 
       {showLevelUp && (
         <LevelUpModal character={character} onConfirm={onChange} onClose={() => setShowLevelUp(false)} />
@@ -623,6 +661,13 @@ function AppContent() {
                 cursor: 'pointer', textAlign: 'left', fontSize: 15,
               }}>
                 {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
+              </button>
+              <button onClick={() => { compagnieFileInputRef.current?.click(); setShowMobileGestion(false) }} style={{
+                padding: '14px 20px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 15,
+              }}>
+                {t('menuGestion.importerCompagnie')}
               </button>
               <div style={{ padding: '10px 20px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -725,7 +770,7 @@ function AppContent() {
         border: '1px solid rgba(201,168,76,0.4)', background: 'transparent',
         color: 'rgba(245,236,215,0.7)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
       }}>{t('toolbar.accueil')}</button>
-      {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+      {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), ...(showCompagnieTab ? ['compagnie'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'compagnie' | 'notes')[]).map(p => (
         <button key={p} onClick={() => setSheetPage(p)} style={{
           flexShrink: 0,
           padding: '6px 14px', borderRadius: '4px 4px 0 0',
@@ -812,6 +857,21 @@ function AppContent() {
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
+                </div>
+              </div>
+            ) : sheetPage === 'compagnie' ? (
+              /* Compagnie : pas une page de la feuille physique (pas de calibrage/fond imprimé), même
+                 principe que Notes — toolbar fixe + panneau plein écran défilant. */
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#111', overflow: 'hidden' }}>
+                <div style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 6, padding: '8px',
+                  zIndex: 35, background: '#111', borderBottom: '1px solid rgba(201,168,76,0.15)',
+                  overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
+                }}>
+                  {mobileToolbarButtons}
+                </div>
+                <div style={{ flex: 1, overflow: 'auto' }}>
+                  <CharacterCompagnieTab compagnie={compagnie} nomPersonnage={character.nomPersonnage} reseau={reseau} />
                 </div>
               </div>
             ) : sheetPage === 'notes' ? (
@@ -979,6 +1039,18 @@ function AppContent() {
         </div>
       )}
 
+      {compagnieImportMsg && (
+        <div className="no-print" style={{
+          position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 900,
+          padding: '8px 18px', borderRadius: 5, fontSize: 13,
+          background: compagnieImportMsg.type === 'ok' ? 'rgba(30,80,30,0.96)' : 'rgba(90,25,25,0.96)',
+          border: `1px solid ${compagnieImportMsg.type === 'ok' ? 'rgba(120,200,120,0.7)' : 'rgba(220,90,90,0.7)'}`,
+          color: compagnieImportMsg.type === 'ok' ? 'rgba(190,240,190,0.95)' : 'rgba(255,180,180,0.95)',
+        }}>
+          {compagnieImportMsg.texte}
+        </div>
+      )}
+
       {/* Barre du mode « préparer l'impression » : chaque champ de la fiche porte alors une pastille
           🖨 / 🚫 pour décider s'il figure sur la version papier. Le choix est enregistré avec les
           positions, donc valable pour tous les personnages. */}
@@ -1072,7 +1144,7 @@ function AppContent() {
             display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
             overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const,
           }}>
-            {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'notes')[]).map(p => (
+            {(['recto', 'verso', 'voies', ...(showCompagnonsTab ? ['compagnons'] : []), ...(showGolemTab ? ['golem'] : []), ...(showRunesTab ? ['runes'] : []), ...(showCristauxTab ? ['cristaux'] : []), ...(showCompagnieTab ? ['compagnie'] : []), 'notes'] as ('recto' | 'verso' | 'voies' | 'compagnons' | 'golem' | 'runes' | 'cristaux' | 'compagnie' | 'notes')[]).map(p => (
               <button key={p} onClick={() => setSheetPage(p)} style={{
                 padding: '4px 16px', borderRadius: '4px 4px 0 0',
                 border: '1px solid rgba(201,168,76,0.4)',
@@ -1196,6 +1268,16 @@ function AppContent() {
                 {ficheLocked ? t('menuGestion.deverrouiller') : t('menuGestion.verrouiller')}
               </button>
 
+              {/* Compagnie — reçoit le .json exporté par le MJ (voir CompagnieTab.tsx), ce qui fait
+                  ensuite apparaître l'onglet Compagnie dès que le nom du personnage y figure. */}
+              <button onClick={() => { compagnieFileInputRef.current?.click(); setShowGestion(false) }} style={{
+                padding: '10px 16px', background: 'transparent', border: 'none',
+                borderBottom: '1px solid rgba(201,168,76,0.1)',
+                color: 'rgba(245,236,215,0.8)', cursor: 'pointer', textAlign: 'left', fontSize: 14,
+              }}>
+                {t('menuGestion.importerCompagnie')}
+              </button>
+
               {/* Feuilles personnalisées */}
               <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 11, color: 'rgba(245,236,215,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -1263,6 +1345,11 @@ function AppContent() {
             : <div style={{ flex: 1, overflow: 'hidden' }}>
                 <CharacterSheetRunes character={character} divin={runesDivin} onDivinChange={setRunesDivin} mobile screenWidth={screenWidth} />
               </div>
+        ) : sheetPage === 'compagnie' ? (
+          /* Compagnie n'est pas non plus une page de la feuille physique — même traitement que Notes. */
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
+            <CharacterCompagnieTab compagnie={compagnie} nomPersonnage={character.nomPersonnage} reseau={reseau} />
+          </div>
         ) : sheetPage === 'notes' ? (
           /* Notes n'est pas une page de la feuille physique (pas de calibrage/positions de champs/impression) —
              elle remplace tout le panneau plutôt que de s'insérer dans le conteneur sheetRef ci-dessous. */

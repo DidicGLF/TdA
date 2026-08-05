@@ -785,278 +785,296 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
   if (!session) {
     const editionCombatEnCours = evenements.some(e => e.id === editingEvenementId && e.type === 'combat')
     const editionNarratifEnCours = evenements.some(e => e.id === editingEvenementId && e.type === 'narratif')
+    // Boîte des panneaux de la grille 2 colonnes ci-dessous — simple liseré, pas de fond plein, pour
+    // distinguer les sections côte à côte sans alourdir la page (présentation validée via artefact
+    // avant implémentation, voir historique du projet).
+    const panelStyle: React.CSSProperties = {
+      border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, padding: '16px 18px',
+    }
     return (
       <div style={{ position: 'relative', minHeight: '100%' }}>
         {backgroundLayer}
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ fontSize: 15, opacity: 0.5, textAlign: 'center', lineHeight: 1.5 }}>
             {t('gmMode.batailleMasse.intro')}
           </div>
 
-          <div>
-            <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.parametres')}</div>
-            <div style={{ marginBottom: 12 }}>
-              <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nom')}</span>
-              <input value={nom} onChange={e => setNom(e.target.value)} placeholder={t('gmMode.batailleMasse.nomPlaceholder')} style={inputStyle} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nombreUnitesPJ')}</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <NumberField min={1} value={nombreUnitesArmeePJ}
-                    onChange={n => setNombreUnitesArmeePJ(n ?? 1)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    border: '1px solid rgba(201,168,76,0.35)', borderRadius: 4, background: 'rgba(201,168,76,0.08)',
-                    padding: '2px 10px', minWidth: 92, flexShrink: 0,
-                  }}>
-                    <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, lineHeight: 1.3 }}>
-                      {t('gmMode.batailleMasse.tailleLabel', { taille: tailleArmeePJ })}
-                    </span>
-                    <span style={{ fontSize: 16, opacity: 0.65, lineHeight: 1.2, textAlign: 'center' }}>
-                      {t(`gmMode.batailleMasse.echelleTaille.${tailleArmeePJ}`)}
-                    </span>
-                  </div>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+            {/* Colonne gauche : réglages du combat + condition de victoire — champs numériques resserrés
+                (adversité/intensité/DEF/bonus) au lieu d'être étirés sur toute la largeur d'une cellule,
+                moins de défilement pour atteindre le bouton Lancer la bataille (colonne de droite). */}
+            <div style={panelStyle}>
+              <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.parametres')}</div>
+              <div style={{ marginBottom: 12 }}>
+                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nom')}</span>
+                <input value={nom} onChange={e => setNom(e.target.value)} placeholder={t('gmMode.batailleMasse.nomPlaceholder')} style={inputStyle} />
               </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nombreUnitesEnnemie')}</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <NumberField min={1} value={nombreUnitesArmeeEnnemie}
-                    onChange={n => setNombreUnitesArmeeEnnemie(n ?? 1)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    border: '1px solid rgba(201,168,76,0.35)', borderRadius: 4, background: 'rgba(201,168,76,0.08)',
-                    padding: '2px 10px', minWidth: 92, flexShrink: 0,
-                  }}>
-                    <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, lineHeight: 1.3 }}>
-                      {t('gmMode.batailleMasse.tailleLabel', { taille: tailleArmeeEnnemie })}
-                    </span>
-                    <span style={{ fontSize: 16, opacity: 0.65, lineHeight: 1.2, textAlign: 'center' }}>
-                      {t(`gmMode.batailleMasse.echelleTaille.${tailleArmeeEnnemie}`)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.adversite')}</span>
-                <select value={adversite} onChange={e => setAdversite(parseInt(e.target.value) as DeAdversite)} style={selectStyle}>
-                  {DES_ADVERSITE.map(d => <option key={d} value={d} style={optionStyle}>d{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.intensiteDepart')}</span>
-                <NumberField min={1} max={10} value={intensiteDepart}
-                  onChange={n => setIntensiteDepart(n ?? 1)} style={inputStyle} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.creatureType')}</span>
-                <select value={cleCreatureTypeSelectionnee} onChange={e => selectionnerCreatureType(e.target.value)} style={selectStyle}>
-                  <option value="" style={optionStyle}>{t('gmMode.batailleMasse.creatureTypeManuelle')}</option>
-                  {creaturesTriees.map(c => (
-                    <option key={cleCreature(c)} value={cleCreature(c)} style={optionStyle}>{c.nom} (NC {c.nc})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.defEnnemie')}</span>
-                <NumberField value={defEnnemieMoyenne}
-                  onChange={n => setDefEnnemieMoyenne(n ?? 0)} style={inputStyle} />
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.bonusAtqEnnemi')}</span>
-                <NumberField value={bonusAtqEnnemiMoyen}
-                  onChange={n => setBonusAtqEnnemiMoyen(n ?? 0)} style={inputStyle} />
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.terrainTenirLeRang')}</span>
-                <select value={terrainTenirLeRang} onChange={e => setTerrainTenirLeRang(e.target.value as TerrainBataille)} style={selectStyle}>
-                  {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
-                </select>
-              </div>
-              <div>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.terrainEnRetrait')}</span>
-                <select value={terrainEnRetrait} onChange={e => setTerrainEnRetrait(e.target.value as TerrainBataille)} style={selectStyle}>
-                  {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
-                </select>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 6 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={limiterRecuperation} onChange={e => setLimiterRecuperation(e.target.checked)} />
-                  {t('gmMode.batailleMasse.limiterRecuperation')}
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Condition de victoire : l'intensité à 0 gagne toujours la bataille (règle fixe, voir
-              victoireAtteinte dans bataille.ts), le seuil de points de bataille est une voie de
-              victoire additionnelle optionnelle — on peut gagner par les points bien avant d'avoir
-              réduit l'intensité à 0. */}
-          <div>
-            <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.conditionVictoire')}</div>
-            <div style={{ fontSize: 15, opacity: 0.6, marginBottom: 10 }}>
-              {t('gmMode.batailleMasse.victoireIntensiteInfo')}
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer' }}>
-              <input type="checkbox" checked={victoirePointsActive} onChange={e => setVictoirePointsActive(e.target.checked)} />
-              {t('gmMode.batailleMasse.victoirePointsActive')}
-            </label>
-            {victoirePointsActive && (
-              <div style={{ maxWidth: 220, marginTop: 10 }}>
-                <span style={builderLabelStyle}>{t('gmMode.batailleMasse.victoirePointsSeuil')}</span>
-                <NumberField min={1} value={victoirePointsSeuil}
-                  onChange={n => setVictoirePointsSeuil(n ?? 1)} style={inputStyle} />
-              </div>
-            )}
-          </div>
-
-          {/* Événements de la bataille : combat (lie une rencontre déjà créée/sauvegardée dans le
-              générateur de rencontre) ou narratif (nom + description libres) — voir EvenementBataille. */}
-          <div>
-            <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.evenements')}</div>
-            {evenements.length === 0 ? (
-              <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
-                {t('gmMode.batailleMasse.aucunEvenement')}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                {evenements.map(ev => (
-                  <div key={ev.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                    border: `1px solid ${ev.id === editingEvenementId ? GOLD : SECTION_BORDER}`, borderRadius: 6,
-                  }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
-                      padding: '2px 8px', borderRadius: 10, flexShrink: 0,
-                      color: ev.type === 'combat' ? 'rgba(210,185,255,0.95)' : GOLD,
-                      border: `1px solid ${ev.type === 'combat' ? 'rgba(160,120,255,0.5)' : SECTION_BORDER}`,
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nombreUnitesPJ')}</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <NumberField min={1} value={nombreUnitesArmeePJ}
+                      onChange={n => setNombreUnitesArmeePJ(n ?? 1)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid rgba(201,168,76,0.35)', borderRadius: 4, background: 'rgba(201,168,76,0.08)',
+                      padding: '2px 10px', minWidth: 92, flexShrink: 0,
                     }}>
-                      {t(`gmMode.batailleMasse.typeEvenement.${ev.type}`)}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {ev.type === 'combat' ? (
-                        <span style={{ fontSize: 16, color: PARCHMENT }}>
-                          {rencontres.find(r => r.id === ev.rencontreId)?.nom ?? t('gmMode.batailleMasse.rencontreIntrouvable')}
-                        </span>
-                      ) : (
-                        <>
-                          <div style={{ fontSize: 16, color: PARCHMENT, fontWeight: 700 }}>{ev.nom}</div>
-                          {ev.description && <div style={{ fontSize: 13, opacity: 0.6 }}>{ev.description}</div>}
-                        </>
-                      )}
-                      <div style={{ fontSize: 12, opacity: 0.5, marginTop: 2 }}>
-                        {t('gmMode.batailleMasse.effetResume', { succes: resumeEffets(ev.effetsSucces, t), echec: resumeEffets(ev.effetsEchec, t) })}
-                      </div>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, lineHeight: 1.3 }}>
+                        {t('gmMode.batailleMasse.tailleLabel', { taille: tailleArmeePJ })}
+                      </span>
+                      <span style={{ fontSize: 16, opacity: 0.65, lineHeight: 1.2, textAlign: 'center' }}>
+                        {t(`gmMode.batailleMasse.echelleTaille.${tailleArmeePJ}`)}
+                      </span>
                     </div>
-                    <button onClick={() => modifierEvenement(ev)} style={{ ...btnStyle, fontSize: 14, flexShrink: 0 }}>
-                      ✎ {t('gmMode.batailleMasse.modifier')}
+                  </div>
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.nombreUnitesEnnemie')}</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <NumberField min={1} value={nombreUnitesArmeeEnnemie}
+                      onChange={n => setNombreUnitesArmeeEnnemie(n ?? 1)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid rgba(201,168,76,0.35)', borderRadius: 4, background: 'rgba(201,168,76,0.08)',
+                      padding: '2px 10px', minWidth: 92, flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, lineHeight: 1.3 }}>
+                        {t('gmMode.batailleMasse.tailleLabel', { taille: tailleArmeeEnnemie })}
+                      </span>
+                      <span style={{ fontSize: 16, opacity: 0.65, lineHeight: 1.2, textAlign: 'center' }}>
+                        {t(`gmMode.batailleMasse.echelleTaille.${tailleArmeeEnnemie}`)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.adversite')}</span>
+                  <select value={adversite} onChange={e => setAdversite(parseInt(e.target.value) as DeAdversite)} style={selectStyle}>
+                    {DES_ADVERSITE.map(d => <option key={d} value={d} style={optionStyle}>d{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.intensiteDepart')}</span>
+                  <NumberField min={1} max={10} value={intensiteDepart}
+                    onChange={n => setIntensiteDepart(n ?? 1)} style={inputStyle} />
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.defEnnemie')}</span>
+                  <NumberField value={defEnnemieMoyenne}
+                    onChange={n => setDefEnnemieMoyenne(n ?? 0)} style={inputStyle} />
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.bonusAtqEnnemi')}</span>
+                  <NumberField value={bonusAtqEnnemiMoyen}
+                    onChange={n => setBonusAtqEnnemiMoyen(n ?? 0)} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.creatureType')}</span>
+                  <select value={cleCreatureTypeSelectionnee} onChange={e => selectionnerCreatureType(e.target.value)} style={selectStyle}>
+                    <option value="" style={optionStyle}>{t('gmMode.batailleMasse.creatureTypeManuelle')}</option>
+                    {creaturesTriees.map(c => (
+                      <option key={cleCreature(c)} value={cleCreature(c)} style={optionStyle}>{c.nom} (NC {c.nc})</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.terrainTenirLeRang')}</span>
+                  <select value={terrainTenirLeRang} onChange={e => setTerrainTenirLeRang(e.target.value as TerrainBataille)} style={selectStyle}>
+                    {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.terrainEnRetrait')}</span>
+                  <select value={terrainEnRetrait} onChange={e => setTerrainEnRetrait(e.target.value as TerrainBataille)} style={selectStyle}>
+                    {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 6, gridColumn: 'span 3' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={limiterRecuperation} onChange={e => setLimiterRecuperation(e.target.checked)} />
+                    {t('gmMode.batailleMasse.limiterRecuperation')}
+                  </label>
+                </div>
+              </div>
+
+              {/* Condition de victoire : l'intensité à 0 gagne toujours la bataille (règle fixe, voir
+                  victoireAtteinte dans bataille.ts), le seuil de points de bataille est une voie de
+                  victoire additionnelle optionnelle — on peut gagner par les points bien avant d'avoir
+                  réduit l'intensité à 0. Rattachée au même panneau que les réglages plutôt qu'une section
+                  séparée : les deux se lisent d'un coup dans la colonne gauche. */}
+              <div style={{ ...sectionTitleStyle, marginTop: 16 }}>{t('gmMode.batailleMasse.conditionVictoire')}</div>
+              <div style={{ fontSize: 15, opacity: 0.6, marginBottom: 10 }}>
+                {t('gmMode.batailleMasse.victoireIntensiteInfo')}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer' }}>
+                <input type="checkbox" checked={victoirePointsActive} onChange={e => setVictoirePointsActive(e.target.checked)} />
+                {t('gmMode.batailleMasse.victoirePointsActive')}
+              </label>
+              {victoirePointsActive && (
+                <div style={{ maxWidth: 220, marginTop: 10 }}>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.victoirePointsSeuil')}</span>
+                  <NumberField min={1} value={victoirePointsSeuil}
+                    onChange={n => setVictoirePointsSeuil(n ?? 1)} style={inputStyle} />
+                </div>
+              )}
+            </div>
+
+            {/* Colonne droite : forces engagées, puis événements empilés dessous plutôt qu'en pleine
+                largeur — la colonne n'étant plus assez large pour les deux, les formulaires d'ajout
+                combat/narratif restent l'un sous l'autre au lieu de se placer côte à côte. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={panelStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: 0, border: 'none', paddingBottom: 0 }}>
+                    {t('gmMode.batailleMasse.pjEngages')}
+                  </div>
+                  <button onClick={() => fileRef.current?.click()} style={{ ...btnStyle, fontSize: 16 }}>
+                    📂 {t('gmMode.batailleMasse.importerPJ')}
+                  </button>
+                  <input ref={fileRef} type="file" accept=".json" multiple style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
+                </div>
+                {pionsEnConstruction.length === 0 ? (
+                  <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+                    {t('gmMode.batailleMasse.aucunPJ')}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {pionsEnConstruction.map(p => (
+                      <div key={p.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                        border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
+                      }}>
+                        <span style={{ flex: 1, fontSize: 18, color: PARCHMENT }}>{p.nom}</span>
+                        <span style={{ fontSize: 16, opacity: 0.5 }}>DEF {p.def}</span>
+                        <span style={{ fontSize: 16, opacity: 0.5 }}>PV {p.pvMax}</span>
+                        <button onClick={() => setPionsEnConstruction(prev => prev.filter(x => x.id !== p.id))} style={removeBtnStyle}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={lancerBataille}
+                  disabled={!nom.trim() || pionsEnConstruction.length === 0}
+                  style={{
+                    ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.2)',
+                    color: 'rgba(210,185,255,0.95)', opacity: (!nom.trim() || pionsEnConstruction.length === 0) ? 0.4 : 1, fontSize: 17,
+                  }}
+                >
+                  ▶ {t('gmMode.batailleMasse.lancerBataille')}
+                </button>
+              </div>
+
+              {/* Événements de la bataille : combat (lie une rencontre déjà créée/sauvegardée dans le
+                  générateur de rencontre) ou narratif (nom + description libres) — voir EvenementBataille. */}
+              <div style={panelStyle}>
+                <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.evenements')}</div>
+                {evenements.length === 0 ? (
+                  <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+                    {t('gmMode.batailleMasse.aucunEvenement')}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {evenements.map(ev => (
+                      <div key={ev.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                        border: `1px solid ${ev.id === editingEvenementId ? GOLD : SECTION_BORDER}`, borderRadius: 6,
+                      }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                          padding: '2px 8px', borderRadius: 10, flexShrink: 0,
+                          color: ev.type === 'combat' ? 'rgba(210,185,255,0.95)' : GOLD,
+                          border: `1px solid ${ev.type === 'combat' ? 'rgba(160,120,255,0.5)' : SECTION_BORDER}`,
+                        }}>
+                          {t(`gmMode.batailleMasse.typeEvenement.${ev.type}`)}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {ev.type === 'combat' ? (
+                            <span style={{ fontSize: 16, color: PARCHMENT }}>
+                              {rencontres.find(r => r.id === ev.rencontreId)?.nom ?? t('gmMode.batailleMasse.rencontreIntrouvable')}
+                            </span>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 16, color: PARCHMENT, fontWeight: 700 }}>{ev.nom}</div>
+                              {ev.description && <div style={{ fontSize: 13, opacity: 0.6 }}>{ev.description}</div>}
+                            </>
+                          )}
+                          <div style={{ fontSize: 12, opacity: 0.5, marginTop: 2 }}>
+                            {t('gmMode.batailleMasse.effetResume', { succes: resumeEffets(ev.effetsSucces, t), echec: resumeEffets(ev.effetsEchec, t) })}
+                          </div>
+                        </div>
+                        <button onClick={() => modifierEvenement(ev)} style={{ ...btnStyle, fontSize: 14, flexShrink: 0 }}>
+                          ✎ {t('gmMode.batailleMasse.modifier')}
+                        </button>
+                        <button onClick={() => supprimerEvenement(ev.id)} style={removeBtnStyle}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Ajout d'un événement combat — les effets de succès/échec sont définis ici par le MJ,
+                    cumulables, pas de valeur ni de type fixe imposé (voir EvenementBataille.effetsSucces/
+                    effetsEchec). Liseré doré + bouton Mettre à jour/Annuler quand ce formulaire édite un événement existant (voir
+                    modifierEvenement) au lieu d'en créer un nouveau. */}
+                <div style={{ border: `1px solid ${editionCombatEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, marginBottom: 10 }}>
+                  <select value={nouvelEvenementRencontreId} onChange={e => setNouvelEvenementRencontreId(e.target.value)} style={{ ...selectStyle, marginBottom: 8 }}>
+                    <option value="" style={optionStyle}>{t('gmMode.batailleMasse.choisirRencontre')}</option>
+                    {rencontres.map(r => <option key={r.id} value={r.id} style={optionStyle}>{r.nom}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementCombatEffetsSucces} onChange={setNouvelEvenementCombatEffetsSucces} />
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementCombatEffetsEchec} onChange={setNouvelEvenementCombatEffetsEchec} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={ajouterEvenementCombat} disabled={!nouvelEvenementRencontreId}
+                      style={{ ...btnStyle, fontSize: 16, opacity: nouvelEvenementRencontreId ? 1 : 0.4 }}
+                    >
+                      {editionCombatEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterCombat')}`}
                     </button>
-                    <button onClick={() => supprimerEvenement(ev.id)} style={removeBtnStyle}>✕</button>
+                    {editionCombatEnCours && (
+                      <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16 }}>
+                        {t('gmMode.batailleMasse.annulerModification')}
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
 
-            {/* Ajout d'un événement combat — les effets de succès/échec sont définis ici par le MJ,
-                cumulables, pas de valeur ni de type fixe imposé (voir EvenementBataille.effetsSucces/
-                effetsEchec). Liseré doré + bouton Mettre à jour/Annuler quand ce formulaire édite un événement existant (voir
-                modifierEvenement) au lieu d'en créer un nouveau. */}
-            <div style={{ border: `1px solid ${editionCombatEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, marginBottom: 10 }}>
-              <select value={nouvelEvenementRencontreId} onChange={e => setNouvelEvenementRencontreId(e.target.value)} style={{ ...selectStyle, marginBottom: 8 }}>
-                <option value="" style={optionStyle}>{t('gmMode.batailleMasse.choisirRencontre')}</option>
-                {rencontres.map(r => <option key={r.id} value={r.id} style={optionStyle}>{r.nom}</option>)}
-              </select>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementCombatEffetsSucces} onChange={setNouvelEvenementCombatEffetsSucces} />
-                <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementCombatEffetsEchec} onChange={setNouvelEvenementCombatEffetsEchec} />
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button
-                  onClick={ajouterEvenementCombat} disabled={!nouvelEvenementRencontreId}
-                  style={{ ...btnStyle, fontSize: 16, opacity: nouvelEvenementRencontreId ? 1 : 0.4 }}
-                >
-                  {editionCombatEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterCombat')}`}
-                </button>
-                {editionCombatEnCours && (
-                  <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16 }}>
-                    {t('gmMode.batailleMasse.annulerModification')}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Ajout d'un événement narratif — même principe d'effet configurable et de bascule édition. */}
-            <div style={{ border: `1px solid ${editionNarratifEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input value={nouvelEvenementNom} onChange={e => setNouvelEvenementNom(e.target.value)}
-                placeholder={t('gmMode.batailleMasse.nomEvenementPlaceholder')} style={inputStyle} />
-              <textarea value={nouvelEvenementDescription} onChange={e => setNouvelEvenementDescription(e.target.value)}
-                placeholder={t('gmMode.batailleMasse.descriptionEvenementPlaceholder')} rows={2}
-                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementNarratifEffetsSucces} onChange={setNouvelEvenementNarratifEffetsSucces} />
-                <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementNarratifEffetsEchec} onChange={setNouvelEvenementNarratifEffetsEchec} />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={ajouterEvenementNarratif} disabled={!nouvelEvenementNom.trim()}
-                  style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start', opacity: nouvelEvenementNom.trim() ? 1 : 0.4 }}
-                >
-                  {editionNarratifEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterNarratif')}`}
-                </button>
-                {editionNarratifEnCours && (
-                  <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start' }}>
-                    {t('gmMode.batailleMasse.annulerModification')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ ...sectionTitleStyle, marginBottom: 0, border: 'none', paddingBottom: 0 }}>
-                {t('gmMode.batailleMasse.pjEngages')}
-              </div>
-              <button onClick={() => fileRef.current?.click()} style={{ ...btnStyle, fontSize: 16 }}>
-                📂 {t('gmMode.batailleMasse.importerPJ')}
-              </button>
-              <input ref={fileRef} type="file" accept=".json" multiple style={{ display: 'none' }}
-                onChange={e => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
-            </div>
-            {pionsEnConstruction.length === 0 ? (
-              <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
-                {t('gmMode.batailleMasse.aucunPJ')}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-                {pionsEnConstruction.map(p => (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                    border: `1px solid ${SECTION_BORDER}`, borderRadius: 6,
-                  }}>
-                    <span style={{ flex: 1, fontSize: 18, color: PARCHMENT }}>{p.nom}</span>
-                    <span style={{ fontSize: 16, opacity: 0.5 }}>DEF {p.def}</span>
-                    <span style={{ fontSize: 16, opacity: 0.5 }}>PV {p.pvMax}</span>
-                    <button onClick={() => setPionsEnConstruction(prev => prev.filter(x => x.id !== p.id))} style={removeBtnStyle}>✕</button>
+                {/* Ajout d'un événement narratif — même principe d'effet configurable et de bascule édition. */}
+                <div style={{ border: `1px solid ${editionNarratifEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input value={nouvelEvenementNom} onChange={e => setNouvelEvenementNom(e.target.value)}
+                    placeholder={t('gmMode.batailleMasse.nomEvenementPlaceholder')} style={inputStyle} />
+                  <textarea value={nouvelEvenementDescription} onChange={e => setNouvelEvenementDescription(e.target.value)}
+                    placeholder={t('gmMode.batailleMasse.descriptionEvenementPlaceholder')} rows={2}
+                    style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementNarratifEffetsSucces} onChange={setNouvelEvenementNarratifEffetsSucces} />
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementNarratifEffetsEchec} onChange={setNouvelEvenementNarratifEffetsEchec} />
                   </div>
-                ))}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={ajouterEvenementNarratif} disabled={!nouvelEvenementNom.trim()}
+                      style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start', opacity: nouvelEvenementNom.trim() ? 1 : 0.4 }}
+                    >
+                      {editionNarratifEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterNarratif')}`}
+                    </button>
+                    {editionNarratifEnCours && (
+                      <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start' }}>
+                        {t('gmMode.batailleMasse.annulerModification')}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-            <button
-              onClick={lancerBataille}
-              disabled={!nom.trim() || pionsEnConstruction.length === 0}
-              style={{
-                ...btnStyle, marginTop: 12, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.2)',
-                color: 'rgba(210,185,255,0.95)', opacity: (!nom.trim() || pionsEnConstruction.length === 0) ? 0.4 : 1, fontSize: 17,
-              }}
-            >
-              ▶ {t('gmMode.batailleMasse.lancerBataille')}
-            </button>
+            </div>
           </div>
 
           {/* Sauvegarde d'un gabarit (config réutilisable, pas encore lancée) — même principe que la
-              sauvegarde d'une rencontre dans le générateur de rencontre. */}
+              sauvegarde d'une rencontre dans le générateur de rencontre. Pleine largeur : n'a pas de
+              place naturelle dans l'une ou l'autre des deux colonnes ci-dessus. */}
           {pionsEnConstruction.length > 0 && (
             <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
               <button onClick={sauvegarderTemplate} disabled={!nom.trim()} style={{ ...btnStyle, opacity: nom.trim() ? 1 : 0.4, fontSize: 16 }}>
@@ -1069,81 +1087,83 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
             </div>
           )}
 
-          <div>
-            <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.bataillesEnregistrees')}</div>
-            {batailleTemplates.length === 0 ? (
-              <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
-                {t('gmMode.batailleMasse.aucuneBatailleEnregistree')}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {batailleTemplates.map(tpl => (
-                  <div key={tpl.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                    border: `1px solid ${tpl.id === editingTemplateId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`,
-                    borderRadius: 6, background: 'rgba(15,12,8,0.9)',
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 18, color: PARCHMENT, fontWeight: 700 }}>{tpl.nom}</div>
-                      <div style={{ fontSize: 13, opacity: 0.5 }}>
-                        {t('gmMode.batailleMasse.resumeTemplate', { nb: tpl.pions.length, intensite: tpl.intensiteDepart })}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, alignItems: 'start' }}>
+            <div style={panelStyle}>
+              <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.bataillesEnregistrees')}</div>
+              {batailleTemplates.length === 0 ? (
+                <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+                  {t('gmMode.batailleMasse.aucuneBatailleEnregistree')}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {batailleTemplates.map(tpl => (
+                    <div key={tpl.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                      border: `1px solid ${tpl.id === editingTemplateId ? 'rgba(201,168,76,0.5)' : SECTION_BORDER}`,
+                      borderRadius: 6, background: 'rgba(15,12,8,0.9)',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 18, color: PARCHMENT, fontWeight: 700 }}>{tpl.nom}</div>
+                        <div style={{ fontSize: 13, opacity: 0.5 }}>
+                          {t('gmMode.batailleMasse.resumeTemplate', { nb: tpl.pions.length, intensite: tpl.intensiteDepart })}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => jouerTemplate(tpl)}
+                        style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 16 }}
+                      >
+                        ▶ {t('gmMode.batailleMasse.jouer')}
+                      </button>
+                      <button onClick={() => modifierTemplate(tpl)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.modifier')}</button>
+                      <button onClick={() => exporterTemplate(tpl)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.exporter')}</button>
+                      {confirmDeleteTemplateId === tpl.id ? (
+                        <button onClick={() => supprimerTemplate(tpl.id)} style={{ ...removeBtnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.confirmerSuppression')}</button>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteTemplateId(tpl.id)} style={removeBtnStyle}>✕</button>
+                      )}
                     </div>
-                    <button
-                      onClick={() => jouerTemplate(tpl)}
-                      style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 16 }}
-                    >
-                      ▶ {t('gmMode.batailleMasse.jouer')}
-                    </button>
-                    <button onClick={() => modifierTemplate(tpl)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.modifier')}</button>
-                    <button onClick={() => exporterTemplate(tpl)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.exporter')}</button>
-                    {confirmDeleteTemplateId === tpl.id ? (
-                      <button onClick={() => supprimerTemplate(tpl.id)} style={{ ...removeBtnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.confirmerSuppression')}</button>
-                    ) : (
-                      <button onClick={() => setConfirmDeleteTemplateId(tpl.id)} style={removeBtnStyle}>✕</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div>
-            <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.bataillesSauvegardees')}</div>
-            {saveMsg && <div style={{ fontSize: 16, color: GOLD, marginBottom: 8 }}>{saveMsg}</div>}
-            {batailles.length === 0 ? (
-              <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
-                {t('gmMode.batailleMasse.aucuneBatailleSauvegardee')}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {batailles.map(b => (
-                  <div key={b.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                    border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, background: 'rgba(15,12,8,0.9)',
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 18, color: PARCHMENT, fontWeight: 700 }}>{b.nom}</div>
-                      <div style={{ fontSize: 13, opacity: 0.5 }}>
-                        {t('gmMode.batailleMasse.resume', { tour: b.tour, nb: b.pions.length, intensite: b.intensite })}
+            <div style={panelStyle}>
+              <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.bataillesSauvegardees')}</div>
+              {saveMsg && <div style={{ fontSize: 16, color: GOLD, marginBottom: 8 }}>{saveMsg}</div>}
+              {batailles.length === 0 ? (
+                <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
+                  {t('gmMode.batailleMasse.aucuneBatailleSauvegardee')}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {batailles.map(b => (
+                    <div key={b.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                      border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, background: 'rgba(15,12,8,0.9)',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 18, color: PARCHMENT, fontWeight: 700 }}>{b.nom}</div>
+                        <div style={{ fontSize: 13, opacity: 0.5 }}>
+                          {t('gmMode.batailleMasse.resume', { tour: b.tour, nb: b.pions.length, intensite: b.intensite })}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => reprendre(b)}
+                        style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 16 }}
+                      >
+                        ▶ {t('gmMode.batailleMasse.reprendre')}
+                      </button>
+                      <button onClick={() => exporter(b)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.exporter')}</button>
+                      {confirmDeleteId === b.id ? (
+                        <button onClick={() => supprimer(b.id)} style={{ ...removeBtnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.confirmerSuppression')}</button>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(b.id)} style={removeBtnStyle}>✕</button>
+                      )}
                     </div>
-                    <button
-                      onClick={() => reprendre(b)}
-                      style={{ ...btnStyle, borderColor: 'rgba(160,120,255,0.6)', background: 'rgba(140,100,255,0.15)', color: 'rgba(210,185,255,0.95)', fontSize: 16 }}
-                    >
-                      ▶ {t('gmMode.batailleMasse.reprendre')}
-                    </button>
-                    <button onClick={() => exporter(b)} style={{ ...btnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.exporter')}</button>
-                    {confirmDeleteId === b.id ? (
-                      <button onClick={() => supprimer(b.id)} style={{ ...removeBtnStyle, fontSize: 16 }}>{t('gmMode.batailleMasse.confirmerSuppression')}</button>
-                    ) : (
-                      <button onClick={() => setConfirmDeleteId(b.id)} style={removeBtnStyle}>✕</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

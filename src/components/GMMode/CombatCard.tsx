@@ -36,9 +36,13 @@ interface Props {
   // Remplace la ligne "NC X" par ce texte — utilisé pour un compagnon (voir compagnonEnCreature dans
   // CombatTab), dont le nc:0 n'a aucun sens affiché tel quel : on montre plutôt son lien au PJ.
   sousTitre?: string
+  // Tirage d'une carte de réussite/échec critique sur un 1/20 naturel (voir HistoriqueEntreeBloc.tsx) —
+  // remonté jusqu'à CombatTab.tsx, qui possède la modale affichée (partagée entre toutes les cartes de
+  // la rencontre plutôt que dupliquée ici).
+  onTirerCarte?: (categorie: 'echec' | 'reussite') => void
 }
 
-export default function CombatCard({ combatant, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff, onRetirerDot, sousTitre }: Props) {
+export default function CombatCard({ combatant, estEnCours, cibles, attaquants, onToggleExpand, onSetPV, onAttaque, onSetCible, onSetBuff, onClearBuff, onRetirerDot, sousTitre, onTirerCarte }: Props) {
   const { t } = useTranslation()
   const { creature, expanded, dernierResultat, buffs, pvActuels, cibleId, dotsActifs, historique } = combatant
   // Inversé par rapport à l'ancien aJoueCeTour (true = déjà joué) : ici true = ce n'est PAS son tour,
@@ -275,7 +279,7 @@ export default function CombatCard({ combatant, estEnCours, cibles, attaquants, 
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
               {historique.map((h, i) => (
-                <HistoriqueEntreeBloc key={h.id} entree={h} flash={i === 0 && flash} />
+                <HistoriqueEntreeBloc key={h.id} entree={h} flash={i === 0 && flash} onTirerCarte={onTirerCarte} />
               ))}
             </div>
           </div>

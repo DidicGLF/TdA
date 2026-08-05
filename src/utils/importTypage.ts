@@ -86,8 +86,15 @@ export function detecterTypeFichier(raw: unknown): TypeFichier | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
 
-  if (typeof r.type === 'string' && (TYPES_CONNUS as string[]).includes(r.type)) {
-    return r.type as TypeFichier
+  // `type` : convention des exports destinés à l'utilisateur (SaveLoadPanel, CompagnieTab.exporter…).
+  // `_type` : convention des fichiers auto-sauvegardés en interne (GameDataContext/makeAutoSaver) —
+  // reconnu ici aussi, sinon importer par erreur un fichier interne (ex. copier Maitre de jeu/
+  // compagnie.json au lieu d'utiliser le bouton Exporter) laisse le type non détecté, contenu passe
+  // alors tel quel (encore enveloppé) à l'appelant, qui le stocke puis le réenveloppe une fois de plus
+  // à la sauvegarde suivante — corruption qui s'aggrave silencieusement à chaque cycle.
+  const typeExplicite = typeof r.type === 'string' ? r.type : typeof r._type === 'string' ? r._type : null
+  if (typeExplicite && (TYPES_CONNUS as string[]).includes(typeExplicite)) {
+    return typeExplicite as TypeFichier
   }
 
   // Repli structurel — ordre important : un gabarit et une bataille partagent `pions`, seule la
@@ -113,14 +120,20 @@ export function messageMauvaisType(t: (cle: string, options?: Record<string, unk
 }
 
 // Les exports récents s'enveloppent en { type, data } (voir CreatureDetail.exporterCreature,
-// AdversiteTab.exporter, BatailleTab.exporterJSON, SaveLoadPanel.exportCharacter/exportLibrary). Cette
-// fonction détecte le type ET, si une enveloppe est bien présente, retourne le contenu utile
-// (raw.data) plutôt que l'enveloppe elle-même — un fichier plus ancien ou sans enveloppe (repli
+// AdversiteTab.exporter, BatailleTab.exporterJSON, SaveLoadPanel.exportCharacter/exportLibrary) ; les
+// fichiers auto-sauvegardés en interne s'enveloppent en { _type, data } (voir makeAutoSaver dans
+// GameDataContext) — reconnus tous les deux ici (voir detecterTypeFichier). Cette fonction détecte le
+// type ET, si une ou plusieurs enveloppes sont bien présentes, retourne le contenu utile (raw.data,
+// déballé récursivement au cas où le fichier a déjà été enveloppé plus d'une fois par un import/export
+// répété par erreur) plutôt que l'enveloppe elle-même — un fichier plus ancien ou sans enveloppe (repli
 // structurel) renvoie raw tel quel comme contenu.
 export function desenvelopper(raw: unknown): { type: TypeFichier | null; contenu: unknown } {
   const type = detecterTypeFichier(raw)
-  if (type && raw && typeof raw === 'object' && 'data' in raw && typeof (raw as Record<string, unknown>).type === 'string') {
-    return { type, contenu: (raw as Record<string, unknown>).data }
+  let contenu = raw
+  for (let i = 0; i < 5 && contenu && typeof contenu === 'object' && 'data' in contenu; i++) {
+    const r = contenu as Record<string, unknown>
+    if (typeof r.type !== 'string' && typeof r._type !== 'string') break
+    contenu = r.data
   }
-  return { type, contenu: raw }
+  return { type, contenu }
 }

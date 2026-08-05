@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { DiceIcon } from './DiceIcon'
 import type { Character, Caracteristique } from '../../types/character'
@@ -15,6 +16,16 @@ import { useImage } from '../../hooks/useImage'
 import type { useReseauClient, DegatsRecus } from '../../hooks/useReseauClient'
 import { rechercherPartieReseau } from '../../utils/reseau'
 import { encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
+import type { CarteCritique, CategorieCarteCritique, TypeBlocCarte } from '../../data/cartesCritiques'
+import { piocherCarteActive } from '../../utils/cartesCritiquesPerso'
+import CarteCritiqueModal from '../CarteCritiqueModal'
+import type { MissionCompagnie } from '../../utils/missions'
+
+// Type d'attaque à l'origine d'un jet, déduit de result.stat (voir Step5/attaques ci-dessous) — sert
+// à ne montrer que le bloc pertinent de la carte tirée plutôt que les trois d'un coup.
+const TYPE_ATTAQUE_PAR_STAT: Record<string, TypeBlocCarte> = {
+  ATT_CONTACT: 'contact', ATT_DISTANCE: 'distance', ATT_MAGIQUE: 'magique',
+}
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -174,13 +185,135 @@ function CompagnonPortrait({ image, fit }: { image?: string; fit?: 'cover' | 'co
     : <span style={{ fontSize: 28, opacity: 0.3 }}>🐾</span>
 }
 
+// Modale plein écran d'une mission en cours — bandeau (illustration/nom/participants) + dialogue
+// partagé entre les participants ET le MJ (voir envoyerMessageMissionMJ côté CompagnieTab.tsx). Rendue
+// en portail à `document.body`, par-dessus tout le reste de l'app (voir zIndex), tant qu'elle est
+// ouverte — se ferme via ×, se rouvre depuis le petit bouton de rappel du panneau réseau (voir
+// missionModaleOuverte). La modale couvrant tout l'écran, le joueur n'a plus accès aux boutons dés du
+// Mode de jeu en dessous : les mêmes boutons (voir BARE_DICE) sont donc reproduits ici, en plus petit,
+// et lancent directement dans le dialogue (voir onLancerDe/lancerDeMission) — les jets apparaissent
+// comme n'importe quel autre message, visibles par tous les participants sans mécanique séparée.
+function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLancerDe, nbDes, onNbDesChange, onFermer }: {
+  mission: MissionCompagnie
+  chat: { expediteurNom: string; texte: string }[]
+  input: string
+  onInputChange: (v: string) => void
+  onEnvoyer: () => void
+  onLancerDe: (sides: number) => void
+  nbDes: string
+  onNbDesChange: (v: string) => void
+  onFermer: () => void
+}) {
+  const { t } = useTranslation()
+  const illustrationSrc = useImage(mission.illustration)
+  return createPortal(
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.88)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px',
+    }}>
+      <div style={{
+        background: 'rgba(18,14,9,0.98)', border: '1px solid rgba(150,200,120,0.4)', borderRadius: 10,
+        maxWidth: 560, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 16px 70px rgba(0,0,0,0.9)', overflow: 'hidden',
+      }}>
+        {/* Bandeau : illustration (si présente), nom de la mission, nombre de participants */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          {illustrationSrc && (
+            <img src={illustrationSrc} alt="" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+          )}
+          <div style={{
+            padding: '14px 20px', background: illustrationSrc ? 'linear-gradient(rgba(0,0,0,0.2), rgba(18,14,9,0.98))' : 'transparent',
+            marginTop: illustrationSrc ? -60 : 0, position: 'relative',
+          }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', fontFamily: "'Cinzel', serif", textShadow: illustrationSrc ? '0 2px 8px rgba(0,0,0,0.9)' : 'none' }}>
+              🗺️ {mission.nom}
+            </div>
+            <div style={{ fontSize: 13, color: illustrationSrc ? 'rgba(255,255,255,0.85)' : 'rgba(245,236,215,0.55)', marginTop: 2, textShadow: illustrationSrc ? '0 1px 4px rgba(0,0,0,0.9)' : 'none' }}>
+              {t('gameMode.reseau.missionParticipants', { n: mission.volontaires.length })}
+            </div>
+          </div>
+          <button onClick={onFermer} style={{
+            position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: 4,
+            cursor: 'pointer', color: '#fff', fontSize: 20, lineHeight: 1, padding: '2px 8px',
+          }} aria-label="Fermer">×</button>
+        </div>
+
+        {/* Dialogue */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {chat.length === 0
+            ? <span style={{ opacity: 0.4, fontStyle: 'italic', fontSize: 13 }}>{t('gameMode.reseau.dialogueMissionVide')}</span>
+            : chat.map((l, i) => (
+              <div key={i} style={{ fontSize: 13.5, color: 'rgba(245,236,215,0.9)' }}>
+                <strong style={{ color: 'rgba(150,200,120,0.95)' }}>{l.expediteurNom}</strong> : {l.texte}
+              </div>
+            ))}
+        </div>
+
+        {/* Dés — mêmes boutons que la section "jets rapides" du Mode de jeu (voir BARE_DICE), en plus
+            petit : la modale couvrant tout l'écran, ce sont les seuls boutons de dé encore accessibles
+            tant qu'elle est ouverte. */}
+        <div style={{ display: 'flex', gap: 4, padding: '10px 20px 0', flexShrink: 0 }}>
+          {BARE_DICE.map(d => (
+            <button key={d} onClick={() => onLancerDe(d)} style={{
+              flex: 1, aspectRatio: '1', padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 4, cursor: 'pointer', border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(150,200,120,0.1)',
+            }}>
+              <DiceIcon sides={d} size={26} />
+            </button>
+          ))}
+          <div style={{ flexShrink: 0, width: 26, display: 'flex', flexDirection: 'column', gap: 2 }} title={t('gameMode.nbDesLabel')}>
+            <button type="button" onClick={() => onNbDesChange(String(Math.max(1, (parseInt(nbDes, 10) || 1) + 1)))} style={{
+              flex: 1, minHeight: 0, padding: 0, borderRadius: 3, fontSize: 11, lineHeight: 1, cursor: 'pointer',
+              border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(150,200,120,0.12)', color: 'rgba(180,230,150,0.95)',
+            }}>+</button>
+            <input
+              type="number" min={1} value={nbDes} onChange={e => onNbDesChange(e.target.value)} placeholder="1"
+              style={{ flex: 1, minHeight: 0, width: '100%', padding: 0, borderRadius: 3, fontSize: 11, textAlign: 'center',
+                border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(0,0,0,0.3)', color: PARCHMENT, outline: 'none', boxSizing: 'border-box' }}
+            />
+            <button type="button" onClick={() => onNbDesChange(String(Math.max(1, (parseInt(nbDes, 10) || 1) - 1)))} style={{
+              flex: 1, minHeight: 0, padding: 0, borderRadius: 3, fontSize: 11, lineHeight: 1, cursor: 'pointer',
+              border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(150,200,120,0.12)', color: 'rgba(180,230,150,0.95)',
+            }}>-</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, padding: '10px 20px 14px', borderTop: '1px solid rgba(150,200,120,0.2)', marginTop: 10, flexShrink: 0 }}>
+          <input
+            value={input}
+            onChange={e => onInputChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onEnvoyer() }}
+            placeholder={t('gameMode.reseau.dialogueMissionPlaceholder')}
+            style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 4, border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(0,0,0,0.3)', color: PARCHMENT, fontSize: 14 }}
+          />
+          <button onClick={onEnvoyer} style={{
+            padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 14,
+            border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(150,200,120,0.12)', color: 'rgba(180,230,150,0.95)',
+          }}>
+            {t('gameMode.reseau.envoyer')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function GameModePanel({ character, descriptions, onChange, reseau, gererDegatsRecusRef, gererPvActualisesRecuRef, gererNouveauTourRecuRef, drainerReseauEnAttente, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
-  const { armes, armures, compagnons: compagnonsCatalogue } = useGameData()
+  const { armes, armures, compagnons: compagnonsCatalogue, cartesCritiquesEchecs, cartesCritiquesReussites, compagnie } = useGameData()
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const isMobile = screenWidth < 1200
   const [result, setResult] = useState<RollResult | null>(null)
   const [history, setHistory] = useState<RollResult[]>([])
+  // Carte de réussite/échec critique tirée (voir cartesCritiques.ts) — appliquée oralement par le
+  // joueur/MJ, aucun effet automatisé dessus. typeAttaque déduit de RollResult.stat, absent pour un
+  // jet qui n'est pas une attaque (jet rapide, caractéristique...), voir TYPE_ATTAQUE_PAR_STAT.
+  const [carteAffichee, setCarteAffichee] = useState<{ categorie: CategorieCarteCritique; carte: CarteCritique; typeAttaque: TypeBlocCarte | null } | null>(null)
+  const tirerCarte = (categorie: CategorieCarteCritique, stat?: string) => {
+    const carte = piocherCarteActive(categorie === 'echec' ? cartesCritiquesEchecs : cartesCritiquesReussites)
+    setCarteAffichee({ categorie, carte, typeAttaque: stat ? TYPE_ATTAQUE_PAR_STAT[stat] ?? null : null })
+  }
   // Le "character" reçu est déjà la copie de session créée par App.tsx à l'ouverture du Mode de jeu (jamais
   // l'original) — on peut donc écrire dessus librement via onChange, ça ne touche jamais la vraie fiche.
   const [effectCounters, setEffectCounters] = useState<Record<string, number>>(() => character.effectCounters ?? {})
@@ -307,6 +440,41 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     setDialoguePJInput('')
   }
 
+  // Missions dont ce PJ est volontaire et qui sont actuellement en cours (voir la section Missions de
+  // CompagnieTab.tsx côté MJ) — préfère la vue réseau (mise à jour en direct, voir 'compagnie-missions-
+  // maj') dès qu'elle a été reçue, sinon la donnée locale/importée, même principe que
+  // CharacterCompagnieTab.tsx.
+  const missionsActives = useMemo(() => {
+    const missions = reseau.compagnieMissions ?? compagnie.missions
+    const monNom = character.nomPersonnage.trim().toLowerCase()
+    return missions.filter(m => m.statut === 'enCours' && m.volontaires.some(v => v.toLowerCase() === monNom))
+  }, [reseau.compagnieMissions, compagnie.missions, character.nomPersonnage])
+  // Brouillon de message par mission (plusieurs missions actives possibles à la fois) — même principe
+  // que messagesPrives côté MJ dans ReseauTab.tsx.
+  const [missionChatInput, setMissionChatInput] = useState<Record<string, string>>({})
+  const envoyerChatMission = (missionId: string) => {
+    const texte = (missionChatInput[missionId] ?? '').trim()
+    if (!texte) return
+    reseau.envoyerMessageMission(missionId, texte)
+    setMissionChatInput(prev => ({ ...prev, [missionId]: '' }))
+  }
+  // Modale plein écran de mission (voir MissionModale plus haut) — ouverte automatiquement dès qu'une
+  // mission jamais vue apparaît dans missionsActives (lancement par le MJ, ou reconnexion en pleine
+  // mission déjà en cours), rouvrable ensuite via le petit bouton de rappel du panneau réseau. Se
+  // referme d'elle-même si le MJ stoppe/résout la mission affichée : missionModaleOuverte n'est jamais
+  // remis à null explicitement pour ça, le rendu (voir plus bas) ne réaffiche la modale que si l'id
+  // pointe encore vers une mission de missionsActives — un id devenu périmé ne produit donc plus rien.
+  // missionsPrecedentesRef (l'ensemble précédent, pas "déjà vue une fois pour toutes") : si le MJ stoppe
+  // PUIS relance la même mission, elle redevient une transition "nouvelle" et rouvre la modale.
+  const [missionModaleOuverte, setMissionModaleOuverte] = useState<string | null>(null)
+  const missionsPrecedentesRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const idsActifs = new Set(missionsActives.map(m => m.id))
+    for (const id of idsActifs) {
+      if (!missionsPrecedentesRef.current.has(id)) setMissionModaleOuverte(id)
+    }
+    missionsPrecedentesRef.current = idsActifs
+  }, [missionsActives])
 
   const voiesPerso = useMemo(() => [
     character.voiePeuple, character.voieCulturelle,
@@ -527,6 +695,22 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     // saisi — évite de relancer 6d8 par mégarde en cliquant un autre bouton dé juste après.
     setNbDesInput('')
   }, [nbDesInput, pushResult])
+
+  // Jet de dé DEPUIS la modale de mission (voir MissionModale) — la modale couvrant tout l'écran, le
+  // joueur n'a plus accès aux boutons dés habituels du Mode de jeu en dessous tant qu'elle est ouverte ;
+  // mêmes boutons/même calcul que rollQuick (dés bruts, nbDesInput partagé), mais le résultat est en
+  // plus posté directement dans le dialogue de la mission au lieu de rester dans le seul panneau
+  // Résultat — c'est la seule différence, aucune mécanique de résolution automatisée ajoutée.
+  const lancerDeMission = useCallback((missionId: string, sides: number) => {
+    const nb = Math.max(1, parseInt(nbDesInput, 10) || 1)
+    const rolls = Array.from({ length: nb }, () => Math.floor(Math.random() * sides) + 1)
+    const total = rolls.reduce((s, v) => s + v, 0)
+    const formula = `${nb}d${sides}`
+    const rollDisplay = nb > 1 ? `[${rolls.join(',')}]` : undefined
+    pushResult({ label: formula, formula, sides, roll: total, modifier: null, total, flash: false, rollDisplay })
+    reseau.envoyerMessageMission(missionId, `🎲 ${formula}${rollDisplay ? ` ${rollDisplay}` : ''} = ${total}`)
+    setNbDesInput('')
+  }, [nbDesInput, pushResult, reseau])
 
   const rollDmFormula = (dm: string): { formula: string; total: number; display: string } => {
     const statValues: Record<string, number> = {
@@ -1460,6 +1644,19 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                   </div>
                 )}
 
+                {/* Mission(s) en cours dont ce PJ fait partie (voir missionsActives ci-dessus) — juste un
+                    petit bouton de rappel ici, le dialogue lui-même vit dans la modale plein écran (voir
+                    plus bas, MissionModale) qui s'ouvre automatiquement au lancement et peut être
+                    rouverte à tout moment depuis ce bouton. */}
+                {missionsActives.map(mission => (
+                  <button key={mission.id} onClick={() => setMissionModaleOuverte(mission.id)} style={{
+                    padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                    border: '1px solid rgba(150,200,120,0.35)', background: 'rgba(150,200,120,0.1)', color: 'rgba(180,230,150,0.95)',
+                  }}>
+                    🗺️ {t('gameMode.reseau.rejoindreMission', { mission: mission.nom })}
+                  </button>
+                ))}
+
                 <button onClick={reseau.deconnecter} style={{
                   padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, alignSelf: 'flex-start',
                   border: '1px solid rgba(220,80,80,0.4)', background: 'rgba(220,80,80,0.1)', color: 'rgba(255,150,150,0.9)',
@@ -1888,8 +2085,24 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                       {!result && <div style={{ color: `rgba(245,236,215,0.2)`, fontSize: 14 }}>—</div>}
                       {result && <>
-                        {isCritSuccess && <div style={{ fontSize: 12, fontWeight: 700, color: '#ffe94d', letterSpacing: '0.1em', marginBottom: 4 }}>{t('gameMode.critSuccess')}</div>}
-                        {isCritFail    && <div style={{ fontSize: 12, fontWeight: 700, color: '#ff5555', letterSpacing: '0.1em', marginBottom: 4 }}>{t('gameMode.critFail')}</div>}
+                        {isCritSuccess && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#ffe94d', letterSpacing: '0.1em' }}>{t('gameMode.critSuccess')}</div>
+                            <button onClick={() => tirerCarte('reussite', result.stat)}
+                              style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', background: 'rgba(255,220,80,0.12)', border: '1px solid rgba(255,220,80,0.4)', color: '#ffe94d' }}>
+                              🎴 {t('carteCritique.tirer')}
+                            </button>
+                          </div>
+                        )}
+                        {isCritFail && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#ff5555', letterSpacing: '0.1em' }}>{t('gameMode.critFail')}</div>
+                            <button onClick={() => tirerCarte('echec', result.stat)}
+                              style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', background: 'rgba(220,80,80,0.12)', border: '1px solid rgba(220,80,80,0.4)', color: '#ff8080' }}>
+                              🎴 {t('carteCritique.tirer')}
+                            </button>
+                          </div>
+                        )}
                         <div style={{ fontSize: 13, color: `rgba(245,236,215,0.45)`, marginBottom: 6 }}>
                           {result.label} <span style={{ color: `rgba(201,168,76,0.5)` }}>({result.formula})</span>
                         </div>
@@ -1965,6 +2178,13 @@ export default function GameModePanel({ character, descriptions, onChange, resea
                               </span>
                               <span style={{ color: `rgba(245,236,215,0.6)`, flexShrink: 0 }}>{h.rollDisplay ?? h.roll}{modStr}{boostStr} =</span>
                               <span style={{ fontWeight: 700, color, flexShrink: 0 }}>{h.total}</span>
+                              {(cs || cf) && (
+                                <button onClick={() => tirerCarte(cs ? 'reussite' : 'echec', h.stat)}
+                                  title={t('carteCritique.tirer')}
+                                  style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>
+                                  🎴
+                                </button>
+                              )}
                             </div>
                           )
                         })
@@ -2438,6 +2658,33 @@ export default function GameModePanel({ character, descriptions, onChange, resea
           {gmTooltip.desc && <div>{gmTooltip.desc}</div>}
         </div>
       )}
+
+      {carteAffichee && (
+        <CarteCritiqueModal
+          carte={carteAffichee.carte}
+          categorie={carteAffichee.categorie}
+          typeAttaque={carteAffichee.typeAttaque}
+          onClose={() => setCarteAffichee(null)}
+        />
+      )}
+
+      {missionModaleOuverte && (() => {
+        const mission = missionsActives.find(m => m.id === missionModaleOuverte)
+        if (!mission) return null
+        return (
+          <MissionModale
+            mission={mission}
+            chat={reseau.missionChat.filter(l => l.missionId === mission.id)}
+            input={missionChatInput[mission.id] ?? ''}
+            onInputChange={v => setMissionChatInput(prev => ({ ...prev, [mission.id]: v }))}
+            onEnvoyer={() => envoyerChatMission(mission.id)}
+            onLancerDe={sides => lancerDeMission(mission.id, sides)}
+            nbDes={nbDesInput}
+            onNbDesChange={setNbDesInput}
+            onFermer={() => setMissionModaleOuverte(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

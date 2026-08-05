@@ -36,6 +36,7 @@ const NOMS_FICHIERS_RESERVES = new Set([
   'hidden-peuples-perso', 'hidden-cultures-perso', 'rencontres-sauvegardees',
   'combats-sauvegardes', 'capacites-bibliotheque', 'notes', 'campagnes', 'note-images',
   'gm-notes', 'gm-campagnes', 'gm-note-images', 'batailles-sauvegardees', 'batailles-modeles',
+  'cartes-critiques-echecs-perso', 'cartes-critiques-reussites-perso',
 ])
 
 function nomFichierExport(base: string, secours: string): string {

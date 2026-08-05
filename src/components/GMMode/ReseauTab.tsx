@@ -6,6 +6,7 @@ import type { EvenementReseau } from '../../utils/reseau'
 import { decoderMessage, encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 import type { CategorieJournal } from '../../utils/reseauProtocole'
 import { compresserImage } from '../../utils/imageStore'
+import { peutSePorterVolontaire } from '../../utils/missions'
 import { useGameData } from '../../context/GameDataContext'
 
 const GOLD = '#c9a84c'
@@ -57,7 +58,7 @@ export default function ReseauTab({
   dialoguePJ, ajouterDialoguePJ, dialoguesCoupes, setDialoguesCoupes,
 }: Props) {
   const { t } = useTranslation()
-  const { objetsMagiques, armes, armures } = useGameData()
+  const { objetsMagiques, armes, armures, compagnie, setCompagnie } = useGameData()
   // Catalogue livré+perso déjà fusionné (voir useGameData) — mis à plat pour la liste d'envoi, comme
   // objetsMagiques l'est déjà nativement. entrees.nom sert d'identifiant (unique au sein de sa liste,
   // comme partout ailleurs dans l'app — ex. EquipementModal).
@@ -204,6 +205,11 @@ export default function ReseauTab({
   // ref plutôt que la valeur du prop, restée figée à celle du montage sinon.
   const dialoguesCoupesRef = useRef(dialoguesCoupes)
   useEffect(() => { dialoguesCoupesRef.current = dialoguesCoupes }, [dialoguesCoupes])
+  // Même raison que dialoguesCoupesRef ci-dessus : l'écoute réseau ne se réabonne jamais (effet à deps
+  // vides), donc `gerer` doit lire les missions FRAÎCHES via une ref plutôt que `compagnie` directement,
+  // resté figé à sa valeur du montage sinon.
+  const compagnieRef = useRef(compagnie)
+  useEffect(() => { compagnieRef.current = compagnie }, [compagnie])
 
   useEffect(() => {
     let annule = false
@@ -234,6 +240,12 @@ export default function ReseauTab({
             { connexionId: e.id, nom: message.character.nomPersonnage, nomJoueur: message.character.nomJoueur, peuple: message.character.peuple, niveau: message.character.niveau, idPJ: message.idPJ },
           ])
           diffuserRosterPJ()
+          // Synchronise les missions dès l'identification (connexion initiale OU réponse à
+          // 'qui-etes-vous', ex. retour sur cet onglet après un passage par un autre) — sans ça, un PJ
+          // qui se (re)connecte alors que des missions existent déjà ne les verrait qu'à la prochaine
+          // mutation faite par le MJ (compagnie-missions-maj n'est autrement diffusé QUE sur mutation,
+          // jamais de façon proactive à une nouvelle connexion), bug signalé par Didic.
+          envoyerAClientReseau(e.id, encoderMessage({ type: 'compagnie-missions-maj', missions: compagnieRef.current.missions }))
           ajouterJournal(t('gmMode.reseau.identificationEvt', { id: e.id, nom: message.nom, cle: message.idPJ.slice(0, 6) }), 'identification')
         } else if (message?.type === 'degats') {
           const identite = identitesRef.current[e.id]
@@ -281,6 +293,41 @@ export default function ReseauTab({
                 const id = Number(idStr)
                 if (id !== e.id) envoyerAClientReseau(id, contenu)
               }
+            }
+          }
+        } else if (message?.type === 'mission-volontaire') {
+          // PJ → MJ : voir 'mission-volontaire' dans reseauProtocole.ts. compagnieRef (pas compagnie
+          // directement, voir sa note plus haut) pour lire l'état le plus frais malgré l'effet à deps
+          // vides. Le nouveau tableau missions sert à la fois à la mise à jour locale ET à la diffusion —
+          // lire compagnieRef juste après setCompagnie serait périmé (mise à jour asynchrone).
+          const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
+          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
+          if (mission && peutSePorterVolontaire(mission, nom)) {
+            const maintenant = new Date().toISOString()
+            const missionsMaj = compagnieRef.current.missions.map(m =>
+              m.id === mission.id ? { ...m, volontaires: [...m.volontaires, nom], modifieLe: maintenant } : m
+            )
+            setCompagnie(prev => ({ ...prev, missions: missionsMaj, modifieLe: maintenant }))
+            envoyerATousReseau(encoderMessage({ type: 'compagnie-missions-maj', missions: missionsMaj }))
+            ajouterDialoguePJ(t('gmMode.reseau.volontaireMissionEvt', { nom, mission: mission.nom }), 'dialogueMission')
+          }
+        } else if (message?.type === 'message-mission') {
+          // PJ → MJ, à relayer aux AUTRES volontaires CONNECTÉS de cette mission uniquement (voir
+          // 'message-mission' dans reseauProtocole.ts) — jamais à tout le roster comme 'message-pj' sans
+          // destinataire. Toujours journalisé ici (modération), même si la mission a depuis disparu ou
+          // été résolue (le message reste affiché, juste plus relayé dans ce cas).
+          const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
+          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
+          ajouterDialoguePJ(
+            t('gmMode.reseau.dialogueMissionEvt', { mission: mission?.nom ?? '?', nom, texte: message.texte }),
+            'dialogueMission',
+          )
+          if (mission) {
+            const volontairesMinuscule = new Set(mission.volontaires.map(v => v.toLowerCase()))
+            const contenu = encoderMessage({ type: 'message-mission-recu', missionId: mission.id, expediteurNom: nom, texte: message.texte })
+            for (const [idStr, identite] of Object.entries(identitesRef.current)) {
+              const id = Number(idStr)
+              if (id !== e.id && volontairesMinuscule.has(identite.nom.toLowerCase())) envoyerAClientReseau(id, contenu)
             }
           }
         } else {
