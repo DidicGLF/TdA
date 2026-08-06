@@ -573,7 +573,7 @@
     "fichierNonReconnu": "Fichier non reconnu.",
     "fichierMauvaisType": "Ce fichier contient {{trouve}}, pas un personnage.",
     "fichierInvalide": "Fichier invalide.",
-    "rechercherPlaceholder": "Rechercher un nom…",
+    "rechercherPlaceholder": "Rechercher un nom ou un tag…",
     "aucunResultat": "Aucun personnage ne correspond à la recherche.",
     "trierPar": "Trier",
     "trierNom": "Nom (A→Z)",
@@ -1512,6 +1512,8 @@
       "enregistrer": "Enregistrer",
       "annuler": "Annuler",
       "modifier": "Modifier",
+      "dupliquer": "Copier",
+      "copieNom": "{{nom}} (copie)",
       "confirmerSuppression": "Confirmer la suppression",
       "aucuneMission": "Aucune mission pour l'instant.",
       "statut": {

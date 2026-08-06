@@ -229,8 +229,9 @@ export default function SaveLoadPanel({ character, maxStep, library, onLibraryCh
   )
 
   const groupes = useMemo(() => {
-    const filtres = recherche.trim()
-      ? library.filter(e => normaliser(e.nom).includes(normaliser(recherche)))
+    const rechercheNorm = normaliser(recherche.trim())
+    const filtres = rechercheNorm
+      ? library.filter(e => normaliser(e.nom).includes(rechercheNorm) || (e.tags ?? []).some(tag => normaliser(tag).includes(rechercheNorm)))
       : library
     const tries = [...filtres].sort(compare)
     if (regroupement === 'aucun') return [{ cle: '__tout__', label: '', entrees: tries }]

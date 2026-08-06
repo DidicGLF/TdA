@@ -17,20 +17,14 @@ import {
   VOIE_COMPAGNIE, capaciteAuRang, capacitesActives, niveauDepuisRenommee,
   descriptionCapacite, capacitesDisponiblesAnarchique, SEUILS_RENOMMEE, COMPAGNIE_PAR_DEFAUT,
 } from '../../utils/compagnie'
-import type { MissionCompagnie, StatutMission, TypeMission } from '../../utils/missions'
-import { MISSION_VIDE, TYPES_MISSION, peutSePorterVolontaire } from '../../utils/missions'
+import type { MissionCompagnie, TypeMission } from '../../utils/missions'
+import { MISSION_VIDE, TYPES_MISSION, COULEUR_TYPE_MISSION, COULEUR_STATUT, missionMiseEnAvant, peutSePorterVolontaire } from '../../utils/missions'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
 const SECTION_BORDER = 'rgba(201,168,76,0.2)'
 const COULEUR_DOMAINE: Record<DomaineCapacite, string> = {
   arsenal: '#c67a3d', influence: '#a98ff0', tactique: '#5fb0a8',
-}
-const COULEUR_STATUT: Record<StatutMission, string> = {
-  proposee: 'rgba(245,236,215,0.5)',
-  enCours: 'rgba(160,120,255,0.9)',
-  reussie: 'rgba(120,220,140,0.9)',
-  echouee: 'rgba(230,110,110,0.9)',
 }
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -63,6 +57,14 @@ function MissionIllustration({ cle }: { cle?: string }) {
   const src = useImage(cle)
   if (!src) return null
   return <img src={src} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 6, marginBottom: 10 }} />
+}
+
+// Petit rappel de l'illustration sur une mission réduite — juste assez pour la reconnaître d'un coup
+// d'œil, sans reprendre toute la largeur de la ligne compacte (l'objectif de la réduction).
+function MissionIllustrationMini({ cle }: { cle?: string }) {
+  const src = useImage(cle)
+  if (!src) return null
+  return <img src={src} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
 }
 
 export default function CompagnieTab() {
@@ -246,6 +248,11 @@ export default function CompagnieTab() {
   // n'a pas basculé sur Réseau, signalé par Didic.
   const [missionEnEdition, setMissionEnEdition] = useState<MissionCompagnie | null>(null)
   const [confirmDeleteMissionId, setConfirmDeleteMissionId] = useState<string | null>(null)
+  // Mission que le MJ a manuellement choisi d'ouvrir (remplace missionMiseEnAvantId tant que non nul) —
+  // une seule à la fois : en ouvrir une réduit automatiquement celle qui était ouverte, pour ne jamais
+  // avoir deux missions en taille normale en même temps (gain de place).
+  const [missionOuverteId, setMissionOuverteId] = useState<string | null>(null)
+  const missionMiseEnAvantId = missionOuverteId ?? missionMiseEnAvant(compagnie.missions)
   const [renommeeAResoudre, setRenommeeAResoudre] = useState<Record<string, string>>({})
   const [messageMissionInput, setMessageMissionInput] = useState<Record<string, string>>({})
   const fichierIllustrationRef = useRef<HTMLInputElement>(null)
@@ -331,6 +338,23 @@ export default function CompagnieTab() {
   const nouvelleMission = () => setMissionEnEdition(MISSION_VIDE())
   const editerMission = (m: MissionCompagnie) => setMissionEnEdition({ ...m })
   const annulerEditionMission = () => setMissionEnEdition(null)
+
+  // Repart d'une mission existante pour en refaire une du même style — nouvel id (donc ajoutée comme
+  // une nouvelle mission à l'enregistrement, pas une modification de la source), mais jamais le statut
+  // ni les volontaires : une copie est toujours une mission neuve à proposer, pas la suite de l'ancienne.
+  // Ouvre directement le formulaire d'édition pour que le MJ ajuste ce qui change avant d'enregistrer.
+  const dupliquerMission = (m: MissionCompagnie) => {
+    const maintenant = new Date().toISOString()
+    setMissionEnEdition({
+      ...m,
+      id: crypto.randomUUID(),
+      nom: t('gmMode.missions.copieNom', { nom: m.nom }),
+      statut: 'proposee',
+      volontaires: [],
+      creeLe: maintenant,
+      modifieLe: maintenant,
+    })
+  }
 
   const enregistrerEditionMission = () => {
     if (!missionEnEdition || !missionEnEdition.nom.trim()) return
@@ -882,8 +906,33 @@ export default function CompagnieTab() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {compagnie.missions.map(mission => (
-              <div key={mission.id} style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: '12px 14px' }}>
+            {compagnie.missions.map(mission => {
+              const estReduite = mission.id !== missionMiseEnAvantId
+
+              if (estReduite) {
+                return (
+                  <div key={mission.id}
+                    onClick={() => setMissionOuverteId(mission.id)}
+                    style={{
+                      border: `1px solid ${SECTION_BORDER}`, borderLeft: `3px solid ${COULEUR_TYPE_MISSION[mission.type]}`, borderRadius: 6,
+                      padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span style={{ fontSize: 11, opacity: 0.5 }}>▸</span>
+                      <MissionIllustrationMini cle={mission.illustration} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: PARCHMENT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mission.nom}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: COULEUR_TYPE_MISSION[mission.type], flexShrink: 0 }}>{t(`gmMode.missions.type.${mission.type}`)}</span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: COULEUR_STATUT[mission.statut], flexShrink: 0 }}>
+                      {t(`gmMode.missions.statut.${mission.statut}`)}
+                    </span>
+                  </div>
+                )
+              }
+
+              return (
+              <div key={mission.id} style={{ border: `1px solid ${SECTION_BORDER}`, borderLeft: `3px solid ${COULEUR_TYPE_MISSION[mission.type]}`, borderRadius: 6, padding: '12px 14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: PARCHMENT, fontFamily: "'Cinzel', serif" }}>{mission.nom}</div>
@@ -895,13 +944,14 @@ export default function CompagnieTab() {
                       }}>
                         {t(`gmMode.missions.statut.${mission.statut}`)}
                       </span>
-                      <span style={{ fontSize: 12.5, color: 'rgba(245,236,215,0.5)' }}>{t(`gmMode.missions.type.${mission.type}`)}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: COULEUR_TYPE_MISSION[mission.type] }}>{t(`gmMode.missions.type.${mission.type}`)}</span>
                       <span style={{ fontSize: 12.5, color: 'rgba(245,236,215,0.5)' }}>
                         {t('gmMode.missions.slotsLabel', { n: mission.volontaires.length, total: mission.nombreParticipants })}
                       </span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <button style={btnStyle} onClick={() => dupliquerMission(mission)}>⎘ {t('gmMode.missions.dupliquer')}</button>
                     <button style={btnStyle} onClick={() => editerMission(mission)}>✎ {t('gmMode.missions.modifier')}</button>
                     {confirmDeleteMissionId === mission.id ? (
                       <button style={removeBtnStyle} onClick={() => supprimerMission(mission.id)}>{t('gmMode.missions.confirmerSuppression')}</button>
@@ -1005,7 +1055,8 @@ export default function CompagnieTab() {
                   </>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

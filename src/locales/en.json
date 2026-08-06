@@ -573,7 +573,7 @@
     "fichierNonReconnu": "File not recognized.",
     "fichierMauvaisType": "This file contains {{trouve}}, not a character.",
     "fichierInvalide": "Invalid file.",
-    "rechercherPlaceholder": "Search a name…",
+    "rechercherPlaceholder": "Search a name or tag…",
     "aucunResultat": "No character matches the search.",
     "trierPar": "Sort",
     "trierNom": "Name (A→Z)",
@@ -1512,6 +1512,8 @@
       "enregistrer": "Save",
       "annuler": "Cancel",
       "modifier": "Edit",
+      "dupliquer": "Duplicate",
+      "copieNom": "{{nom}} (copy)",
       "confirmerSuppression": "Confirm deletion",
       "aucuneMission": "No missions yet.",
       "statut": {

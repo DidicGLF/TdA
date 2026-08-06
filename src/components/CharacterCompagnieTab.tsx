@@ -4,7 +4,7 @@ import {
   DEVISE_CODE, DESCRIPTION_CODE, VOIE_COMPAGNIE, capaciteAuRang, niveauDepuisRenommee,
   descriptionCapacite, SEUILS_RENOMMEE,
 } from '../utils/compagnie'
-import { peutSePorterVolontaire } from '../utils/missions'
+import { peutSePorterVolontaire, missionMiseEnAvant, COULEUR_TYPE_MISSION, COULEUR_STATUT } from '../utils/missions'
 import { useImage } from '../hooks/useImage'
 import type { useReseauClient } from '../hooks/useReseauClient'
 
@@ -36,6 +36,14 @@ function MissionIllustration({ cle }: { cle?: string }) {
   return <img src={src} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 5, marginBottom: 8 }} />
 }
 
+// Petit rappel de l'illustration sur une mission réduite — juste assez pour la reconnaître d'un coup
+// d'œil, sans reprendre toute la largeur de la ligne compacte (l'objectif de la réduction).
+function MissionIllustrationMini({ cle }: { cle?: string }) {
+  const src = useImage(cle)
+  if (!src) return null
+  return <img src={src} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+}
+
 // Aperçu en lecture seule de la compagnie, sur la fiche d'un personnage qui en est membre (voir
 // showCompagnieTab dans App.tsx — présent dès que son nom figure dans compagnie.membres, fonction ou
 // non). Volontairement une simple page de données empilées façon Notes (pas de mise en page sur fond de
@@ -52,6 +60,7 @@ export default function CharacterCompagnieTab({ compagnie, nomPersonnage, reseau
   // au moins une fois ; sinon la donnée locale/importée avec le reste de la compagnie — jamais rien du
   // tout tant que la connexion n'a pas encore poussé sa première mise à jour.
   const missions = reseau.compagnieMissions ?? compagnie.missions
+  const missionMiseEnAvantId = missionMiseEnAvant(missions)
 
   const rangArsenalFixe = compagnie.code && compagnie.code !== 'anarchique'
     ? (() => { const i = VOIE_COMPAGNIE[compagnie.code as Exclude<CodeCompagnie, 'anarchique'>].findIndex(c => c.domaine === 'arsenal'); return i === -1 ? null : i + 1 })()
@@ -208,12 +217,38 @@ export default function CharacterCompagnieTab({ compagnie, nomPersonnage, reseau
             {missions.map(mission => {
               const dejaVolontaire = mission.volontaires.some(v => v.toLowerCase() === nomPersonnage.trim().toLowerCase())
               const peutVolontaire = peutSePorterVolontaire(mission, nomPersonnage) && reseau.connecte
+              const missionResolue = mission.statut === 'reussie' || mission.statut === 'echouee'
+
+              if (mission.id !== missionMiseEnAvantId) {
+                return (
+                  <div key={mission.id} style={{
+                    border: `1px solid ${SECTION_BORDER}`, borderLeft: `3px solid ${COULEUR_TYPE_MISSION[mission.type]}`, borderRadius: 6,
+                    padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <MissionIllustrationMini cle={mission.illustration} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: PARCHMENT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mission.nom}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: COULEUR_TYPE_MISSION[mission.type], flexShrink: 0 }}>{t(`gmMode.missions.type.${mission.type}`)}</span>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontStyle: 'italic', flexShrink: 0,
+                      color: missionResolue ? COULEUR_STATUT[mission.statut] : 'rgba(245,236,215,0.4)',
+                      fontWeight: missionResolue ? 700 : 400,
+                    }}>
+                      {missionResolue
+                        ? t(`gmMode.missions.statut.${mission.statut}`)
+                        : dejaVolontaire ? `✓ ${t('gmMode.missions.dejaVolontaire')}` : t(`gmMode.missions.statut.${mission.statut}`)}
+                    </span>
+                  </div>
+                )
+              }
+
               return (
-                <div key={mission.id} style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 6, padding: '10px 12px' }}>
+                <div key={mission.id} style={{ border: `1px solid ${SECTION_BORDER}`, borderLeft: `3px solid ${COULEUR_TYPE_MISSION[mission.type]}`, borderRadius: 6, padding: '10px 12px' }}>
                   <MissionIllustration cle={mission.illustration} />
                   <div style={{ fontSize: 15, fontWeight: 700, color: PARCHMENT }}>{mission.nom}</div>
                   <div style={{ fontSize: 11, color: 'rgba(245,236,215,0.5)', margin: '2px 0 6px' }}>
-                    {t(`gmMode.missions.type.${mission.type}`)} · 🏅 {t('gmMode.missions.recompenseRenommee', { n: mission.recompenseRenommee })}
+                    <span style={{ color: COULEUR_TYPE_MISSION[mission.type], fontWeight: 700 }}>{t(`gmMode.missions.type.${mission.type}`)}</span> · 🏅 {t('gmMode.missions.recompenseRenommee', { n: mission.recompenseRenommee })}
                     {' · '}{t('gmMode.missions.slotsLabel', { n: mission.volontaires.length, total: mission.nombreParticipants })}
                   </div>
                   {mission.description && (

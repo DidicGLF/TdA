@@ -20,6 +20,7 @@ import type { CarteCritique, CategorieCarteCritique, TypeBlocCarte } from '../..
 import { piocherCarteActive } from '../../utils/cartesCritiquesPerso'
 import CarteCritiqueModal from '../CarteCritiqueModal'
 import type { MissionCompagnie } from '../../utils/missions'
+import { COULEUR_TYPE_MISSION } from '../../utils/missions'
 
 // Type d'attaque à l'origine d'un jet, déduit de result.stat (voir Step5/attaques ci-dessous) — sert
 // à ne montrer que le bloc pertinent de la carte tirée plutôt que les trois d'un coup.
@@ -206,13 +207,40 @@ function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLance
 }) {
   const { t } = useTranslation()
   const illustrationSrc = useImage(mission.illustration)
+  // Texte clair (blanc) ou sombre selon la luminosité de l'illustration, pour rester lisible quelle
+  // que soit l'image fournie par le MJ — mesurée sur sa bande basse uniquement (~45%), la seule
+  // partie réellement recouverte par ce texte une fois le dégradé du bandeau appliqué.
+  const [texteClair, setTexteClair] = useState(true)
+  useEffect(() => {
+    if (!illustrationSrc) return
+    let annule = false
+    const img = new Image()
+    img.onload = () => {
+      if (annule) return
+      const canvas = document.createElement('canvas')
+      canvas.width = 40
+      canvas.height = 40
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const hauteurBande = img.naturalHeight * 0.45
+      ctx.drawImage(img, 0, img.naturalHeight - hauteurBande, img.naturalWidth, hauteurBande, 0, 0, 40, 40)
+      const { data } = ctx.getImageData(0, 0, 40, 40)
+      let somme = 0
+      for (let i = 0; i < data.length; i += 4) somme += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+      if (!annule) setTexteClair(somme / (data.length / 4) < 140)
+    }
+    img.src = illustrationSrc
+    return () => { annule = true }
+  }, [illustrationSrc])
+  const texteBlanc = !illustrationSrc || texteClair
+  const ombreTexte = texteBlanc ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)'
   return createPortal(
     <div style={{
       position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.88)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px',
     }}>
       <div style={{
-        background: 'rgba(18,14,9,0.98)', border: '1px solid rgba(150,200,120,0.4)', borderRadius: 10,
+        background: 'rgba(18,14,9,0.98)', border: `1px solid ${COULEUR_TYPE_MISSION[mission.type]}66`, borderRadius: 10,
         maxWidth: 560, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 16px 70px rgba(0,0,0,0.9)', overflow: 'hidden',
       }}>
@@ -222,14 +250,19 @@ function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLance
             <img src={illustrationSrc} alt="" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
           )}
           <div style={{
-            padding: '14px 20px', background: illustrationSrc ? 'linear-gradient(rgba(0,0,0,0.2), rgba(18,14,9,0.98))' : 'transparent',
-            marginTop: illustrationSrc ? -60 : 0, position: 'relative',
+            // Recouvre le bas de l'image (~30px) avec un fond flou (plutôt qu'un dégradé sombre) sous
+            // le titre : reste lisible quelle que soit la luminosité de l'illustration, sans jamais la
+            // couper net ni trop en recouvrir.
+            padding: '14px 20px', position: 'relative', marginTop: illustrationSrc ? -30 : 0,
+            background: illustrationSrc ? (texteBlanc ? 'rgba(18,14,9,0.55)' : 'rgba(245,236,215,0.6)') : 'transparent',
+            backdropFilter: illustrationSrc ? 'blur(18px)' : undefined,
+            WebkitBackdropFilter: illustrationSrc ? 'blur(18px)' : undefined,
           }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', fontFamily: "'Cinzel', serif", textShadow: illustrationSrc ? '0 2px 8px rgba(0,0,0,0.9)' : 'none' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: texteBlanc ? '#fff' : BG, fontFamily: "'Cinzel', serif", textShadow: illustrationSrc ? `0 2px 8px ${ombreTexte}` : 'none' }}>
               🗺️ {mission.nom}
             </div>
-            <div style={{ fontSize: 13, color: illustrationSrc ? 'rgba(255,255,255,0.85)' : 'rgba(245,236,215,0.55)', marginTop: 2, textShadow: illustrationSrc ? '0 1px 4px rgba(0,0,0,0.9)' : 'none' }}>
-              {t('gameMode.reseau.missionParticipants', { n: mission.volontaires.length })}
+            <div style={{ fontSize: 13, color: texteBlanc ? (illustrationSrc ? 'rgba(255,255,255,0.85)' : 'rgba(245,236,215,0.55)') : 'rgba(26,20,16,0.85)', marginTop: 2, textShadow: illustrationSrc ? `0 1px 4px ${ombreTexte}` : 'none' }}>
+              <span style={{ color: COULEUR_TYPE_MISSION[mission.type], fontWeight: 700 }}>{t(`gmMode.missions.type.${mission.type}`)}</span> - {t('gameMode.reseau.missionParticipants', { n: mission.volontaires.length })} : {mission.volontaires.join(', ')}
             </div>
           </div>
           <button onClick={onFermer} style={{
@@ -238,8 +271,9 @@ function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLance
           }} aria-label="Fermer">×</button>
         </div>
 
-        {/* Dialogue */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Dialogue — hauteur plafonnée à ~15 lignes (au-delà, ça défile) plutôt que de laisser la
+            modale entière grandir indéfiniment à chaque message reçu. */}
+        <div style={{ maxHeight: 320, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {chat.length === 0
             ? <span style={{ opacity: 0.4, fontStyle: 'italic', fontSize: 13 }}>{t('gameMode.reseau.dialogueMissionVide')}</span>
             : chat.map((l, i) => (
@@ -252,13 +286,13 @@ function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLance
         {/* Dés — mêmes boutons que la section "jets rapides" du Mode de jeu (voir BARE_DICE), en plus
             petit : la modale couvrant tout l'écran, ce sont les seuls boutons de dé encore accessibles
             tant qu'elle est ouverte. */}
-        <div style={{ display: 'flex', gap: 4, padding: '10px 20px 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 4, padding: '10px 20px 0', flexShrink: 0, justifyContent: 'center' }}>
           {BARE_DICE.map(d => (
             <button key={d} onClick={() => onLancerDe(d)} style={{
-              flex: 1, aspectRatio: '1', padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flex: 1, maxWidth: 56, aspectRatio: '1', padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 4, cursor: 'pointer', border: '1px solid rgba(150,200,120,0.3)', background: 'rgba(150,200,120,0.1)',
             }}>
-              <DiceIcon sides={d} size={26} />
+              <DiceIcon sides={d} size="100%" />
             </button>
           ))}
           <div style={{ flexShrink: 0, width: 26, display: 'flex', flexDirection: 'column', gap: 2 }} title={t('gameMode.nbDesLabel')}>
@@ -2035,10 +2069,10 @@ export default function GameModePanel({ character, descriptions, onChange, resea
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               {/* Ligne 1 : boutons dés + compteur de dés à droite (voir rollQuick) — dans la même rangée
                   plutôt qu'une ligne à part, pour ne pas creuser d'espace entre les dés et le résultat. */}
-              <div style={{ flexShrink: 0, display: 'flex', gap: 4 }}>
+              <div style={{ flexShrink: 0, display: 'flex', gap: 4, justifyContent: 'center' }}>
                 {BARE_DICE.map(d => (
-                  <button key={d} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, aspectRatio: '1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => rollQuick(d)}>
-                    <DiceIcon sides={d} size={44} />
+                  <button key={d} disabled={isUnconscious} style={{ ...btnStyle(), flex: 1, maxWidth: 56, aspectRatio: '1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isUnconscious ? 0.35 : 1, cursor: isUnconscious ? 'not-allowed' : 'pointer' }} onClick={() => rollQuick(d)}>
+                    <DiceIcon sides={d} size="100%" />
                   </button>
                 ))}
                 {/* Nombre de dés identiques à lancer d'un coup — vide/invalide = 1 (comportement inchangé

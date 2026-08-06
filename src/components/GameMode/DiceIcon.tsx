@@ -2,7 +2,10 @@ const GOLD = '#c9a84c'
 
 interface Props {
   sides: number
-  size?: number
+  // Nombre = taille fixe en px (ex. affichage du résultat). Chaîne ('100%') = remplit son conteneur
+  // (voir les boutons de dés du Mode de jeu et de la modale de mission, tous deux redimensionnables
+  // par l'utilisateur — une taille fixe ne garantirait pas le même ratio icône/bouton dans les deux).
+  size?: number | string
   color?: string
 }
 
