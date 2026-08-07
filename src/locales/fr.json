@@ -1416,6 +1416,20 @@
       "supprimer": "Supprimer cet objet"
     },
     "compagnie": {
+      "sansNom": "(sans nom)",
+      "nouvelleCompagnie": "Nouvelle compagnie",
+      "supprimerCompagnie": "Supprimer la compagnie",
+      "confirmerSuppression": "Confirmer la suppression",
+      "aucuneCompagnie": "Aucune compagnie — crée-en une.",
+      "aucuneSelection": "Aucune compagnie sélectionnée — crée-en une ou choisis-en une dans la liste.",
+      "rechercher": "Rechercher une compagnie...",
+      "niveauAbrege": "N.{{n}}",
+      "importerLogo": "Choisir un logo",
+      "retirerLogo": "Retirer le logo",
+      "editerNom": "Modifier le nom",
+      "editerSiege": "Modifier le siège",
+      "editerHistoire": "Modifier l'histoire",
+      "exporterTout": "Exporter toutes les compagnies",
       "identite": "Identité",
       "nomLabel": "Nom de la compagnie",
       "nomPlaceholder": "Ex. La Compagnie des Vents",
@@ -1427,8 +1441,19 @@
         "moyenne": "Moyenne",
         "grande": "Grande",
         "organisation": "Organisation",
-        "armee": "Armée"
+        "armee": "Armée",
+        "clanCulVert": "Clan Cul-vert"
       },
+      "tailleDescription": {
+        "petite": "C'est une compagnie de petite taille.",
+        "moyenne": "C'est une compagnie de taille moyenne.",
+        "grande": "C'est une grande compagnie.",
+        "organisation": "C'est une organisation.",
+        "armee": "C'est une armée.",
+        "clanCulVert": "C'est le Clan Cul-vert."
+      },
+      "dirigeantPrefixe": "Elle est dirigée par :",
+      "dirigeantInconnu": "Son dirigeant est inconnu.",
       "histoireLabel": "Histoire",
       "histoirePlaceholder": "Genèse de la compagnie, quelques lignes…",
       "renommeeTitre": "Renommée & niveau",
@@ -1711,7 +1736,7 @@
       "intro": "Gère une bataille de masse tour par tour : positionne les PJ, automatise les tests et les dégâts selon l'intensité du combat.",
       "parametres": "Paramètres de la bataille",
       "nom": "Nom",
-      "nomPlaceholder": "Le siège de la citadelle…",
+      "nomPlaceholder": "Ex : Le siège de la citadelle…",
       "nombreUnitesPJ": "Nombre de combattants (armée des PJ)",
       "nombreUnitesEnnemie": "Nombre de combattants (armée ennemie)",
       "tailleLabel": "Taille {{taille}}",
@@ -1757,12 +1782,13 @@
         "intensite": "Intensité",
         "soins": "Soins (tous les PJ)"
       },
-      "choisirRencontre": "Choisir une rencontre du générateur…",
+      "choisirRencontre": "Choisir une rencontre ou créer un événement…",
+      "creerEvenement": "✍️ Créer un événement",
+      "rencontresGroupe": "──────────────── Rencontres ────────────────",
       "rencontreIntrouvable": "Rencontre introuvable",
       "ajouterCombat": "Ajouter",
       "nomEvenementPlaceholder": "Nom de l'événement…",
       "descriptionEvenementPlaceholder": "Description…",
-      "ajouterNarratif": "Ajouter",
       "resoudreSucces": "Succès",
       "resoudreEchec": "Échec",
       "effetSiSucces": "Effet si succès",
@@ -1893,7 +1919,8 @@
     "gabaritBataille": "un gabarit de bataille",
     "note": "une note",
     "notesGroupe": "un groupe de notes",
-    "compagnie": "une compagnie"
+    "compagnie": "une compagnie",
+    "bibliothequeCompagnies": "une bibliothèque de compagnies"
   },
   "importTypage": {
     "pasLeBonType": "Ce fichier n'est pas {{attendu}} ({{trouve}})."

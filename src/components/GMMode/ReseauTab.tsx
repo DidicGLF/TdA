@@ -6,7 +6,9 @@ import type { EvenementReseau } from '../../utils/reseau'
 import { decoderMessage, encoderMessage, COULEUR_JOURNAL } from '../../utils/reseauProtocole'
 import type { CategorieJournal } from '../../utils/reseauProtocole'
 import { compresserImage } from '../../utils/imageStore'
-import { peutSePorterVolontaire } from '../../utils/missions'
+import { trouverMission, traiterVolontariat, resoudreDestinatairesMission } from '../../utils/missionsReseau'
+import type { MissionCompagnie } from '../../utils/missions'
+import { trouverCompagnieDuPersonnage } from '../../utils/compagnie'
 import { useGameData } from '../../context/GameDataContext'
 
 const GOLD = '#c9a84c'
@@ -58,7 +60,7 @@ export default function ReseauTab({
   dialoguePJ, ajouterDialoguePJ, dialoguesCoupes, setDialoguesCoupes,
 }: Props) {
   const { t } = useTranslation()
-  const { objetsMagiques, armes, armures, compagnie, setCompagnie } = useGameData()
+  const { objetsMagiques, armes, armures, compagnies, setCompagnies } = useGameData()
   // Catalogue livré+perso déjà fusionné (voir useGameData) — mis à plat pour la liste d'envoi, comme
   // objetsMagiques l'est déjà nativement. entrees.nom sert d'identifiant (unique au sein de sa liste,
   // comme partout ailleurs dans l'app — ex. EquipementModal).
@@ -206,10 +208,12 @@ export default function ReseauTab({
   const dialoguesCoupesRef = useRef(dialoguesCoupes)
   useEffect(() => { dialoguesCoupesRef.current = dialoguesCoupes }, [dialoguesCoupes])
   // Même raison que dialoguesCoupesRef ci-dessus : l'écoute réseau ne se réabonne jamais (effet à deps
-  // vides), donc `gerer` doit lire les missions FRAÎCHES via une ref plutôt que `compagnie` directement,
-  // resté figé à sa valeur du montage sinon.
-  const compagnieRef = useRef(compagnie)
-  useEffect(() => { compagnieRef.current = compagnie }, [compagnie])
+  // vides), donc `gerer` doit lire les missions FRAÎCHES via une ref plutôt que `compagnies` directement,
+  // resté figé à sa valeur du montage sinon. compagniesRef (pas une seule compagnie) : un
+  // volontariat/message peut concerner n'importe laquelle, retrouvée via son compagnieId (voir
+  // trouverMission/traiterVolontariat dans missionsReseau.ts).
+  const compagniesRef = useRef(compagnies)
+  useEffect(() => { compagniesRef.current = compagnies }, [compagnies])
 
   useEffect(() => {
     let annule = false
@@ -217,6 +221,16 @@ export default function ReseauTab({
     // reseauProtocole.ts) — chaque client s'en sert pour proposer un destinataire au dialogue entre PJ
     // (voir rosterPJ dans useReseauClient.ts). Reconstruit depuis identitesRef, toujours à jour puisque
     // muté en place (pas de state React à lire ici, voir la note sur dialoguesCoupesRef plus haut).
+    // Ciblé (jamais envoyerATousReseau) : seuls les clients connectés dont le nom figure parmi les
+    // membres de LA compagnie concernée reçoivent la mise à jour — sinon les joueurs d'une autre
+    // compagnie verraient passer des missions qui ne les regardent pas.
+    const diffuserMissionsCiblees = (compagnieCible: { id: string; membres: { nom: string }[] }, missions: MissionCompagnie[]) => {
+      const membresMinuscule = new Set(compagnieCible.membres.map(m => m.nom.trim().toLowerCase()))
+      const contenu = encoderMessage({ type: 'compagnie-missions-maj', compagnieId: compagnieCible.id, missions })
+      for (const [idStr, identite] of Object.entries(identitesRef.current)) {
+        if (membresMinuscule.has(identite.nom.trim().toLowerCase())) envoyerAClientReseau(Number(idStr), contenu)
+      }
+    }
     const diffuserRosterPJ = () => {
       const joueurs = Object.values(identitesRef.current).map(({ nom, idPJ }) => ({ nom, idPJ }))
       envoyerATousReseau(encoderMessage({ type: 'roster-pj', joueurs }))
@@ -244,8 +258,14 @@ export default function ReseauTab({
           // 'qui-etes-vous', ex. retour sur cet onglet après un passage par un autre) — sans ça, un PJ
           // qui se (re)connecte alors que des missions existent déjà ne les verrait qu'à la prochaine
           // mutation faite par le MJ (compagnie-missions-maj n'est autrement diffusé QUE sur mutation,
-          // jamais de façon proactive à une nouvelle connexion), bug signalé par Didic.
-          envoyerAClientReseau(e.id, encoderMessage({ type: 'compagnie-missions-maj', missions: compagnieRef.current.missions }))
+          // jamais de façon proactive à une nouvelle connexion), bug signalé par Didic. Uniquement LA
+          // compagnie de ce joueur (au plus une, voir trouverCompagnieDuPersonnage) — jamais les autres.
+          {
+            const compagnieDuPJ = trouverCompagnieDuPersonnage(compagniesRef.current, message.nom)
+            if (compagnieDuPJ) {
+              envoyerAClientReseau(e.id, encoderMessage({ type: 'compagnie-missions-maj', compagnieId: compagnieDuPJ.id, missions: compagnieDuPJ.missions }))
+            }
+          }
           ajouterJournal(t('gmMode.reseau.identificationEvt', { id: e.id, nom: message.nom, cle: message.idPJ.slice(0, 6) }), 'identification')
         } else if (message?.type === 'degats') {
           const identite = identitesRef.current[e.id]
@@ -296,20 +316,18 @@ export default function ReseauTab({
             }
           }
         } else if (message?.type === 'mission-volontaire') {
-          // PJ → MJ : voir 'mission-volontaire' dans reseauProtocole.ts. compagnieRef (pas compagnie
+          // PJ → MJ : voir 'mission-volontaire' dans reseauProtocole.ts. compagniesRef (pas compagnies
           // directement, voir sa note plus haut) pour lire l'état le plus frais malgré l'effet à deps
-          // vides. Le nouveau tableau missions sert à la fois à la mise à jour locale ET à la diffusion —
-          // lire compagnieRef juste après setCompagnie serait périmé (mise à jour asynchrone).
+          // vides — la mission peut appartenir à n'importe quelle compagnie, retrouvée via compagnieId
+          // (voir traiterVolontariat dans missionsReseau.ts).
           const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
-          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
-          if (mission && peutSePorterVolontaire(mission, nom)) {
-            const maintenant = new Date().toISOString()
-            const missionsMaj = compagnieRef.current.missions.map(m =>
-              m.id === mission.id ? { ...m, volontaires: [...m.volontaires, nom], modifieLe: maintenant } : m
-            )
-            setCompagnie(prev => ({ ...prev, missions: missionsMaj, modifieLe: maintenant }))
-            envoyerATousReseau(encoderMessage({ type: 'compagnie-missions-maj', missions: missionsMaj }))
-            ajouterDialoguePJ(t('gmMode.reseau.volontaireMissionEvt', { nom, mission: mission.nom }), 'dialogueMission')
+          const resultat = traiterVolontariat(compagniesRef.current, message.compagnieId, message.missionId, nom)
+          if (resultat) {
+            setCompagnies(resultat.compagnies)
+            const compagnieCible = resultat.compagnies.find(c => c.id === message.compagnieId)
+            const mission = resultat.missions.find(m => m.id === message.missionId)
+            if (compagnieCible) diffuserMissionsCiblees(compagnieCible, resultat.missions)
+            ajouterDialoguePJ(t('gmMode.reseau.volontaireMissionEvt', { nom, mission: mission?.nom ?? '?' }), 'dialogueMission')
           }
         } else if (message?.type === 'message-mission') {
           // PJ → MJ, à relayer aux AUTRES volontaires CONNECTÉS de cette mission uniquement (voir
@@ -317,17 +335,15 @@ export default function ReseauTab({
           // destinataire. Toujours journalisé ici (modération), même si la mission a depuis disparu ou
           // été résolue (le message reste affiché, juste plus relayé dans ce cas).
           const nom = identitesRef.current[e.id]?.nom ?? `#${e.id}`
-          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
+          const trouve = trouverMission(compagniesRef.current, message.compagnieId, message.missionId)
           ajouterDialoguePJ(
-            t('gmMode.reseau.dialogueMissionEvt', { mission: mission?.nom ?? '?', nom, texte: message.texte }),
+            t('gmMode.reseau.dialogueMissionEvt', { mission: trouve?.mission.nom ?? '?', nom, texte: message.texte }),
             'dialogueMission',
           )
-          if (mission) {
-            const volontairesMinuscule = new Set(mission.volontaires.map(v => v.toLowerCase()))
-            const contenu = encoderMessage({ type: 'message-mission-recu', missionId: mission.id, expediteurNom: nom, texte: message.texte })
-            for (const [idStr, identite] of Object.entries(identitesRef.current)) {
-              const id = Number(idStr)
-              if (id !== e.id && volontairesMinuscule.has(identite.nom.toLowerCase())) envoyerAClientReseau(id, contenu)
+          if (trouve) {
+            const contenu = encoderMessage({ type: 'message-mission-recu', compagnieId: message.compagnieId, missionId: trouve.mission.id, expediteurNom: nom, texte: message.texte })
+            for (const id of resoudreDestinatairesMission(trouve.mission, identitesRef.current, e.id)) {
+              envoyerAClientReseau(id, contenu)
             }
           }
         } else {

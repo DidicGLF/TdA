@@ -21,6 +21,7 @@ import { piocherCarteActive } from '../../utils/cartesCritiquesPerso'
 import CarteCritiqueModal from '../CarteCritiqueModal'
 import type { MissionCompagnie } from '../../utils/missions'
 import { COULEUR_TYPE_MISSION } from '../../utils/missions'
+import { COMPAGNIE_PAR_DEFAUT, trouverCompagnieDuPersonnage } from '../../utils/compagnie'
 
 // Type d'attaque à l'origine d'un jet, déduit de result.stat (voir Step5/attaques ci-dessous) — sert
 // à ne montrer que le bloc pertinent de la carte tirée plutôt que les trois d'un coup.
@@ -335,7 +336,10 @@ function MissionModale({ mission, chat, input, onInputChange, onEnvoyer, onLance
 
 export default function GameModePanel({ character, descriptions, onChange, reseau, gererDegatsRecusRef, gererPvActualisesRecuRef, gererNouveauTourRecuRef, drainerReseauEnAttente, onClose, screenWidth }: Props) {
   const { t } = useTranslation()
-  const { armes, armures, compagnons: compagnonsCatalogue, cartesCritiquesEchecs, cartesCritiquesReussites, compagnie } = useGameData()
+  const { armes, armures, compagnons: compagnonsCatalogue, cartesCritiquesEchecs, cartesCritiquesReussites, compagnies } = useGameData()
+  // Au plus une compagnie par personnage (voir trouverCompagnieDuPersonnage) — remplace la lecture
+  // directe d'une compagnie unique depuis le contexte.
+  const compagnie = trouverCompagnieDuPersonnage(compagnies, character.nomPersonnage) ?? COMPAGNIE_PAR_DEFAUT()
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const isMobile = screenWidth < 1200
   const [result, setResult] = useState<RollResult | null>(null)
@@ -489,7 +493,7 @@ export default function GameModePanel({ character, descriptions, onChange, resea
   const envoyerChatMission = (missionId: string) => {
     const texte = (missionChatInput[missionId] ?? '').trim()
     if (!texte) return
-    reseau.envoyerMessageMission(missionId, texte)
+    reseau.envoyerMessageMission(compagnie.id, missionId, texte)
     setMissionChatInput(prev => ({ ...prev, [missionId]: '' }))
   }
   // Modale plein écran de mission (voir MissionModale plus haut) — ouverte automatiquement dès qu'une
@@ -742,9 +746,9 @@ export default function GameModePanel({ character, descriptions, onChange, resea
     const formula = `${nb}d${sides}`
     const rollDisplay = nb > 1 ? `[${rolls.join(',')}]` : undefined
     pushResult({ label: formula, formula, sides, roll: total, modifier: null, total, flash: false, rollDisplay })
-    reseau.envoyerMessageMission(missionId, `🎲 ${formula}${rollDisplay ? ` ${rollDisplay}` : ''} = ${total}`)
+    reseau.envoyerMessageMission(compagnie.id, missionId, `🎲 ${formula}${rollDisplay ? ` ${rollDisplay}` : ''} = ${total}`)
     setNbDesInput('')
-  }, [nbDesInput, pushResult, reseau])
+  }, [nbDesInput, pushResult, reseau, compagnie.id])
 
   const rollDmFormula = (dm: string): { formula: string; total: number; display: string } => {
     const statValues: Record<string, number> = {

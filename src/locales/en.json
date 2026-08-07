@@ -1416,6 +1416,20 @@
       "supprimer": "Delete this item"
     },
     "compagnie": {
+      "sansNom": "(unnamed)",
+      "nouvelleCompagnie": "New company",
+      "supprimerCompagnie": "Delete company",
+      "confirmerSuppression": "Confirm deletion",
+      "aucuneCompagnie": "No companies — create one.",
+      "aucuneSelection": "No company selected — create one or pick one from the list.",
+      "rechercher": "Search a company...",
+      "niveauAbrege": "Lv.{{n}}",
+      "importerLogo": "Choose a logo",
+      "retirerLogo": "Remove logo",
+      "editerNom": "Edit name",
+      "editerSiege": "Edit headquarters",
+      "editerHistoire": "Edit history",
+      "exporterTout": "Export all companies",
       "identite": "Identity",
       "nomLabel": "Company name",
       "nomPlaceholder": "E.g. The Wind Company",
@@ -1427,8 +1441,19 @@
         "moyenne": "Medium",
         "grande": "Large",
         "organisation": "Organisation",
-        "armee": "Army"
+        "armee": "Army",
+        "clanCulVert": "Clan Cul-vert"
       },
+      "tailleDescription": {
+        "petite": "It's a small company.",
+        "moyenne": "It's a medium-sized company.",
+        "grande": "It's a large company.",
+        "organisation": "It's an organisation.",
+        "armee": "It's an army.",
+        "clanCulVert": "It's the Clan Cul-vert."
+      },
+      "dirigeantPrefixe": "It's led by:",
+      "dirigeantInconnu": "Its leader is unknown.",
       "histoireLabel": "History",
       "histoirePlaceholder": "The company's origin, a few lines…",
       "renommeeTitre": "Renown & level",
@@ -1711,7 +1736,7 @@
       "intro": "Manage a mass battle turn by turn: position the PJs, automate the tests and damage based on the battle's intensity.",
       "parametres": "Battle parameters",
       "nom": "Name",
-      "nomPlaceholder": "The siege of the citadel…",
+      "nomPlaceholder": "E.g. The siege of the citadel…",
       "nombreUnitesPJ": "Number of combatants (PJ army)",
       "nombreUnitesEnnemie": "Number of combatants (enemy army)",
       "tailleLabel": "Size {{taille}}",
@@ -1757,12 +1782,13 @@
         "intensite": "Intensity",
         "soins": "Healing (all PCs)"
       },
-      "choisirRencontre": "Choose an encounter from the generator…",
+      "choisirRencontre": "Choose an encounter or create an event…",
+      "creerEvenement": "✍️ Create an event",
+      "rencontresGroupe": "──────────────── Encounters ────────────────",
       "rencontreIntrouvable": "Encounter not found",
       "ajouterCombat": "Add",
       "nomEvenementPlaceholder": "Event name…",
       "descriptionEvenementPlaceholder": "Description…",
-      "ajouterNarratif": "Add",
       "resoudreSucces": "Success",
       "resoudreEchec": "Failure",
       "effetSiSucces": "Effect on success",
@@ -1893,7 +1919,8 @@
     "gabaritBataille": "a battle template",
     "note": "a note",
     "notesGroupe": "a note group",
-    "compagnie": "a company"
+    "compagnie": "a company",
+    "bibliothequeCompagnies": "a company library"
   },
   "importTypage": {
     "pasLeBonType": "This file is not {{attendu}} ({{trouve}})."

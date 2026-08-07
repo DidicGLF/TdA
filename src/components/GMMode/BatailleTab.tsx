@@ -210,16 +210,18 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
   // Un effet (type + valeur) est configuré séparément pour le succès et pour l'échec — voir EffetEvenement.
   const [evenements, setEvenements] = useState<EvenementBataille[]>([])
   // Id de l'événement en cours de modification (voir modifierEvenement) — null tant qu'aucune édition
-  // n'est en cours, auquel cas les deux formulaires d'ajout ci-dessous créent un nouvel événement au
-  // lieu de mettre celui-ci à jour.
+  // n'est en cours, auquel cas le formulaire d'ajout ci-dessous crée un nouvel événement au lieu de
+  // mettre celui-ci à jour.
   const [editingEvenementId, setEditingEvenementId] = useState<string | null>(null)
+  // Un seul formulaire pour les deux types (demandé par Didic, ils partageaient presque tous leurs
+  // champs) : ce choix détermine si la liste déroulante ci-dessous sélectionne une rencontre existante
+  // ou bascule vers la saisie libre nom+description — voir le <select> dans le JSX.
+  const [nouvelEvenementMode, setNouvelEvenementMode] = useState<'combat' | 'narratif'>('combat')
   const [nouvelEvenementRencontreId, setNouvelEvenementRencontreId] = useState('')
-  const [nouvelEvenementCombatEffetsSucces, setNouvelEvenementCombatEffetsSucces] = useState<EffetEvenement[]>([{ type: 'points', valeur: 1 }])
-  const [nouvelEvenementCombatEffetsEchec, setNouvelEvenementCombatEffetsEchec] = useState<EffetEvenement[]>([{ type: 'points', valeur: 0 }])
   const [nouvelEvenementNom, setNouvelEvenementNom] = useState('')
   const [nouvelEvenementDescription, setNouvelEvenementDescription] = useState('')
-  const [nouvelEvenementNarratifEffetsSucces, setNouvelEvenementNarratifEffetsSucces] = useState<EffetEvenement[]>([{ type: 'points', valeur: 1 }])
-  const [nouvelEvenementNarratifEffetsEchec, setNouvelEvenementNarratifEffetsEchec] = useState<EffetEvenement[]>([{ type: 'points', valeur: 0 }])
+  const [nouvelEvenementEffetsSucces, setNouvelEvenementEffetsSucces] = useState<EffetEvenement[]>([{ type: 'points', valeur: 1 }])
+  const [nouvelEvenementEffetsEchec, setNouvelEvenementEffetsEchec] = useState<EffetEvenement[]>([{ type: 'points', valeur: 0 }])
   const [limiterRecuperation, setLimiterRecuperation] = useState(false)
   const [pionsEnConstruction, setPionsEnConstruction] = useState<PionPJ[]>([])
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
@@ -382,79 +384,75 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
     setRenfortsEnAttente(prev => prev.filter(r => r.id !== id))
   }
 
-  // editingEvenementId ne déclenche une mise à jour que si l'événement visé est bien du type de ce
-  // formulaire — sinon (édition en cours dans l'AUTRE formulaire) ce bouton crée un nouvel événement
-  // comme d'habitude, sans perturber l'édition en cours ailleurs.
-  const ajouterEvenementCombat = () => {
-    if (!nouvelEvenementRencontreId) return
-    const evenementEnEdition = evenements.find(e => e.id === editingEvenementId && e.type === 'combat')
-    if (evenementEnEdition) {
-      setEvenements(prev => prev.map(e => e.id === editingEvenementId
-        ? {
-            id: e.id, resultat: e.resultat, enJeu: e.enJeu, type: 'combat', rencontreId: nouvelEvenementRencontreId,
-            effetsSucces: nouvelEvenementCombatEffetsSucces, effetsEchec: nouvelEvenementCombatEffetsEchec,
-          }
-        : e))
-      setEditingEvenementId(null)
+  // Un seul formulaire pour les deux types (voir nouvelEvenementMode) : editingEvenementId ne déclenche
+  // une mise à jour que si l'événement visé est bien du même type que le mode actuel du formulaire —
+  // sinon (édition en cours d'un événement de l'autre type) ce bouton crée un nouvel événement comme
+  // d'habitude, sans perturber l'édition en cours ailleurs.
+  const ajouterEvenement = () => {
+    if (nouvelEvenementMode === 'combat') {
+      if (!nouvelEvenementRencontreId) return
+      const evenementEnEdition = evenements.find(e => e.id === editingEvenementId && e.type === 'combat')
+      if (evenementEnEdition) {
+        setEvenements(prev => prev.map(e => e.id === editingEvenementId
+          ? {
+              id: e.id, resultat: e.resultat, enJeu: e.enJeu, type: 'combat', rencontreId: nouvelEvenementRencontreId,
+              effetsSucces: nouvelEvenementEffetsSucces, effetsEchec: nouvelEvenementEffetsEchec,
+            }
+          : e))
+        setEditingEvenementId(null)
+      } else {
+        setEvenements(prev => [...prev, {
+          id: genId(), resultat: null, enJeu: false, type: 'combat', rencontreId: nouvelEvenementRencontreId,
+          effetsSucces: nouvelEvenementEffetsSucces, effetsEchec: nouvelEvenementEffetsEchec,
+        }])
+      }
+      setNouvelEvenementRencontreId('')
     } else {
-      setEvenements(prev => [...prev, {
-        id: genId(), resultat: null, enJeu: false, type: 'combat', rencontreId: nouvelEvenementRencontreId,
-        effetsSucces: nouvelEvenementCombatEffetsSucces, effetsEchec: nouvelEvenementCombatEffetsEchec,
-      }])
+      if (!nouvelEvenementNom.trim()) return
+      const evenementEnEdition = evenements.find(e => e.id === editingEvenementId && e.type === 'narratif')
+      if (evenementEnEdition) {
+        setEvenements(prev => prev.map(e => e.id === editingEvenementId
+          ? {
+              id: e.id, resultat: e.resultat, enJeu: e.enJeu, type: 'narratif',
+              nom: nouvelEvenementNom.trim(), description: nouvelEvenementDescription.trim(),
+              effetsSucces: nouvelEvenementEffetsSucces, effetsEchec: nouvelEvenementEffetsEchec,
+            }
+          : e))
+        setEditingEvenementId(null)
+      } else {
+        setEvenements(prev => [...prev, {
+          id: genId(), resultat: null, enJeu: false, type: 'narratif',
+          nom: nouvelEvenementNom.trim(), description: nouvelEvenementDescription.trim(),
+          effetsSucces: nouvelEvenementEffetsSucces, effetsEchec: nouvelEvenementEffetsEchec,
+        }])
+      }
+      setNouvelEvenementNom('')
+      setNouvelEvenementDescription('')
     }
-    setNouvelEvenementRencontreId('')
-    setNouvelEvenementCombatEffetsSucces([{ type: 'points', valeur: 1 }])
-    setNouvelEvenementCombatEffetsEchec([{ type: 'points', valeur: 0 }])
-  }
-
-  const ajouterEvenementNarratif = () => {
-    if (!nouvelEvenementNom.trim()) return
-    const evenementEnEdition = evenements.find(e => e.id === editingEvenementId && e.type === 'narratif')
-    if (evenementEnEdition) {
-      setEvenements(prev => prev.map(e => e.id === editingEvenementId
-        ? {
-            id: e.id, resultat: e.resultat, enJeu: e.enJeu, type: 'narratif',
-            nom: nouvelEvenementNom.trim(), description: nouvelEvenementDescription.trim(),
-            effetsSucces: nouvelEvenementNarratifEffetsSucces, effetsEchec: nouvelEvenementNarratifEffetsEchec,
-          }
-        : e))
-      setEditingEvenementId(null)
-    } else {
-      setEvenements(prev => [...prev, {
-        id: genId(), resultat: null, enJeu: false, type: 'narratif',
-        nom: nouvelEvenementNom.trim(), description: nouvelEvenementDescription.trim(),
-        effetsSucces: nouvelEvenementNarratifEffetsSucces, effetsEchec: nouvelEvenementNarratifEffetsEchec,
-      }])
-    }
-    setNouvelEvenementNom('')
-    setNouvelEvenementDescription('')
-    setNouvelEvenementNarratifEffetsSucces([{ type: 'points', valeur: 1 }])
-    setNouvelEvenementNarratifEffetsEchec([{ type: 'points', valeur: 0 }])
+    setNouvelEvenementEffetsSucces([{ type: 'points', valeur: 1 }])
+    setNouvelEvenementEffetsEchec([{ type: 'points', valeur: 0 }])
   }
 
   const modifierEvenement = (ev: EvenementBataille) => {
     setEditingEvenementId(ev.id)
+    setNouvelEvenementMode(ev.type)
     if (ev.type === 'combat') {
       setNouvelEvenementRencontreId(ev.rencontreId)
-      setNouvelEvenementCombatEffetsSucces(ev.effetsSucces)
-      setNouvelEvenementCombatEffetsEchec(ev.effetsEchec)
     } else {
       setNouvelEvenementNom(ev.nom)
       setNouvelEvenementDescription(ev.description)
-      setNouvelEvenementNarratifEffetsSucces(ev.effetsSucces)
-      setNouvelEvenementNarratifEffetsEchec(ev.effetsEchec)
     }
+    setNouvelEvenementEffetsSucces(ev.effetsSucces)
+    setNouvelEvenementEffetsEchec(ev.effetsEchec)
   }
 
   const annulerModificationEvenement = () => {
     setEditingEvenementId(null)
     setNouvelEvenementRencontreId('')
-    setNouvelEvenementCombatEffetsSucces([{ type: 'points', valeur: 1 }])
-    setNouvelEvenementCombatEffetsEchec([{ type: 'points', valeur: 0 }])
     setNouvelEvenementNom('')
     setNouvelEvenementDescription('')
-    setNouvelEvenementNarratifEffetsSucces([{ type: 'points', valeur: 1 }])
-    setNouvelEvenementNarratifEffetsEchec([{ type: 'points', valeur: 0 }])
+    setNouvelEvenementEffetsSucces([{ type: 'points', valeur: 1 }])
+    setNouvelEvenementEffetsEchec([{ type: 'points', valeur: 0 }])
   }
 
   const supprimerEvenement = (id: string) => {
@@ -783,13 +781,15 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
   )
 
   if (!session) {
-    const editionCombatEnCours = evenements.some(e => e.id === editingEvenementId && e.type === 'combat')
-    const editionNarratifEnCours = evenements.some(e => e.id === editingEvenementId && e.type === 'narratif')
+    const editionEvenementEnCours = editingEvenementId !== null
     // Boîte des panneaux de la grille 2 colonnes ci-dessous — simple liseré, pas de fond plein, pour
     // distinguer les sections côte à côte sans alourdir la page (présentation validée via artefact
-    // avant implémentation, voir historique du projet).
+    // avant implémentation, voir historique du projet). Léger flou en fond (demandé par Didic) : adoucit
+    // le calque décoratif (backgroundLayer) qui transparaît derrière chaque bloc, pour une lecture plus
+    // confortable — WebkitBackdropFilter en repli pour WebKitGTK/Linux.
     const panelStyle: React.CSSProperties = {
       border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, padding: '16px 18px',
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
     }
     return (
       <div style={{ position: 'relative', minHeight: '100%' }}>
@@ -800,9 +800,11 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-            {/* Colonne gauche : réglages du combat + condition de victoire — champs numériques resserrés
+            {/* Colonne gauche : réglages du combat + condition de victoire, puis PJ engagés dans son
+                propre bloc séparé en dessous (demandé par Didic) — champs numériques resserrés
                 (adversité/intensité/DEF/bonus) au lieu d'être étirés sur toute la largeur d'une cellule,
-                moins de défilement pour atteindre le bouton Lancer la bataille (colonne de droite). */}
+                moins de défilement pour atteindre le bouton Lancer la bataille. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={panelStyle}>
               <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.parametres')}</div>
               <div style={{ marginBottom: 12 }}>
@@ -849,27 +851,53 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                <div>
-                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.adversite')}</span>
-                  <select value={adversite} onChange={e => setAdversite(parseInt(e.target.value) as DeAdversite)} style={selectStyle}>
-                    {DES_ADVERSITE.map(d => <option key={d} value={d} style={optionStyle}>d{d}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.intensiteDepart')}</span>
-                  <NumberField min={1} max={10} value={intensiteDepart}
-                    onChange={n => setIntensiteDepart(n ?? 1)} style={inputStyle} />
-                </div>
-                <div>
-                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.defEnnemie')}</span>
-                  <NumberField value={defEnnemieMoyenne}
-                    onChange={n => setDefEnnemieMoyenne(n ?? 0)} style={inputStyle} />
-                </div>
-                <div>
-                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.bonusAtqEnnemi')}</span>
-                  <NumberField value={bonusAtqEnnemiMoyen}
-                    onChange={n => setBonusAtqEnnemiMoyen(n ?? 0)} style={inputStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {/* Adversité + intensité de départ sur la même rangée, mais pas à parts égales : la
+                    graduation de l'intensité (calquée sur celle du champ de bataille en cours, voir
+                    ECHELLE_INTENSITE/couleurIntensite) a besoin de place pour ses 11 crans, Adversité
+                    n'étant qu'un menu déroulant à 3-4 lettres n'en a pas besoin. */}
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 12 }}>
+                  <div style={{ flexShrink: 0, width: 90 }}>
+                    <span style={builderLabelStyle}>{t('gmMode.batailleMasse.adversite')}</span>
+                    <select value={adversite} onChange={e => setAdversite(parseInt(e.target.value) as DeAdversite)} style={selectStyle}>
+                      {DES_ADVERSITE.map(d => <option key={d} value={d} style={optionStyle}>d{d}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={builderLabelStyle}>{t('gmMode.batailleMasse.intensiteDepart')}</span>
+                    {/* Barre descendue (marginTop) pour loger un curseur pointant vers le cran choisi —
+                        plus visible qu'un simple liseré doré sur un petit bouton. Position approximative
+                        (ignore les petits espacements entre crans), largement suffisant pour un repère
+                        visuel. */}
+                    <div style={{ position: 'relative', marginTop: 14 }}>
+                      <div style={{
+                        position: 'absolute', top: -13, left: `${((intensiteDepart - 1) + 0.5) / 10 * 100}%`,
+                        transform: 'translateX(-50%)', fontSize: 15, color: GOLD, lineHeight: 1,
+                        transition: 'left 0.15s ease', pointerEvents: 'none',
+                      }}>
+                        ▼
+                      </div>
+                      <div style={{ display: 'flex', gap: 2, height: 24 }}>
+                        {/* 0 exclu (contrairement à la jauge en jeu, purement affichage) : une bataille
+                            ne peut pas DÉMARRER déjà gagnée (voir victoireAtteinte, intensité 0 =
+                            victoire) — même contrainte que l'ancien NumberField min={1}. */}
+                        {ECHELLE_INTENSITE.filter(n => n > 0).map(n => {
+                          const actif = n === intensiteDepart
+                          const { fond, texte } = couleurIntensite(n)
+                          return (
+                            <button key={n} type="button" onClick={() => setIntensiteDepart(n)} title={String(n)} style={{
+                              flex: 1, height: '100%', borderRadius: 3, background: fond, cursor: 'pointer', padding: 0,
+                              border: actif ? `2px solid ${GOLD}` : 'none', boxSizing: 'border-box',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: actif ? 13 : 10, fontWeight: 700, color: texte, lineHeight: 1,
+                            }}>
+                              {n}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <span style={builderLabelStyle}>{t('gmMode.batailleMasse.creatureType')}</span>
@@ -880,7 +908,17 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
                     ))}
                   </select>
                 </div>
-                <div style={{ gridColumn: 'span 2' }}>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.bonusAtqEnnemi')}</span>
+                  <NumberField value={bonusAtqEnnemiMoyen}
+                    onChange={n => setBonusAtqEnnemiMoyen(n ?? 0)} style={inputStyle} />
+                </div>
+                <div>
+                  <span style={builderLabelStyle}>{t('gmMode.batailleMasse.defEnnemie')}</span>
+                  <NumberField value={defEnnemieMoyenne}
+                    onChange={n => setDefEnnemieMoyenne(n ?? 0)} style={inputStyle} />
+                </div>
+                <div>
                   <span style={builderLabelStyle}>{t('gmMode.batailleMasse.terrainTenirLeRang')}</span>
                   <select value={terrainTenirLeRang} onChange={e => setTerrainTenirLeRang(e.target.value as TerrainBataille)} style={selectStyle}>
                     {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
@@ -892,7 +930,7 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
                     {TERRAINS.map(tr => <option key={tr} value={tr} style={optionStyle}>{t(`gmMode.batailleMasse.terrains.${tr}`)}</option>)}
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 6, gridColumn: 'span 3' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 6, gridColumn: 'span 2' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, cursor: 'pointer' }}>
                     <input type="checkbox" checked={limiterRecuperation} onChange={e => setLimiterRecuperation(e.target.checked)} />
                     {t('gmMode.batailleMasse.limiterRecuperation')}
@@ -922,11 +960,9 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
               )}
             </div>
 
-            {/* Colonne droite : forces engagées, puis événements empilés dessous plutôt qu'en pleine
-                largeur — la colonne n'étant plus assez large pour les deux, les formulaires d'ajout
-                combat/narratif restent l'un sous l'autre au lieu de se placer côte à côte. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={panelStyle}>
+            {/* PJ engagés — déplacé de la colonne droite à ici, dans son propre bloc (demandé par
+                Didic), sous le panneau Paramètres/Condition de victoire. */}
+            <div style={panelStyle}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ ...sectionTitleStyle, marginBottom: 0, border: 'none', paddingBottom: 0 }}>
                     {t('gmMode.batailleMasse.pjEngages')}
@@ -967,17 +1003,81 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
                   ▶ {t('gmMode.batailleMasse.lancerBataille')}
                 </button>
               </div>
+            </div>
 
+            {/* Colonne droite : événements de la bataille (PJ engagés est passé dans la colonne gauche,
+                sous Condition de victoire). */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Événements de la bataille : combat (lie une rencontre déjà créée/sauvegardée dans le
                   générateur de rencontre) ou narratif (nom + description libres) — voir EvenementBataille. */}
               <div style={panelStyle}>
                 <div style={sectionTitleStyle}>{t('gmMode.batailleMasse.evenements')}</div>
+
+                {/* Ajout/édition d'un événement — combat (choix d'une rencontre du générateur) et
+                    narratif (nom + description saisis ici) fusionnés dans un même formulaire (demandé
+                    par Didic, les deux ne différaient que par cette partie) : le <select> ci-dessous
+                    fait à la fois office de liste de rencontres ET de bascule vers la saisie libre, via
+                    son option "Créer un événement". Effets de succès/échec (cumulables, pas de valeur ni
+                    de type fixe imposé) et bouton Mettre à jour/Annuler partagés par les deux modes. */}
+                <div style={{ border: `1px solid ${editionEvenementEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <select
+                    value={nouvelEvenementMode === 'narratif' ? '__creer__' : nouvelEvenementRencontreId}
+                    onChange={e => {
+                      if (e.target.value === '__creer__') setNouvelEvenementMode('narratif')
+                      else { setNouvelEvenementMode('combat'); setNouvelEvenementRencontreId(e.target.value) }
+                    }}
+                    style={selectStyle}
+                  >
+                    <option value="" style={optionStyle} disabled>{t('gmMode.batailleMasse.choisirRencontre')}</option>
+                    <option value="__creer__" style={optionStyle}>{t('gmMode.batailleMasse.creerEvenement')}</option>
+                    {/* Séparateur inerte (disabled) plutôt qu'un <optgroup> : son libellé réagissait au
+                        survol de la souris dans certains rendus natifs, alors qu'une option disabled
+                        reste toujours inerte. */}
+                    <option value="" style={optionStyle} disabled>{t('gmMode.batailleMasse.rencontresGroupe')}</option>
+                    {rencontres.map(r => <option key={r.id} value={r.id} style={optionStyle}>{r.nom}</option>)}
+                  </select>
+                  {nouvelEvenementMode === 'narratif' && (
+                    <>
+                      <input value={nouvelEvenementNom} onChange={e => setNouvelEvenementNom(e.target.value)}
+                        placeholder={t('gmMode.batailleMasse.nomEvenementPlaceholder')} style={inputStyle} />
+                      <textarea value={nouvelEvenementDescription} onChange={e => setNouvelEvenementDescription(e.target.value)}
+                        placeholder={t('gmMode.batailleMasse.descriptionEvenementPlaceholder')} rows={2}
+                        style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+                    </>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementEffetsSucces} onChange={setNouvelEvenementEffetsSucces} />
+                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementEffetsEchec} onChange={setNouvelEvenementEffetsEchec} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(() => {
+                      const valide = nouvelEvenementMode === 'combat' ? !!nouvelEvenementRencontreId : !!nouvelEvenementNom.trim()
+                      return (
+                        <button
+                          onClick={ajouterEvenement} disabled={!valide}
+                          style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start', opacity: valide ? 1 : 0.4 }}
+                        >
+                          {editionEvenementEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterCombat')}`}
+                        </button>
+                      )
+                    })()}
+                    {editionEvenementEnCours && (
+                      <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start' }}>
+                        {t('gmMode.batailleMasse.annulerModification')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Liste des événements créés — sous le formulaire de création (demandé par Didic),
+                    plutôt qu'au-dessus où elle poussait le formulaire hors de vue dès qu'un événement
+                    existait. */}
                 {evenements.length === 0 ? (
                   <div style={{ fontSize: 15, opacity: 0.4, textAlign: 'center', padding: '10px 0' }}>
                     {t('gmMode.batailleMasse.aucunEvenement')}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                     {evenements.map(ev => (
                       <div key={ev.id} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
@@ -1014,60 +1114,6 @@ export default function BatailleTab({ onPlayRencontre, reprendreAuto, onReprendr
                     ))}
                   </div>
                 )}
-
-                {/* Ajout d'un événement combat — les effets de succès/échec sont définis ici par le MJ,
-                    cumulables, pas de valeur ni de type fixe imposé (voir EvenementBataille.effetsSucces/
-                    effetsEchec). Liseré doré + bouton Mettre à jour/Annuler quand ce formulaire édite un événement existant (voir
-                    modifierEvenement) au lieu d'en créer un nouveau. */}
-                <div style={{ border: `1px solid ${editionCombatEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, marginBottom: 10 }}>
-                  <select value={nouvelEvenementRencontreId} onChange={e => setNouvelEvenementRencontreId(e.target.value)} style={{ ...selectStyle, marginBottom: 8 }}>
-                    <option value="" style={optionStyle}>{t('gmMode.batailleMasse.choisirRencontre')}</option>
-                    {rencontres.map(r => <option key={r.id} value={r.id} style={optionStyle}>{r.nom}</option>)}
-                  </select>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementCombatEffetsSucces} onChange={setNouvelEvenementCombatEffetsSucces} />
-                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementCombatEffetsEchec} onChange={setNouvelEvenementCombatEffetsEchec} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button
-                      onClick={ajouterEvenementCombat} disabled={!nouvelEvenementRencontreId}
-                      style={{ ...btnStyle, fontSize: 16, opacity: nouvelEvenementRencontreId ? 1 : 0.4 }}
-                    >
-                      {editionCombatEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterCombat')}`}
-                    </button>
-                    {editionCombatEnCours && (
-                      <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16 }}>
-                        {t('gmMode.batailleMasse.annulerModification')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Ajout d'un événement narratif — même principe d'effet configurable et de bascule édition. */}
-                <div style={{ border: `1px solid ${editionNarratifEnCours ? GOLD : SECTION_BORDER}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input value={nouvelEvenementNom} onChange={e => setNouvelEvenementNom(e.target.value)}
-                    placeholder={t('gmMode.batailleMasse.nomEvenementPlaceholder')} style={inputStyle} />
-                  <textarea value={nouvelEvenementDescription} onChange={e => setNouvelEvenementDescription(e.target.value)}
-                    placeholder={t('gmMode.batailleMasse.descriptionEvenementPlaceholder')} rows={2}
-                    style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiSucces')} effets={nouvelEvenementNarratifEffetsSucces} onChange={setNouvelEvenementNarratifEffetsSucces} />
-                    <EffetListeInput label={t('gmMode.batailleMasse.effetSiEchec')} effets={nouvelEvenementNarratifEffetsEchec} onChange={setNouvelEvenementNarratifEffetsEchec} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={ajouterEvenementNarratif} disabled={!nouvelEvenementNom.trim()}
-                      style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start', opacity: nouvelEvenementNom.trim() ? 1 : 0.4 }}
-                    >
-                      {editionNarratifEnCours ? t('gmMode.batailleMasse.mettreAJour') : `+ ${t('gmMode.batailleMasse.ajouterNarratif')}`}
-                    </button>
-                    {editionNarratifEnCours && (
-                      <button onClick={annulerModificationEvenement} style={{ ...btnStyle, fontSize: 16, alignSelf: 'flex-start' }}>
-                        {t('gmMode.batailleMasse.annulerModification')}
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
           </div>

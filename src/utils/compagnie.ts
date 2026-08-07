@@ -1,15 +1,18 @@
-// Règles de création/gestion de compagnie (Chroniques des Terres mortes, p.5-11) — une seule
-// compagnie par table, partagée par tous les PJ, gérée côté MJ (voir GMDashboard.tsx/CompagnieTab.tsx).
-// Contenu de règle (voie, descriptions, devises) en français en dur, même traitement que
-// data/psychologieTraits.ts/data/cristaux.json : pas de couche de traduction perso/livré pour ce texte,
-// aucune fusion livré/perso n'a de sens ici (pas de "compagnie livrée avec l'appli").
+// Règles de création/gestion de compagnie (Chroniques des Terres mortes, p.5-11) — plusieurs compagnies
+// possibles par table (voir GameDataContext.tsx : compagnies: Compagnie[]), gérées côté MJ (voir
+// GMDashboard.tsx/CompagnieTab.tsx). Contenu de règle (voie, descriptions, devises) en français en dur,
+// même traitement que data/psychologieTraits.ts/data/cristaux.json : pas de couche de traduction
+// perso/livré pour ce texte, aucune fusion livré/perso n'a de sens ici (pas de "compagnie livrée avec
+// l'appli").
 
 import type { MissionCompagnie } from './missions'
 
 export type CodeCompagnie = 'altruiste' | 'anarchique' | 'autoritaire' | 'solidaire'
 export type CodeAvecVoieFixe = Exclude<CodeCompagnie, 'anarchique'>
 export type DomaineCapacite = 'arsenal' | 'influence' | 'tactique'
-export type TailleCompagnie = 'petite' | 'moyenne' | 'grande' | 'organisation' | 'armee'
+// 'clanCulVert' : option maison, hors échelle du livre (voir le filet en pointillé qui la sépare des
+// 5 tailles officielles dans le sélecteur, CompagnieTab.tsx).
+export type TailleCompagnie = 'petite' | 'moyenne' | 'grande' | 'organisation' | 'armee' | 'clanCulVert'
 export type FonctionMembre = 'commandant' | 'second' | 'emissaire' | 'intendant' | 'maitreArmes'
 
 export interface CapaciteCompagnie {
@@ -27,7 +30,13 @@ export interface MembreCompagnie {
 }
 
 export interface Compagnie {
+  id: string
   nom: string
+  // Clé imageStore (voir utils/imageStore.ts::importerImage/useImage), jamais une dataURL brute stockée
+  // directement — même règle que partout ailleurs dans l'appli où une image est attachée à une fiche.
+  // Affiché en miniature dans la liste des compagnies (CompagnieTab.tsx) et en plus grand dans son
+  // panneau Identité.
+  logo?: string
   taille: TailleCompagnie
   siege: string
   histoire: string
@@ -44,7 +53,9 @@ export interface Compagnie {
 }
 
 export const COMPAGNIE_PAR_DEFAUT = (): Compagnie => ({
+  id: crypto.randomUUID(),
   nom: '',
+  logo: undefined,
   taille: 'moyenne',
   siege: '',
   histoire: '',
@@ -56,8 +67,24 @@ export const COMPAGNIE_PAR_DEFAUT = (): Compagnie => ({
   modifieLe: new Date().toISOString(),
 })
 
-export const TAILLES_COMPAGNIE: TailleCompagnie[] = ['petite', 'moyenne', 'grande', 'organisation', 'armee']
+// clanCulVert en dernier, séparé visuellement des 5 tailles officielles par un filet en pointillé
+// (voir CompagnieTab.tsx, juste après la pastille Armée).
+export const TAILLES_COMPAGNIE: TailleCompagnie[] = ['petite', 'moyenne', 'grande', 'organisation', 'armee', 'clanCulVert']
 export const FONCTIONS_MEMBRE: FonctionMembre[] = ['commandant', 'second', 'emissaire', 'intendant', 'maitreArmes']
+
+// Effectif approximatif associé à chaque taille (règle du livre : une dizaine / une trentaine / une
+// centaine / plusieurs centaines / plusieurs milliers) — affiché avec le signe ≈ dans la liste des
+// compagnies (CompagnieTab.tsx). Pour organisation/armée ("plusieurs..."), le livre ne donne pas de
+// chiffre précis : valeur ronde représentative choisie ici (300, 3000). clanCulVert (hors livre) :
+// 300 pour le moment, à ajuster.
+export const EFFECTIF_APPROX_TAILLE: Record<TailleCompagnie, number> = {
+  petite: 10,
+  moyenne: 30,
+  grande: 100,
+  organisation: 300,
+  armee: 3000,
+  clanCulVert: 300,
+}
 
 // Devise + philosophie de chaque code — texte du livre, jamais traduit (citations en français).
 export const DEVISE_CODE: Record<CodeCompagnie, string> = {
@@ -181,4 +208,15 @@ export function capacitesActives(compagnie: Compagnie): CapaciteCompagnie[] {
     if (cap) result.push(cap)
   }
   return result
+}
+
+// Compagnie dont ce personnage est membre, s'il y en a une — au plus une par construction (un
+// personnage ne rejoint jamais deux compagnies à la fois, voir CompagnieTab.tsx). Source unique de
+// vérité pour ce lookup, réutilisée par App.tsx (showCompagnieTab + prop de CharacterCompagnieTab) et
+// GameModePanel.tsx (missionsActives), qui avant ce chantier multi-compagnies testaient chacun leur
+// propre variante d'un objet compagnie unique.
+export function trouverCompagnieDuPersonnage(compagnies: Compagnie[], nomPersonnage: string): Compagnie | null {
+  const nom = nomPersonnage.trim().toLowerCase()
+  if (!nom) return null
+  return compagnies.find(c => c.membres.some(m => m.nom.trim().toLowerCase() === nom)) ?? null
 }

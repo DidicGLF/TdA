@@ -32,7 +32,7 @@ import type { ObjetMagiqueEntry } from './types/gameData'
 import { patchPossessionObjetMagique } from './utils/objetsMagiquesPerso'
 import { desenvelopper, messageMauvaisType } from './utils/importTypage'
 import type { Compagnie } from './utils/compagnie'
-import { COMPAGNIE_PAR_DEFAUT } from './utils/compagnie'
+import { COMPAGNIE_PAR_DEFAUT, trouverCompagnieDuPersonnage } from './utils/compagnie'
 import { getCompagnonsDisponibles } from './utils/compagnons'
 import { ModeImpressionContext, PdfExportContext } from './hooks/useChampsFiche'
 import { saveDataFileToBundle } from './utils/tauriStorage'
@@ -63,7 +63,7 @@ function AppContent() {
   const {
     data: descriptions, fieldPositions, setFieldPositions, sheetImages, setSheetImages,
     notes, setNotes, campagnes, setCampagnes, noteImages, setNoteImages, setObjetsMagiques,
-    compagnie, setCompagnie,
+    compagnies, setCompagnies,
   } = useGameData()
   const [character, setCharacter] = useState<Character>(() => ({
     ...defaultCharacter(),
@@ -99,12 +99,12 @@ function AppContent() {
   // L'onglet compagnons n'apparaît que si une voie du personnage en a effectivement octroyé un.
   const showCompagnonsTab = getCompagnonsDisponibles(character, descriptions).length > 0
   // L'onglet Compagnie (mercenaires, voir CompagnieTab côté MJ) n'apparaît que si le nom du personnage
-  // figure dans compagnie.membres — membre général ajouté par import de fiche, ou emplacement de
+  // figure dans les membres d'UNE des compagnies (au plus une par construction, voir
+  // trouverCompagnieDuPersonnage) — membre général ajouté par import de fiche, ou emplacement de
   // fonction (les deux vivent dans le même tableau, voir MembreCompagnie dans utils/compagnie.ts), donc
   // traités ici de façon identique sans code séparé pour les fonctions.
-  const showCompagnieTab = character.nomPersonnage.trim() !== '' && compagnie.membres.some(
-    m => m.nom.trim().toLowerCase() === character.nomPersonnage.trim().toLowerCase()
-  )
+  const compagnieDuPersonnage = trouverCompagnieDuPersonnage(compagnies, character.nomPersonnage)
+  const showCompagnieTab = character.nomPersonnage.trim() !== '' && compagnieDuPersonnage !== null
   useEffect(() => {
     if (!showGolemTab && sheetPage === 'golem') setSheetPage('recto')
     if (!showRunesTab && sheetPage === 'runes') setSheetPage('recto')
@@ -298,8 +298,10 @@ function AppContent() {
   const versoInputRef = useRef<HTMLInputElement>(null)
   // Import de compagnie côté joueur (menu Gestion, voir plus bas) — volontairement PAS dans l'onglet
   // Compagnie lui-même (CharacterCompagnieTab) : cet onglet ne s'affiche que si le nom du personnage
-  // figure déjà dans compagnie.membres, ce qui serait impossible à atteindre avant le tout premier
-  // import (le fichier .json exporté par le MJ, voir CompagnieTab.tsx, est ce qui le fait apparaître).
+  // figure déjà dans les membres d'une compagnie, ce qui serait impossible à atteindre avant le tout
+  // premier import (le fichier .json exporté par le MJ, voir CompagnieTab.tsx, est ce qui le fait
+  // apparaître). AJOUTE une compagnie (nouvel id, jamais celui du fichier) plutôt que de remplacer —
+  // plusieurs compagnies possibles depuis ce chantier, même logique que côté MJ.
   const compagnieFileInputRef = useRef<HTMLInputElement>(null)
   const [compagnieImportMsg, setCompagnieImportMsg] = useState<{ type: 'ok' | 'erreur'; texte: string } | null>(null)
   const importerCompagnieFichier = async (file: File) => {
@@ -311,7 +313,8 @@ function AppContent() {
       } else {
         // Fusionné sur COMPAGNIE_PAR_DEFAUT (pas casté tel quel) : un export d'une version antérieure à
         // un champ ajouté depuis (ex. `membres`) planterait sinon dès le calcul de showCompagnieTab.
-        setCompagnie({ ...COMPAGNIE_PAR_DEFAUT(), ...(contenu as Partial<Compagnie>) })
+        const nouvelle: Compagnie = { ...COMPAGNIE_PAR_DEFAUT(), ...(contenu as Partial<Compagnie>), id: crypto.randomUUID() }
+        setCompagnies(prev => [...prev, nouvelle])
         setCompagnieImportMsg({ type: 'ok', texte: t('gmMode.compagnie.importReussi') })
       }
     } catch {
@@ -499,6 +502,47 @@ function AppContent() {
   // ordinateur mais garder accès au mode MJ pour tester ses écrans adaptés (tiroirs, etc.) — seul un
   // téléphone (< 700px) est jugé trop petit pour le mode MJ.
   const isPhone = screenWidth < 700
+
+  // Raccourcis clavier globaux (demandés par Didic pour le MJ). F5 = retour à l'accueil, depuis
+  // n'importe quel mode (même comportement que le bouton "toolbar.accueil" déjà existant) — ajouté ici
+  // en raccourci EXPLICITE plutôt que de compter sur le F5=recharger la page du navigateur/webview :
+  // ce dernier ramenait bien à l'accueil sous Windows (WebView2, qui définit ce raccourci par défaut)
+  // mais pas du tout sous Linux (webkit2gtk ne définit aucun raccourci de ce genre par défaut), d'où le
+  // comportement "F5 marche pas sous Linux" signalé par Didic — plus de dépendance à ce hasard de
+  // plateforme désormais. F1/F2 changent de rôle UNIQUEMENT depuis l'accueil (appMode null) : une fois
+  // dans un mode (Joueur ou MJ), ces mêmes touches (plus F3/F4/F12 côté Joueur, F1-F4/F6-F8/F12 côté MJ
+  // — voir GMDashboard.tsx) naviguent entre les onglets de ce mode à la place, chacun son propre effet
+  // de clavier. Assignations FIXES côté Joueur (pas basées sur l'ordre des onglets affichés, qui varie
+  // selon les options du personnage) : Recto/Verso/Voies/Compagnons/Notes gardent toujours la même
+  // touche, qu'un onglet optionnel (golem/runes/cristaux/compagnie) soit présent ou non pour ce
+  // personnage — F4 ne fait rien si ce personnage n'a pas de compagnons (l'onglet n'existe pas).
+  useEffect(() => {
+    const gerer = (e: KeyboardEvent) => {
+      const cible = e.target as HTMLElement | null
+      if (cible && (cible.tagName === 'INPUT' || cible.tagName === 'TEXTAREA' || cible.isContentEditable)) return
+
+      if (e.key === 'F5') { e.preventDefault(); setAppMode(null); return }
+
+      if (appMode === 'joueur') {
+        if (e.key === 'F1') { e.preventDefault(); setSheetPage('recto') }
+        else if (e.key === 'F2') { e.preventDefault(); setSheetPage('verso') }
+        else if (e.key === 'F3') { e.preventDefault(); setSheetPage('voies') }
+        else if (e.key === 'F4' && showCompagnonsTab) { e.preventDefault(); setSheetPage('compagnons') }
+        else if (e.key === 'F12') { e.preventDefault(); setSheetPage('notes') }
+        return
+      }
+
+      // En mode MJ, F1-F4/F6-F8/F12 naviguent entre ses propres onglets (voir GMDashboard.tsx, son
+      // propre effet de clavier) — F1/F2 ne changent donc plus de rôle une fois déjà dedans, seulement
+      // depuis l'accueil.
+      if (appMode === 'mj') return
+
+      if (e.key === 'F1') { e.preventDefault(); setAppMode('joueur') }
+      else if (e.key === 'F2' && !isPhone) { e.preventDefault(); setAppMode('mj') }
+    }
+    window.addEventListener('keydown', gerer)
+    return () => window.removeEventListener('keydown', gerer)
+  }, [appMode, isPhone, showCompagnonsTab])
 
   const handleLoad = (c: Character, savedMaxStep: number) => {
     const tm = c.talentMagique
@@ -871,7 +915,7 @@ function AppContent() {
                   {mobileToolbarButtons}
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
-                  <CharacterCompagnieTab compagnie={compagnie} nomPersonnage={character.nomPersonnage} reseau={reseau} />
+                  <CharacterCompagnieTab compagnie={compagnieDuPersonnage ?? COMPAGNIE_PAR_DEFAUT()} nomPersonnage={character.nomPersonnage} reseau={reseau} />
                 </div>
               </div>
             ) : sheetPage === 'notes' ? (
@@ -1348,7 +1392,7 @@ function AppContent() {
         ) : sheetPage === 'compagnie' ? (
           /* Compagnie n'est pas non plus une page de la feuille physique — même traitement que Notes. */
           <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
-            <CharacterCompagnieTab compagnie={compagnie} nomPersonnage={character.nomPersonnage} reseau={reseau} />
+            <CharacterCompagnieTab compagnie={compagnieDuPersonnage ?? COMPAGNIE_PAR_DEFAUT()} nomPersonnage={character.nomPersonnage} reseau={reseau} />
           </div>
         ) : sheetPage === 'notes' ? (
           /* Notes n'est pas une page de la feuille physique (pas de calibrage/positions de champs/impression) —

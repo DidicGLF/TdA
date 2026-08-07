@@ -14,10 +14,11 @@ export type TypeFichier =
   | 'note'
   | 'notes-groupe'
   | 'compagnie'
+  | 'bibliotheque-compagnies'
 
 const TYPES_CONNUS: TypeFichier[] = [
   'personnage', 'bibliotheque-personnages', 'creature', 'objet-magique', 'rencontre',
-  'bataille', 'gabarit-bataille', 'note', 'notes-groupe', 'compagnie',
+  'bataille', 'gabarit-bataille', 'note', 'notes-groupe', 'compagnie', 'bibliotheque-compagnies',
 ]
 
 // Clé i18n (typeFichier.<key>) associée à chaque type, pour construire un message du genre
@@ -33,6 +34,7 @@ export const CLE_LABEL_TYPE: Record<TypeFichier, string> = {
   'note': 'note',
   'notes-groupe': 'notesGroupe',
   'compagnie': 'compagnie',
+  'bibliotheque-compagnies': 'bibliothequeCompagnies',
 }
 
 function ressembleAPersonnage(r: Record<string, unknown>): boolean {

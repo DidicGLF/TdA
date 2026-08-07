@@ -247,16 +247,19 @@ export function useReseauClient(
   // Se porter volontaire pour une mission de compagnie (voir 'mission-volontaire' dans
   // reseauProtocole.ts) — le MJ résout notre nom via identitesRef, pas besoin de le transmettre ici (même
   // principe que 'message-pj'/'message-joueur').
-  const envoyerVolontaireMission = useCallback((missionId: string) => {
-    socketRef.current?.send(encoderMessage({ type: 'mission-volontaire', missionId }))
+  // compagnieId : depuis le chantier multi-compagnies, le MJ doit savoir à laquelle router ce
+  // volontariat sans avoir à parcourir toutes les compagnies en mémoire — l'appelant le connaît déjà via
+  // l'objet MissionCompagnie en main (mission.compagnieId), un PJ n'étant membre que d'une seule à la fois.
+  const envoyerVolontaireMission = useCallback((compagnieId: string, missionId: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'mission-volontaire', compagnieId, missionId }))
   }, [])
 
   // Dialogue scoped aux volontaires d'une mission (voir 'message-mission' dans reseauProtocole.ts) — le
   // MJ relaie aux AUTRES volontaires actuellement connectés de cette mission, jamais à tout le roster ;
   // il ne nous le renvoie donc jamais à nous-même — écho local immédiat dans missionChat pour que
   // l'expéditeur voie tout de suite son propre message dans le fil, comme dans n'importe quel chat.
-  const envoyerMessageMission = useCallback((missionId: string, texte: string) => {
-    socketRef.current?.send(encoderMessage({ type: 'message-mission', missionId, texte }))
+  const envoyerMessageMission = useCallback((compagnieId: string, missionId: string, texte: string) => {
+    socketRef.current?.send(encoderMessage({ type: 'message-mission', compagnieId, missionId, texte }))
     const monNom = characterRef.current?.nomPersonnage ?? t('gameMode.reseau.moi')
     setMissionChat(prev => [...prev, { missionId, expediteurNom: monNom, texte }].slice(-200))
   }, [t])

@@ -80,6 +80,25 @@ export default function GMDashboard({ onBack }: Props) {
   // Même seuil que App.tsx (voir sa note) : 1200, pas 700, pour couvrir les tablettes en paysage.
   const mobile = screenWidth < 1200
   const [tab, setTab] = useState<Tab>('bestiaire')
+  // Raccourcis clavier (demandés par Didic) : F1-F4 puis F6-F8 (F5 sauté, réservé au retour accueil
+  // dans App.tsx, qui laisse passer ces autres touches sans agir tant qu'on est en mode MJ — voir sa
+  // note) parcourent les 8 onglets dans leur ordre d'affichage, F12 = Notes (même touche que côté
+  // Joueur, par cohérence).
+  useEffect(() => {
+    const gerer = (e: KeyboardEvent) => {
+      const cible = e.target as HTMLElement | null
+      if (cible && (cible.tagName === 'INPUT' || cible.tagName === 'TEXTAREA' || cible.isContentEditable)) return
+
+      const parTouche: Partial<Record<string, Tab>> = {
+        F1: 'bestiaire', F2: 'adversite', F3: 'bataille', F4: 'reseau',
+        F6: 'objetsMagiques', F7: 'compagnie', F8: 'cartesCritiques', F12: 'notes',
+      }
+      const ongletCible = parTouche[e.key]
+      if (ongletCible) { e.preventDefault(); setTab(ongletCible) }
+    }
+    window.addEventListener('keydown', gerer)
+    return () => window.removeEventListener('keydown', gerer)
+  }, [])
   // Journal réseau — levé ici (plutôt qu'état local de ReseauTab) : cet onglet est démonté/remonté à
   // chaque changement d'onglet, ce qui viderait un historique local à chaque fois. GMDashboard, lui, ne
   // démonte jamais tant qu'on reste en mode MJ.
@@ -242,7 +261,7 @@ export default function GMDashboard({ onBack }: Props) {
         <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
           {tab === 'bestiaire' && <BestiaireTab forcerNom={bestiaireForcerNom} mobile={mobile} />}
           {tab === 'objetsMagiques' && <ObjetsMagiquesTab mobile={mobile} />}
-          {tab === 'compagnie' && <CompagnieTab />}
+          {tab === 'compagnie' && <CompagnieTab mobile={mobile} />}
           {tab === 'cartesCritiques' && <CartesCritiquesTab />}
           {tab === 'adversite' && <AdversiteTab demarrerAuto={rencontreADemarrer} onCombatTermine={onCombatTermine} />}
           {tab === 'bataille' && (

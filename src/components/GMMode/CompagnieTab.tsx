@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useGameData } from '../../context/GameDataContext'
@@ -10,15 +10,18 @@ import { encoderMessage, decoderMessage } from '../../utils/reseauProtocole'
 import { importerImage } from '../../utils/imageStore'
 import { useImage } from '../../hooks/useImage'
 import NumberField from '../NumberField'
+import compagnieIllustration from '../../assets/compagnie-gold.png'
 import type { Character } from '../../types/character'
 import type { Compagnie, CodeCompagnie, DomaineCapacite, FonctionMembre } from '../../utils/compagnie'
 import {
   TAILLES_COMPAGNIE, FONCTIONS_MEMBRE, DEVISE_CODE, DESCRIPTION_CODE,
   VOIE_COMPAGNIE, capaciteAuRang, capacitesActives, niveauDepuisRenommee,
   descriptionCapacite, capacitesDisponiblesAnarchique, SEUILS_RENOMMEE, COMPAGNIE_PAR_DEFAUT,
+  trouverCompagnieDuPersonnage, EFFECTIF_APPROX_TAILLE,
 } from '../../utils/compagnie'
 import type { MissionCompagnie, TypeMission } from '../../utils/missions'
-import { MISSION_VIDE, TYPES_MISSION, COULEUR_TYPE_MISSION, COULEUR_STATUT, missionMiseEnAvant, peutSePorterVolontaire } from '../../utils/missions'
+import { MISSION_VIDE, TYPES_MISSION, COULEUR_TYPE_MISSION, COULEUR_STATUT, missionMiseEnAvant } from '../../utils/missions'
+import { trouverMission, traiterVolontariat, resoudreDestinatairesMission } from '../../utils/missionsReseau'
 
 const GOLD = '#c9a84c'
 const PARCHMENT = '#f5ecd7'
@@ -67,15 +70,236 @@ function MissionIllustrationMini({ cle }: { cle?: string }) {
   return <img src={src} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
 }
 
-export default function CompagnieTab() {
+// Logo de compagnie — miniature dans la liste (colonne gauche), même principe que
+// MissionIllustrationMini. Rien de rendu si aucun logo n'a été choisi.
+function CompagnieLogoMini({ cle }: { cle?: string }) {
+  const src = useImage(cle)
+  if (!src) return null
+  return <img src={src} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '50%', flexShrink: 0, border: `1px solid ${SECTION_BORDER}` }} />
+}
+
+// Version grande, dans le panneau Identité de la compagnie sélectionnée — se réduit au scroll de la
+// fiche (voir gererScrollDetail dans le composant principal). La taille réelle est appliquée
+// directement au conteneur via `ref` (manipulation DOM, sans re-render à chaque pixel de scroll) ;
+// `taille` ne sert qu'à fixer la valeur de départ au moment où le composant apparaît/se remonte.
+// Boutons choisir/retirer au survol, même patron que le portrait de personnage (DraggableImageField.tsx,
+// classes portrait-tools/portrait-hover-hint réutilisées telles quelles — voir index.css).
+const LOGO_TAILLE_MAX = 260
+const LOGO_TAILLE_MIN = 180
+
+const LOGO_TOOL_BTN: React.CSSProperties = {
+  background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.25)',
+  color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 13,
+  fontFamily: 'inherit', cursor: 'pointer', lineHeight: 1.4,
+}
+
+const CompagnieLogo = forwardRef<HTMLDivElement, {
+  cle?: string; taille: number; onChoisir: () => void; onRetirer: () => void,
+}>(function CompagnieLogo({ cle, taille, onChoisir, onRetirer }, ref) {
   const { t } = useTranslation()
-  const { compagnie, setCompagnie } = useGameData()
+  const src = useImage(cle)
+  if (!src) {
+    return (
+      <div ref={ref} onClick={onChoisir} style={{
+        width: taille, height: taille, flexShrink: 0, cursor: 'pointer',
+        border: '1.5px dashed rgba(201,168,76,0.4)', borderRadius: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'rgba(201,168,76,0.45)', fontSize: 13, textAlign: 'center', lineHeight: 1.4,
+      }}>
+        <div>
+          <div style={{ fontSize: 28, marginBottom: 4 }}>+</div>
+          {t('gmMode.compagnie.importerLogo')}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div ref={ref} style={{ width: taille, height: taille, flexShrink: 0, position: 'relative' }}>
+      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      <div className="portrait-tools no-print" style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4, opacity: 0, transition: 'opacity 0.15s' }}>
+        <button style={LOGO_TOOL_BTN} onClick={onChoisir} title={t('gmMode.compagnie.importerLogo')}>🖼️</button>
+        <button style={{ ...LOGO_TOOL_BTN, color: 'rgba(255,140,140,0.95)' }} onClick={onRetirer} title={t('gmMode.compagnie.retirerLogo')}>✕</button>
+      </div>
+    </div>
+  )
+})
+
+// Nom et siège de la compagnie — restent éditables mais ne se présentent plus comme des champs de
+// texte : simple texte stylé, avec un bouton crayon qui apparaît au survol (même patron portrait-tools
+// que le logo ci-dessus). Un clic (sur le texte ou le crayon) bascule en <input> ; Entrée/Échap/perte de
+// focus referme, chaque frappe étant déjà sauvegardée immédiatement comme partout ailleurs dans l'appli.
+// Même composant pour les deux champs (apparence identique demandée) — le siège se distingue par
+// `italique` (toujours en italique, le nom ne l'est qu'en placeholder tant que vide) et `petit` (une
+// taille en dessous du nom, pour rester secondaire malgré une présentation identique).
+function ChampTitreCompagnie({ valeur, placeholder, compact, italique, petit, couleur, titreAction, onChange }: {
+  valeur: string; placeholder: string; compact: boolean; italique?: boolean; petit?: boolean; couleur?: string; titreAction: string; onChange: (v: string) => void,
+}) {
+  const [edition, setEdition] = useState(false)
+  const champRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (edition) champRef.current?.focus()
+  }, [edition])
+
+  const styleTexte: React.CSSProperties = {
+    fontWeight: 700, fontFamily: "'Cinzel', serif",
+    fontSize: petit ? (compact ? 12 : 14) : (compact ? 20 : 26), textAlign: compact ? 'left' : 'center',
+    fontStyle: italique ? 'italic' : 'normal',
+  }
+
+  if (edition) {
+    return (
+      <input ref={champRef} style={{ ...inputStyle, ...styleTexte, color: couleur ?? inputStyle.color, maxWidth: compact ? undefined : 360, alignSelf: compact ? undefined : 'center' }}
+        value={valeur} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+        onBlur={() => setEdition(false)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} />
+    )
+  }
+  // Le bouton crayon est positionné en absolu (hors du flux) plutôt qu'en simple flex item juste après
+  // le texte : sinon, même invisible (opacity 0), il compterait dans la largeur du conteneur centré et
+  // décalerait visuellement le texte vers la gauche.
+  return (
+    <div style={{ display: 'flex', justifyContent: compact ? 'flex-start' : 'center', alignSelf: compact ? undefined : 'center' }}>
+      <div onClick={() => setEdition(true)} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+        <span style={{ ...styleTexte, color: couleur ?? (valeur.trim() ? PARCHMENT : 'rgba(245,236,215,0.4)'), fontStyle: italique || !valeur.trim() ? 'italic' : 'normal' }}>
+          {valeur.trim() || placeholder}
+        </span>
+        <button className="portrait-tools no-print" style={{
+          ...LOGO_TOOL_BTN, padding: '2px 6px', opacity: 0, transition: 'opacity 0.15s',
+          position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: 6, whiteSpace: 'nowrap',
+        }} onClick={e => { e.stopPropagation(); setEdition(true) }} title={titreAction}>
+          ✏️
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Histoire de la compagnie — même esprit que ChampTitreCompagnie (texte, pas d'apparence de champ,
+// crayon au survol) mais multi-ligne et à bordure pointillée visible en permanence (comme le cadre
+// "ajouter un logo" plus haut). `hauteur` est fixe (100% en bandeau, une valeur en px sinon) : le champ
+// ne grandit jamais au-delà, un scroll interne apparaît s'il y a plus de texte à voir.
+function ChampHistoireCompagnie({ valeur, placeholder, hauteur, titreAction, onChange }: {
+  valeur: string; placeholder: string; hauteur: number | string; titreAction: string; onChange: (v: string) => void,
+}) {
+  const [edition, setEdition] = useState(false)
+  const champRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (edition) champRef.current?.focus()
+  }, [edition])
+
+  if (edition) {
+    return (
+      <textarea ref={champRef} style={{ ...inputStyle, height: hauteur, minHeight: 0, resize: 'none', boxSizing: 'border-box' }}
+        value={valeur} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+        onBlur={() => setEdition(false)}
+        onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.blur() }} />
+    )
+  }
+  return (
+    <div onClick={() => setEdition(true)} style={{
+      position: 'relative', height: hauteur, boxSizing: 'border-box', cursor: 'pointer', overflowY: 'auto',
+      border: '1.5px dashed rgba(201,168,76,0.18)', borderRadius: 4, padding: '8px 10px',
+    }}>
+      <span style={{ fontSize: 14.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: valeur.trim() ? PARCHMENT : 'rgba(245,236,215,0.4)', fontStyle: valeur.trim() ? 'normal' : 'italic' }}>
+        {valeur.trim() || placeholder}
+      </span>
+      <button className="portrait-tools no-print" style={{
+        ...LOGO_TOOL_BTN, padding: '2px 6px', opacity: 0, transition: 'opacity 0.15s',
+        position: 'absolute', top: 4, right: 4,
+      }} onClick={e => { e.stopPropagation(); setEdition(true) }} title={titreAction}>
+        ✏️
+      </button>
+    </div>
+  )
+}
+
+export default function CompagnieTab({ mobile }: { mobile: boolean }) {
+  const { t } = useTranslation()
+  const { compagnies, setCompagnies } = useGameData()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const membreFileInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  // Rétrécissement du logo au scroll de la fiche (colonne détail) — position mémorisée en ref plutôt
+  // qu'en state pour ne pas déclencher un re-render à chaque pixel de scroll (voir gererScrollDetail).
+  const detailScrollRef = useRef<HTMLDivElement>(null)
+  const logoWrapRef = useRef<HTMLDivElement>(null)
+  const logoScrollTopRef = useRef(0)
+  // Bascule logo+nom en ligne (au lieu de centrés l'un sous l'autre) une fois qu'on a assez scrollé —
+  // contrairement à la taille du logo (mutation DOM directe, pas de re-render), ce basculement change
+  // la mise en page (flexDirection) donc a besoin d'un vrai re-render, mais seulement au changement de
+  // valeur (pas à chaque pixel de scroll) grâce à logoCompactRef.
+  const logoCompactRef = useRef(false)
+  const [logoCompact, setLogoCompact] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [ajoutRenommee, setAjoutRenommee] = useState('')
+  const [confirmDeleteCompagnieId, setConfirmDeleteCompagnieId] = useState<string | null>(null)
+  // Liste des compagnies (colonne gauche) — même patron que ObjetsMagiquesTab.tsx/BestiaireTab
+  // (GMDashboard.tsx) : recherche par nom, tiroir flottant en mobile plutôt qu'une colonne fixe.
+  const [mobileListeOuverte, setMobileListeOuverte] = useState(false)
+  const [rechercheCompagnie, setRechercheCompagnie] = useState('')
 
-  const update = (patch: Partial<Compagnie>) => setCompagnie(prev => ({ ...prev, ...patch, modifieLe: new Date().toISOString() }))
+  // Plusieurs compagnies possibles : celle affichée/éditée ici, choisie via la liste à gauche.
+  // compagnieSelectionneeIdManuel ne représente qu'un choix explicite (clic sur une carte, création,
+  // import) — volontairement AUCUNE sélection par défaut à l'arrivée sur l'onglet (voir la colonne
+  // détail plus bas, qui affiche alors l'illustration + « aucune sélection »), contrairement à l'ancien
+  // comportement qui retombait automatiquement sur la première compagnie de la liste.
+  const [compagnieSelectionneeIdManuel, setCompagnieSelectionneeId] = useState<string | null>(null)
+  const compagnieSelectionneeId = compagnieSelectionneeIdManuel
+  const compagnieSelectionnee = compagnies.find(c => c.id === compagnieSelectionneeId) ?? null
+  // Valeur de repli non-nulle : tout le reste de ce composant (affichage) continue de lire `compagnie`
+  // sans jamais avoir besoin de vérifier explicitement qu'une compagnie est sélectionnée — seul le rendu
+  // conditionnel plus bas (compagnieSelectionnee, la vraie valeur nullable) décide d'afficher le
+  // formulaire ou le message "aucune compagnie". Les fonctions d'écriture (update, etc.) gardent leur
+  // propre garde sur compagnieSelectionneeId pour ne jamais écrire dans le vide.
+  const compagnie = compagnieSelectionnee ?? COMPAGNIE_PAR_DEFAUT()
+
+  // Choisit la compagnie affichée ET repasse la mise en page en non-compact — plutôt que de détecter
+  // le changement au fil du rendu (comparaison de ref), ce qui n'a plus de sens maintenant que
+  // compagnieSelectionneeId est un simple alias de state (compagnieSelectionneeIdManuel, sans repli
+  // automatique) : tous les appelants qui changent la sélection passent par cette fonction plutôt que
+  // par le setter brut.
+  const selectionnerCompagnie = (id: string | null) => {
+    setCompagnieSelectionneeId(id)
+    setLogoCompact(false)
+  }
+
+  // Remonte en haut de la fiche (et redonne au logo sa taille pleine) en changeant de compagnie —
+  // sinon la position de scroll de la précédente resterait affichée le temps de rescroller. Reste un
+  // effet (contrairement à logoCompact ci-dessus) car il touche le DOM (scrollTop, style), pas du state.
+  useEffect(() => {
+    logoScrollTopRef.current = 0
+    if (detailScrollRef.current) detailScrollRef.current.scrollTop = 0
+    if (logoWrapRef.current) {
+      logoWrapRef.current.style.width = `${LOGO_TAILLE_MAX}px`
+      logoWrapRef.current.style.height = `${LOGO_TAILLE_MAX}px`
+    }
+  }, [compagnieSelectionneeId])
+
+  const gererScrollDetail = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop
+    logoScrollTopRef.current = top
+    const wrap = logoWrapRef.current
+    if (wrap) {
+      const taille = Math.max(LOGO_TAILLE_MIN, LOGO_TAILLE_MAX - top)
+      wrap.style.width = `${taille}px`
+      wrap.style.height = `${taille}px`
+    }
+    // Bascule en mode compact une fois qu'environ la moitié de la réduction possible du logo est
+    // faite — sinon le rétrécissement de l'image n'aurait aucun sens (elle resterait centrée en pleine
+    // largeur, juste plus petite, sans libérer de place).
+    const compact = top > (LOGO_TAILLE_MAX - LOGO_TAILLE_MIN) / 2
+    if (compact !== logoCompactRef.current) {
+      logoCompactRef.current = compact
+      setLogoCompact(compact)
+    }
+  }
+
+  const update = (patch: Partial<Compagnie>) => {
+    if (!compagnieSelectionneeId) return
+    setCompagnies(prev => prev.map(c => (c.id === compagnieSelectionneeId ? { ...c, ...patch, modifieLe: new Date().toISOString() } : c)))
+  }
 
   const niveau = niveauDepuisRenommee(compagnie.renommee)
   const actives = capacitesActives(compagnie)
@@ -86,6 +310,35 @@ export default function CompagnieTab() {
     update({ renommee: Math.max(0, compagnie.renommee + delta) })
     setAjoutRenommee('')
   }
+
+  const nouvelleCompagnie = () => {
+    const fraiche = COMPAGNIE_PAR_DEFAUT()
+    setCompagnies(prev => [...prev, fraiche])
+    selectionnerCompagnie(fraiche.id)
+  }
+  const supprimerCompagnie = (id: string) => {
+    setCompagnies(prev => prev.filter(c => c.id !== id))
+    if (compagnieSelectionneeId === id) selectionnerCompagnie(null)
+    setConfirmDeleteCompagnieId(null)
+  }
+
+  const choisirLogoCompagnie = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const data = reader.result
+      if (typeof data !== 'string') return
+      const cle = await importerImage('compagnie-logo', data)
+      update({ logo: cle })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Recherche par nom (insensible à la casse), triée alphabétiquement — la liste (colonne gauche) n'a
+  // pas besoin d'un tri togglable comme le bestiaire, une compagnie n'a qu'un seul attribut de tri
+  // pertinent (son nom).
+  const compagniesFiltrees = compagnies
+    .filter(c => !rechercheCompagnie.trim() || c.nom.toLowerCase().includes(rechercheCompagnie.trim().toLowerCase()))
+    .sort((a, b) => a.nom.localeCompare(b.nom))
 
   const nomPourFonction = (fonction: FonctionMembre) => compagnie.membres.find(m => m.fonction === fonction)?.nom ?? ''
   const setNomFonction = (fonction: FonctionMembre, nom: string) => {
@@ -136,15 +389,17 @@ export default function CompagnieTab() {
   // de l'emplacement, s'il y en avait un, redevient membre général plutôt que d'être supprimé — glisser
   // un remplaçant ne doit jamais faire disparaître l'ancien titulaire de la compagnie.
   const assignerMembreAFonction = useCallback((nom: string, fonction: FonctionMembre) => {
-    setCompagnie(prev => {
-      const ancienTitulaire = prev.membres.find(m => m.fonction === fonction)
-      const reste = prev.membres.filter(m => m.fonction !== fonction && m.nom !== nom)
+    if (!compagnieSelectionneeId) return
+    setCompagnies(prev => prev.map(c => {
+      if (c.id !== compagnieSelectionneeId) return c
+      const ancienTitulaire = c.membres.find(m => m.fonction === fonction)
+      const reste = c.membres.filter(m => m.fonction !== fonction && m.nom !== nom)
       const membres = ancienTitulaire && ancienTitulaire.nom !== nom
         ? [...reste, { nom: ancienTitulaire.nom }, { fonction, nom }]
         : [...reste, { fonction, nom }]
-      return { ...prev, membres, modifieLe: new Date().toISOString() }
-    })
-  }, [setCompagnie])
+      return { ...c, membres, modifieLe: new Date().toISOString() }
+    }))
+  }, [setCompagnies, compagnieSelectionneeId])
 
   useEffect(() => {
     const handleMove = (e: PointerEvent) => {
@@ -262,14 +517,30 @@ export default function CompagnieTab() {
   const [dialogueMissions, setDialogueMissions] = useState<Record<string, { nom: string; texte: string }[]>>({})
 
   // dialoguesCoupesRef n'existe pas ici (pas de bouton de modération dans cet onglet) — les messages de
-  // mission sont donc toujours relayés, jamais bloqués depuis cette écoute.
-  const compagnieRef = useRef(compagnie)
-  useEffect(() => { compagnieRef.current = compagnie }, [compagnie])
+  // mission sont donc toujours relayés, jamais bloqués depuis cette écoute. compagniesRef (pas
+  // compagnieRef) : un volontariat/message peut concerner N'IMPORTE QUELLE compagnie, pas seulement
+  // celle affichée à l'écran — voir trouverMission/traiterVolontariat dans missionsReseau.ts, qui
+  // parcourent tout le tableau via le compagnieId porté par chaque message.
+  const compagniesRef = useRef(compagnies)
+  useEffect(() => { compagniesRef.current = compagnies }, [compagnies])
   // Correspondance connexion → identité de PJ, reconstruite ICI comme dans ReseauTab.tsx/CombatTab.tsx
   // (pas de state partagé entre les écoutes réseau indépendantes de chaque onglet, voir leur note).
   // useRef (pas une variable locale à l'effet) : envoyerMessageMissionMJ, déclenché par un clic sur le
   // bouton d'envoi, a besoin de la lire aussi, en dehors de l'écoute réseau elle-même.
   const identitesRef = useRef<Record<number, { nom: string; idPJ: string }>>({})
+
+  // Ciblé (pas de diffusion à tous, contrairement à l'ancienne version) : seuls les clients actuellement
+  // connectés dont le nom figure parmi les membres de LA compagnie concernée reçoivent la mise à jour —
+  // sinon les joueurs d'une autre compagnie verraient passer des missions qui ne les regardent pas.
+  // Déclarée ICI (avant l'écoute réseau ci-dessous, pas après) : cette dernière l'appelle dans un
+  // effet à deps vides, elle a donc besoin d'exister dès la première évaluation du composant.
+  const diffuserMissions = (compagnieCible: Compagnie, missions: MissionCompagnie[]) => {
+    const membresMinuscule = new Set(compagnieCible.membres.map(m => m.nom.trim().toLowerCase()))
+    const contenu = encoderMessage({ type: 'compagnie-missions-maj', compagnieId: compagnieCible.id, missions })
+    for (const [idStr, identite] of Object.entries(identitesRef.current)) {
+      if (membresMinuscule.has(identite.nom.trim().toLowerCase())) envoyerAClientReseau(Number(idStr), contenu)
+    }
+  }
 
   useEffect(() => {
     let annule = false
@@ -282,34 +553,33 @@ export default function CompagnieTab() {
           identitesRef.current[e.id] = { nom: message.nom, idPJ: message.idPJ }
           // Synchronise les missions dès l'identification — sans ça, un PJ qui se (re)connecte alors que
           // des missions existent déjà ne les verrait qu'à la prochaine mutation faite par le MJ (voir la
-          // même correction dans ReseauTab.tsx).
-          envoyerAClientReseau(e.id, encoderMessage({ type: 'compagnie-missions-maj', missions: compagnieRef.current.missions }))
+          // même correction dans ReseauTab.tsx). Uniquement LA compagnie de ce joueur (au plus une, voir
+          // trouverCompagnieDuPersonnage) — jamais les autres compagnies, un PJ n'a pas à les voir.
+          const compagnieDuPJ = trouverCompagnieDuPersonnage(compagniesRef.current, message.nom)
+          if (compagnieDuPJ) {
+            envoyerAClientReseau(e.id, encoderMessage({ type: 'compagnie-missions-maj', compagnieId: compagnieDuPJ.id, missions: compagnieDuPJ.missions }))
+          }
         } else if (message?.type === 'mission-volontaire') {
           const nom = identitesRef.current[e.id]?.nom
           if (!nom) return
-          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
-          if (mission && peutSePorterVolontaire(mission, nom)) {
-            const maintenant = new Date().toISOString()
-            const missionsMaj = compagnieRef.current.missions.map(m =>
-              m.id === mission.id ? { ...m, volontaires: [...m.volontaires, nom], modifieLe: maintenant } : m
-            )
-            setCompagnie(prev => ({ ...prev, missions: missionsMaj, modifieLe: maintenant }))
-            envoyerATousReseau(encoderMessage({ type: 'compagnie-missions-maj', missions: missionsMaj }))
+          const resultat = traiterVolontariat(compagniesRef.current, message.compagnieId, message.missionId, nom)
+          if (resultat) {
+            setCompagnies(resultat.compagnies)
+            const compagnieCible = resultat.compagnies.find(c => c.id === message.compagnieId)
+            if (compagnieCible) diffuserMissions(compagnieCible, resultat.missions)
           }
         } else if (message?.type === 'message-mission') {
           const nom = identitesRef.current[e.id]?.nom
           if (!nom) return
-          const mission = compagnieRef.current.missions.find(m => m.id === message.missionId)
-          if (!mission) return
-          const volontairesMinuscule = new Set(mission.volontaires.map(v => v.toLowerCase()))
-          const contenu = encoderMessage({ type: 'message-mission-recu', missionId: mission.id, expediteurNom: nom, texte: message.texte })
-          for (const [idStr, identite] of Object.entries(identitesRef.current)) {
-            const id = Number(idStr)
-            if (id !== e.id && volontairesMinuscule.has(identite.nom.toLowerCase())) envoyerAClientReseau(id, contenu)
+          const trouve = trouverMission(compagniesRef.current, message.compagnieId, message.missionId)
+          if (!trouve) return
+          const contenu = encoderMessage({ type: 'message-mission-recu', compagnieId: message.compagnieId, missionId: trouve.mission.id, expediteurNom: nom, texte: message.texte })
+          for (const id of resoudreDestinatairesMission(trouve.mission, identitesRef.current, e.id)) {
+            envoyerAClientReseau(id, contenu)
           }
           setDialogueMissions(prev => ({
             ...prev,
-            [mission.id]: [...(prev[mission.id] ?? []), { nom, texte: message.texte }].slice(-100),
+            [trouve.mission.id]: [...(prev[trouve.mission.id] ?? []), { nom, texte: message.texte }].slice(-100),
           }))
         }
       }
@@ -325,17 +595,15 @@ export default function CompagnieTab() {
       envoyerATousReseau(encoderMessage({ type: 'qui-etes-vous' }))
     })
     return () => { annule = true; desabonner() }
-  }, [setCompagnie])
+  }, [setCompagnies])
 
-  const diffuserMissions = (missions: MissionCompagnie[]) => {
-    envoyerATousReseau(encoderMessage({ type: 'compagnie-missions-maj', missions }))
-  }
   const enregistrerMissions = (missions: MissionCompagnie[]) => {
+    if (!compagnieSelectionneeId) return
     update({ missions })
-    diffuserMissions(missions)
+    diffuserMissions(compagnie, missions)
   }
 
-  const nouvelleMission = () => setMissionEnEdition(MISSION_VIDE())
+  const nouvelleMission = () => { if (compagnieSelectionneeId) setMissionEnEdition(MISSION_VIDE(compagnieSelectionneeId)) }
   const editerMission = (m: MissionCompagnie) => setMissionEnEdition({ ...m })
   const annulerEditionMission = () => setMissionEnEdition(null)
 
@@ -390,15 +658,17 @@ export default function CompagnieTab() {
   // les volontaires actuellement connectés (identitesRef, voir l'écoute réseau plus haut), avec un écho
   // local dans dialogueMissions pour que le MJ voie tout de suite son propre message dans le fil.
   const envoyerMessageMissionMJ = (missionId: string) => {
+    if (!compagnieSelectionneeId) return
     const texte = (messageMissionInput[missionId] ?? '').trim()
     if (!texte) return
     const mission = compagnie.missions.find(m => m.id === missionId)
     if (!mission) return
     const nomMJ = t('gmMode.missions.mjLabel')
-    const volontairesMinuscule = new Set(mission.volontaires.map(v => v.toLowerCase()))
-    const contenu = encoderMessage({ type: 'message-mission-recu', missionId, expediteurNom: nomMJ, texte })
-    for (const [idStr, identite] of Object.entries(identitesRef.current)) {
-      if (volontairesMinuscule.has(identite.nom.toLowerCase())) envoyerAClientReseau(Number(idStr), contenu)
+    const contenu = encoderMessage({ type: 'message-mission-recu', compagnieId: compagnieSelectionneeId, missionId, expediteurNom: nomMJ, texte })
+    // -1 : aucun connexionId à exclure, le MJ lui-même n'en a pas (contrairement à un volontaire relayant
+    // un message reçu d'un autre volontaire, voir l'écoute réseau plus haut).
+    for (const id of resoudreDestinatairesMission(mission, identitesRef.current, -1)) {
+      envoyerAClientReseau(id, contenu)
     }
     setDialogueMissions(prev => ({
       ...prev,
@@ -412,6 +682,7 @@ export default function CompagnieTab() {
   // seulement le statut, sans perte automatique (voir la règle du livre citée dans utils/missions.ts —
   // un échec isolé n'en fait pas perdre).
   const resoudreMission = (id: string, statut: 'reussie' | 'echouee') => {
+    if (!compagnieSelectionneeId) return
     const maintenant = new Date().toISOString()
     const mission = compagnie.missions.find(m => m.id === id)
     if (!mission) return
@@ -419,8 +690,8 @@ export default function CompagnieTab() {
     if (statut === 'reussie') {
       const gagnee = parseInt(renommeeAResoudre[id] ?? String(mission.recompenseRenommee), 10)
       const delta = Number.isFinite(gagnee) ? gagnee : 0
-      setCompagnie(prev => ({ ...prev, missions, renommee: Math.max(0, prev.renommee + delta), modifieLe: maintenant }))
-      diffuserMissions(missions)
+      setCompagnies(prev => prev.map(c => c.id === compagnieSelectionneeId ? { ...c, missions, renommee: Math.max(0, c.renommee + delta), modifieLe: maintenant } : c))
+      diffuserMissions(compagnie, missions)
     } else {
       enregistrerMissions(missions)
     }
@@ -447,34 +718,57 @@ export default function CompagnieTab() {
     reader.readAsDataURL(file)
   }
 
-  const exporter = async () => {
-    const content = JSON.stringify({ type: 'compagnie', data: compagnie }, null, 2)
-    const safe = (compagnie.nom || 'compagnie').replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'compagnie'
-    const chemin = `Maitre de jeu/${safe}.json`
+  const telechargerJSON = async (content: string, filename: string, messageOk: string) => {
+    const chemin = `Maitre de jeu/${filename}`
     if (isTauri) {
       await saveDataFile(chemin, content)
-      setMsg(t('gmMode.compagnie.exporteVers', { filename: chemin }))
+      setMsg(messageOk)
       setTimeout(() => setMsg(null), 3000)
     } else {
       const blob = new Blob([content], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = `${safe}.json`; a.click()
+      a.href = url; a.download = filename; a.click()
       URL.revokeObjectURL(url)
     }
   }
 
+  const exporter = async () => {
+    if (!compagnieSelectionnee) return
+    const content = JSON.stringify({ type: 'compagnie', data: compagnieSelectionnee }, null, 2)
+    const safe = (compagnie.nom || 'compagnie').replace(/[^a-zA-Z0-9À-ÿ _-]/g, '').trim().replace(/\s+/g, '-') || 'compagnie'
+    await telechargerJSON(content, `${safe}.json`, t('gmMode.compagnie.exporteVers', { filename: `Maitre de jeu/${safe}.json` }))
+  }
+
+  const exporterTout = async () => {
+    const content = JSON.stringify({ type: 'bibliotheque-compagnies', data: compagnies }, null, 2)
+    await telechargerJSON(content, 'compagnies.json', t('gmMode.compagnie.exporteVers', { filename: 'Maitre de jeu/compagnies.json' }))
+  }
+
+  // Un import ne remplace jamais rien (contrairement à l'ancienne version, une seule compagnie
+  // possible) : il AJOUTE une compagnie de plus (nouvel id généré, jamais celui du fichier importé, pour
+  // éviter toute collision) — même logique que l'import d'un personnage dans SaveLoadPanel.tsx. Gère à
+  // la fois un export individuel ('compagnie') et une bibliothèque entière ('bibliotheque-compagnies').
   const importer = async (fichier: File) => {
     try {
       const brut = JSON.parse(await fichier.text())
       const { type, contenu } = desenvelopper(brut)
-      if (type && type !== 'compagnie') {
+      if (type === 'bibliotheque-compagnies') {
+        // Fusionnées sur COMPAGNIE_PAR_DEFAUT (pas castées telles quelles) : même précaution que
+        // ci-dessous pour un export d'une version antérieure à un champ ajouté depuis.
+        const importees = (contenu as Partial<Compagnie>[]).map(c => ({ ...COMPAGNIE_PAR_DEFAUT(), ...c, id: crypto.randomUUID() }))
+        setCompagnies(prev => [...prev, ...importees])
+        if (importees[0]) selectionnerCompagnie(importees[0].id)
+        setMsg(t('gmMode.compagnie.importReussi'))
+      } else if (type && type !== 'compagnie') {
         setMsg(messageMauvaisType(t, 'compagnie', type))
       } else {
         // Fusionné sur COMPAGNIE_PAR_DEFAUT (pas casté tel quel) : un export d'une version antérieure à
         // un champ ajouté depuis (ex. `membres`) planterait sinon tout accès direct à ce champ ailleurs
         // dans l'appli (voir la même précaution au chargement disque dans GameDataContext).
-        setCompagnie({ ...COMPAGNIE_PAR_DEFAUT(), ...(contenu as Partial<Compagnie>) })
+        const nouvelle: Compagnie = { ...COMPAGNIE_PAR_DEFAUT(), ...(contenu as Partial<Compagnie>), id: crypto.randomUUID() }
+        setCompagnies(prev => [...prev, nouvelle])
+        selectionnerCompagnie(nouvelle.id)
         setMsg(t('gmMode.compagnie.importReussi'))
       }
     } catch {
@@ -489,43 +783,203 @@ export default function CompagnieTab() {
   const capacitesArsenalActives = actives.filter(c => c.domaine === 'arsenal')
 
   return (
-    <div style={{ maxWidth: 1020, margin: '0 auto' }}>
-
-      {/* Identité */}
-      <div style={panelStyle}>
-        <div style={sectionTitreStyle}>{t('gmMode.compagnie.identite')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14, marginBottom: 12 }}>
-          <div>
-            <div style={fieldLabelStyle}>{t('gmMode.compagnie.nomLabel')}</div>
-            <input style={inputStyle} value={compagnie.nom} placeholder={t('gmMode.compagnie.nomPlaceholder')}
-              onChange={e => update({ nom: e.target.value })} />
-          </div>
-          <div>
-            <div style={fieldLabelStyle}>{t('gmMode.compagnie.siegeLabel')}</div>
-            <input style={inputStyle} value={compagnie.siege} placeholder={t('gmMode.compagnie.siegePlaceholder')}
-              onChange={e => update({ siege: e.target.value })} />
-          </div>
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={fieldLabelStyle}>{t('gmMode.compagnie.tailleLabel')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TAILLES_COMPAGNIE.map(taille => (
-              <button key={taille} onClick={() => update({ taille })} style={{
-                ...btnStyle, borderRadius: 999,
-                background: compagnie.taille === taille ? 'rgba(201,168,76,0.18)' : 'transparent',
-                borderColor: compagnie.taille === taille ? GOLD : 'rgba(201,168,76,0.3)',
-              }}>
-                {t(`gmMode.compagnie.taille.${taille}`)}
-              </button>
+    <div style={{ display: 'flex', gap: mobile ? 0 : 16, height: '100%', position: 'relative' }}>
+      {/* Liste des compagnies — colonne gauche en desktop, tiroir flottant en mobile, même patron que
+          ObjetsMagiquesTab.tsx/BestiaireTab (GMDashboard.tsx). Remplace l'ancienne barre de puces, trop
+          à l'étroit dès que le nombre de compagnies grandit. */}
+      {mobile && mobileListeOuverte && (
+        <div onClick={() => setMobileListeOuverte(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)' }} />
+      )}
+      {(!mobile || mobileListeOuverte) && (
+        <div style={mobile ? {
+          display: 'flex', flexDirection: 'column', gap: 12,
+          position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '80vh', zIndex: 201,
+          background: 'rgba(18,14,9,0.99)', borderTop: '1px solid rgba(201,168,76,0.3)',
+          borderRadius: '12px 12px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.8)',
+          padding: 12, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', boxSizing: 'border-box',
+        } : { display: 'flex', flexDirection: 'column', gap: 12, width: 320, flexShrink: 0, minHeight: 0 }}>
+          <input
+            value={rechercheCompagnie} onChange={e => setRechercheCompagnie(e.target.value)}
+            placeholder={t('gmMode.compagnie.rechercher')}
+            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(255,255,255,0.03)', color: PARCHMENT, fontSize: 14 }}
+          />
+          <button onClick={nouvelleCompagnie} style={{
+            alignSelf: 'flex-start', background: 'transparent', border: '1px dashed rgba(201,168,76,0.5)', borderRadius: 4,
+            color: GOLD, cursor: 'pointer', fontSize: 14, padding: '3px 8px', whiteSpace: 'nowrap',
+          }}>
+            + {t('gmMode.compagnie.nouvelleCompagnie')}
+          </button>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${SECTION_BORDER}`, borderRadius: 6 }}>
+            {compagniesFiltrees.length === 0 ? (
+              <div style={{ padding: '14px 12px', fontSize: 13, color: 'rgba(245,236,215,0.4)', fontStyle: 'italic', textAlign: 'center' }}>
+                {t('gmMode.compagnie.aucuneCompagnie')}
+              </div>
+            ) : compagniesFiltrees.map(c => (
+              <div key={c.id}
+                onClick={() => { selectionnerCompagnie(c.id); if (mobile) setMobileListeOuverte(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer',
+                  background: c.id === compagnieSelectionneeId ? 'rgba(201,168,76,0.12)' : 'transparent',
+                  borderLeft: c.id === compagnieSelectionneeId ? `2px solid ${GOLD}` : '2px solid transparent',
+                  borderBottom: `1px solid ${SECTION_BORDER}`,
+                }}
+              >
+                <CompagnieLogoMini cle={c.logo} />
+                <span style={{ flex: 1, fontSize: 15, color: c.id === compagnieSelectionneeId ? GOLD : PARCHMENT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.nom.trim() || t('gmMode.compagnie.sansNom')}
+                </span>
+                <span style={{ fontSize: 12.5, color: 'rgba(245,236,215,0.45)', flexShrink: 0 }}>
+                  ≈{EFFECTIF_APPROX_TAILLE[c.taille].toLocaleString()}
+                </span>
+                <span style={{ fontSize: 13, color: GOLD, fontWeight: 700, flexShrink: 0 }}>
+                  {t('gmMode.compagnie.niveauAbrege', { n: niveauDepuisRenommee(c.renommee) })}
+                </span>
+              </div>
             ))}
           </div>
         </div>
-        <div>
-          <div style={fieldLabelStyle}>{t('gmMode.compagnie.histoireLabel')}</div>
-          <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={compagnie.histoire}
-            placeholder={t('gmMode.compagnie.histoirePlaceholder')} onChange={e => update({ histoire: e.target.value })} />
+      )}
+
+      {/* Détail — colonne droite en desktop, pleine largeur en mobile. maxWidth reprend la largeur de
+          la fiche avant ce chantier de refonte (maxWidth: 1020, centrée avec la barre de puces) — le
+          conteneur englobant absorbe l'espace restant et centre la fiche dedans plutôt que de la coller
+          à gauche contre la liste. */}
+      <div style={{ flex: mobile ? undefined : 1, minWidth: 0, display: mobile ? undefined : 'flex', justifyContent: mobile ? undefined : 'center' }}>
+      {/* Pas de padding ici (contrairement à avant ce chantier) : l'en-tête Identité doit pouvoir coller
+          pile aux bords (haut + largeur) une fois sticky, sans marge négative pour compenser un padding
+          parent — le padding vit maintenant sur un conteneur interne dédié au contenu non-sticky. */}
+      {/* Pas de bordure quand rien n'est sélectionné : l'illustration remplit tout le conteneur, la
+          bordure se voyait alors comme un cadre autour de l'image elle-même plutôt que comme le
+          contour d'un panneau de contenu. */}
+      <div ref={detailScrollRef} onScroll={gererScrollDetail} style={{
+        width: '100%', maxWidth: mobile ? undefined : 1020, minWidth: 0,
+        border: compagnieSelectionnee ? `1px solid ${SECTION_BORDER}` : 'none',
+        borderRadius: 6, overflowY: 'auto', position: 'relative',
+      }}>
+        {mobile && (
+          <button onClick={() => setMobileListeOuverte(true)} style={{
+            position: 'fixed', bottom: 16, left: 16, zIndex: 150,
+            display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 20,
+            background: 'rgba(15,12,8,0.95)', border: `1px solid ${GOLD}`, color: GOLD,
+            cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+          }}>
+            🏳️ {compagnies.length}
+          </button>
+        )}
+      {!compagnieSelectionnee ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', minHeight: 200, padding: mobile ? 12 : 20, boxSizing: 'border-box' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, minWidth: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <img src={compagnieIllustration} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', opacity: 0.08, transform: 'scale(1.4)', userSelect: 'none', pointerEvents: 'none' }} />
+          </div>
+          <span style={{ flexShrink: 0, opacity: 0.4, fontSize: 14, fontStyle: 'italic' }}>{t('gmMode.compagnie.aucuneSelection')}</span>
+        </div>
+      ) : (
+        <>
+
+      {/* Identité — fixe (sticky) en haut de la colonne détail pendant le scroll du reste de la fiche.
+          Passe en mise en page compacte (logo réduit à gauche, le reste du bloc à droite) une fois
+          qu'on a assez scrollé (voir gererScrollDetail) : sinon le rétrécissement du logo ne libérerait
+          aucune place, il resterait centré en pleine largeur juste plus petit.
+          Premier enfant direct de la colonne détail (qui n'a plus de padding, voir son style) : ce
+          panneau touche donc réellement le bord haut/gauche/droit une fois sticky, sans marge négative
+          pour compenser un padding parent — l'astuce précédente laissait filtrer un écart selon les
+          navigateurs. Le padding intérieur (mobile?12:20) est appliqué ici directement à la place. */}
+      <div style={{
+        ...panelStyle, position: 'sticky', top: 0, zIndex: 5,
+        background: 'rgba(18,14,9,0.75)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        margin: 0, padding: mobile ? '16px 12px' : '16px 20px',
+        border: 'none', borderBottom: `1px solid ${SECTION_BORDER}`, borderRadius: '6px 6px 0 0',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div style={sectionTitreStyle}>{t('gmMode.compagnie.identite')}</div>
+          {confirmDeleteCompagnieId === compagnieSelectionnee.id ? (
+            <button style={removeBtnStyle} onClick={() => supprimerCompagnie(compagnieSelectionnee.id)}>
+              {t('gmMode.compagnie.confirmerSuppression')}
+            </button>
+          ) : (
+            <button style={removeBtnStyle} onClick={() => setConfirmDeleteCompagnieId(compagnieSelectionnee.id)} title={t('gmMode.compagnie.supprimerCompagnie')}>
+              ✕
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: logoCompact ? 'row' : 'column', alignItems: logoCompact ? 'flex-start' : 'center', gap: logoCompact ? 16 : 8, marginTop: 8 }}>
+          <CompagnieLogo cle={compagnie.logo} ref={logoWrapRef} taille={LOGO_TAILLE_MAX}
+            onChoisir={() => logoInputRef.current?.click()} onRetirer={() => update({ logo: undefined })} />
+          <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) choisirLogoCompagnie(f); e.target.value = '' }} />
+          {logoCompact ? (
+            <>
+              {/* Colonne 2 : nom, siège, taille empilés. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, flexShrink: 0 }}>
+                <ChampTitreCompagnie valeur={compagnie.nom} placeholder={t('gmMode.compagnie.nomPlaceholder')} compact
+                  titreAction={t('gmMode.compagnie.editerNom')} onChange={v => update({ nom: v })} />
+                <ChampTitreCompagnie valeur={compagnie.siege} placeholder={t('gmMode.compagnie.siegePlaceholder')} compact italique petit couleur="rgba(245,236,215,0.45)"
+                  titreAction={t('gmMode.compagnie.editerSiege')} onChange={v => update({ siege: v })} />
+                {/* Taille — phrase descriptive plutôt que la rangée de boutons, trop large pour cette
+                    colonne. Le choix se fait toujours via les boutons en mode normal. */}
+                <div style={{ fontSize: 13, fontStyle: 'italic', color: 'rgba(245,236,215,0.5)' }}>
+                  {t(`gmMode.compagnie.tailleDescription.${compagnie.taille}`)}
+                </div>
+                {/* Dirigeant — le commandant (voir FONCTIONS_MEMBRE plus bas), s'il y en a un ; son nom
+                    ressort en doré, contrairement au reste de la phrase. */}
+                <div style={{ fontSize: 13, fontStyle: 'italic', color: 'rgba(245,236,215,0.5)' }}>
+                  {nomPourFonction('commandant').trim() ? (
+                    <>{t('gmMode.compagnie.dirigeantPrefixe')} <span style={{ color: GOLD }}>{nomPourFonction('commandant').trim()}</span></>
+                  ) : (
+                    t('gmMode.compagnie.dirigeantInconnu')
+                  )}
+                </div>
+              </div>
+              {/* Colonne 3 : histoire, prend le reste de la largeur ET toute la hauteur du bandeau
+                  (alignSelf: stretch — la hauteur de la ligne est fixée par le logo, la plus grande des
+                  3 colonnes). Ne grandit jamais au-delà : un scroll interne prend le relais. Pas de
+                  libellé au-dessus (contrairement au mode normal) : ça grignoterait la hauteur du champ. */}
+              <div style={{ flex: 1, minWidth: 0, alignSelf: 'stretch' }}>
+                <ChampHistoireCompagnie valeur={compagnie.histoire} placeholder={t('gmMode.compagnie.histoirePlaceholder')}
+                  hauteur="100%" titreAction={t('gmMode.compagnie.editerHistoire')} onChange={v => update({ histoire: v })} />
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 0 }}>
+              <ChampTitreCompagnie valeur={compagnie.nom} placeholder={t('gmMode.compagnie.nomPlaceholder')} compact={false}
+                titreAction={t('gmMode.compagnie.editerNom')} onChange={v => update({ nom: v })} />
+              <ChampTitreCompagnie valeur={compagnie.siege} placeholder={t('gmMode.compagnie.siegePlaceholder')} compact={false} italique petit couleur="rgba(245,236,215,0.45)"
+                titreAction={t('gmMode.compagnie.editerSiege')} onChange={v => update({ siege: v })} />
+              <div>
+                <div style={fieldLabelStyle}>{t('gmMode.compagnie.tailleLabel')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {TAILLES_COMPAGNIE.map(taille => (
+                    <Fragment key={taille}>
+                      <button onClick={() => update({ taille })} style={{
+                        ...btnStyle, borderRadius: 999,
+                        background: compagnie.taille === taille ? 'rgba(201,168,76,0.18)' : 'transparent',
+                        borderColor: compagnie.taille === taille ? GOLD : 'rgba(201,168,76,0.3)',
+                      }}>
+                        {t(`gmMode.compagnie.taille.${taille}`)}
+                      </button>
+                      {/* Filet en pointillé après Armée : sépare les 5 tailles officielles du livre
+                          de clanCulVert, une option maison hors échelle. */}
+                      {taille === 'armee' && (
+                        <div style={{ alignSelf: 'stretch', width: 0, borderLeft: '1px dashed rgba(201,168,76,0.3)', margin: '0 2px' }} />
+                      )}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ ...fieldLabelStyle, textAlign: 'right' }}>{t('gmMode.compagnie.histoireLabel')}</div>
+                <ChampHistoireCompagnie valeur={compagnie.histoire} placeholder={t('gmMode.compagnie.histoirePlaceholder')}
+                  hauteur={90} titreAction={t('gmMode.compagnie.editerHistoire')} onChange={v => update({ histoire: v })} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Tout le reste (Renommée → Export/Import) : conteneur dédié au padding que la colonne détail
+          n'a plus (voir plus haut) — Identité, seul panneau sticky, s'en passe pour rester pleine
+          largeur. paddingTop remplace le marginBottom qu'avait Identité avant ce chantier. */}
+      <div style={{ padding: mobile ? '14px 12px 12px' : '14px 20px 20px' }}>
 
       {/* Renommée & niveau */}
       <div style={panelStyle}>
@@ -1083,13 +1537,22 @@ export default function CompagnieTab() {
         )}
       </div>
 
-      {/* Export / Import */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* Export / Import — individuel (cette compagnie) ou toute la bibliothèque d'un coup, même geste
+          que Personnage/library.json côté personnages (SaveLoadPanel.tsx). L'import (des deux types)
+          AJOUTE toujours une ou plusieurs compagnies, ne remplace jamais rien. */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button style={btnStyle} onClick={() => fileInputRef.current?.click()}>{t('gmMode.compagnie.importer')}</button>
         <button style={btnStyle} onClick={exporter}>{t('gmMode.compagnie.exporter')}</button>
+        <button style={btnStyle} onClick={exporterTout}>{t('gmMode.compagnie.exporterTout')}</button>
         <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = '' }} />
         {msg && <span style={{ fontSize: 14, color: GOLD }}>✓ {msg}</span>}
+      </div>
+
+      </div>
+        </>
+      )}
+      </div>
       </div>
     </div>
   )

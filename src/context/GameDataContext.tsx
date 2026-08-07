@@ -27,7 +27,7 @@ import GM_CAMPAGNES_RAW from '../data/gm-campagnes.json'
 import GM_NOTE_IMAGES_RAW from '../data/gm-note-images.json'
 import BATAILLES_RAW from '../data/batailles-sauvegardees.json'
 import BATAILLE_TEMPLATES_RAW from '../data/batailles-modeles.json'
-import { loadDataFile, loadDataFileDossier, openDataDir as openDir } from '../utils/tauriStorage'
+import { loadDataFile, loadDataFileDossier, saveDataFile, openDataDir as openDir } from '../utils/tauriStorage'
 import { queueSave } from '../utils/saveManager'
 import { fusionnerBestiaire, migrerBestiairePerso, cleCreature, sluggifierNom } from '../utils/bestiairePerso'
 import {
@@ -136,9 +136,10 @@ interface GameDataContextValue {
   setRencontres: Dispatch<SetStateAction<RencontreSauvegardee[]>>
   combatsSauvegardes: CombatSessionSauvegardee[]
   setCombatsSauvegardes: Dispatch<SetStateAction<CombatSessionSauvegardee[]>>
-  // Compagnie de mercenaires (une seule par table, partagée par tous les PJ) — voir utils/compagnie.ts.
-  compagnie: Compagnie
-  setCompagnie: Dispatch<SetStateAction<Compagnie>>
+  // Compagnies de mercenaires (plusieurs possibles par table, un personnage n'est membre que de l'une
+  // d'elles à la fois) — voir utils/compagnie.ts.
+  compagnies: Compagnie[]
+  setCompagnies: Dispatch<SetStateAction<Compagnie[]>>
   capacitesBibliotheque: CapaciteBibliotheque[]
   setCapacitesBibliotheque: Dispatch<SetStateAction<CapaciteBibliotheque[]>>
   objetsMagiques: ObjetMagiqueEntry[]
@@ -355,9 +356,11 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const [objetsMagiquesPerso, setObjetsMagiquesPersoRaw] = useState<ObjetMagiqueEntry[]>([])
   const [cartesCritiquesEchecsPerso, setCartesCritiquesEchecsPersoRaw] = useState<CarteCritiquePerso[]>([])
   const [cartesCritiquesReussitesPerso, setCartesCritiquesReussitesPersoRaw] = useState<CarteCritiquePerso[]>([])
-  // Compagnie de mercenaires (une seule par table, partagée par tous les PJ) — objet unique, pas un
-  // catalogue livré+perso (aucune compagnie n'est fournie avec l'appli), voir utils/compagnie.ts.
-  const [compagnie, setCompagnieRaw] = useState<Compagnie>(COMPAGNIE_PAR_DEFAUT())
+  // Compagnies de mercenaires (plusieurs possibles par table) — pas un catalogue livré+perso (aucune
+  // compagnie n'est fournie avec l'appli), voir utils/compagnie.ts. Vide par défaut : contrairement aux
+  // autres domaines, il n'y a pas de "compagnie par défaut" à instancier tant que le MJ n'en a pas créé
+  // au moins une (voir CompagnieTab.tsx).
+  const [compagnies, setCompagniesRaw] = useState<Compagnie[]>([])
   const [notes, setNotesRaw] = useState<Note[]>(() =>
     unwrap(JSON.parse(JSON.stringify(NOTES_RAW))) as Note[]
   )
@@ -613,14 +616,26 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         if (objetsMagiquesPersoStr !== null) {
           setObjetsMagiquesPersoRaw(unwrap(JSON.parse(objetsMagiquesPersoStr)) as ObjetMagiqueEntry[])
         }
-        // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste l'objet par défaut au premier lancement.
-        // Fusionné sur COMPAGNIE_PAR_DEFAUT (pas casté tel quel) : un fichier disque plus ancien qu'un
-        // champ ajouté depuis (ex. `membres` avant qu'il existe, ou un import d'un export d'une version
-        // antérieure) ferait planter tout accès direct à ce champ ailleurs dans l'appli (ex.
-        // compagnie.membres.some dans App.tsx) sans ce filet.
-        const compagnieStr = await loadDataFile('Maitre de jeu/compagnie.json')
-        if (compagnieStr !== null) {
-          setCompagnieRaw({ ...COMPAGNIE_PAR_DEFAUT(), ...(unwrap(JSON.parse(compagnieStr)) as Partial<Compagnie>) })
+        // Plusieurs compagnies possibles depuis ce chantier : Maitre de jeu/compagnies.json (tableau,
+        // chargé/sauvegardé en bloc comme Personnage/library.json) remplace l'ancien fichier à compagnie
+        // unique. Migration ponctuelle si le nouveau fichier n'existe pas encore mais l'ancien oui :
+        // repris tel quel comme unique première entrée, puis réécrit immédiatement dans le nouveau
+        // format — l'ancien fichier reste en place, jamais supprimé (même convention que les autres
+        // migrations ponctuelles du projet). Chaque entrée fusionnée sur COMPAGNIE_PAR_DEFAUT (pas
+        // castée telle quelle) : un fichier disque plus ancien qu'un champ ajouté depuis (ex. `missions`
+        // avant qu'il existe) ferait planter tout accès direct à ce champ ailleurs dans l'appli sans ce
+        // filet — et lui donne au passage un id frais si l'entrée n'en avait pas encore.
+        const compagniesStr = await loadDataFile('Maitre de jeu/compagnies.json')
+        if (compagniesStr !== null) {
+          const brut = unwrap(JSON.parse(compagniesStr)) as Partial<Compagnie>[]
+          setCompagniesRaw(brut.map(c => ({ ...COMPAGNIE_PAR_DEFAUT(), ...c })))
+        } else {
+          const compagnieStr = await loadDataFile('Maitre de jeu/compagnie.json')
+          if (compagnieStr !== null) {
+            const migree: Compagnie = { ...COMPAGNIE_PAR_DEFAUT(), ...(unwrap(JSON.parse(compagnieStr)) as Partial<Compagnie>) }
+            setCompagniesRaw([migree])
+            await saveDataFile('Maitre de jeu/compagnies.json', JSON.stringify({ _type: 'compagnies', data: [migree] }, null, 2))
+          }
         }
         // Fonctionnalité neuve : pas d'ancien fichier à migrer, juste [] par défaut au premier lancement.
         const cartesEchecsPersoStr = await loadDataFile('Maitre de jeu/cartes-critiques-echecs-perso.json')
@@ -819,7 +834,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
   const setHiddenBestiaire = useMemo(() => makeAutoSaver<string[]>(setHiddenBestiaireRaw, 'Maitre de jeu/hidden-bestiaire.json', 'hidden-bestiaire'), [])
   const setRencontres = useMemo(() => makeAutoSaver<RencontreSauvegardee[]>(setRencontresRaw, 'Maitre de jeu/rencontres-sauvegardees.json', 'rencontres'), [])
   const setCombatsSauvegardes = useMemo(() => makeAutoSaver<CombatSessionSauvegardee[]>(setCombatsSauvegardesRaw, 'Maitre de jeu/combats-sauvegardes.json', 'combats'), [])
-  const setCompagnie = useMemo(() => makeAutoSaver<Compagnie>(setCompagnieRaw, 'Maitre de jeu/compagnie.json', 'compagnie'), [])
+  const setCompagnies = useMemo(() => makeAutoSaver<Compagnie[]>(setCompagniesRaw, 'Maitre de jeu/compagnies.json', 'compagnies'), [])
   // Générique comme setTraits/setTraitsRaciaux/setCompagnons ci-dessus : reçoit la vue fusionnée (même
   // signature qu'avant la scission), en déduit la surcharge perso par différence avec le livré.
   const setCapacitesBibliotheque = useCallback<Dispatch<SetStateAction<CapaciteBibliotheque[]>>>((updater) => {
@@ -938,7 +953,7 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
       hiddenBestiaire, setHiddenBestiaire,
       rencontres, setRencontres,
       combatsSauvegardes, setCombatsSauvegardes,
-      compagnie, setCompagnie,
+      compagnies, setCompagnies,
       capacitesBibliotheque, setCapacitesBibliotheque,
       objetsMagiques, setObjetsMagiques,
       cartesCritiquesEchecs, setCartesCritiquesEchecs,

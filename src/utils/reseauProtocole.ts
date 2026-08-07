@@ -182,21 +182,26 @@ export type MessageReseau =
   // Joueur → MJ : ce PJ se porte volontaire pour la mission désignée (voir utils/missions.ts). Le nom
   // de l'expéditeur n'a pas besoin de voyager dans le message : le MJ le résout via identitesRef, comme
   // pour 'message-pj' (voir ReseauTab.tsx). Traité seulement si la mission accepte encore des volontaires
-  // (voir peutSePorterVolontaire) — sinon ignoré silencieusement côté MJ.
-  | { type: 'mission-volontaire'; missionId: string }
-  // MJ → tous les joueurs (diffusé, voir envoyerATousReseau) : la liste À JOUR des missions de la
-  // compagnie, envoyée après CHAQUE mutation de compagnie.missions (création, volontariat accepté,
-  // lancement, résolution) — c'est la seule donnée de compagnie synchronisée en direct ; le reste
-  // (identité, renommée, membres) ne circule que via l'export/import JSON manuel déjà existant.
-  | { type: 'compagnie-missions-maj'; missions: MissionCompagnie[] }
+  // (voir peutSePorterVolontaire) — sinon ignoré silencieusement côté MJ. compagnieId (depuis le chantier
+  // multi-compagnies) permet au MJ de retrouver la bonne compagnie sans parcourir toutes celles en
+  // mémoire — un PJ n'étant membre que d'une seule à la fois, il connaît toujours la sienne.
+  | { type: 'mission-volontaire'; compagnieId: string; missionId: string }
+  // MJ → UN client ciblé (pas diffusé à tous, voir envoyerAClientReseau) : la liste À JOUR des missions
+  // de LA compagnie de ce joueur, envoyée après chaque mutation de ses missions (création, volontariat
+  // accepté, lancement, résolution) et à son identification — c'est la seule donnée de compagnie
+  // synchronisée en direct ; le reste (identité, renommée, membres) ne circule que via l'export/import
+  // JSON manuel déjà existant. Un joueur ne reçoit jamais les missions d'une compagnie dont il n'est pas
+  // membre.
+  | { type: 'compagnie-missions-maj'; compagnieId: string; missions: MissionCompagnie[] }
   // Joueur → MJ, à relayer aux AUTRES volontaires de cette mission uniquement (pas au roster entier
   // comme 'message-pj' sans destinataire) — le dialogue de mission, voir GameModePanel.tsx. Le MJ
-  // retrouve les volontaires actuellement connectés en croisant compagnie.missions[...].volontaires
-  // (des noms) avec identitesRef (voir ReseauTab.tsx), puis relaie en 'message-mission-recu'.
-  | { type: 'message-mission'; missionId: string; texte: string }
+  // retrouve les volontaires actuellement connectés en croisant missions[...].volontaires (des noms,
+  // dans la compagnie compagnieId) avec identitesRef (voir ReseauTab.tsx), puis relaie en
+  // 'message-mission-recu'.
+  | { type: 'message-mission'; compagnieId: string; missionId: string; texte: string }
   // MJ → un participant de la mission : relais transparent d'un 'message-mission' reçu d'un autre
   // volontaire — même principe que 'message-pj-recu'.
-  | { type: 'message-mission-recu'; missionId: string; expediteurNom: string; texte: string }
+  | { type: 'message-mission-recu'; compagnieId: string; missionId: string; expediteurNom: string; texte: string }
 
 export function encoderMessage(m: MessageReseau): string {
   return JSON.stringify(m)

@@ -41,6 +41,10 @@ export interface ButMission {
 
 export interface MissionCompagnie {
   id: string
+  // Compagnie propriétaire (voir utils/compagnie.ts) — nécessaire depuis que plusieurs compagnies
+  // coexistent : missionId seul ne suffit plus à retrouver la mission sans parcourir toutes les
+  // compagnies, et le réseau (reseauProtocole.ts) doit savoir à quelle compagnie router chaque message.
+  compagnieId: string
   nom: string
   description: string
   type: TypeMission
@@ -59,8 +63,9 @@ export interface MissionCompagnie {
   modifieLe: string
 }
 
-export const MISSION_VIDE = (): MissionCompagnie => ({
+export const MISSION_VIDE = (compagnieId: string): MissionCompagnie => ({
   id: crypto.randomUUID(),
+  compagnieId,
   nom: '',
   description: '',
   type: 'autre',

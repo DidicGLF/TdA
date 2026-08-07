@@ -5,12 +5,15 @@ import './i18n'
 import App from './App.tsx'
 import { LocaleProvider } from './context/LocaleContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import EchelleEcran from './components/EchelleEcran'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <LocaleProvider>
-        <App />
+        <EchelleEcran>
+          <App />
+        </EchelleEcran>
       </LocaleProvider>
     </ErrorBoundary>
   </StrictMode>,

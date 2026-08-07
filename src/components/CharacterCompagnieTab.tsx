@@ -269,7 +269,7 @@ export default function CharacterCompagnieTab({ compagnie, nomPersonnage, reseau
                     </span>
                   ) : (
                     <button
-                      onClick={() => reseau.envoyerVolontaireMission(mission.id)}
+                      onClick={() => reseau.envoyerVolontaireMission(mission.compagnieId, mission.id)}
                       disabled={!peutVolontaire}
                       title={!reseau.connecte ? t('gmMode.missions.connexionRequise') : undefined}
                       style={{
